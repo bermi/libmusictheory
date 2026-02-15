@@ -7,6 +7,12 @@ Build `libmusictheory`, a Zig library exposing a C ABI that implements the compl
 - Music composition plugins (DAW integration)
 - LLM agents for music theory reasoning
 
+## Lifecycle Status
+
+- Draft: 0001, 0003-0022
+- In progress: 0002
+- Completed: none
+
 ## Plan Dependencies (Execute in Order)
 
 ```
