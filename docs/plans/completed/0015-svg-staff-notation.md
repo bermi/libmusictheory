@@ -84,9 +84,8 @@ Before implementing any step in this plan:
 
 ## Implementation History (Point-in-Time)
 
-_To be filled when implementation is complete._
-- `<commit-hash>` (<date>):
-  - Shipped behavior: ...
+- `faefd5f` (2026-02-15):
+  - Shipped behavior: Added `src/svg/staff.zig` with MIDI-to-staff position mapping, grand-staff clef split, key-signature-aware accidental checks, and deterministic SVG emitters for chord, grand-chord, and scale staff formats with expected dimensions.
   - Verification: `./verify.sh` passes, `zig build verify` passes.
 
 ## Estimated Scope
