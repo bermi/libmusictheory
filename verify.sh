@@ -316,6 +316,12 @@ else
     unverified "0018 svg misc test suite (src/tests/svg_misc_test.zig not yet implemented)"
 fi
 
+if [ -f "$ROOT_DIR/src/tests/slider_test.zig" ]; then
+    check_cmd "cd '$ROOT_DIR' && zig build test 2>&1" "0019 key slider test suite"
+else
+    unverified "0019 key slider test suite (src/tests/slider_test.zig not yet implemented)"
+fi
+
 # ───────────────────────────────────────────
 # Summary
 # ───────────────────────────────────────────
