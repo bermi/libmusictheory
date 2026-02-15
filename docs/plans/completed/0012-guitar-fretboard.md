@@ -83,9 +83,8 @@ Before implementing any step in this plan:
 
 ## Implementation History (Point-in-Time)
 
-_To be filled when implementation is complete._
-- `<commit-hash>` (<date>):
-  - Shipped behavior: ...
+- `90ddb0a` (2026-02-15):
+  - Shipped behavior: Added `src/guitar.zig` with standard/alternative tunings, fret-to-MIDI and inverse mapping, pitch-class-to-fret mapping, stack-only voicing generation with span and coverage constraints, CAGED major positions, pitch-class guide overlay, and URL encode/decode for single-position voicings.
   - Verification: `./verify.sh` passes, `zig build verify` passes.
 
 ## Estimated Scope
