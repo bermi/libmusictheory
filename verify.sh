@@ -310,6 +310,12 @@ else
     unverified "0017 svg tessellation test suite (src/tests/svg_tessellation_test.zig not yet implemented)"
 fi
 
+if [ -f "$ROOT_DIR/src/tests/svg_misc_test.zig" ]; then
+    check_cmd "cd '$ROOT_DIR' && zig build test 2>&1" "0018 svg misc test suite"
+else
+    unverified "0018 svg misc test suite (src/tests/svg_misc_test.zig not yet implemented)"
+fi
+
 # ───────────────────────────────────────────
 # Summary
 # ───────────────────────────────────────────

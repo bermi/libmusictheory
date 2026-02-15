@@ -30,6 +30,13 @@ pub const svg_clock = @import("svg/clock.zig");
 pub const svg_staff = @import("svg/staff.zig");
 pub const svg_fret = @import("svg/fret.zig");
 pub const svg_tessellation = @import("svg/tessellation.zig");
+pub const svg_mode_icon = @import("svg/mode_icon.zig");
+pub const svg_evenness_chart = @import("svg/evenness_chart.zig");
+pub const svg_orbifold = @import("svg/orbifold.zig");
+pub const svg_circle_of_fifths = @import("svg/circle_of_fifths.zig");
+pub const svg_key_sig = @import("svg/key_sig.zig");
+pub const svg_text_misc = @import("svg/text_misc.zig");
+pub const svg_n_tet_chart = @import("svg/n_tet_chart.zig");
 
 test {
     _ = @import("tests/pitch_test.zig");
@@ -48,4 +55,5 @@ test {
     _ = @import("tests/svg_staff_test.zig");
     _ = @import("tests/svg_fret_test.zig");
     _ = @import("tests/svg_tessellation_test.zig");
+    _ = @import("tests/svg_misc_test.zig");
 }
