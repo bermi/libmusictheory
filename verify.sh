@@ -280,6 +280,12 @@ else
     unverified "0012 guitar fretboard test suite (src/tests/guitar_test.zig not yet implemented)"
 fi
 
+if [ -f "$ROOT_DIR/src/tests/keyboard_test.zig" ]; then
+    check_cmd "cd '$ROOT_DIR' && zig build test 2>&1" "0013 keyboard interaction test suite"
+else
+    unverified "0013 keyboard interaction test suite (src/tests/keyboard_test.zig not yet implemented)"
+fi
+
 # ───────────────────────────────────────────
 # Summary
 # ───────────────────────────────────────────
