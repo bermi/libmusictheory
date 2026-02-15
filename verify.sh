@@ -262,6 +262,12 @@ else
     unverified "0009 chord construction test suite (src/tests/chord_construction_test.zig not yet implemented)"
 fi
 
+if [ -f "$ROOT_DIR/src/tests/harmony_analysis_test.zig" ]; then
+    check_cmd "cd '$ROOT_DIR' && zig build test 2>&1" "0010 harmony analysis test suite"
+else
+    unverified "0010 harmony analysis test suite (src/tests/harmony_analysis_test.zig not yet implemented)"
+fi
+
 # ───────────────────────────────────────────
 # Summary
 # ───────────────────────────────────────────
