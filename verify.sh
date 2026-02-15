@@ -328,6 +328,12 @@ else
     unverified "0020 c api test suite (src/tests/c_api_test.zig not yet implemented)"
 fi
 
+if [ -f "$ROOT_DIR/src/tests/tables_test.zig" ]; then
+    check_cmd "cd '$ROOT_DIR' && zig build verify 2>&1" "0021 static tables test suite"
+else
+    unverified "0021 static tables test suite (src/tests/tables_test.zig not yet implemented)"
+fi
+
 # ───────────────────────────────────────────
 # Summary
 # ───────────────────────────────────────────
