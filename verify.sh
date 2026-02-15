@@ -334,6 +334,18 @@ else
     unverified "0021 static tables test suite (src/tests/tables_test.zig not yet implemented)"
 fi
 
+if [ -f "$ROOT_DIR/src/tests/property_test.zig" ]; then
+    check_cmd "cd '$ROOT_DIR' && zig build verify 2>&1" "0022 comprehensive testing suite"
+else
+    unverified "0022 comprehensive testing suite (src/tests/property_test.zig not yet implemented)"
+fi
+
+if [ -f "$ROOT_DIR/scripts/extract_reference_data.py" ]; then
+    pass "0022 reference extraction script"
+else
+    unverified "0022 reference extraction script (scripts/extract_reference_data.py not yet implemented)"
+fi
+
 # ───────────────────────────────────────────
 # Summary
 # ───────────────────────────────────────────

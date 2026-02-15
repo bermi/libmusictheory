@@ -62,4 +62,7 @@ test {
     _ = @import("tests/slider_test.zig");
     _ = @import("tests/c_api_test.zig");
     _ = @import("tests/tables_test.zig");
+    _ = @import("tests/integration_test.zig");
+    _ = @import("tests/reference_data_test.zig");
+    _ = @import("tests/property_test.zig");
 }
