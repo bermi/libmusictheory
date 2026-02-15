@@ -99,13 +99,13 @@ Before implementing any step in this plan:
 
 All of the following must pass before this plan is considered complete:
 
-- [ ] `./verify.sh` passes
-- [ ] `zig build verify` passes
-- [ ] All 12 pitch class constants correct
-- [ ] MIDI↔PC round-trip for all 128 values
-- [ ] A4=440Hz=MIDI 69
-- [ ] All 35 note name spellings ↔ pitch class
-- [ ] Formula token ↔ semitone values for all tokens
+- [x] `./verify.sh` passes
+- [x] `zig build verify` passes
+- [x] All 12 pitch class constants correct
+- [x] MIDI↔PC round-trip for all 128 values
+- [x] A4=440Hz=MIDI 69
+- [x] All 35 note name spellings ↔ pitch class
+- [x] Formula token ↔ semitone values for all tokens
 
 ## Verification Data Sources
 
@@ -113,9 +113,8 @@ All of the following must pass before this plan is considered complete:
 
 ## Implementation History (Point-in-Time)
 
-_To be filled when implementation is complete._
-- `<commit-hash>` (<date>):
-  - Shipped behavior: ...
+- `e0275e9` (2026-02-15):
+  - Shipped behavior: Added `pitch`, `note_name`, and `interval` modules; implemented MIDI/pitch-class conversion, note spelling support (35 spellings), formula token semitone mappings, and focused unit tests in `src/tests/pitch_test.zig`.
   - Verification: `./verify.sh` passes, `zig build verify` passes.
 
 ## Estimated Scope
