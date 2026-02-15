@@ -165,9 +165,8 @@ Before implementing any step in this plan:
 
 ## Implementation History (Point-in-Time)
 
-_To be filled when implementation is complete._
-- `<commit-hash>` (<date>):
-  - Shipped behavior: ...
+- `d764ee5` (2026-02-16):
+  - Shipped behavior: added cross-module integration tests (`src/tests/integration_test.zig`), reference spot-check tests (`src/tests/reference_data_test.zig`), property/fuzz tests over all 4096 pitch-class sets (`src/tests/property_test.zig`), and a local data extraction utility (`scripts/extract_reference_data.py`) integrated via new `verify.sh` gates.
   - Verification: `./verify.sh` passes, `zig build verify` passes.
 
 ## Estimated Scope
