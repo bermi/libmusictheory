@@ -70,9 +70,8 @@ Before implementing any step in this plan:
 
 ## Implementation History (Point-in-Time)
 
-_To be filled when implementation is complete._
-- `<commit-hash>` (<date>):
-  - Shipped behavior: ...
+- `daa4930` (2026-02-15):
+  - Shipped behavior: Added `src/svg/fret.zig` with 100x100 fret-diagram SVG rendering, fret-window computation, dot/open/muted marker placement, and barre detection/rendering for contiguous barred spans.
   - Verification: `./verify.sh` passes, `zig build verify` passes.
 
 ## Estimated Scope
