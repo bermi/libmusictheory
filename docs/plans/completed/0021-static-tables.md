@@ -97,9 +97,8 @@ Before implementing any step in this plan:
 
 ## Implementation History (Point-in-Time)
 
-_To be filled when implementation is complete._
-- `<commit-hash>` (<date>):
-  - Shipped behavior: ...
+- `987d629` (2026-02-16):
+  - Shipped behavior: added `src/tables/*` compile-time lookup modules (`set_classes`, `intervals`, `classification`, `scales`, `chords`, `colors`) exposed via `src/tables.zig`, integrated into `src/root.zig`, and added `src/tests/tables_test.zig` parity checks against runtime computations with memory-budget assertion.
   - Verification: `./verify.sh` passes, `zig build verify` passes.
 
 ## Estimated Scope
