@@ -94,12 +94,12 @@ Before implementing any step in this plan:
 
 All of the following must pass before this plan is considered complete:
 
-- [ ] `./verify.sh` passes
-- [ ] `zig build verify` passes
-- [ ] Interval vectors match music21 for all 336 set classes
-- [ ] FC-components satisfy complement invariance
-- [ ] M5 is self-inverse
-- [ ] Known Z-related pairs verified
+- [x] `./verify.sh` passes
+- [x] `zig build verify` passes
+- [x] Interval vectors match music21 for all 336 set classes
+- [x] FC-components satisfy complement invariance
+- [x] M5 is self-inverse
+- [x] Known Z-related pairs verified
 
 ## Verification Data Sources
 
@@ -108,9 +108,8 @@ All of the following must pass before this plan is considered complete:
 
 ## Implementation History (Point-in-Time)
 
-_To be filled when implementation is complete._
-- `<commit-hash>` (<date>):
-  - Shipped behavior: ...
+- `1f20963` (2026-02-15):
+  - Shipped behavior: Added interval-vector computation, FC component computation, M5/M7 transforms, Z/M relation checks, and table precomputation in `src/interval_analysis.zig`; added exhaustive interval-vector verification against music21 references.
   - Verification: `./verify.sh` passes, `zig build verify` passes.
 
 ## Estimated Scope

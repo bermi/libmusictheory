@@ -238,6 +238,12 @@ else
     unverified "0005 interval analysis test suite (src/tests/interval_analysis_test.zig not yet implemented)"
 fi
 
+if [ -f "$ROOT_DIR/src/tests/cluster_evenness_test.zig" ]; then
+    check_cmd "cd '$ROOT_DIR' && zig build test 2>&1" "0006 cluster/evenness test suite"
+else
+    unverified "0006 cluster/evenness test suite (src/tests/cluster_evenness_test.zig not yet implemented)"
+fi
+
 # ───────────────────────────────────────────
 # Summary
 # ───────────────────────────────────────────
