@@ -77,9 +77,8 @@ Before implementing any step in this plan:
 
 ## Implementation History (Point-in-Time)
 
-_To be filled when implementation is complete._
-- `<commit-hash>` (<date>):
-  - Shipped behavior: ...
+- `cdc9349` (2026-02-15):
+  - Shipped behavior: Added key signature derivation, key relations and circle-of-fifths navigation, key-aware note spelling, and auto-spell support across `src/key_signature.zig`, `src/key.zig`, and `src/note_spelling.zig`.
   - Verification: `./verify.sh` passes, `zig build verify` passes.
 
 ## Estimated Scope
