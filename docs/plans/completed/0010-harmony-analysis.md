@@ -84,9 +84,8 @@ Before implementing any step in this plan:
 
 ## Implementation History (Point-in-Time)
 
-_To be filled when implementation is complete._
-- `<commit-hash>` (<date>):
-  - Shipped behavior: ...
+- `f203d0c` (2026-02-15):
+  - Shipped behavior: Added `src/harmony.zig` with diatonic triad/seventh construction for major and natural minor keys, `DiatonicHarmony` snapshots, Roman numeral formatting with quality suffixes and seventh extensions, chord-scale compatibility with avoid-note and available-tension extraction, tritone substitution, and diatonic circuit degree orders.
   - Verification: `./verify.sh` passes, `zig build verify` passes.
 
 ## Estimated Scope
