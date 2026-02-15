@@ -292,6 +292,12 @@ else
     unverified "0014 svg clock diagram test suite (src/tests/svg_clock_test.zig not yet implemented)"
 fi
 
+if [ -f "$ROOT_DIR/src/tests/svg_staff_test.zig" ]; then
+    check_cmd "cd '$ROOT_DIR' && zig build test 2>&1" "0015 svg staff notation test suite"
+else
+    unverified "0015 svg staff notation test suite (src/tests/svg_staff_test.zig not yet implemented)"
+fi
+
 # ───────────────────────────────────────────
 # Summary
 # ───────────────────────────────────────────
