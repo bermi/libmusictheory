@@ -244,6 +244,12 @@ else
     unverified "0006 cluster/evenness test suite (src/tests/cluster_evenness_test.zig not yet implemented)"
 fi
 
+if [ -f "$ROOT_DIR/src/tests/scales_modes_test.zig" ]; then
+    check_cmd "cd '$ROOT_DIR' && zig build test 2>&1" "0007 scales/modes test suite"
+else
+    unverified "0007 scales/modes test suite (src/tests/scales_modes_test.zig not yet implemented)"
+fi
+
 # ───────────────────────────────────────────
 # Summary
 # ───────────────────────────────────────────

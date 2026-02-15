@@ -70,11 +70,11 @@ Before implementing any step in this plan:
 
 All of the following must pass before this plan is considered complete:
 
-- [ ] `./verify.sh` passes
-- [ ] `zig build verify` passes
-- [ ] Exactly 124 cluster-free set classes
-- [ ] Perfectly even sets (tritone, aug, dim7, whole-tone) have distance 0
-- [ ] Maximally even sets identified correctly
+- [x] `./verify.sh` passes
+- [x] `zig build verify` passes
+- [x] Exactly 124 cluster-free set classes
+- [x] Perfectly even sets (tritone, aug, dim7, whole-tone) have distance 0
+- [x] Maximally even sets identified correctly
 
 ## Verification Data Sources
 
@@ -82,9 +82,8 @@ All of the following must pass before this plan is considered complete:
 
 ## Implementation History (Point-in-Time)
 
-_To be filled when implementation is complete._
-- `<commit-hash>` (<date>):
-  - Shipped behavior: ...
+- `28ddc53` (2026-02-15):
+  - Shipped behavior: Added chromatic-cluster detection and extraction in `src/cluster.zig`, evenness distance/maximal-evenness/consonance scoring in `src/evenness.zig`, and precomputed cluster/evenness tables for all 336 set classes.
   - Verification: `./verify.sh` passes, `zig build verify` passes.
 
 ## Estimated Scope

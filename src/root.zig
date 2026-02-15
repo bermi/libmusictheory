@@ -15,6 +15,8 @@ pub const fc_components = @import("fc_components.zig");
 pub const interval_analysis = @import("interval_analysis.zig");
 pub const cluster = @import("cluster.zig");
 pub const evenness = @import("evenness.zig");
+pub const scale = @import("scale.zig");
+pub const mode = @import("mode.zig");
 
 test {
     _ = @import("tests/pitch_test.zig");
@@ -22,4 +24,5 @@ test {
     _ = @import("tests/set_class_test.zig");
     _ = @import("tests/interval_analysis_test.zig");
     _ = @import("tests/cluster_evenness_test.zig");
+    _ = @import("tests/scales_modes_test.zig");
 }
