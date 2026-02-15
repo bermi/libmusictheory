@@ -298,6 +298,12 @@ else
     unverified "0015 svg staff notation test suite (src/tests/svg_staff_test.zig not yet implemented)"
 fi
 
+if [ -f "$ROOT_DIR/src/tests/svg_fret_test.zig" ]; then
+    check_cmd "cd '$ROOT_DIR' && zig build test 2>&1" "0016 svg fret diagram test suite"
+else
+    unverified "0016 svg fret diagram test suite (src/tests/svg_fret_test.zig not yet implemented)"
+fi
+
 # ───────────────────────────────────────────
 # Summary
 # ───────────────────────────────────────────
