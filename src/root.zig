@@ -23,6 +23,7 @@ pub const note_spelling = @import("note_spelling.zig");
 pub const chord_type = @import("chord_type.zig");
 pub const chord_construction = @import("chord_construction.zig");
 pub const harmony = @import("harmony.zig");
+pub const voice_leading = @import("voice_leading.zig");
 
 test {
     _ = @import("tests/pitch_test.zig");
@@ -34,4 +35,5 @@ test {
     _ = @import("tests/keys_signatures_test.zig");
     _ = @import("tests/chord_construction_test.zig");
     _ = @import("tests/harmony_analysis_test.zig");
+    _ = @import("tests/voice_leading_test.zig");
 }
