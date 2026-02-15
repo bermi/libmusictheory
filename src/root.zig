@@ -29,6 +29,7 @@ pub const keyboard = @import("keyboard.zig");
 pub const svg_clock = @import("svg/clock.zig");
 pub const svg_staff = @import("svg/staff.zig");
 pub const svg_fret = @import("svg/fret.zig");
+pub const svg_tessellation = @import("svg/tessellation.zig");
 
 test {
     _ = @import("tests/pitch_test.zig");
@@ -46,4 +47,5 @@ test {
     _ = @import("tests/svg_clock_test.zig");
     _ = @import("tests/svg_staff_test.zig");
     _ = @import("tests/svg_fret_test.zig");
+    _ = @import("tests/svg_tessellation_test.zig");
 }
