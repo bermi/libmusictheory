@@ -256,6 +256,12 @@ else
     unverified "0008 keys/signatures test suite (src/tests/keys_signatures_test.zig not yet implemented)"
 fi
 
+if [ -f "$ROOT_DIR/src/tests/chord_construction_test.zig" ]; then
+    check_cmd "cd '$ROOT_DIR' && zig build test 2>&1" "0009 chord construction test suite"
+else
+    unverified "0009 chord construction test suite (src/tests/chord_construction_test.zig not yet implemented)"
+fi
+
 # ───────────────────────────────────────────
 # Summary
 # ───────────────────────────────────────────

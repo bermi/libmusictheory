@@ -20,6 +20,8 @@ pub const mode = @import("mode.zig");
 pub const key_signature = @import("key_signature.zig");
 pub const key = @import("key.zig");
 pub const note_spelling = @import("note_spelling.zig");
+pub const chord_type = @import("chord_type.zig");
+pub const chord_construction = @import("chord_construction.zig");
 
 test {
     _ = @import("tests/pitch_test.zig");
@@ -29,4 +31,5 @@ test {
     _ = @import("tests/cluster_evenness_test.zig");
     _ = @import("tests/scales_modes_test.zig");
     _ = @import("tests/keys_signatures_test.zig");
+    _ = @import("tests/chord_construction_test.zig");
 }
