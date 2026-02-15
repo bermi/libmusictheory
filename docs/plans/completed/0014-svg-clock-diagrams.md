@@ -68,9 +68,8 @@ Before implementing any step in this plan:
 
 ## Implementation History (Point-in-Time)
 
-_To be filled when implementation is complete._
-- `<commit-hash>` (<date>):
-  - Shipped behavior: ...
+- `fa78877` (2026-02-15):
+  - Shipped behavior: Added `src/svg/clock.zig` with clock-circle geometry, OPC and OPTC SVG rendering, cluster-aware monochrome fills, center labels, and batch OPTC file generation for set classes.
   - Verification: `./verify.sh` passes, `zig build verify` passes.
 
 ## Estimated Scope
