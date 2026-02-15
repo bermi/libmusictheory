@@ -87,9 +87,8 @@ Before implementing any step in this plan:
 
 ## Implementation History (Point-in-Time)
 
-_To be filled when implementation is complete._
-- `<commit-hash>` (<date>):
-  - Shipped behavior: ...
+- `7bf298f` (2026-02-15):
+  - Shipped behavior: Added `src/voice_leading.zig` with single-voice circular distance, exact VL distance (brute-force for C<=5 and Hungarian for larger cardinalities), uncrossed rotational assignments, average VL distance, VL graph construction/connectivity, diatonic fifths/thirds circuits, and orbifold radius via evenness distance.
   - Verification: `./verify.sh` passes, `zig build verify` passes.
 
 ## Estimated Scope
