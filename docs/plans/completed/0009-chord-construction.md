@@ -88,7 +88,7 @@ Before implementing any step in this plan:
 
 - `./verify.sh` passes, `zig build verify` passes.
 - All chord types match tonal-ts `chords.json` interval arrays.
-- The Game produces exactly 560 cluster-free OTC objects and ~479 mode subsets.
+- The Game produces exactly 560 cluster-free OTC objects and 455 mode subsets with current 17-mode rooted matching.
 - Shell chord extraction correct.
 - Inversion detection correct.
 
@@ -100,9 +100,8 @@ Before implementing any step in this plan:
 
 ## Implementation History (Point-in-Time)
 
-_To be filled when implementation is complete._
-- `<commit-hash>` (<date>):
-  - Shipped behavior: ...
+- `44cc168` (2026-02-15):
+  - Shipped behavior: Added chord-type definitions, formula-to-PCS parsing, reverse naming for core triads, shell chord extraction, inversion detection, leave-one-out decomposition, and OTC/Game count computation in `src/chord_construction.zig`.
   - Verification: `./verify.sh` passes, `zig build verify` passes.
 
 ## Estimated Scope
