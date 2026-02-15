@@ -9,9 +9,9 @@ Build `libmusictheory`, a Zig library exposing a C ABI that implements the compl
 
 ## Lifecycle Status
 
-- Draft: 0001, 0004-0022
-- In progress: 0003
-- Completed: 0002
+- Draft: 0001, 0005-0022
+- In progress: 0004
+- Completed: 0002, 0003
 
 ## Plan Dependencies (Execute in Order)
 

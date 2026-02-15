@@ -76,12 +76,12 @@ Before implementing any step in this plan:
 
 All of the following must pass before this plan is considered complete:
 
-- [ ] `./verify.sh` passes
-- [ ] `zig build verify` passes
-- [ ] All 12 transpositions of diatonic set are distinct
-- [ ] C major triad ⊂ diatonic scale
-- [ ] complement(diatonic) = pentatonic
-- [ ] Hamming distance(C major, C minor) = 2
+- [x] `./verify.sh` passes
+- [x] `zig build verify` passes
+- [x] All 12 transpositions of diatonic set are distinct
+- [x] C major triad ⊂ diatonic scale
+- [x] complement(diatonic) = pentatonic
+- [x] Hamming distance(C major, C minor) = 2
 
 ## Verification Data Sources
 
@@ -89,9 +89,8 @@ All of the following must pass before this plan is considered complete:
 
 ## Implementation History (Point-in-Time)
 
-_To be filled when implementation is complete._
-- `<commit-hash>` (<date>):
-  - Shipped behavior: ...
+- `e7457d1` (2026-02-15):
+  - Shipped behavior: Added `PitchClassSet` (`u12`) operations in `src/pitch_class_set.zig`, including transposition, inversion, complement, subset/union/intersection, rotations, transposition-aware subset checks, least-error selection, and format output.
   - Verification: `./verify.sh` passes, `zig build verify` passes.
 
 ## Estimated Scope

@@ -226,6 +226,12 @@ else
     unverified "0003 set operations test suite (src/tests/pitch_class_set_test.zig not yet implemented)"
 fi
 
+if [ -f "$ROOT_DIR/src/tests/set_class_test.zig" ]; then
+    check_cmd "cd '$ROOT_DIR' && zig build test 2>&1" "0004 set classification test suite"
+else
+    unverified "0004 set classification test suite (src/tests/set_class_test.zig not yet implemented)"
+fi
+
 # ───────────────────────────────────────────
 # Summary
 # ───────────────────────────────────────────
