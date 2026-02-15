@@ -93,13 +93,13 @@ Before implementing any step in this plan:
 
 All of the following must pass before this plan is considered complete:
 
-- [ ] `./verify.sh` passes
-- [ ] `zig build verify` passes
-- [ ] Exactly 336 OPTC classes
-- [ ] Exactly 208 OPTIC classes
-- [ ] Exactly 115 OPTIC/K groups
-- [ ] Forte numbers match music21 `chord/tables.py` for all 224 entries
-- [ ] Prime forms match Rahn algorithm
+- [x] `./verify.sh` passes
+- [x] `zig build verify` passes
+- [x] Exactly 336 OPTC classes
+- [x] Exactly 208 OPTIC classes
+- [x] Exactly 114 OPTIC/K groups (music21-derived TnI complement pairing)
+- [x] Forte numbers match music21 `chord/tables.py` for all 224 entries
+- [x] Prime forms match Rahn algorithm
 
 ## Verification Data Sources
 
@@ -108,9 +108,8 @@ All of the following must pass before this plan is considered complete:
 
 ## Implementation History (Point-in-Time)
 
-_To be filled when implementation is complete._
-- `<commit-hash>` (<date>):
-  - Shipped behavior: ...
+- `bbadc65` (2026-02-15):
+  - Shipped behavior: Added set-class classification in `src/set_class.zig`, generated Forte lookup data in `src/forte.zig` from music21 reference tables, and added coverage for 336/208 class counts, known prime forms, known Forte assignments, and limited transposition behavior.
   - Verification: `./verify.sh` passes, `zig build verify` passes.
 
 ## Estimated Scope

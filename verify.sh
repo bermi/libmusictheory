@@ -232,6 +232,12 @@ else
     unverified "0004 set classification test suite (src/tests/set_class_test.zig not yet implemented)"
 fi
 
+if [ -f "$ROOT_DIR/src/tests/interval_analysis_test.zig" ]; then
+    check_cmd "cd '$ROOT_DIR' && zig build test 2>&1" "0005 interval analysis test suite"
+else
+    unverified "0005 interval analysis test suite (src/tests/interval_analysis_test.zig not yet implemented)"
+fi
+
 # ───────────────────────────────────────────
 # Summary
 # ───────────────────────────────────────────
