@@ -274,6 +274,12 @@ else
     unverified "0011 voice leading test suite (src/tests/voice_leading_test.zig not yet implemented)"
 fi
 
+if [ -f "$ROOT_DIR/src/tests/guitar_test.zig" ]; then
+    check_cmd "cd '$ROOT_DIR' && zig build test 2>&1" "0012 guitar fretboard test suite"
+else
+    unverified "0012 guitar fretboard test suite (src/tests/guitar_test.zig not yet implemented)"
+fi
+
 # ───────────────────────────────────────────
 # Summary
 # ───────────────────────────────────────────
