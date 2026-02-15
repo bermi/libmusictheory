@@ -27,6 +27,7 @@ pub const voice_leading = @import("voice_leading.zig");
 pub const guitar = @import("guitar.zig");
 pub const keyboard = @import("keyboard.zig");
 pub const slider = @import("slider.zig");
+pub usingnamespace @import("c_api.zig");
 pub const svg_clock = @import("svg/clock.zig");
 pub const svg_staff = @import("svg/staff.zig");
 pub const svg_fret = @import("svg/fret.zig");
@@ -58,4 +59,5 @@ test {
     _ = @import("tests/svg_tessellation_test.zig");
     _ = @import("tests/svg_misc_test.zig");
     _ = @import("tests/slider_test.zig");
+    _ = @import("tests/c_api_test.zig");
 }
