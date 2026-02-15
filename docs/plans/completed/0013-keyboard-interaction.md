@@ -73,9 +73,8 @@ Before implementing any step in this plan:
 
 ## Implementation History (Point-in-Time)
 
-_To be filled when implementation is complete._
-- `<commit-hash>` (<date>):
-  - Shipped behavior: ...
+- `4aa8627` (2026-02-15):
+  - Shipped behavior: Added `src/keyboard.zig` with bounded keyboard state toggling, octave-collapsed PCS extraction, key visual opacity computation (full/half/normal), URL note serialization/deserialization, and playback style classification via `isScaley`.
   - Verification: `./verify.sh` passes, `zig build verify` passes.
 
 ## Estimated Scope
