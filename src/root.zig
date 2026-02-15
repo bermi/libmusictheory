@@ -17,6 +17,9 @@ pub const cluster = @import("cluster.zig");
 pub const evenness = @import("evenness.zig");
 pub const scale = @import("scale.zig");
 pub const mode = @import("mode.zig");
+pub const key_signature = @import("key_signature.zig");
+pub const key = @import("key.zig");
+pub const note_spelling = @import("note_spelling.zig");
 
 test {
     _ = @import("tests/pitch_test.zig");
@@ -25,4 +28,5 @@ test {
     _ = @import("tests/interval_analysis_test.zig");
     _ = @import("tests/cluster_evenness_test.zig");
     _ = @import("tests/scales_modes_test.zig");
+    _ = @import("tests/keys_signatures_test.zig");
 }

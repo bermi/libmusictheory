@@ -250,6 +250,12 @@ else
     unverified "0007 scales/modes test suite (src/tests/scales_modes_test.zig not yet implemented)"
 fi
 
+if [ -f "$ROOT_DIR/src/tests/keys_signatures_test.zig" ]; then
+    check_cmd "cd '$ROOT_DIR' && zig build test 2>&1" "0008 keys/signatures test suite"
+else
+    unverified "0008 keys/signatures test suite (src/tests/keys_signatures_test.zig not yet implemented)"
+fi
+
 # ───────────────────────────────────────────
 # Summary
 # ───────────────────────────────────────────

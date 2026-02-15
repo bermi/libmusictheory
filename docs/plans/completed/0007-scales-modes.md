@@ -81,9 +81,8 @@ Before implementing any step in this plan:
 
 ## Implementation History (Point-in-Time)
 
-_To be filled when implementation is complete._
-- `<commit-hash>` (<date>):
-  - Shipped behavior: ...
+- `9c71bcb` (2026-02-15):
+  - Shipped behavior: Added 7 scale type constants and scale construction in `src/scale.zig`, 17 mode definitions and identification in `src/mode.zig`, plus `isScaley` heuristics and end-to-end mode round-trip tests.
   - Verification: `./verify.sh` passes, `zig build verify` passes.
 
 ## Estimated Scope
