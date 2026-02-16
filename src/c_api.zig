@@ -288,6 +288,11 @@ export fn lmt_spell_note(pc: u8, key_ctx: LmtKeyContext) callconv(.C) [*c]const 
     return writeCString(text);
 }
 
+// WASM-friendly helper to avoid JS struct-by-value ABI marshalling.
+export fn lmt_spell_note_parts(pc: u8, tonic: u8, quality: u8) callconv(.C) [*c]const u8 {
+    return lmt_spell_note(pc, .{ .tonic = tonic, .quality = quality });
+}
+
 export fn lmt_chord(chord_kind: u8, root: u8) callconv(.C) u16 {
     const root_pc = @as(pitch.PitchClass, @intCast(root % 12));
     return toCSet(pcs.transpose(chordTemplate(chord_kind), root_pc));
@@ -313,6 +318,11 @@ export fn lmt_roman_numeral(chord_set: u16, key_ctx: LmtKeyContext) callconv(.C)
     const numeral = harmony.romanNumeral(chord_instance, decodeKeyContext(key_ctx));
     const text = numeral.format(&buf);
     return writeCString(text);
+}
+
+// WASM-friendly helper to avoid JS struct-by-value ABI marshalling.
+export fn lmt_roman_numeral_parts(chord_set: u16, tonic: u8, quality: u8) callconv(.C) [*c]const u8 {
+    return lmt_roman_numeral(chord_set, .{ .tonic = tonic, .quality = quality });
 }
 
 export fn lmt_fret_to_midi(string: u8, fret: u8, tuning_ptr: [*c]const u8) callconv(.C) u8 {

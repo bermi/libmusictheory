@@ -38,6 +38,42 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(shared_lib);
     static_lib.installHeader(b.path("include/libmusictheory.h"), "libmusictheory.h");
 
+    // ── WASM demo artifact + assets ─────────────────────────────
+    const wasm_target = b.resolveTargetQuery(.{
+        .cpu_arch = .wasm32,
+        .os_tag = .freestanding,
+    });
+
+    const wasm_exe = b.addExecutable(.{
+        .name = "libmusictheory",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/root.zig"),
+            .target = wasm_target,
+            .optimize = optimize,
+        }),
+    });
+    wasm_exe.rdynamic = true;
+    wasm_exe.entry = .disabled;
+    wasm_exe.export_memory = true;
+    wasm_exe.initial_memory = 2 * 1024 * 1024;
+    wasm_exe.max_memory = 64 * 1024 * 1024;
+
+    const install_wasm = b.addInstallFileWithDir(
+        wasm_exe.getEmittedBin(),
+        .prefix,
+        "wasm-demo/libmusictheory.wasm",
+    );
+    const install_demo_assets = b.addInstallDirectory(.{
+        .source_dir = b.path("examples/wasm-demo"),
+        .install_dir = .prefix,
+        .install_subdir = "wasm-demo",
+    });
+
+    const wasm_demo_step = b.step("wasm-demo", "Build WebAssembly interactive demo");
+    wasm_demo_step.dependOn(&wasm_exe.step);
+    wasm_demo_step.dependOn(&install_wasm.step);
+    wasm_demo_step.dependOn(&install_demo_assets.step);
+
     // ── Unit tests ──────────────────────────────────────────────
     const lib_tests = b.addTest(.{
         .root_module = lib_mod,
@@ -84,7 +120,7 @@ pub fn build(b: *std.Build) void {
 
     // ── Format check ────────────────────────────────────────────
     const fmt = b.addFmt(.{
-        .paths = &.{ "build.zig", "src", "include", "examples" },
+        .paths = &.{ "build.zig", "src", "include", "examples", "scripts" },
         .check = true,
     });
 

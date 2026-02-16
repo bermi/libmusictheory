@@ -346,6 +346,12 @@ else
     unverified "0022 reference extraction script (scripts/extract_reference_data.py not yet implemented)"
 fi
 
+if [ -f "$ROOT_DIR/examples/wasm-demo/index.html" ]; then
+    check_cmd "cd '$ROOT_DIR' && zig build wasm-demo 2>&1" "0023 wasm interactive docs demo build"
+else
+    unverified "0023 wasm interactive docs demo build (examples/wasm-demo/index.html not yet implemented)"
+fi
+
 # ───────────────────────────────────────────
 # Summary
 # ───────────────────────────────────────────

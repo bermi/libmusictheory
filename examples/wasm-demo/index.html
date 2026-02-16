@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>libmusictheory WASM Interactive Docs</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <header>
+    <h1>libmusictheory WASM Interactive Documentation</h1>
+    <p>All outputs below are computed by the WebAssembly module.</p>
+    <p id="status">Loading WASM module...</p>
+  </header>
+
+  <main>
+    <section>
+      <h2>Pitch Class Set Operations</h2>
+      <div class="grid">
+        <label>Main PCS list (comma-separated)
+          <input id="pcs-main" value="0,4,7" />
+        </label>
+        <label>Subset PCS list
+          <input id="pcs-subset" value="0,7" />
+        </label>
+        <label>Transpose semitones
+          <input id="pcs-transpose" type="number" min="0" max="127" value="2" />
+        </label>
+      </div>
+      <button id="run-pcs">Run PCS APIs</button>
+      <pre id="out-pcs"></pre>
+    </section>
+
+    <section>
+      <h2>Set Classification APIs</h2>
+      <p>Uses current main PCS set from above.</p>
+      <button id="run-classification">Run Classification APIs</button>
+      <pre id="out-classification"></pre>
+    </section>
+
+    <section>
+      <h2>Scales, Modes, and Key Spelling APIs</h2>
+      <div class="grid">
+        <label>Scale type
+          <select id="scale-type">
+            <option value="0">DIATONIC</option>
+            <option value="1">ACOUSTIC</option>
+            <option value="2">DIMINISHED</option>
+            <option value="3">WHOLE_TONE</option>
+            <option value="4">HARMONIC_MINOR</option>
+            <option value="5">HARMONIC_MAJOR</option>
+            <option value="6">DOUBLE_AUGMENTED_HEXATONIC</option>
+          </select>
+        </label>
+        <label>Scale tonic
+          <input id="scale-tonic" type="number" min="0" max="11" value="0" />
+        </label>
+        <label>Mode type
+          <select id="mode-type">
+            <option value="0">IONIAN</option>
+            <option value="1">DORIAN</option>
+            <option value="2">PHRYGIAN</option>
+            <option value="3">LYDIAN</option>
+            <option value="4">MIXOLYDIAN</option>
+            <option value="5">AEOLIAN</option>
+            <option value="6">LOCRIAN</option>
+            <option value="7">MELODIC_MINOR</option>
+            <option value="8">DORIAN_B2</option>
+            <option value="9">LYDIAN_AUG</option>
+            <option value="10">LYDIAN_DOM</option>
+            <option value="11">MIXOLYDIAN_B6</option>
+            <option value="12">LOCRIAN_NAT2</option>
+            <option value="13">SUPER_LOCRIAN</option>
+            <option value="14">HALF_WHOLE</option>
+            <option value="15">WHOLE_HALF</option>
+            <option value="16">WHOLE_TONE</option>
+          </select>
+        </label>
+        <label>Mode root
+          <input id="mode-root" type="number" min="0" max="11" value="0" />
+        </label>
+        <label>Spell note PC
+          <input id="spell-pc" type="number" min="0" max="11" value="1" />
+        </label>
+        <label>Key tonic
+          <input id="key-tonic" type="number" min="0" max="11" value="0" />
+        </label>
+        <label>Key quality
+          <select id="key-quality">
+            <option value="0">MAJOR</option>
+            <option value="1">MINOR</option>
+          </select>
+        </label>
+      </div>
+      <button id="run-scale-mode">Run Scale/Mode/Spelling APIs</button>
+      <pre id="out-scale-mode"></pre>
+    </section>
+
+    <section>
+      <h2>Chord and Harmony APIs</h2>
+      <div class="grid">
+        <label>Chord type
+          <select id="chord-type">
+            <option value="0">MAJOR</option>
+            <option value="1">MINOR</option>
+            <option value="2">DIMINISHED</option>
+            <option value="3">AUGMENTED</option>
+          </select>
+        </label>
+        <label>Chord root
+          <input id="chord-root" type="number" min="0" max="11" value="0" />
+        </label>
+        <label>Roman key tonic
+          <input id="roman-key-tonic" type="number" min="0" max="11" value="0" />
+        </label>
+        <label>Roman key quality
+          <select id="roman-key-quality">
+            <option value="0">MAJOR</option>
+            <option value="1">MINOR</option>
+          </select>
+        </label>
+      </div>
+      <button id="run-chord">Run Chord APIs</button>
+      <pre id="out-chord"></pre>
+    </section>
+
+    <section>
+      <h2>Guitar APIs</h2>
+      <div class="grid">
+        <label>Tuning (6 midi notes)
+          <input id="guitar-tuning" value="40,45,50,55,59,64" />
+        </label>
+        <label>String
+          <input id="guitar-string" type="number" min="0" max="5" value="0" />
+        </label>
+        <label>Fret
+          <input id="guitar-fret" type="number" min="0" max="24" value="0" />
+        </label>
+        <label>MIDI note
+          <input id="guitar-midi" type="number" min="0" max="127" value="60" />
+        </label>
+      </div>
+      <button id="run-guitar">Run Guitar APIs</button>
+      <pre id="out-guitar"></pre>
+    </section>
+
+    <section>
+      <h2>SVG Diagram APIs</h2>
+      <div class="grid">
+        <label>Fret diagram frets (6 values)
+          <input id="svg-frets" value="-1,3,2,0,1,0" />
+        </label>
+      </div>
+      <button id="run-svg">Run SVG APIs</button>
+      <pre id="out-svg-meta"></pre>
+      <div class="svg-grid">
+        <article>
+          <h3>lmt_svg_clock_optc</h3>
+          <div id="svg-clock" class="svg-host"></div>
+        </article>
+        <article>
+          <h3>lmt_svg_fret</h3>
+          <div id="svg-fret" class="svg-host"></div>
+        </article>
+        <article>
+          <h3>lmt_svg_chord_staff</h3>
+          <div id="svg-staff" class="svg-host"></div>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <h2>All API Quick Run</h2>
+      <button id="run-all">Run all sections</button>
+    </section>
+  </main>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

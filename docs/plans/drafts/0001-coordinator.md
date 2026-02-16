@@ -10,7 +10,7 @@ Build `libmusictheory`, a Zig library exposing a C ABI that implements the compl
 ## Lifecycle Status
 
 - Draft: 0001
-- In progress: none
+- In progress: 0023
 - Completed: 0002, 0003, 0004, 0005, 0006, 0007, 0008, 0009, 0010, 0011, 0012, 0013, 0014, 0015, 0016, 0017, 0018, 0019, 0020, 0021, 0022
 
 ## Plan Dependencies (Execute in Order)
@@ -57,6 +57,8 @@ Build `libmusictheory`, a Zig library exposing a C ABI that implements the compl
      ↓ depends on 0004, 0005, 0006
 0022-testing             → Comprehensive test suite validating against site data
      ↓ depends on ALL above
+0023-wasm-interactive-docs → Browser-hosted WASM interactive documentation demo
+     ↓ depends on 0020, 0022
 ```
 
 ## Dependency Graph (Visual)
@@ -91,6 +93,8 @@ Build `libmusictheory`, a Zig library exposing a C ABI that implements the compl
      0021 (Tables)
        │
      0022 (Tests)
+       │
+     0023 (WASM Docs)
 ```
 
 ## Phase Summary

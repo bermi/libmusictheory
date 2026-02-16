@@ -86,10 +86,12 @@ float lmt_evenness_distance(lmt_pitch_class_set set);
 lmt_pitch_class_set lmt_scale(lmt_scale_type type, lmt_pitch_class tonic);
 lmt_pitch_class_set lmt_mode(lmt_mode_type type, lmt_pitch_class root);
 const char *lmt_spell_note(lmt_pitch_class pc, lmt_key_context key);
+const char *lmt_spell_note_parts(lmt_pitch_class pc, lmt_pitch_class tonic, lmt_key_quality quality);
 
 lmt_pitch_class_set lmt_chord(lmt_chord_type type, lmt_pitch_class root);
 const char *lmt_chord_name(lmt_pitch_class_set set);
 const char *lmt_roman_numeral(lmt_pitch_class_set chord, lmt_key_context key);
+const char *lmt_roman_numeral_parts(lmt_pitch_class_set chord, lmt_pitch_class tonic, lmt_key_quality quality);
 
 lmt_midi_note lmt_fret_to_midi(uint8_t string, uint8_t fret, const uint8_t *tuning);
 uint8_t lmt_midi_to_fret_positions(lmt_midi_note note, const uint8_t *tuning, lmt_fret_pos *out);
