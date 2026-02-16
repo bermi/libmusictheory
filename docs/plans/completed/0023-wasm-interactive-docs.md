@@ -51,7 +51,6 @@ Create an interactive browser demo backed entirely by the WebAssembly build of `
 
 ## Implementation History (Point-in-Time)
 
-_To be filled when implementation is complete._
-- `<commit-hash>` (<date>):
-  - Shipped behavior: ...
+- `b6a7e9e` (2026-02-16):
+  - Shipped behavior: added `zig build wasm-demo` target, browser demo assets in `examples/wasm-demo/`, WASM-safe key-context helper exports, and `verify.sh` gate for interactive demo build (`0023`).
   - Verification: `./verify.sh` passes, `zig build verify` passes.
