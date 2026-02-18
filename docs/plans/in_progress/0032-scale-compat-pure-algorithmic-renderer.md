@@ -26,6 +26,19 @@ This plan enforces a stricter definition of done:
 - Do not embed or load reference SVG contents into generation paths.
 - Do not increase wasm artifact beyond the existing `<1MB` guardrail.
 
+## Current Snapshot (2026-02-18)
+
+- `scale` parity is currently `494/494` exact matches.
+- Full compatibility run remains `8634/8634` exact matches.
+- Runtime no longer uses:
+- `harmonious_scale_nomod_profile_tuning`
+- `harmonious_scale_nomod_names`
+- `harmonious_scale_nomod_keysig_lines`
+- Index-based replay (`harmonious_scale_x_by_index`).
+- Scale key signature accidentals are now emitted algorithmically from reusable modifier glyph paths and anchor rules.
+- Remaining open item for strict completion:
+- x-layout still applies a compact deterministic ULP shim table (`src/generated/harmonious_scale_layout_ulpshim.zig`) to mirror V8 floating-point edge behavior; next slice removes/reduces this shim with formula-only parity.
+
 ## Research Phase (Mandatory)
 
 ### 1. Source-of-Truth Rendering Model

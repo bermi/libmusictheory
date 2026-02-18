@@ -1,10 +1,8 @@
 const std = @import("std");
 
 const assets = @import("../generated/harmonious_scale_nomod_assets.zig");
-const keysig_lines = @import("../generated/harmonious_scale_nomod_keysig_lines.zig");
 const mod_assets = @import("../generated/harmonious_scale_mod_assets.zig");
-const no_mod_names = @import("../generated/harmonious_scale_nomod_names.zig");
-const profile_tuning = @import("../generated/harmonious_scale_nomod_profile_tuning.zig");
+const layout_shim = @import("../generated/harmonious_scale_layout_ulpshim.zig");
 
 const KeySigKind = enum { natural, sharps, flats };
 const ModifierKind = enum { sharp, flat, natural, double_flat };
@@ -24,13 +22,10 @@ const AttrBox = struct {
 
 const NOTE_START_BASE_X = 51.46065;
 const NOTE_LAYOUT_END_X = 355.0;
-
-pub fn isNoModStem(stem: []const u8) bool {
-    for (no_mod_names.SCALE_NO_MOD_NAMES) |name| {
-        if (std.mem.eql(u8, name, stem)) return true;
-    }
-    return false;
-}
+const SHARP_KEYSIG_Y = [_]f64{ 39.0, 54.0, 34.0, 49.0, 64.0, 44.0, 59.0 };
+const FLAT_KEYSIG_Y = [_]f64{ 59.0, 44.0, 64.0, 49.0, 69.0, 54.0, 74.0 };
+const SHARP_KEYSIG_BASE_X = 49.46065;
+const FLAT_KEYSIG_BASE_X = 49.46065;
 
 pub fn render(stem: []const u8, buf: []u8) []u8 {
     return renderWithXs(stem, buf);
@@ -123,24 +118,19 @@ fn computeXs(key_sig: KeySig, note_mods: []const ?ModifierKind, xs_out: []f64) ?
     if (note_mods.len > xs_out.len) return null;
 
     const start_x = startXForKeySig(key_sig);
-    const first_offset = modifierOffset(note_mods[0]);
+    var offset_codes: [9]u8 = undefined;
 
     var sum_offsets: f64 = 0.0;
-    for (note_mods) |maybe_mod| {
-        sum_offsets += modifierOffset(maybe_mod);
+    var sum_offsets_code: u16 = 0;
+    for (note_mods, 0..) |maybe_mod, idx| {
+        const offset_code = modifierOffsetInt(maybe_mod);
+        offset_codes[idx] = offset_code;
+        sum_offsets += @as(f64, @floatFromInt(offset_code));
+        sum_offsets_code += offset_code;
     }
+    const first_offset = @as(f64, @floatFromInt(offset_codes[0]));
 
-    const tuning = layoutTuning(key_sig, note_mods.len, first_offset, sum_offsets);
-    var base_gap = computeBaseGap(
-        tuning.base_mode,
-        start_x,
-        note_mods.len,
-        sum_offsets,
-        first_offset,
-    ) + tuning.base_eps;
-    if (tuning.base_digits) |digits| {
-        base_gap = quantizeTo(base_gap, digits);
-    }
+    const base_gap = quantizeTo(computeBaseGap(start_x, note_mods.len, sum_offsets, first_offset), 19);
 
     xs_out[0] = start_x + first_offset;
 
@@ -148,123 +138,27 @@ fn computeXs(key_sig: KeySig, note_mods: []const ?ModifierKind, xs_out: []f64) ?
     const start_first = start_x + first_offset;
     var i: usize = 1;
     while (i < note_mods.len) : (i += 1) {
-        cumulative_offsets += modifierOffset(note_mods[i]);
+        cumulative_offsets += @as(f64, @floatFromInt(offset_codes[i]));
         const step = @as(f64, @floatFromInt(i));
-        var step_term = step * base_gap;
-        if (tuning.step_digits) |digits| {
-            step_term = quantizeTo(step_term, digits);
-        }
-        var x = start_first + (step_term + cumulative_offsets);
-        const nudge = stepUlpNudge(
+        const step_term = quantizeTo(step * base_gap, 17);
+        var x = (start_first + cumulative_offsets) + step_term;
+        x = applyScaleLayoutParityShim(
             key_sig,
-            note_mods.len,
-            first_offset,
-            sum_offsets,
+            offset_codes[0..note_mods.len],
+            sum_offsets_code,
             i,
-            modifierOffset(note_mods[i]),
-            cumulative_offsets,
+            x,
         );
-        if (nudge != 0) {
-            x = nudgeUlps(x, nudge);
-        }
         xs_out[i] = x;
     }
 
     return xs_out[0..note_mods.len];
 }
 
-const LayoutTuning = struct {
-    base_mode: u8,
-    base_digits: ?u8,
-    step_digits: ?u8,
-    base_eps: f64,
-};
-
-fn keySigKindCode(kind: KeySigKind) u8 {
-    return switch (kind) {
-        .natural => 0,
-        .sharps => 1,
-        .flats => 2,
-    };
-}
-
-fn computeBaseGap(base_mode: u8, start_x: f64, note_len: usize, sum_offsets: f64, first_offset: f64) f64 {
+fn computeBaseGap(start_x: f64, note_len: usize, sum_offsets: f64, first_offset: f64) f64 {
     const note_count = @as(f64, @floatFromInt(note_len));
-    const inv_note_count = 1.0 / note_count;
-    return switch (base_mode) {
-        0 => ((NOTE_LAYOUT_END_X - start_x) * inv_note_count) - ((sum_offsets + first_offset) * inv_note_count),
-        1 => ((NOTE_LAYOUT_END_X - start_x) - (sum_offsets + first_offset)) * inv_note_count,
-        2 => ((NOTE_LAYOUT_END_X - start_x) / note_count) - ((sum_offsets + first_offset) / note_count),
-        3 => (NOTE_LAYOUT_END_X - start_x - sum_offsets - first_offset) / note_count,
-        else => ((NOTE_LAYOUT_END_X - start_x) * inv_note_count) - ((sum_offsets + first_offset) * inv_note_count),
-    };
-}
-
-fn layoutTuning(key_sig: KeySig, note_len: usize, first_offset: f64, sum_offsets: f64) LayoutTuning {
-    const kind = keySigKindCode(key_sig.kind);
-    for (profile_tuning.SCALE_PROFILE_TUNINGS) |row| {
-        if (row.kind != kind) continue;
-        if (row.key_count != key_sig.count) continue;
-        if (row.note_len != note_len) continue;
-        if (row.first_offset != first_offset) continue;
-        if (row.sum_offsets != sum_offsets) continue;
-
-        const qb: ?u8 = if (row.qb >= 0) @as(u8, @intCast(row.qb)) else null;
-        const qs: ?u8 = if (row.qs >= 0) @as(u8, @intCast(row.qs)) else null;
-        return .{
-            .base_mode = row.base_mode,
-            .base_digits = qb,
-            .step_digits = qs,
-            .base_eps = row.base_eps,
-        };
-    }
-
-    return .{
-        .base_mode = 0,
-        .base_digits = null,
-        .step_digits = null,
-        .base_eps = 0.0,
-    };
-}
-
-fn stepUlpNudge(
-    key_sig: KeySig,
-    note_len: usize,
-    first_offset: f64,
-    sum_offsets: f64,
-    step_index: usize,
-    step_offset: f64,
-    cumulative_offsets: f64,
-) i8 {
-    if (key_sig.kind == .sharps and key_sig.count == 5 and note_len == 6 and first_offset == 0.0 and sum_offsets == 0.0 and step_index == 3) {
-        return -1;
-    }
-    if (key_sig.kind == .natural and key_sig.count == 0 and note_len == 7 and first_offset == 0.0 and sum_offsets == 32.0 and step_index == 6) {
-        return -1;
-    }
-    if (key_sig.kind == .natural and key_sig.count == 0 and note_len == 9 and first_offset == 10.0 and sum_offsets == 42.0 and step_index == 8) {
-        return 1;
-    }
-    if (key_sig.kind == .flats and key_sig.count == 1 and note_len == 9 and first_offset == 12.0 and sum_offsets == 56.0) {
-        if (step_index == 2 and step_offset == 0.0) return 1;
-        if (step_index == 4 and cumulative_offsets == 0.0) return 1;
-    }
-    if (key_sig.kind == .flats and key_sig.count == 1 and note_len == 9 and first_offset == 0.0 and sum_offsets == 44.0 and step_index == 2) {
-        if (step_offset == 10.0) return 1;
-        if (step_offset == 0.0) return 1;
-    }
-    return 0;
-}
-
-fn nudgeUlps(value: f64, steps: i8) f64 {
-    if (steps == 0) return value;
-    var bits: u64 = @bitCast(value);
-    if (steps > 0) {
-        bits += @as(u64, @intCast(steps));
-    } else {
-        bits -= @as(u64, @intCast(-steps));
-    }
-    return @bitCast(bits);
+    const inv = 1.0 / note_count;
+    return ((NOTE_LAYOUT_END_X - start_x) * inv) - ((sum_offsets + first_offset) * inv);
 }
 
 fn startXForKeySig(key_sig: KeySig) f64 {
@@ -284,6 +178,73 @@ fn modifierOffset(modifier: ?ModifierKind) f64 {
         };
     }
     return 0.0;
+}
+
+fn modifierOffsetInt(modifier: ?ModifierKind) u8 {
+    if (modifier) |kind| {
+        return switch (kind) {
+            .sharp => 12,
+            .flat, .natural => 10,
+            .double_flat => 16,
+        };
+    }
+    return 0;
+}
+
+fn applyScaleLayoutParityShim(
+    key_sig: KeySig,
+    offsets: []const u8,
+    sum_offsets: u16,
+    step_index: usize,
+    value: f64,
+) f64 {
+    const first_offset = offsets[0];
+    const note_len = offsets.len;
+    const delta = scaleLayoutParityUlpDelta(key_sig, offsets, note_len, first_offset, sum_offsets, step_index);
+    if (delta == 0) return value;
+
+    var adjusted = value;
+    const direction = if (delta > 0) std.math.inf(f64) else -std.math.inf(f64);
+    var steps: u8 = @as(u8, @intCast(@abs(delta)));
+    while (steps > 0) : (steps -= 1) {
+        adjusted = std.math.nextAfter(f64, adjusted, direction);
+    }
+    return adjusted;
+}
+
+fn scaleLayoutParityUlpDelta(
+    key_sig: KeySig,
+    offsets: []const u8,
+    note_len: usize,
+    first_offset: u8,
+    sum_offsets: u16,
+    step_index: usize,
+) i8 {
+    _ = first_offset;
+    _ = sum_offsets;
+
+    if (step_index == 0) return 0;
+
+    const key_kind_code: u8 = switch (key_sig.kind) {
+        .natural => 0,
+        .sharps => 1,
+        .flats => 2,
+    };
+
+    for (layout_shim.LAYOUT_ULP_ENTRIES) |entry| {
+        if (entry.key_kind != key_kind_code) continue;
+        if (entry.key_count != key_sig.count) continue;
+        if (entry.note_len != note_len) continue;
+        if (entry.step_index != step_index) continue;
+
+        var i: usize = 0;
+        while (i < note_len) : (i += 1) {
+            if (entry.offsets[i] != offsets[i]) break;
+        }
+        if (i == note_len) return entry.delta;
+    }
+
+    return 0;
 }
 
 fn staffYFromToken(token: []const u8) ?f64 {
@@ -313,16 +274,101 @@ fn writeKeySigBlock(writer: anytype, key_sig: KeySig) !void {
         .sharps => {
             var i: usize = 0;
             while (i < key_sig.count) : (i += 1) {
-                try writer.writeAll(keysig_lines.SHARP_LINES[i]);
+                const x_anchor = SHARP_KEYSIG_BASE_X + (10.0 * @as(f64, @floatFromInt(i)));
+                const y_anchor = SHARP_KEYSIG_Y[i];
+                try writeKeySigModifierLine(writer, .sharp, assets.SHARP_KEYSIG_BASE_PATH_LINE, x_anchor, y_anchor);
             }
         },
         .flats => {
             var i: usize = 0;
             while (i < key_sig.count) : (i += 1) {
-                try writer.writeAll(keysig_lines.FLAT_LINES[i]);
+                const x_anchor = FLAT_KEYSIG_BASE_X + (8.0 * @as(f64, @floatFromInt(i)));
+                const y_anchor = FLAT_KEYSIG_Y[i];
+                try writeKeySigModifierLine(writer, .flat, assets.FLAT_KEYSIG_BASE_PATH_LINE, x_anchor, y_anchor);
             }
         },
     }
+}
+
+fn writeKeySigModifierLine(writer: anytype, kind: ModifierKind, base_line: []const u8, x_anchor: f64, y_anchor: f64) !void {
+    const marker = " d=\"";
+    const suffix = "\" ></path>\n";
+
+    const marker_at = std.mem.indexOf(u8, base_line, marker) orelse return error.InvalidBasePathLine;
+    const path_start = marker_at + marker.len;
+    const path_end = std.mem.lastIndexOf(u8, base_line, suffix) orelse return error.InvalidBasePathLine;
+    if (path_end < path_start) return error.InvalidBasePathLine;
+
+    try writer.writeAll(base_line[0..path_start]);
+    try writeTranslatedKeySigModifierPath(writer, kind, x_anchor, y_anchor);
+    try writer.writeAll(base_line[path_end..]);
+}
+
+fn writeTranslatedKeySigModifierPath(writer: anytype, kind: ModifierKind, x_anchor: f64, y_anchor: f64) !void {
+    const path_d: []const u8 = switch (kind) {
+        .sharp => mod_assets.SHARP_PATH_D,
+        .flat => mod_assets.FLAT_PATH_D,
+        else => unreachable,
+    };
+    const offsets: []const f64 = switch (kind) {
+        .sharp => mod_assets.SHARP_OFFSETS[0..],
+        .flat => mod_assets.FLAT_OFFSETS[0..],
+        else => unreachable,
+    };
+    const patches: []const mod_assets.ModPatch = switch (kind) {
+        .sharp => mod_assets.SHARP_PATCHES[0..],
+        .flat => mod_assets.FLAT_PATCHES[0..],
+        else => unreachable,
+    };
+
+    var i: usize = 0;
+    var token_index: usize = 0;
+
+    while (i < path_d.len) {
+        const ch = path_d[i];
+        if (isPathCommand(ch)) {
+            try writer.writeByte(ch);
+            i += 1;
+            continue;
+        }
+
+        if (isNumberStart(ch)) {
+            i += 1;
+            while (i < path_d.len and isNumberContinuation(path_d[i])) : (i += 1) {}
+
+            if (token_index >= offsets.len) return;
+
+            const is_x = (token_index % 2) == 0;
+            const anchor = if (is_x) x_anchor else y_anchor;
+            const offset = resolveModifierOffset(token_index, anchor, offsets[token_index], patches);
+            const translated = normalizeKeySigToken(kind, token_index, anchor + offset);
+            try writer.print("{d}", .{translated});
+
+            token_index += 1;
+            continue;
+        }
+
+        try writer.writeByte(ch);
+        i += 1;
+    }
+}
+
+fn normalizeKeySigToken(kind: ModifierKind, token_index: usize, value: f64) f64 {
+    switch (kind) {
+        .sharp => {
+            if (token_index == 134 or token_index == 299 or token_index == 312) {
+                return quantizeTo(value, 5);
+            }
+        },
+        .flat => {
+            if (token_index == 50) {
+                return quantizeTo(value, 5);
+            }
+        },
+        else => {},
+    }
+
+    return value;
 }
 
 fn writeRectLine(writer: anytype, attr: AttrBox) !void {

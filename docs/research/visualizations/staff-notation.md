@@ -120,6 +120,17 @@ Example: `tmp/harmoniousapp.net/scale/C-Major.svg`, `tmp/harmoniousapp.net/scale
 - [Chord Construction](../algorithms/chord-construction-and-naming.md): MIDI notes from chord type + root
 - [Scale, Mode, Key](../algorithms/scale-mode-key.md): scale note sequences
 
+## Scale Compat Notes (2026-02-18)
+
+- Compatibility API argument enumeration is the canonical source for `scale/*.svg`; validation does not infer names by parsing SVG.
+- Key signature accidentals are rendered algorithmically by translating reusable sharp/flat glyph path data to the canonical anchor grid.
+- Scale note x-placement uses deterministic spacing from:
+- key-signature start x
+- modifier collision offsets (`0/10/12/16`)
+- normalized gap to right boundary (`x=355`).
+- Exact byte parity currently requires deterministic ULP adjustments for a subset of floating-point edge cases; these are small and bounded but remain an in-progress area for fully formula-only parity.
+- Guardrails in `verify.sh` block old replay dependencies for scale layout (`by-index x`, `profile tuning`, `name lookup`, and pre-rendered key-signature lines).
+
 ## Interactivity (Future)
 - Hover over noteheads to hear individual pitches
 - Click to toggle notes on/off
