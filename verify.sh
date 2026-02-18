@@ -443,6 +443,7 @@ if [ -f "$ROOT_DIR/src/svg/chord_compat.zig" ]; then
     check_cmd "cd '$ROOT_DIR' && ! rg -n \"std\\.mem\\.eql\\(u8, stem,\" src/svg/chord_compat.zig" "0028 chord algorithmic layout guardrail (no stem-specific hardcoded exceptions)"
     check_cmd "cd '$ROOT_DIR' && ! rg -n \"@embedFile\\(|tmp/harmoniousapp\\.net\" src/svg/chord_compat.zig" "0028 chord algorithmic layout guardrail (no embedded/svg reference payloads)"
     check_cmd "cd '$ROOT_DIR' && ! rg -n \"harmonious_chord_mod_x_lookup|harmonious_chord_mod_y_lookup|harmonious_whole_note_x_lookup|harmonious_whole_note_y_lookup\" src/svg/chord_compat.zig" "0032 chord algorithmic layout guardrail (no x/y lookup coordinate replay tables)"
+    check_cmd "cd '$ROOT_DIR' && ! rg -n \"harmonious_chord_mod_patches\" src/svg/chord_compat.zig" "0032 chord algorithmic layout guardrail (no chord modifier patch lookup replay tables)"
 else
     unverified "0028 chord algorithmic layout guardrail (src/svg/chord_compat.zig missing)"
 fi

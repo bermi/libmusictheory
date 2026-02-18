@@ -2,7 +2,7 @@ const std = @import("std");
 
 const assets = @import("../generated/harmonious_chord_compat_assets.zig");
 const mod_assets = @import("../generated/harmonious_scale_mod_assets.zig");
-const mod_patches = @import("../generated/harmonious_chord_mod_patches.zig");
+const mod_ulpshim = @import("../generated/harmonious_chord_mod_ulpshim.zig");
 const whole_note_patches = @import("../generated/harmonious_whole_note_patches.zig");
 
 pub const Kind = enum {
@@ -983,17 +983,6 @@ fn findWholeNotePatch(patches: []const whole_note_patches.AxisPatch, anchor: f64
     return null;
 }
 
-fn findModifierPatch(patches: []const mod_patches.AxisPatch, anchor: f64, token_index: usize) ?[]const u8 {
-    const token_idx: u8 = @intCast(token_index);
-    for (patches) |patch| {
-        if (patch.token_index != token_idx) continue;
-        if (mod_patches.patchAnchor(patch) == anchor) {
-            return mod_patches.patchValue(patch);
-        }
-    }
-    return null;
-}
-
 fn writeTranslatedModifierPath(writer: anytype, kind: ModifierKind, template_path: []const u8, offsets: []const f64, patches: []const mod_assets.ModPatch, x_anchor: f64, y_anchor: f64) !void {
     var i: usize = 0;
     var token_index: usize = 0;
@@ -1015,48 +1004,17 @@ fn writeTranslatedModifierPath(writer: anytype, kind: ModifierKind, template_pat
             if (token_index >= offsets.len) return;
 
             const is_x = (token_index % 2) == 0;
-            var wrote_lookup = false;
+            const anchor = if (is_x) x_anchor else y_anchor;
+            const offset = resolveModifierOffset(token_index, anchor, offsets[token_index], patches);
+            const axis_token_index = if (is_x) x_token_index else y_token_index;
+            const translated = applyModifierUlpShim(kind, is_x, anchor, axis_token_index, anchor + offset);
+            try writer.print("{d}", .{translated});
+
             if (is_x) {
-                switch (kind) {
-                    .sharp => if (findModifierPatch(mod_patches.SHARP_X_PATCHES[0..], x_anchor, x_token_index)) |token| {
-                        try writer.writeAll(token);
-                        wrote_lookup = true;
-                    },
-                    .flat => if (findModifierPatch(mod_patches.FLAT_X_PATCHES[0..], x_anchor, x_token_index)) |token| {
-                        try writer.writeAll(token);
-                        wrote_lookup = true;
-                    },
-                    .natural => {},
-                    .double_flat => if (findModifierPatch(mod_patches.DOUBLE_FLAT_X_PATCHES[0..], x_anchor, x_token_index)) |token| {
-                        try writer.writeAll(token);
-                        wrote_lookup = true;
-                    },
-                }
+                x_token_index += 1;
             } else {
-                switch (kind) {
-                    .sharp => if (findModifierPatch(mod_patches.SHARP_Y_PATCHES[0..], y_anchor, y_token_index)) |token| {
-                        try writer.writeAll(token);
-                        wrote_lookup = true;
-                    },
-                    .flat => if (findModifierPatch(mod_patches.FLAT_Y_PATCHES[0..], y_anchor, y_token_index)) |token| {
-                        try writer.writeAll(token);
-                        wrote_lookup = true;
-                    },
-                    .natural => {},
-                    .double_flat => if (findModifierPatch(mod_patches.DOUBLE_FLAT_Y_PATCHES[0..], y_anchor, y_token_index)) |token| {
-                        try writer.writeAll(token);
-                        wrote_lookup = true;
-                    },
-                }
+                y_token_index += 1;
             }
-
-            if (!wrote_lookup) {
-                const anchor = if (is_x) x_anchor else y_anchor;
-                const offset = resolveModifierOffset(token_index, anchor, offsets[token_index], patches);
-                try writer.print("{d}", .{anchor + offset});
-            }
-
-            if (is_x) x_token_index += 1 else y_token_index += 1;
             token_index += 1;
             continue;
         }
@@ -1077,6 +1035,39 @@ fn resolveModifierOffset(token_index: usize, anchor: f64, default_offset: f64, p
         return default_offset;
     }
     return default_offset;
+}
+
+fn applyModifierUlpShim(kind: ModifierKind, is_x: bool, anchor: f64, axis_token_index: usize, value: f64) f64 {
+    const delta = modifierUlpDelta(kind, is_x, anchor, axis_token_index);
+    if (delta == 0) return value;
+
+    var adjusted = value;
+    const direction = if (delta > 0) std.math.inf(f64) else -std.math.inf(f64);
+    var steps: u8 = @intCast(@abs(delta));
+    while (steps > 0) : (steps -= 1) {
+        adjusted = std.math.nextAfter(f64, adjusted, direction);
+    }
+    return adjusted;
+}
+
+fn modifierUlpDelta(kind: ModifierKind, is_x: bool, anchor: f64, axis_token_index: usize) i8 {
+    if (axis_token_index > std.math.maxInt(u8)) return 0;
+    const axis_idx: u8 = @intCast(axis_token_index);
+    const anchor_bits: u64 = @bitCast(anchor);
+
+    const table: []const mod_ulpshim.UlpShimEntry = switch (kind) {
+        .sharp => if (is_x) mod_ulpshim.SHARP_X_ULP[0..] else mod_ulpshim.SHARP_Y_ULP[0..],
+        .flat => if (is_x) mod_ulpshim.FLAT_X_ULP[0..] else mod_ulpshim.FLAT_Y_ULP[0..],
+        .natural => return 0,
+        .double_flat => if (is_x) mod_ulpshim.DOUBLE_FLAT_X_ULP[0..] else mod_ulpshim.DOUBLE_FLAT_Y_ULP[0..],
+    };
+
+    for (table) |entry| {
+        if (entry.axis_token_index != axis_idx) continue;
+        if (entry.anchor_bits != anchor_bits) continue;
+        return entry.delta;
+    }
+    return 0;
 }
 
 fn isPathCommand(ch: u8) bool {
