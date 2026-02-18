@@ -34,6 +34,20 @@ fn exportCompat(kind_name: []const u8, image_index: usize, out_name: []const u8,
     try writeSample(out_name, svg);
 }
 
+fn exportCompatByName(kind_name: []const u8, image_name: []const u8, out_name: []const u8, svg_buf: []u8) !void {
+    const kind_idx = kindIndexByName(kind_name) orelse return error.UnknownKind;
+    const count = compat.imageCount(kind_idx);
+    var i: usize = 0;
+    while (i < count) : (i += 1) {
+        const current = compat.imageName(kind_idx, i) orelse continue;
+        if (!std.mem.eql(u8, current, image_name)) continue;
+        const svg = compat.generateByIndex(kind_idx, i, svg_buf);
+        try writeSample(out_name, svg);
+        return;
+    }
+    return error.UnknownImageName;
+}
+
 pub fn main() !void {
     try std.fs.cwd().makePath(OUT_DIR);
 
@@ -47,7 +61,9 @@ pub fn main() !void {
     try exportCompat("even", 0, "compat-even.svg", &compat_buf);
     try exportCompat("scale", 0, "compat-scale.svg", &compat_buf);
     try exportCompat("eadgbe", 0, "compat-eadgbe.svg", &compat_buf);
-    try exportCompat("chord", 0, "compat-chord.svg", &compat_buf);
+    // Use a mid-register chord sample to avoid the clipped low-register quirk
+    // in the first manifest entry (which is still preserved in compat parity tests).
+    try exportCompatByName("chord", "C_3,E_3,G_3.svg", "compat-chord.svg", &compat_buf);
     try exportCompat("grand-chord", 0, "compat-grand-chord.svg", &compat_buf);
 
     // Core algorithmic graph renderers (non-compat wrappers).
