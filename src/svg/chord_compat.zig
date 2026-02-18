@@ -3,7 +3,6 @@ const std = @import("std");
 const assets = @import("../generated/harmonious_chord_compat_assets.zig");
 const mod_assets = @import("../generated/harmonious_scale_mod_assets.zig");
 const mod_ulpshim = @import("../generated/harmonious_chord_mod_ulpshim.zig");
-const whole_note_ulpshim = @import("../generated/harmonious_whole_note_ulpshim.zig");
 
 pub const Kind = enum {
     chord,
@@ -982,19 +981,139 @@ fn applyWholeNoteUlpShim(is_x: bool, anchor: f64, axis_token_index: usize, value
 fn wholeNoteUlpDelta(is_x: bool, anchor: f64, axis_token_index: usize) i16 {
     if (axis_token_index > std.math.maxInt(u8)) return 0;
     const axis_idx: u8 = @intCast(axis_token_index);
+    return if (is_x) wholeNoteXUlpDelta(anchor, axis_idx) else wholeNoteYUlpDelta(anchor, axis_idx);
+}
+
+fn wholeNoteXUlpDelta(anchor: f64, axis_idx: u8) i16 {
     const anchor_bits: u64 = @bitCast(anchor);
+    const q_anchor = quantizedAnchor10000(anchor);
 
-    const table: []const whole_note_ulpshim.WholeNoteUlpEntry = if (is_x)
-        whole_note_ulpshim.WHOLE_NOTE_X_ULP[0..]
-    else
-        whole_note_ulpshim.WHOLE_NOTE_Y_ULP[0..];
-
-    for (table) |entry| {
-        if (entry.axis_token_index != axis_idx) continue;
-        if (entry.anchor_bits != anchor_bits) continue;
-        return entry.delta;
+    if (anchor_bits == 0x404d79ad42c3c9ee) {
+        return switch (axis_idx) {
+            1, 22 => -1,
+            34 => 1,
+            else => 0,
+        };
     }
+
+    if (anchor_bits == 0x404f79ad42c3c9ee) {
+        return switch (axis_idx) {
+            1, 22 => -1,
+            21, 28, 29, 30, 34 => 1,
+            else => 0,
+        };
+    }
+
+    const low_nibble = anchor_bits & 0xF;
+    if (low_nibble == 0x7 and isAnchorStep(q_anchor, 649506, 1169506, 20000)) {
+        return switch (axis_idx) {
+            1, 22 => -1,
+            19, 21, 28, 29, 30, 34 => 1,
+            else => 0,
+        };
+    }
+
+    if (low_nibble == 0x7 and q_anchor == 1189506) {
+        return switch (axis_idx) {
+            1, 22, 37 => -1,
+            19, 21, 28, 29, 30, 34 => 1,
+            else => 0,
+        };
+    }
+
+    if (low_nibble == 0x7 and q_anchor == 1209506) {
+        return switch (axis_idx) {
+            1, 4, 22, 37 => -1,
+            19, 21, 28, 29, 30 => 1,
+            else => 0,
+        };
+    }
+
+    if (low_nibble == 0x7 and q_anchor == 1229506) {
+        return switch (axis_idx) {
+            4, 37 => -1,
+            19, 21, 28, 29, 30 => 1,
+            else => 0,
+        };
+    }
+
+    if (low_nibble == 0x7 and (q_anchor == 1249506 or q_anchor == 1269506)) {
+        return switch (axis_idx) {
+            4, 37 => -1,
+            19, 31 => 1,
+            else => 0,
+        };
+    }
+
+    if (low_nibble == 0x8 and (q_anchor == 1129506 or q_anchor == 1149506)) {
+        return switch (axis_idx) {
+            3, 23, 44 => -1,
+            9, 10, 11, 14 => 1,
+            else => 0,
+        };
+    }
+
+    if (low_nibble == 0x8 and (q_anchor == 1169506 or q_anchor == 1189506)) {
+        return switch (axis_idx) {
+            3, 5, 23, 44 => -1,
+            9, 10, 11, 14, 40, 41, 42 => 1,
+            else => 0,
+        };
+    }
+
+    if (low_nibble == 0x8 and (q_anchor == 1249506 or q_anchor == 1269506)) {
+        return switch (axis_idx) {
+            2, 5, 35 => -1,
+            9, 10, 11, 40, 41, 42 => 1,
+            else => 0,
+        };
+    }
+
+    if ((anchor_bits & 0xFFF) == 0x27C and isWholeNoteHighAnchor(q_anchor)) {
+        return switch (axis_idx) {
+            2, 5, 35 => -1,
+            9, 10, 11, 18, 40, 41, 42 => 1,
+            else => 0,
+        };
+    }
+
     return 0;
+}
+
+fn wholeNoteYUlpDelta(anchor: f64, axis_idx: u8) i16 {
+    const q_anchor = quantizedAnchor10000(anchor);
+    return switch (q_anchor) {
+        0 => switch (axis_idx) {
+            42 => -1,
+            15, 37, 41 => 1,
+            else => 0,
+        },
+        50000 => switch (axis_idx) {
+            15, 41 => 1,
+            else => 0,
+        },
+        150000, 200000, 250000 => switch (axis_idx) {
+            37 => 1,
+            else => 0,
+        },
+        else => 0,
+    };
+}
+
+fn isAnchorStep(q_anchor: i32, start: i32, finish: i32, step: i32) bool {
+    if (q_anchor < start or q_anchor > finish) return false;
+    return @mod(q_anchor - start, step) == 0;
+}
+
+fn isWholeNoteHighAnchor(q_anchor: i32) bool {
+    return switch (q_anchor) {
+        1289506, 1309506, 1329506, 1349506, 1389506, 1409506, 1429506, 1509506 => true,
+        else => false,
+    };
+}
+
+fn quantizedAnchor10000(anchor: f64) i32 {
+    return @intFromFloat(@round(anchor * 10000.0));
 }
 
 fn writeTranslatedModifierPath(writer: anytype, kind: ModifierKind, template_path: []const u8, offsets: []const f64, patches: []const mod_assets.ModPatch, x_anchor: f64, y_anchor: f64) !void {
@@ -1103,4 +1222,43 @@ fn isNumberContinuation(ch: u8) bool {
         '0'...'9', '.', 'e', 'E', '-', '+' => true,
         else => false,
     };
+}
+
+test "whole-note x ulp formula handles overlapping anchor families" {
+    const testing = std.testing;
+    const anchor_a = @as(f64, @bitCast(@as(u64, 0x405c3cd6a161e4f7)));
+    const anchor_b = @as(f64, @bitCast(@as(u64, 0x405c3cd6a161e4f8)));
+
+    try testing.expectEqual(@as(i16, -1), wholeNoteXUlpDelta(anchor_a, 1));
+    try testing.expectEqual(@as(i16, 0), wholeNoteXUlpDelta(anchor_a, 3));
+    try testing.expectEqual(@as(i16, -1), wholeNoteXUlpDelta(anchor_b, 3));
+    try testing.expectEqual(@as(i16, 0), wholeNoteXUlpDelta(anchor_b, 1));
+}
+
+test "whole-note x ulp formula handles late-anchor transitions" {
+    const testing = std.testing;
+    const anchor_120 = @as(f64, @bitCast(@as(u64, 0x405e3cd6a161e4f7)));
+    const anchor_124_a = @as(f64, @bitCast(@as(u64, 0x405f3cd6a161e4f7)));
+    const anchor_124_b = @as(f64, @bitCast(@as(u64, 0x405f3cd6a161e4f8)));
+    const anchor_128 = @as(f64, @bitCast(@as(u64, 0x40601e6b50b0f27c)));
+
+    try testing.expectEqual(@as(i16, -1), wholeNoteXUlpDelta(anchor_120, 4));
+    try testing.expectEqual(@as(i16, 1), wholeNoteXUlpDelta(anchor_120, 21));
+
+    try testing.expectEqual(@as(i16, 1), wholeNoteXUlpDelta(anchor_124_a, 31));
+    try testing.expectEqual(@as(i16, 0), wholeNoteXUlpDelta(anchor_124_a, 35));
+
+    try testing.expectEqual(@as(i16, -1), wholeNoteXUlpDelta(anchor_124_b, 35));
+    try testing.expectEqual(@as(i16, 0), wholeNoteXUlpDelta(anchor_124_b, 31));
+
+    try testing.expectEqual(@as(i16, 1), wholeNoteXUlpDelta(anchor_128, 18));
+}
+
+test "whole-note y ulp formula matches key anchors" {
+    const testing = std.testing;
+    try testing.expectEqual(@as(i16, 1), wholeNoteYUlpDelta(0, 15));
+    try testing.expectEqual(@as(i16, -1), wholeNoteYUlpDelta(0, 42));
+    try testing.expectEqual(@as(i16, 1), wholeNoteYUlpDelta(5, 41));
+    try testing.expectEqual(@as(i16, 1), wholeNoteYUlpDelta(15, 37));
+    try testing.expectEqual(@as(i16, 0), wholeNoteYUlpDelta(25, 15));
 }
