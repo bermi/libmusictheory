@@ -9,7 +9,7 @@ Build `libmusictheory`, a Zig library exposing a C ABI that implements the compl
 
 ## Lifecycle Status
 
-- Draft: 0001, 0029, 0030, 0031
+- Draft: 0001, 0029, 0030, 0031, 0032
 - In progress: none
 - Completed: 0002, 0003, 0004, 0005, 0006, 0007, 0008, 0009, 0010, 0011, 0012, 0013, 0014, 0015, 0016, 0017, 0018, 0019, 0020, 0021, 0022, 0023, 0024, 0025, 0026, 0027, 0028
 
@@ -75,6 +75,8 @@ Build `libmusictheory`, a Zig library exposing a C ABI that implements the compl
      ↓ depends on 0029
 0031-compat-visual-diff-diagnostics → Playwright visual diff diagnostics (non-blocking)
      ↓ depends on 0024, 0028 (parallel/additive track)
+0032-scale-compat-pure-algorithmic-renderer → remove replay-style `scale` data dependencies while preserving exact parity
+     ↓ depends on 0028 (integrity baseline)
 ```
 
 ## Dependency Graph (Visual)
