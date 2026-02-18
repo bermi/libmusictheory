@@ -1,0 +1,16 @@
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" width="70" height="70" viewBox="-7 -7 114 114">
+<circle cx="50.00" cy="50.00" r="20" stroke="black" stroke-width="2" fill="transparent" />
+<circle cx="50.00" cy="8.00" r="10" stroke="black" stroke-width="3" fill="black" />
+<circle cx="71.00" cy="13.63" r="10" stroke="black" stroke-width="3" fill="transparent" />
+<circle cx="86.37" cy="29.00" r="10" stroke="black" stroke-width="3" fill="transparent" />
+<circle cx="92.00" cy="50.00" r="10" stroke="black" stroke-width="3" fill="transparent" />
+<circle cx="86.37" cy="71.00" r="10" stroke="black" stroke-width="3" fill="black" />
+<circle cx="71.00" cy="86.37" r="10" stroke="black" stroke-width="3" fill="transparent" />
+<circle cx="50.00" cy="92.00" r="10" stroke="black" stroke-width="3" fill="transparent" />
+<circle cx="29.00" cy="86.37" r="10" stroke="black" stroke-width="3" fill="black" />
+<circle cx="13.63" cy="71.00" r="10" stroke="black" stroke-width="3" fill="transparent" />
+<circle cx="8.00" cy="50.00" r="10" stroke="black" stroke-width="3" fill="transparent" />
+<circle cx="13.63" cy="29.00" r="10" stroke="black" stroke-width="3" fill="transparent" />
+<circle cx="29.00" cy="13.63" r="10" stroke="black" stroke-width="3" fill="transparent" />
+<text x="50" y="55" text-anchor="middle" font-size="16" fill="black">037</text>
+</svg>

@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">
+<rect x="0" y="0" width="100" height="100" style="fill: white"/>
+<circle cx="50" cy="50" r="45" fill="none" stroke="#bbb" stroke-width="1" />
+<circle class="major-key" cx="50.00" cy="8.00" r="5.5" fill="#00C" stroke="black" stroke-width="0.5" />
+<text x="50.00" y="8.20" text-anchor="middle" dominant-baseline="middle" font-size="5.2" fill="white">C</text>
+<circle class="minor-key" cx="50.00" cy="22.00" r="3.8" fill="white" stroke="#777" stroke-width="0.5" />
+<text x="50.00" y="22.10" text-anchor="middle" dominant-baseline="middle" font-size="3.8" fill="black">F#m</text>
+<circle class="major-key" cx="71.00" cy="13.63" r="5.5" fill="#1e0" stroke="black" stroke-width="0.5" />
+<text x="71.00" y="13.83" text-anchor="middle" dominant-baseline="middle" font-size="5.2" fill="white">G</text>
+<circle class="minor-key" cx="64.00" cy="25.75" r="3.8" fill="white" stroke="#777" stroke-width="0.5" />
+<text x="64.00" y="25.85" text-anchor="middle" dominant-baseline="middle" font-size="3.8" fill="black">C#m</text>
+<circle class="major-key" cx="86.37" cy="29.00" r="5.5" fill="#f0f" stroke="black" stroke-width="0.5" />
+<text x="86.37" y="29.20" text-anchor="middle" dominant-baseline="middle" font-size="5.2" fill="white">D</text>
+<circle class="minor-key" cx="74.25" cy="36.00" r="3.8" fill="white" stroke="#777" stroke-width="0.5" />
+<text x="74.25" y="36.10" text-anchor="middle" dominant-baseline="middle" font-size="3.8" fill="black">G#m</text>
+<circle class="major-key" cx="92.00" cy="50.00" r="5.5" fill="#0bb" stroke="black" stroke-width="0.5" />
+<text x="92.00" y="50.20" text-anchor="middle" dominant-baseline="middle" font-size="5.2" fill="white">A</text>
+<circle class="minor-key" cx="78.00" cy="50.00" r="3.8" fill="white" stroke="#777" stroke-width="0.5" />
+<text x="78.00" y="50.10" text-anchor="middle" dominant-baseline="middle" font-size="3.8" fill="black">D#m</text>
+<circle class="major-key" cx="86.37" cy="71.00" r="5.5" fill="#e02" stroke="black" stroke-width="0.5" />
+<text x="86.37" y="71.20" text-anchor="middle" dominant-baseline="middle" font-size="5.2" fill="white">E</text>
+<circle class="minor-key" cx="74.25" cy="64.00" r="3.8" fill="white" stroke="#777" stroke-width="0.5" />
+<text x="74.25" y="64.10" text-anchor="middle" dominant-baseline="middle" font-size="3.8" fill="black">A#m</text>
+<circle class="major-key" cx="71.00" cy="86.37" r="5.5" fill="#28f" stroke="black" stroke-width="0.5" />
+<text x="71.00" y="86.57" text-anchor="middle" dominant-baseline="middle" font-size="5.2" fill="white">B/Cb</text>
+<circle class="minor-key" cx="64.00" cy="74.25" r="3.8" fill="white" stroke="#777" stroke-width="0.5" />
+<text x="64.00" y="74.35" text-anchor="middle" dominant-baseline="middle" font-size="3.8" fill="black">Fm</text>
+<circle class="major-key" cx="50.00" cy="92.00" r="5.5" fill="#c81" stroke="black" stroke-width="0.5" />
+<text x="50.00" y="92.20" text-anchor="middle" dominant-baseline="middle" font-size="5.2" fill="white">F#/Gb</text>
+<circle class="minor-key" cx="50.00" cy="78.00" r="3.8" fill="white" stroke="#777" stroke-width="0.5" />
+<text x="50.00" y="78.10" text-anchor="middle" dominant-baseline="middle" font-size="3.8" fill="black">Cm</text>
+<circle class="major-key" cx="29.00" cy="86.37" r="5.5" fill="#a4f" stroke="black" stroke-width="0.5" />
+<text x="29.00" y="86.57" text-anchor="middle" dominant-baseline="middle" font-size="5.2" fill="white">Db/C#</text>
+<circle class="minor-key" cx="36.00" cy="74.25" r="3.8" fill="white" stroke="#777" stroke-width="0.5" />
+<text x="36.00" y="74.35" text-anchor="middle" dominant-baseline="middle" font-size="3.8" fill="black">Gm</text>
+<circle class="major-key" cx="13.63" cy="71.00" r="5.5" fill="#094" stroke="black" stroke-width="0.5" />
+<text x="13.63" y="71.20" text-anchor="middle" dominant-baseline="middle" font-size="5.2" fill="white">Ab</text>
+<circle class="minor-key" cx="25.75" cy="64.00" r="3.8" fill="white" stroke="#777" stroke-width="0.5" />
+<text x="25.75" y="64.10" text-anchor="middle" dominant-baseline="middle" font-size="3.8" fill="black">Dm</text>
+<circle class="major-key" cx="8.00" cy="50.00" r="5.5" fill="#a16" stroke="black" stroke-width="0.5" />
+<text x="8.00" y="50.20" text-anchor="middle" dominant-baseline="middle" font-size="5.2" fill="white">Eb</text>
+<circle class="minor-key" cx="22.00" cy="50.00" r="3.8" fill="white" stroke="#777" stroke-width="0.5" />
+<text x="22.00" y="50.10" text-anchor="middle" dominant-baseline="middle" font-size="3.8" fill="black">Am</text>
+<circle class="major-key" cx="13.63" cy="29.00" r="5.5" fill="#16b" stroke="black" stroke-width="0.5" />
+<text x="13.63" y="29.20" text-anchor="middle" dominant-baseline="middle" font-size="5.2" fill="white">Bb</text>
+<circle class="minor-key" cx="25.75" cy="36.00" r="3.8" fill="white" stroke="#777" stroke-width="0.5" />
+<text x="25.75" y="36.10" text-anchor="middle" dominant-baseline="middle" font-size="3.8" fill="black">Em</text>
+<circle class="major-key" cx="29.00" cy="13.63" r="5.5" fill="#f91" stroke="black" stroke-width="0.5" />
+<text x="29.00" y="13.83" text-anchor="middle" dominant-baseline="middle" font-size="5.2" fill="white">F</text>
+<circle class="minor-key" cx="36.00" cy="25.75" r="3.8" fill="white" stroke="#777" stroke-width="0.5" />
+<text x="36.00" y="25.85" text-anchor="middle" dominant-baseline="middle" font-size="3.8" fill="black">Bm</text>
+</svg>

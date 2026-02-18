@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg"
+  xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+        width="70px" height="70px" viewBox="-7 -7 114 114"
+        enable-background="new 0 0 70 70" xml:space="preserve">
+
+<!--rect x="-200" y="-200" width="400" height="400" style="fill:#eee" / -->
+
+
+
+<circle cx="50.00" cy="50.00" r="20" stroke="black" stroke-width="2" fill="transparent" />
+
+<circle cx="92.00" cy="50.00" r="10" stroke="black" stroke-width="3" fill="transparent" />
+<circle cx="86.37" cy="71.00" r="10" stroke="black" stroke-width="3" fill="transparent" />
+<circle cx="71.00" cy="86.37" r="10" stroke="black" stroke-width="3" fill="transparent" />
+<circle cx="50.00" cy="92.00" r="10" stroke="black" stroke-width="3" fill="transparent" />
+<circle cx="29.00" cy="86.37" r="10" stroke="black" stroke-width="3" fill="transparent" />
+<circle cx="13.63" cy="71.00" r="10" stroke="black" stroke-width="3" fill="transparent" />
+<circle cx="8.00" cy="50.00" r="10" stroke="black" stroke-width="3" fill="transparent" />
+<circle cx="13.63" cy="29.00" r="10" stroke="black" stroke-width="3" fill="transparent" />
+<circle cx="29.00" cy="13.63" r="10" stroke="black" stroke-width="3" fill="transparent" />
+<circle cx="50.00" cy="8.00" r="10" stroke="black" stroke-width="3" fill="black" />
+<circle cx="71.00" cy="13.63" r="10" stroke="black" stroke-width="3" fill="black" />
+<circle cx="86.37" cy="29.00" r="10" stroke="black" stroke-width="3" fill="transparent" />
+
+
+
+
+<g transform="translate(33, 29.5), scale(0.24)">
+<path fill="black" d="M37.2,71.4l5.6,5.7l-12.2,12.2l12.2,12.2l-5.6,5.6l-12.2-12.2l-12.2,12.2l-5.6-5.6l12.2-12.2l-12.2-12.2l5.6-5.7l12.2,12.3z M78.015,53.1l0,66.9l-9.2,0l0-57.1l-15.6,9.5l-4-6.5l20.7-12.8l8.1,0z M107.53,52.1c12.3,0,20.1,7.9,20.1,18.3c0,12.5-8,21.4-28.5,41.9l30.1,0l-1.1,7.7l-39.5,0l0-7.3c23.6-24.6,29.4-31,29.4-41.9c0-7-4.5-11.1-11-11.1c-5.6,0-9.3,2.2-13.6,7.3l-6.2-4.8c5.4-6.7,11.9-10.1,20.3-10.1z"/>
+</g>
+
+
+
+
+
+
+</svg>

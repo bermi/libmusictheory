@@ -1,0 +1,155 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 540" width="100%" height="100%">
+<ellipse cx="270" cy="270" rx="156.25" ry="247.5" style="fill:none;stroke:#bbb;stroke-width:2px;" />
+<line class="orbifold-edge" x1="425.00" y1="270.00" x2="458.36" y2="320.47" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="425.00" y1="270.00" x2="132.11" y2="407.89" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="425.00" y1="270.00" x2="456.44" y2="413.06" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="425.00" y1="270.00" x2="325.00" y2="270.00" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="404.23" y1="347.50" x2="407.89" y2="407.89" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="404.23" y1="347.50" x2="81.64" y2="320.47" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="404.23" y1="347.50" x2="359.93" y2="487.11" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="404.23" y1="347.50" x2="270.00" y2="325.00" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="347.50" y1="404.23" x2="320.47" y2="458.36" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="347.50" y1="404.23" x2="81.64" y2="219.53" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="347.50" y1="404.23" x2="239.33" y2="502.99" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="347.50" y1="404.23" x2="215.00" y2="270.00" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="270.00" y1="425.00" x2="219.53" y2="458.36" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="270.00" y1="425.00" x2="132.11" y2="132.11" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="270.00" y1="425.00" x2="126.94" y2="456.44" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="270.00" y1="425.00" x2="270.00" y2="215.00" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="192.50" y1="404.23" x2="132.11" y2="407.89" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="192.50" y1="404.23" x2="219.53" y2="81.64" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="192.50" y1="404.23" x2="52.89" y2="359.93" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="192.50" y1="404.23" x2="325.00" y2="270.00" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="135.77" y1="347.50" x2="81.64" y2="320.47" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="135.77" y1="347.50" x2="320.47" y2="81.64" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="135.77" y1="347.50" x2="37.01" y2="239.33" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="135.77" y1="347.50" x2="270.00" y2="325.00" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="115.00" y1="270.00" x2="81.64" y2="219.53" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="115.00" y1="270.00" x2="407.89" y2="132.11" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="115.00" y1="270.00" x2="83.56" y2="126.94" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="115.00" y1="270.00" x2="215.00" y2="270.00" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="135.77" y1="192.50" x2="132.11" y2="132.11" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="135.77" y1="192.50" x2="458.36" y2="219.53" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="135.77" y1="192.50" x2="180.07" y2="52.89" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="135.77" y1="192.50" x2="270.00" y2="215.00" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="192.50" y1="135.77" x2="458.36" y2="320.47" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="192.50" y1="135.77" x2="219.53" y2="81.64" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="192.50" y1="135.77" x2="300.67" y2="37.01" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="192.50" y1="135.77" x2="325.00" y2="270.00" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="270.00" y1="115.00" x2="407.89" y2="407.89" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="270.00" y1="115.00" x2="320.47" y2="81.64" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="270.00" y1="115.00" x2="413.06" y2="83.56" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="270.00" y1="115.00" x2="270.00" y2="325.00" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="347.50" y1="135.77" x2="320.47" y2="458.36" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="347.50" y1="135.77" x2="407.89" y2="132.11" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="347.50" y1="135.77" x2="487.11" y2="180.07" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="347.50" y1="135.77" x2="215.00" y2="270.00" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="404.23" y1="192.50" x2="219.53" y2="458.36" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="404.23" y1="192.50" x2="458.36" y2="219.53" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="404.23" y1="192.50" x2="502.99" y2="300.67" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="404.23" y1="192.50" x2="270.00" y2="215.00" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="458.36" y1="320.47" x2="502.99" y2="300.67" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="458.36" y1="320.47" x2="270.00" y2="215.00" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="407.89" y1="407.89" x2="456.44" y2="413.06" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="407.89" y1="407.89" x2="325.00" y2="270.00" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="320.47" y1="458.36" x2="359.93" y2="487.11" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="320.47" y1="458.36" x2="270.00" y2="325.00" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="219.53" y1="458.36" x2="239.33" y2="502.99" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="219.53" y1="458.36" x2="215.00" y2="270.00" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="132.11" y1="407.89" x2="126.94" y2="456.44" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="132.11" y1="407.89" x2="270.00" y2="215.00" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="81.64" y1="320.47" x2="52.89" y2="359.93" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="81.64" y1="320.47" x2="325.00" y2="270.00" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="81.64" y1="219.53" x2="37.01" y2="239.33" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="81.64" y1="219.53" x2="270.00" y2="325.00" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="132.11" y1="132.11" x2="83.56" y2="126.94" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="132.11" y1="132.11" x2="215.00" y2="270.00" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="219.53" y1="81.64" x2="180.07" y2="52.89" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="219.53" y1="81.64" x2="270.00" y2="215.00" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="320.47" y1="81.64" x2="300.67" y2="37.01" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="320.47" y1="81.64" x2="325.00" y2="270.00" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="407.89" y1="132.11" x2="413.06" y2="83.56" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="407.89" y1="132.11" x2="270.00" y2="325.00" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="458.36" y1="219.53" x2="487.11" y2="180.07" stroke="#bbb" stroke-width="1" />
+<line class="orbifold-edge" x1="458.36" y1="219.53" x2="215.00" y2="270.00" stroke="#bbb" stroke-width="1" />
+<circle class="orbifold-node" cx="425.00" cy="270.00" r="8" fill="#02fe02" stroke="#000" stroke-width="1" />
+<text x="425.00" y="272.20" text-anchor="middle" font-size="6" fill="white">C</text>
+<circle class="orbifold-node" cx="404.23" cy="347.50" r="8" fill="#02fe02" stroke="#000" stroke-width="1" />
+<text x="404.23" y="349.70" text-anchor="middle" font-size="6" fill="white">C#</text>
+<circle class="orbifold-node" cx="347.50" cy="404.23" r="8" fill="#02fe02" stroke="#000" stroke-width="1" />
+<text x="347.50" y="406.43" text-anchor="middle" font-size="6" fill="white">D</text>
+<circle class="orbifold-node" cx="270.00" cy="425.00" r="8" fill="#02fe02" stroke="#000" stroke-width="1" />
+<text x="270.00" y="427.20" text-anchor="middle" font-size="6" fill="white">Eb</text>
+<circle class="orbifold-node" cx="192.50" cy="404.23" r="8" fill="#02fe02" stroke="#000" stroke-width="1" />
+<text x="192.50" y="406.43" text-anchor="middle" font-size="6" fill="white">E</text>
+<circle class="orbifold-node" cx="135.77" cy="347.50" r="8" fill="#02fe02" stroke="#000" stroke-width="1" />
+<text x="135.77" y="349.70" text-anchor="middle" font-size="6" fill="white">F</text>
+<circle class="orbifold-node" cx="115.00" cy="270.00" r="8" fill="#02fe02" stroke="#000" stroke-width="1" />
+<text x="115.00" y="272.20" text-anchor="middle" font-size="6" fill="white">F#</text>
+<circle class="orbifold-node" cx="135.77" cy="192.50" r="8" fill="#02fe02" stroke="#000" stroke-width="1" />
+<text x="135.77" y="194.70" text-anchor="middle" font-size="6" fill="white">G</text>
+<circle class="orbifold-node" cx="192.50" cy="135.77" r="8" fill="#02fe02" stroke="#000" stroke-width="1" />
+<text x="192.50" y="137.97" text-anchor="middle" font-size="6" fill="white">Ab</text>
+<circle class="orbifold-node" cx="270.00" cy="115.00" r="8" fill="#02fe02" stroke="#000" stroke-width="1" />
+<text x="270.00" y="117.20" text-anchor="middle" font-size="6" fill="white">A</text>
+<circle class="orbifold-node" cx="347.50" cy="135.77" r="8" fill="#02fe02" stroke="#000" stroke-width="1" />
+<text x="347.50" y="137.97" text-anchor="middle" font-size="6" fill="white">Bb</text>
+<circle class="orbifold-node" cx="404.23" cy="192.50" r="8" fill="#02fe02" stroke="#000" stroke-width="1" />
+<text x="404.23" y="194.70" text-anchor="middle" font-size="6" fill="white">B</text>
+<circle class="orbifold-node" cx="458.36" cy="320.47" r="8" fill="#0b007e" stroke="#fff" stroke-width="1" />
+<text x="458.36" y="322.67" text-anchor="middle" font-size="6" fill="white">Cm</text>
+<circle class="orbifold-node" cx="407.89" cy="407.89" r="8" fill="#0b007e" stroke="#fff" stroke-width="1" />
+<text x="407.89" y="410.09" text-anchor="middle" font-size="6" fill="white">C#m</text>
+<circle class="orbifold-node" cx="320.47" cy="458.36" r="8" fill="#0b007e" stroke="#fff" stroke-width="1" />
+<text x="320.47" y="460.56" text-anchor="middle" font-size="6" fill="white">Dm</text>
+<circle class="orbifold-node" cx="219.53" cy="458.36" r="8" fill="#0b007e" stroke="#fff" stroke-width="1" />
+<text x="219.53" y="460.56" text-anchor="middle" font-size="6" fill="white">Ebm</text>
+<circle class="orbifold-node" cx="132.11" cy="407.89" r="8" fill="#0b007e" stroke="#fff" stroke-width="1" />
+<text x="132.11" y="410.09" text-anchor="middle" font-size="6" fill="white">Em</text>
+<circle class="orbifold-node" cx="81.64" cy="320.47" r="8" fill="#0b007e" stroke="#fff" stroke-width="1" />
+<text x="81.64" y="322.67" text-anchor="middle" font-size="6" fill="white">Fm</text>
+<circle class="orbifold-node" cx="81.64" cy="219.53" r="8" fill="#0b007e" stroke="#fff" stroke-width="1" />
+<text x="81.64" y="221.73" text-anchor="middle" font-size="6" fill="white">F#m</text>
+<circle class="orbifold-node" cx="132.11" cy="132.11" r="8" fill="#0b007e" stroke="#fff" stroke-width="1" />
+<text x="132.11" y="134.31" text-anchor="middle" font-size="6" fill="white">Gm</text>
+<circle class="orbifold-node" cx="219.53" cy="81.64" r="8" fill="#0b007e" stroke="#fff" stroke-width="1" />
+<text x="219.53" y="83.84" text-anchor="middle" font-size="6" fill="white">Abm</text>
+<circle class="orbifold-node" cx="320.47" cy="81.64" r="8" fill="#0b007e" stroke="#fff" stroke-width="1" />
+<text x="320.47" y="83.84" text-anchor="middle" font-size="6" fill="white">Am</text>
+<circle class="orbifold-node" cx="407.89" cy="132.11" r="8" fill="#0b007e" stroke="#fff" stroke-width="1" />
+<text x="407.89" y="134.31" text-anchor="middle" font-size="6" fill="white">Bbm</text>
+<circle class="orbifold-node" cx="458.36" cy="219.53" r="8" fill="#0b007e" stroke="#fff" stroke-width="1" />
+<text x="458.36" y="221.73" text-anchor="middle" font-size="6" fill="white">Bm</text>
+<circle class="orbifold-node" cx="502.99" cy="300.67" r="8" fill="#004700" stroke="#fff" stroke-width="1" />
+<text x="502.99" y="302.87" text-anchor="middle" font-size="6" fill="white">Co</text>
+<circle class="orbifold-node" cx="456.44" cy="413.06" r="8" fill="#004700" stroke="#fff" stroke-width="1" />
+<text x="456.44" y="415.26" text-anchor="middle" font-size="6" fill="white">C#o</text>
+<circle class="orbifold-node" cx="359.93" cy="487.11" r="8" fill="#004700" stroke="#fff" stroke-width="1" />
+<text x="359.93" y="489.31" text-anchor="middle" font-size="6" fill="white">Do</text>
+<circle class="orbifold-node" cx="239.33" cy="502.99" r="8" fill="#004700" stroke="#fff" stroke-width="1" />
+<text x="239.33" y="505.19" text-anchor="middle" font-size="6" fill="white">Ebo</text>
+<circle class="orbifold-node" cx="126.94" cy="456.44" r="8" fill="#004700" stroke="#fff" stroke-width="1" />
+<text x="126.94" y="458.64" text-anchor="middle" font-size="6" fill="white">Eo</text>
+<circle class="orbifold-node" cx="52.89" cy="359.93" r="8" fill="#004700" stroke="#fff" stroke-width="1" />
+<text x="52.89" y="362.13" text-anchor="middle" font-size="6" fill="white">Fo</text>
+<circle class="orbifold-node" cx="37.01" cy="239.33" r="8" fill="#004700" stroke="#fff" stroke-width="1" />
+<text x="37.01" y="241.53" text-anchor="middle" font-size="6" fill="white">F#o</text>
+<circle class="orbifold-node" cx="83.56" cy="126.94" r="8" fill="#004700" stroke="#fff" stroke-width="1" />
+<text x="83.56" y="129.14" text-anchor="middle" font-size="6" fill="white">Go</text>
+<circle class="orbifold-node" cx="180.07" cy="52.89" r="8" fill="#004700" stroke="#fff" stroke-width="1" />
+<text x="180.07" y="55.09" text-anchor="middle" font-size="6" fill="white">Abo</text>
+<circle class="orbifold-node" cx="300.67" cy="37.01" r="8" fill="#004700" stroke="#fff" stroke-width="1" />
+<text x="300.67" y="39.21" text-anchor="middle" font-size="6" fill="white">Ao</text>
+<circle class="orbifold-node" cx="413.06" cy="83.56" r="8" fill="#004700" stroke="#fff" stroke-width="1" />
+<text x="413.06" y="85.76" text-anchor="middle" font-size="6" fill="white">Bbo</text>
+<circle class="orbifold-node" cx="487.11" cy="180.07" r="8" fill="#004700" stroke="#fff" stroke-width="1" />
+<text x="487.11" y="182.27" text-anchor="middle" font-size="6" fill="white">Bo</text>
+<circle class="orbifold-node" cx="325.00" cy="270.00" r="8" fill="#a16" stroke="#fff" stroke-width="1" />
+<text x="325.00" y="272.20" text-anchor="middle" font-size="6" fill="white">C+</text>
+<circle class="orbifold-node" cx="270.00" cy="325.00" r="8" fill="#a16" stroke="#fff" stroke-width="1" />
+<text x="270.00" y="327.20" text-anchor="middle" font-size="6" fill="white">C#+</text>
+<circle class="orbifold-node" cx="215.00" cy="270.00" r="8" fill="#a16" stroke="#fff" stroke-width="1" />
+<text x="215.00" y="272.20" text-anchor="middle" font-size="6" fill="white">D+</text>
+<circle class="orbifold-node" cx="270.00" cy="215.00" r="8" fill="#a16" stroke="#fff" stroke-width="1" />
+<text x="270.00" y="217.20" text-anchor="middle" font-size="6" fill="white">Eb+</text>
+</svg>

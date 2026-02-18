@@ -176,6 +176,66 @@ for doc in "${VIZ_DOCS[@]}"; do
 done
 
 # ───────────────────────────────────────────
+# Section 3.5: Graph Architecture Docs
+# ───────────────────────────────────────────
+section "Graph Architecture Docs"
+
+GRAPH_ARCH_DOCS=(
+    "docs/architecture/graphs.md"
+    "docs/architecture/graphs/clock.md"
+    "docs/architecture/graphs/mode-icons.md"
+    "docs/architecture/graphs/staff.md"
+    "docs/architecture/graphs/fretboard.md"
+    "docs/architecture/graphs/evenness.md"
+    "docs/architecture/graphs/tessellation-majmin.md"
+    "docs/architecture/graphs/orbifold.md"
+    "docs/architecture/graphs/circle-of-fifths.md"
+    "docs/architecture/graphs/text-glyphs.md"
+    "docs/architecture/graphs/future-harmony-graphs.md"
+    "docs/architecture/graphs/samples/README.md"
+)
+
+for doc in "${GRAPH_ARCH_DOCS[@]}"; do
+    if [ -f "$ROOT_DIR/$doc" ]; then
+        pass "$doc"
+    else
+        fail "$doc missing"
+    fi
+done
+
+GRAPH_SAMPLE_SVGS=(
+    "docs/architecture/graphs/samples/compat-opc.svg"
+    "docs/architecture/graphs/samples/compat-optc.svg"
+    "docs/architecture/graphs/samples/compat-oc.svg"
+    "docs/architecture/graphs/samples/compat-even.svg"
+    "docs/architecture/graphs/samples/compat-scale.svg"
+    "docs/architecture/graphs/samples/compat-eadgbe.svg"
+    "docs/architecture/graphs/samples/compat-chord.svg"
+    "docs/architecture/graphs/samples/compat-grand-chord.svg"
+    "docs/architecture/graphs/samples/core-opc.svg"
+    "docs/architecture/graphs/samples/core-optc.svg"
+    "docs/architecture/graphs/samples/core-mode-icon.svg"
+    "docs/architecture/graphs/samples/core-evenness.svg"
+    "docs/architecture/graphs/samples/core-tessellation.svg"
+    "docs/architecture/graphs/samples/core-orbifold.svg"
+    "docs/architecture/graphs/samples/core-circle-of-fifths.svg"
+)
+
+for sample in "${GRAPH_SAMPLE_SVGS[@]}"; do
+    if [ -s "$ROOT_DIR/$sample" ]; then
+        pass "$sample"
+    else
+        fail "$sample missing or empty"
+    fi
+done
+
+if [ -f "$ROOT_DIR/export_graph_samples.zig" ]; then
+    pass "export_graph_samples.zig exists"
+else
+    fail "export_graph_samples.zig missing"
+fi
+
+# ───────────────────────────────────────────
 # Section 4: Zig Build (when src/root.zig exists)
 # ───────────────────────────────────────────
 section "Zig Build"

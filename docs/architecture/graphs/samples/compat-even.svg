@@ -1,0 +1,1647 @@
+<svg id="todo1" class="todo2" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0" y="0" width="500" height="650" viewBox="-100 -40 1100 1320">
+  <circle cx="0" cy="0" r="290.68883707497264" style="fill: transparent; stroke: #888; stroke-width: 2"/>
+  <circle cx="0" cy="0" r="581.3776741499453" style="fill: transparent; stroke: #888; stroke-width: 2"/>
+  <circle cx="0" cy="0" r="872.066511224918" style="fill: transparent; stroke: #888; stroke-width: 2"/>
+  <circle cx="0" cy="0" r="1162.7553482998906" style="fill: transparent; stroke: #888; stroke-width: 2"/>
+  <circle cx="0" cy="0" r="1453.4441853748633" style="fill: transparent; stroke: #888; stroke-width: 2"/>
+
+  <g/>
+  <line stroke-width="1" stroke="black" style="fill: transparent; stroke: #888; stroke-width: 2" x1="0" y1="0" x2="0" y2="1233.2882874656677"/>
+  <line stroke-width="1" stroke="black" style="fill: transparent; stroke: #888; stroke-width: 2" x1="0" y1="0" x2="336.464758633277" y2="1255.7035741757888"/>
+  <line stroke-width="1" stroke="black" style="fill: transparent; stroke: #888; stroke-width: 2" x1="91.92388155425117" y1="159.2168332809066" x2="643.4671708797581" y2="1114.517832966346"/>
+  <line stroke-width="1" stroke="black" style="fill: transparent; stroke: #888; stroke-width: 2" x1="0" y1="0" x2="859.8691760959919" y2="859.869176095992"/>
+  <line stroke-width="1" stroke="black" style="fill: transparent; stroke: #888; stroke-width: 2" x1="190.30051422496393" y1="109.87005311470718" x2="951.5025711248198" y2="549.3502655735359"/>
+  <line stroke-width="1" stroke="black" style="fill: transparent; stroke: #888; stroke-width: 2" x1="198.54416802048422" y1="53.19974948299788" x2="909.8436787458995" y2="243.7918789585256"/>
+  <line stroke-width="1" stroke="black" style="fill: transparent; stroke: #888; stroke-width: 2" x1="237.34644158557197" y1="1.4533277998839247e-14" x2="750.5553499465135" y2="4.5958260344745965e-14"/>
+
+  <circle cx="0" cy="0" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="0" cy="237.34644158557197" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="0" cy="411.0960958218893" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="0" cy="411.0960958218893" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="0" cy="474.69288317114393" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="0" cy="627.9596590015424" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="0" cy="627.9596590015424" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="0" cy="712.0393247567159" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="0" cy="822.1921916437786" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="0" cy="855.7647651856981" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="0" cy="1034.569153480488" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="0" cy="1233.2882874656677" r="2" style="stroke: black; stroke-width: 3"/>
+
+  <circle cx="0" cy="0" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="65.15612033861898" cy="243.16595152779797" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="75.23580723370665" cy="280.78385514465134" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="75.23580723370665" cy="280.78385514465134" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="106.39949896599576" cy="397.08833604096844" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="106.39949896599576" cy="397.08833604096844" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="106.39949896599576" cy="397.08833604096844" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="124.7644716968558" cy="465.62734735215497" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="124.7644716968558" cy="465.62734735215497" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="124.7644716968558" cy="465.62734735215497" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="130.31224067723795" cy="486.33190305559594" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="150.4716144674133" cy="561.5677102893027" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="150.4716144674133" cy="561.5677102893027" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="163.97264033371687" cy="611.9542247766491" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="163.97264033371687" cy="611.9542247766491" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="168.2323793166385" cy="627.8517870878944" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="168.2323793166385" cy="627.8517870878944" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="168.2323793166385" cy="627.8517870878944" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="184.28933810897686" cy="687.7771731159411" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="195.468361015857" cy="729.4978545833941" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="212.79899793199152" cy="794.1766720819369" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="212.79899793199152" cy="794.1766720819369" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="222.5505190702559" cy="830.5698444210215" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="222.5505190702559" cy="830.5698444210215" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="237.91651245988513" cy="887.9165124598852" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="249.5289433937116" cy="931.2546947043099" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="271.26656073205385" cy="1012.3805870464935" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="288.94860041032405" cy="1078.370857507247" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="336.464758633277" cy="1255.7035741757888" r="2" style="stroke: black; stroke-width: 3"/>
+
+  <circle cx="91.92388155425115" cy="159.2168332809066" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="129.99999999999997" cy="225.16660498395404" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="159.21683328090654" cy="275.7716446627535" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="183.8477631085023" cy="318.4336665618132" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="183.8477631085023" cy="318.4336665618132" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="205.54804791094463" cy="356.019662378358" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="205.54804791094463" cy="356.019662378358" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="205.54804791094463" cy="356.019662378358" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="225.16660498395402" cy="390.00000000000006" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="243.20773014030613" cy="421.2481453965109" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="243.20773014030613" cy="421.2481453965109" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="243.20773014030613" cy="421.2481453965109" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="259.99999999999994" cy="450.3332099679081" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="275.7716446627535" cy="477.6504998427197" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="275.7716446627535" cy="477.6504998427197" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="290.68883707497264" cy="503.4878350069642" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="290.68883707497264" cy="503.4878350069642" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="304.8770243885229" cy="528.0624963013375" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="304.8770243885229" cy="528.0624963013375" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="331.43626838353094" cy="574.0644563113101" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="331.43626838353094" cy="574.0644563113101" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="331.43626838353094" cy="574.0644563113101" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="331.43626838353094" cy="574.0644563113101" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="331.43626838353094" cy="574.0644563113101" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="356.01966237835785" cy="616.644143732834" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="367.6955262170046" cy="636.8673331236264" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="379.0118731649444" cy="656.467820993535" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="379.0118731649444" cy="656.467820993535" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="400.6869101929833" cy="694.0100863820351" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="400.6869101929833" cy="694.0100863820351" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="421.2481453965109" cy="729.6231904209187" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="431.1612227462019" cy="746.7931440499436" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="459.61940777125585" cy="796.084166404533" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="468.7216658103186" cy="811.8497397917919" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="495.0252518811539" cy="857.4088872877397" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="511.8105118107676" cy="886.4818103040807" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="559.1511423577706" cy="968.478187673837" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="643.4671708797581" cy="1114.517832966346" r="2" style="stroke: black; stroke-width: 3"/>
+
+  <circle cx="0" cy="0" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="187.63883748662838" cy="187.6388374866284" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="237.34644158557194" cy="237.34644158557197" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="237.34644158557194" cy="237.34644158557197" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="237.34644158557194" cy="237.34644158557197" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="251.74391750348207" cy="251.7439175034821" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="251.74391750348207" cy="251.7439175034821" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="251.74391750348207" cy="251.7439175034821" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="290.68883707497264" cy="290.6888370749727" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="290.68883707497264" cy="290.6888370749727" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="345.988920824545" cy="345.9889208245451" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="345.988920824545" cy="345.9889208245451" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="345.988920824545" cy="345.9889208245451" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="345.988920824545" cy="345.9889208245451" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="375.27767497325675" cy="375.2776749732568" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="375.27767497325675" cy="375.2776749732568" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="375.27767497325675" cy="375.2776749732568" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="384.54518590147495" cy="384.545185901475" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="411.09609582188926" cy="411.0960958218893" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="411.09609582188926" cy="411.0960958218893" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="411.09609582188926" cy="411.0960958218893" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="451.8941616499745" cy="451.89416164997454" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="474.6928831711439" cy="474.69288317114393" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="474.6928831711439" cy="474.69288317114393" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="482.05290166121813" cy="482.0529016612182" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="482.05290166121813" cy="482.0529016612182" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="482.05290166121813" cy="482.0529016612182" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="537.3158599309472" cy="537.3158599309473" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="537.3158599309472" cy="537.3158599309473" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="556.6267450754888" cy="556.626745075489" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="581.3776741499453" cy="581.3776741499454" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="633.5416324125825" cy="633.5416324125827" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="650" cy="650.0000000000001" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="676.5414498264931" cy="676.5414498264931" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="750.5553499465135" cy="750.5553499465136" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="859.8691760959919" cy="859.869176095992" r="2" style="stroke: black; stroke-width: 3"/>
+
+  <circle cx="190.30051422496393" cy="109.87005311470716" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="233.06957882020674" cy="134.5627840717591" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="269.12556814351814" cy="155.37971921347122" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="300.89153242607915" cy="173.71980724307585" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="300.89153242607915" cy="173.71980724307585" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="329.6101593441214" cy="190.300514224964" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="329.6101593441214" cy="190.300514224964" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="329.6101593441214" cy="190.300514224964" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="356.01966237835796" cy="205.5480479109447" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="380.60102844992787" cy="219.74010622941432" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="380.60102844992787" cy="219.74010622941432" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="380.60102844992787" cy="219.74010622941432" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="403.68835221527723" cy="233.0695788202068" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="425.5248859601851" cy="245.67690745599776" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="425.5248859601851" cy="245.67690745599776" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="446.29426551163687" cy="257.66811433092994" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="446.29426551163687" cy="257.66811433092994" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="466.1391576404135" cy="269.1255681435182" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="466.1391576404135" cy="269.1255681435182" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="503.48783500696413" cy="290.68883707497275" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="503.48783500696413" cy="290.68883707497275" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="503.48783500696413" cy="290.68883707497275" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="503.48783500696413" cy="290.68883707497275" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="503.48783500696413" cy="290.68883707497275" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="538.2511362870363" cy="310.75943842694244" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="554.8165720050442" cy="320.32349719797776" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="570.9015426748919" cy="329.61015934412154" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="570.9015426748919" cy="329.61015934412154" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="601.7830648521583" cy="347.4396144861517" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="601.7830648521583" cy="347.4396144861517" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="631.1554030958958" cy="364.3977418779023" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="645.3404417160648" cy="372.5874777437221" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="686.1382617852718" cy="396.1421101430287" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="699.2087364606201" cy="403.68835221527723" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="737.030722367993" cy="425.5248859601852" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="761.2020568998557" cy="439.48021245882865" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="829.5007104104423" cy="478.91245844845474" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="951.5025711248197" cy="549.3502655735359" r="2" style="stroke: black; stroke-width: 3"/>
+
+  <circle cx="198.54416802048422" cy="53.19974948299788" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="262.6492464222122" cy="70.3766534714747" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="280.78385514465134" cy="75.23580723370665" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="280.78385514465134" cy="75.23580723370665" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="343.88858655797054" cy="92.14466905448843" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="343.88858655797054" cy="92.14466905448843" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="343.88858655797054" cy="92.14466905448843" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="384.4791281149712" cy="103.02087188502871" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="384.4791281149712" cy="103.02087188502871" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="384.4791281149712" cy="103.02087188502871" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="397.08833604096844" cy="106.39949896599576" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="443.9582562299426" cy="118.95825622994256" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="443.9582562299426" cy="118.95825622994256" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="476.09218988126764" cy="127.56851780145038" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="476.09218988126764" cy="127.56851780145038" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="486.33190305559594" cy="130.31224067723795" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="486.33190305559594" cy="130.31224067723795" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="486.33190305559594" cy="130.31224067723795" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="525.2984928444243" cy="140.7533069429494" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="552.7235715760941" cy="148.10183464146024" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="595.6325040614526" cy="159.59924844899362" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="595.6325040614526" cy="159.59924844899362" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="619.9539659407997" cy="166.11616451830898" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="619.9539659407997" cy="166.11616451830898" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="658.4965096372258" cy="176.44360797600763" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="687.7771731159411" cy="184.28933810897686" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="742.8842528747313" cy="199.0552356275822" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="787.9477392666367" cy="211.12996041442415" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="909.8436787458994" cy="243.7918789585256" r="2" style="stroke: black; stroke-width: 3"/>
+
+  <circle cx="237.34644158557197" cy="1.4533277998839247e-14" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="274.06406388125953" cy="1.678158392967501e-14" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="335.65855667130944" cy="2.0553158851696978e-14" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="335.65855667130944" cy="2.0553158851696978e-14" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="362.552678164766" cy="2.219994884183906e-14" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="433.3333333333333" cy="2.6534013981525983e-14" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="433.3333333333333" cy="2.6534013981525983e-14" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="474.69288317114393" cy="2.9066555997678494e-14" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="530.7227776030219" cy="3.249739754130667e-14" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="548.1281277625191" cy="3.356316785935002e-14" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="642.7372022149575" cy="3.9356302869273636e-14" r="2" style="stroke: black; stroke-width: 3"/>
+  <circle cx="750.5553499465135" cy="4.5958260344745965e-14" r="2" style="stroke: black; stroke-width: 3"/>
+
+
+  <g transform="translate(-19.868618765495352,16.77015170925433),scale(0.23863636363636365),translate(-50,-50)">
+    <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 9"/>
+  </g>
+  <g>
+    <g transform="translate(-23.57630510503021,236.17258767885795),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(-23.57630510503021,236.17258767885795),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g transform="translate(-23.65666945411634,410.41486570339856),scale(0.23863636363636365),translate(-50,-50)">
+    <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 9"/>
+  </g>
+  <g transform="translate(-47.23493565459387,408.37343308999226),scale(0.23863636363636365),translate(-50,-50)">
+    <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 9"/>
+  </g>
+  <g>
+    <g transform="translate(-23.669926233373214,474.1023812695313),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(-23.669926233373214,474.1023812695313),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(-23.689918386166415,627.5126461675414),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(-23.689918386166415,627.5126461675414),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(-47.34610945433319,626.1722440773558),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(-47.34610945433319,626.1722440773558),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(-23.696946563537438,711.6448936959815),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(-23.696946563537438,711.6448936959815),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g transform="translate(-23.703826520087684,821.8504295845477),scale(0.23863636363636365),translate(-50,-50)">
+    <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 9"/>
+  </g>
+  <g>
+    <g transform="translate(-23.70554694664139,855.4363683976112),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(-23.70554694664139,855.4363683976112),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(-23.712719818885216,1034.2973654864081),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(-23.712719818885216,1034.2973654864081),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g transform="translate(23.718130702295905,1233.0601973447965),scale(0.23863636363636365),translate(-50,-50)">
+    <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 9"/>
+  </g>
+  <g transform="translate(-12.541578802665533,36.928428089163646),scale(0.23863636363636365),translate(-50,-50)">
+    <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 9"/>
+  </g>
+  <g>
+    <g transform="translate(42.085258137768555,248.2011906649067),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(42.085258137768555,248.2011906649067),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g transform="translate(52.178931674010805,285.9674091384522),scale(0.23863636363636365),translate(-50,-50)">
+    <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 9"/>
+  </g>
+  <g transform="translate(28.777188115026362,289.26090894587253),scale(0.23863636363636365),translate(-50,-50)">
+    <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 9"/>
+  </g>
+  <g transform="translate(83.37259564751822,402.55311487429265),scale(0.23863636363636365),translate(-50,-50)">
+    <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 9"/>
+  </g>
+  <g transform="translate(60.06937774571538,406.6837467335553),scale(0.23863636363636365),translate(-50,-50)">
+    <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 9"/>
+  </g>
+  <g transform="translate(36.56707710031428,409.4665418228206),scale(0.23863636363636365),translate(-50,-50)">
+    <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 9"/>
+  </g>
+  <g>
+    <g transform="translate(101.74932541264515,471.1921845468912),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(101.74932541264515,471.1921845468912),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(78.48868274723274,475.6201495738003),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(78.48868274723274,475.6201495738003),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(55.03866597539165,478.9005588299613),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(55.03866597539165,478.9005588299613),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(107.30008377023918,491.92142870879246),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(107.30008377023918,491.92142870879246),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g transform="translate(127.4686789471396,567.2316421775772),scale(0.23863636363636365),translate(-50,-50)">
+    <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 9"/>
+  </g>
+  <g transform="translate(104.25409444479291,571.9537427025862),scale(0.23863636363636365),translate(-50,-50)">
+    <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 9"/>
+  </g>
+  <g>
+    <g transform="translate(140.9747442460572,617.6577705208271),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(140.9747442460572,617.6577705208271),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(117.77965609008184,622.4973514893875),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(117.77965609008184,622.4973514893875),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(148.04285517379927,644.0457873177315),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(148.04285517379927,644.0457873177315),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g transform="translate(124.85695315908305,648.9394458480373),scale(0.23863636363636365),translate(-50,-50)">
+    <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 9"/>
+  </g>
+  <g transform="translate(101.5105071893545,652.9986830460588),scale(0.23863636363636365),translate(-50,-50)">
+    <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 9"/>
+  </g>
+  <g>
+    <g transform="translate(161.29775914856603,693.5294030491073),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(161.29775914856603,693.5294030491073),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(172.47974453551285,735.2725601604919),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(172.47974453551285,735.2725601604919),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g transform="translate(235.60668161979754,787.7115535372751),scale(0.23863636363636365),translate(-50,-50)">
+    <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 9"/>
+  </g>
+  <g transform="translate(189.81440518454068,799.9815570276849),scale(0.23863636363636365),translate(-50,-50)">
+    <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 9"/>
+  </g>
+  <g>
+    <g transform="translate(245.3639218223098,824.1186479312161),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(245.3639218223098,824.1186479312161),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(199.56793449530863,836.3896457520718),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(199.56793449530863,836.3896457520718),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g transform="translate(214.93678025702013,893.7573387070707),scale(0.23863636363636365),translate(-50,-50)">
+    <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 9"/>
+  </g>
+  <g>
+    <g transform="translate(272.3557969446134,924.8363746472477),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(272.3557969446134,924.8363746472477),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g transform="translate(248.29197141616635,1018.2588555619211),scale(0.23863636363636365),translate(-50,-50)">
+    <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 9"/>
+  </g>
+  <g>
+    <g transform="translate(311.7905198792478,1071.9895856366463),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(311.7905198792478,1071.9895856366463),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g transform="translate(359.320081904908,1249.3554653259616),scale(0.23863636363636365),translate(-50,-50)">
+    <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 9"/>
+  </g>
+  <g transform="translate(70.80585885680685,169.6659375111868),scale(0.23863636363636365),translate(-50,-50)">
+    <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 9"/>
+  </g>
+  <g transform="translate(109.03065977272487,236.03456363321942),scale(0.23863636363636365),translate(-50,-50)">
+    <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 9"/>
+  </g>
+  <g>
+    <g transform="translate(138.31699218227837,286.8247019934781),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(138.31699218227837,286.8247019934781),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(162.99041550863336,329.5969120794718),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(162.99041550863336,329.5969120794718),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g transform="translate(141.45838523887812,339.39582384821585),scale(0.23863636363636365),translate(-50,-50)">
+    <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 9"/>
+  </g>
+  <g>
+    <g transform="translate(184.72015613550317,367.2580345169801),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(184.72015613550317,367.2580345169801),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(163.28006232199448,377.2792351138949),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(163.28006232199448,377.2792351138949),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g transform="translate(141.29882351911095,386.0500517706417),scale(0.23863636363636365),translate(-50,-50)">
+    <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 9"/>
+  </g>
+  <g>
+    <g transform="translate(204.3606945757861,401.2937907724243),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(204.3606945757861,401.2937907724243),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(222.4190433284333,432.58498490454394),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(222.4190433284333,432.58498490454394),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(201.1032690433308,442.8966868018835),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(201.1032690433308,442.8966868018835),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(179.31092129422973,452.15881447187843),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(179.31092129422973,452.15881447187843),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(239.22528570657266,461.7047353868148),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(239.22528570657266,461.7047353868148),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(255.0085641743754,489.05074603534075),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(255.0085641743754,489.05074603534075),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(233.77514199668488,499.54897956499696),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(233.77514199668488,499.54897956499696),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(269.93564101832703,514.9123709021029),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(269.93564101832703,514.9123709021029),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g transform="translate(310.95937341493277,491.2273079597594),scale(0.23863636363636365),translate(-50,-50)">
+    <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 9"/>
+  </g>
+  <g>
+    <g transform="translate(284.1323634368316,539.5079239898153),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(284.1323634368316,539.5079239898153),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(325.16138599976824,515.8198067685166),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(325.16138599976824,515.8198067685166),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(310.7056829414474,585.5441730457993),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(310.7056829414474,585.5441730457993),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(351.7432874248898,561.8511010503864),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(351.7432874248898,561.8511010503864),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(371.60078825582355,548.919715593866),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(371.60078825582355,548.919715593866),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g transform="translate(289.5780242145052,596.2755804927983),scale(0.23863636363636365),translate(-50,-50)">
+    <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 9"/>
+  </g>
+  <g transform="translate(390.98339353849474,535.2868258953537),scale(0.23863636363636365),translate(-50,-50)">
+    <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 9"/>
+  </g>
+  <g>
+    <g transform="translate(335.300289131845,628.1510296959651),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(335.300289131845,628.1510296959651),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(388.0281317641099,624.687256921137),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(388.0281317641099,624.687256921137),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(399.35145042825036,644.2968407813689),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(399.35145042825036,644.2968407813689),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g transform="translate(358.30170648059794,667.9969214997112),scale(0.23863636363636365),translate(-50,-50)">
+    <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 9"/>
+  </g>
+  <g>
+    <g transform="translate(421.03872960420244,681.8551079029028),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(421.03872960420244,681.8551079029028),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(441.02213025655414,669.1034902195406),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(441.02213025655414,669.1034902195406),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(400.5523371293702,741.186768109226),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(400.5523371293702,741.186768109226),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(451.5281515185676,734.6579669385104),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(451.5281515185676,734.6579669385104),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(479.9986200888698,783.9651297811535),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(479.9986200888698,783.9651297811535),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g transform="translate(493.6539828793782,807.6146819591307),scale(0.23863636363636365),translate(-50,-50)">
+    <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 9"/>
+  </g>
+  <g>
+    <g transform="translate(515.4177576740461,845.3073613037202),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(515.4177576740461,845.3073613037202),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(532.2086716646251,874.3877456855024),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(532.2086716646251,874.3877456855024),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(579.5634056331936,956.4027702024155),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(579.5634056331936,956.4027702024155),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g transform="translate(663.8993785714458,1102.4688726365239),scale(0.23863636363636365),translate(-50,-50)">
+    <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 9"/>
+  </g>
+  <g transform="translate(17.33684623908771,49.02482802093476),scale(0.23863636363636365),translate(-50,-50)">
+    <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 9"/>
+  </g>
+  <g>
+    <g transform="translate(170.20940899927794,203.58149168031753),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(170.20940899927794,203.58149168031753),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(220.046045344024,253.46874480914286),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(220.046045344024,253.46874480914286),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(201.65342834735765,268.3329303354766),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(201.65342834735765,268.3329303354766),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(182.2598842063865,281.8652182794841),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(182.2598842063865,281.8652182794841),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(234.47171851315534,267.90485851788435),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(234.47171851315534,267.90485851788435),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g transform="translate(216.16450517209321,282.8832032901637),scale(0.23863636363636365),translate(-50,-50)">
+    <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 9"/>
+  </g>
+  <g transform="translate(196.90308990684383,296.61283381731374),scale(0.23863636363636365),translate(-50,-50)">
+    <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 9"/>
+  </g>
+  <g>
+    <g transform="translate(273.479343247345,306.93492602993365),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(273.479343247345,306.93492602993365),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(255.3634804840908,322.16376710463794),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(255.3634804840908,322.16376710463794),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(362.3227065173023,328.84483120256505),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(362.3227065173023,328.84483120256505),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(328.84483120256505,362.3227065173023),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(328.84483120256505,362.3227065173023),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(310.9305890040428,377.8079346549854),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(310.9305890040428,377.8079346549854),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(292.28814927426697,392.4083389283293),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(292.28814927426697,392.4083389283293),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(391.64735626164793,358.16059945215704),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(391.64735626164793,358.16059945215704),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(407.2370418432699,340.33021966526786),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(407.2370418432699,340.33021966526786),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(358.160599452157,391.647356261648),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(358.160599452157,391.647356261648),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(410.9720943648165,377.48027495113973),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(410.9720943648165,377.48027495113973),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(427.5026724825767,394.00693524385423),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(427.5026724825767,394.00693524385423),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(394.0069352438542,427.50267248257677),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(394.0069352438542,427.50267248257677),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g transform="translate(443.1994237476316,376.2635655890259),scale(0.23863636363636365),translate(-50,-50)">
+    <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 9"/>
+  </g>
+  <g>
+    <g transform="translate(468.3355905012415,434.8315091348831),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(468.3355905012415,434.8315091348831),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(491.15116211609165,457.64309523763075),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(491.15116211609165,457.64309523763075),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(506.99742361263117,440.0230438475022),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(506.99742361263117,440.0230438475022),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(510.46822098648084,476.95709075143316),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(510.46822098648084,476.95709075143316),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(526.3521038459606,459.3684075250546),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(526.3521038459606,459.3684075250546),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(476.95709075143316,510.4682209864809),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(476.95709075143316,510.4682209864809),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(553.8130224240795,520.2958801107046),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(553.8130224240795,520.2958801107046),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(569.7713155748106,502.7696436886542),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(569.7713155748106,502.7696436886542),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(573.1341232989827,539.614624873134),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(573.1341232989827,539.614624873134),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(597.8971483527343,564.3748754078873),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(597.8971483527343,564.3748754078873),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g transform="translate(650.083489480073,616.5561261599884),scale(0.23863636363636365),translate(-50,-50)">
+    <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 9"/>
+  </g>
+  <g>
+    <g transform="translate(666.5481700105861,633.0193812637484),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(666.5481700105861,633.0193812637484),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(693.0991503166001,659.5682182284662),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(693.0991503166001,659.5682182284662),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(767.1360518367303,733.5999895304116),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(767.1360518367303,733.5999895304116),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g transform="translate(876.4765802672825,842.9346381795981),scale(0.23863636363636365),translate(-50,-50)">
+    <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 9"/>
+  </g>
+  <g transform="translate(177.4237948507337,129.6399294449015),scale(0.23863636363636365),translate(-50,-50)">
+    <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 9"/>
+  </g>
+  <g transform="translate(220.37166585355666,154.48268614152136),scale(0.23863636363636365),translate(-50,-50)">
+    <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 9"/>
+  </g>
+  <g>
+    <g transform="translate(256.5354336496109,175.3881405729436),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(256.5354336496109,175.3881405729436),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(312.01326631519413,152.8463521239857),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(312.01326631519413,152.8463521239857),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g transform="translate(321.6891201481253,131.26460182627557),scale(0.23863636363636365),translate(-50,-50)">
+    <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 9"/>
+  </g>
+  <g>
+    <g transform="translate(317.1490152833262,210.41303420168464),scale(0.2441860465116279),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 8"/>
+    </g>
+    <g transform="translate(317.1490152833262,210.41303420168464),scale(0.13636363636363635),translate(-50,-50)">
+      <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(340.79754054768597,169.45258691973737),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(340.79754054768597,169.45258691973737),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g transform="translate(350.66792578896286,147.94981811414723),scale(0.23863636363636365),translate(-50,-50)">
+    <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 9"/>
+  </g>
+  <g>
+    <g transform="translate(367.25803451698005,184.72015613550326),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(367.25803451698005,184.72015613550326),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(391.8804835443658,198.92848906049426),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(391.8804835443658,198.92848906049426),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(402.0230079611995,177.53973699621855),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(402.0230079611995,177.53973699621855),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(410.9991760269341,155.63590346715753),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(410.9991760269341,155.63590346715753),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(415.001823384287,212.27152628987096),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(415.001823384287,212.27152628987096),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(436.8671239883377,224.89038976072268),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(436.8671239883377,224.89038976072268),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(447.19472396299557,203.58155684695905),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(447.19472396299557,203.58155684695905),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(457.66124528451013,236.89156408800199),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(457.66124528451013,236.89156408800199),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g transform="translate(468.0616679236266,215.61471098230103),scale(0.23863636363636365),translate(-50,-50)">
+    <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 9"/>
+  </g>
+  <g>
+    <g transform="translate(477.52771256414945,248.35774489139),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(477.52771256414945,248.35774489139),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(487.9915846004224,227.10900262529123),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(487.9915846004224,227.10900262529123),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(514.9123709021029,269.93564101832715),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(514.9123709021029,269.93564101832715),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(525.4819463468914,248.73424384970136),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(525.4819463468914,248.73424384970136),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(535.1790116192934,227.1198483668835),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(535.1790116192934,227.1198483668835),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g transform="translate(543.9874657130779,205.12834311002186),scale(0.23863636363636365),translate(-50,-50)">
+    <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 9"/>
+  </g>
+  <g transform="translate(551.8926830719279,182.7962427722968),scale(0.23863636363636365),translate(-50,-50)">
+    <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 9"/>
+  </g>
+  <g>
+    <g transform="translate(549.7046649356258,290.0180953556616),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(549.7046649356258,290.0180953556616),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(573.3648221071223,303.6753459403717),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(573.3648221071223,303.6753459403717),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(597.0235496647452,317.332029243608),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(597.0235496647452,317.332029243608),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g transform="translate(607.7775404331832,296.21478184443964),scale(0.23863636363636365),translate(-50,-50)">
+    <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 9"/>
+  </g>
+  <g>
+    <g transform="translate(620.6810143984081,330.98820927601594),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(620.6810143984081,330.98820927601594),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(631.4788403606626,309.8912559126725),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(631.4788403606626,309.8912559126725),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(642.6707090893414,343.68185407649923),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(642.6707090893414,343.68185407649923),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(666.3261199926387,357.3372110087047),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(666.3261199926387,357.3372110087047),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(697.6822335411383,375.438126347517),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(697.6822335411383,375.438126347517),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g transform="translate(721.3356852581074,389.0926924463127),scale(0.23863636363636365),translate(-50,-50)">
+    <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 9"/>
+  </g>
+  <g>
+    <g transform="translate(748.5974088292927,404.8303765526778),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(748.5974088292927,404.8303765526778),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(772.7784659321355,418.78976964940745),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(772.7784659321355,418.78976964940745),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(841.1015240297811,458.23225301516146),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(841.1015240297811,458.23225301516146),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g transform="translate(963.1382471961651,528.6847585572673),scale(0.23863636363636365),translate(-50,-50)">
+    <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 9"/>
+  </g>
+  <g transform="translate(191.14393838719243,75.59097047818068),scale(0.23863636363636365),translate(-50,-50)">
+    <path d="M0,80 L100,80 L50,-6z" style="fill: #eee; stroke: red; stroke-width: 9"/>
+  </g>
+  <g>
+    <g transform="translate(267.7665853219109,47.31337849957262),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(267.7665853219109,47.31337849957262),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g transform="translate(294.2299103494978,54.38825265232945),scale(0.23863636363636365),translate(-50,-50)">
+    <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 9"/>
+  </g>
+  <g transform="translate(297.6048547936062,30.99471848757016),scale(0.23863636363636365),translate(-50,-50)">
+    <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 9"/>
+  </g>
+  <g transform="translate(349.2482725303414,69.10603544244447),scale(0.23863636363636365),translate(-50,-50)">
+    <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 9"/>
+  </g>
+  <g transform="translate(353.06629293924607,45.76235123044352),scale(0.23863636363636365),translate(-50,-50)">
+    <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 9"/>
+  </g>
+  <g transform="translate(355.32579412770764,22.21666103432118),scale(0.23863636363636365),translate(-50,-50)">
+    <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 9"/>
+  </g>
+  <g>
+    <g transform="translate(389.9216221253927,79.99142828517576),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(389.9216221253927,79.99142828517576),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(393.9859906569129,56.67926575116212),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(393.9859906569129,56.67926575116212),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(396.6578687461365,33.166777982986495),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(396.6578687461365,33.166777982986495),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(416.3364438871028,87.06235256576208),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(416.3364438871028,87.06235256576208),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g transform="translate(449.4947929823612,95.93972629596296),scale(0.23863636363636365),translate(-50,-50)">
+    <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 9"/>
+  </g>
+  <g transform="translate(453.8386929998903,72.66664115088373),scale(0.23863636363636365),translate(-50,-50)">
+    <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 9"/>
+  </g>
+  <g>
+    <g transform="translate(481.6697734800474,104.55491052877339),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(481.6697734800474,104.55491052877339),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(486.13559224447243,81.29997511141096),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(486.13559224447243,81.29997511141096),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(508.06931649974786,111.6243010388773),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(508.06931649974786,111.6243010388773),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g transform="translate(512.6235169797355,88.38294400089691),scale(0.23863636363636365),translate(-50,-50)">
+    <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 9"/>
+  </g>
+  <g transform="translate(516.1151262080598,64.958382447359),scale(0.23863636363636365),translate(-50,-50)">
+    <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 9"/>
+  </g>
+  <g>
+    <g transform="translate(530.9292124415258,117.74621597410751),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(530.9292124415258,117.74621597410751),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(558.3798060574511,125.09793038752991),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(558.3798060574511,125.09793038752991),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g transform="translate(601.32395067618,136.59980359865457),scale(0.23863636363636365),translate(-50,-50)">
+    <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 9"/>
+  </g>
+  <g transform="translate(606.1276564912977,113.3986950382025),scale(0.23863636363636365),translate(-50,-50)">
+    <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 9"/>
+  </g>
+  <g>
+    <g transform="translate(625.6632094339714,143.11900069795982),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(625.6632094339714,143.11900069795982),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(630.5196827932249,119.9267676973375),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(630.5196827932249,119.9267676973375),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g transform="translate(664.2312665317681,153.4497460460696),scale(0.23863636363636365),translate(-50,-50)">
+    <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 9"/>
+  </g>
+  <g>
+    <g transform="translate(693.5294030491073,161.297759148566),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(693.5294030491073,161.297759148566),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g transform="translate(748.6656354717584,176.06750484875965),scale(0.23863636363636365),translate(-50,-50)">
+    <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 9"/>
+  </g>
+  <g>
+    <g transform="translate(793.7499331884459,188.14500674569535),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(793.7499331884459,188.14500674569535),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g transform="translate(915.6918441667295,220.8131484457702),scale(0.23863636363636365),translate(-50,-50)">
+    <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 9"/>
+  </g>
+  <g transform="translate(236.17258767885795,-23.57630510503019),scale(0.23863636363636365),translate(-50,-50)">
+    <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 9"/>
+  </g>
+  <g>
+    <g transform="translate(273.0457820158314,-23.603220849583202),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(273.0457820158314,-23.603220849583202),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g transform="translate(334.8255191094293,-23.633417437345518),scale(0.23863636363636365),translate(-50,-50)">
+    <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 9"/>
+  </g>
+  <g transform="translate(332.3305412898051,-47.14952802194073),scale(0.23863636363636365),translate(-50,-50)">
+    <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 9"/>
+  </g>
+  <g>
+    <g transform="translate(361.7809481476903,-23.642969394781968),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(361.7809481476903,-23.642969394781968),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(432.6868347484562,-23.661800716343308),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(432.6868347484562,-23.661800716343308),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(430.7492680419182,-47.25299841416929),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(430.7492680419182,-47.25299841416929),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(474.1023812695313,-23.66992623337317),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(474.1023812695313,-23.66992623337317),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g transform="translate(530.194290072854,-23.678712819935857),scale(0.23863636363636365),translate(-50,-50)">
+    <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 9"/>
+  </g>
+  <g>
+    <g transform="translate(557.5200169859128,-23.682292621686123),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(557.5200169859128,-23.682292621686123),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g>
+    <g transform="translate(642.3004230690638,-23.691298748967313),scale(0.2441860465116279),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 8"/>
+    </g>
+    <g transform="translate(642.3004230690638,-23.691298748967313),scale(0.13636363636363635),translate(-50,-50)">
+      <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 11"/>
+    </g>
+  </g>
+  <g transform="translate(750.181086338479,-23.69959985638849),scale(0.23863636363636365),translate(-50,-50)">
+    <circle cx="50.00" cy="50.00" r="45" style="fill: gray; stroke: black; stroke-width: 9"/>
+  </g>
+
+  <circle cx="-19.868618765495352" cy="16.77015170925433" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="-23.57630510503021" cy="236.17258767885795" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="-23.65666945411634" cy="410.41486570339856" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="-47.23493565459387" cy="408.37343308999226" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="-23.669926233373214" cy="474.1023812695313" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="-23.689918386166415" cy="627.5126461675414" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="-47.34610945433319" cy="626.1722440773558" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="-23.696946563537438" cy="711.6448936959815" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="-23.703826520087684" cy="821.8504295845477" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="-23.70554694664139" cy="855.4363683976112" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="-23.712719818885216" cy="1034.2973654864081" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="23.718130702295905" cy="1233.0601973447965" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="-12.541578802665533" cy="36.928428089163646" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="42.085258137768555" cy="248.2011906649067" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="52.178931674010805" cy="285.9674091384522" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="28.777188115026362" cy="289.26090894587253" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="83.37259564751822" cy="402.55311487429265" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="60.06937774571538" cy="406.6837467335553" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="36.56707710031428" cy="409.4665418228206" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="101.74932541264515" cy="471.1921845468912" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="78.48868274723274" cy="475.6201495738003" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="55.03866597539165" cy="478.9005588299613" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="107.30008377023918" cy="491.92142870879246" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="127.4686789471396" cy="567.2316421775772" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="104.25409444479291" cy="571.9537427025862" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="140.9747442460572" cy="617.6577705208271" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="117.77965609008184" cy="622.4973514893875" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="148.04285517379927" cy="644.0457873177315" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="124.85695315908305" cy="648.9394458480373" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="101.5105071893545" cy="652.9986830460588" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="161.29775914856603" cy="693.5294030491073" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="172.47974453551285" cy="735.2725601604919" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="235.60668161979754" cy="787.7115535372751" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="189.81440518454068" cy="799.9815570276849" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="245.3639218223098" cy="824.1186479312161" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="199.56793449530863" cy="836.3896457520718" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="214.93678025702013" cy="893.7573387070707" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="272.3557969446134" cy="924.8363746472477" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="248.29197141616635" cy="1018.2588555619211" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="311.7905198792478" cy="1071.9895856366463" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="359.320081904908" cy="1249.3554653259616" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="70.80585885680685" cy="169.6659375111868" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="109.03065977272487" cy="236.03456363321942" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="138.31699218227837" cy="286.8247019934781" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="162.99041550863336" cy="329.5969120794718" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="141.45838523887812" cy="339.39582384821585" r="2" style="fill: black; stroke: black; stroke-width: 0"/>
+  <circle cx="184.72015613550317" cy="367.2580345169801" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="163.28006232199448" cy="377.2792351138949" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="141.29882351911095" cy="386.0500517706417" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="204.3606945757861" cy="401.2937907724243" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="222.4190433284333" cy="432.58498490454394" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="201.1032690433308" cy="442.8966868018835" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="179.31092129422973" cy="452.15881447187843" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="239.22528570657266" cy="461.7047353868148" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="255.0085641743754" cy="489.05074603534075" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="233.77514199668488" cy="499.54897956499696" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="269.93564101832703" cy="514.9123709021029" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="310.95937341493277" cy="491.2273079597594" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="284.1323634368316" cy="539.5079239898153" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="325.16138599976824" cy="515.8198067685166" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="310.7056829414474" cy="585.5441730457993" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="351.7432874248898" cy="561.8511010503864" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="371.60078825582355" cy="548.919715593866" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="289.5780242145052" cy="596.2755804927983" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="390.98339353849474" cy="535.2868258953537" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="335.300289131845" cy="628.1510296959651" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="388.0281317641099" cy="624.687256921137" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="399.35145042825036" cy="644.2968407813689" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="358.30170648059794" cy="667.9969214997112" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="421.03872960420244" cy="681.8551079029028" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="441.02213025655414" cy="669.1034902195406" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="400.5523371293702" cy="741.186768109226" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="451.5281515185676" cy="734.6579669385104" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="479.9986200888698" cy="783.9651297811535" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="493.6539828793782" cy="807.6146819591307" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="515.4177576740461" cy="845.3073613037202" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="532.2086716646251" cy="874.3877456855024" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="579.5634056331936" cy="956.4027702024155" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="663.8993785714458" cy="1102.4688726365239" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="17.33684623908771" cy="49.02482802093476" r="2" style="fill: black; stroke: black; stroke-width: 0"/>
+  <circle cx="170.20940899927794" cy="203.58149168031753" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="220.046045344024" cy="253.46874480914286" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="201.65342834735765" cy="268.3329303354766" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="182.2598842063865" cy="281.8652182794841" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="234.47171851315534" cy="267.90485851788435" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="216.16450517209321" cy="282.8832032901637" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="196.90308990684383" cy="296.61283381731374" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="273.479343247345" cy="306.93492602993365" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="255.3634804840908" cy="322.16376710463794" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="362.3227065173023" cy="328.84483120256505" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="328.84483120256505" cy="362.3227065173023" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="310.9305890040428" cy="377.8079346549854" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="292.28814927426697" cy="392.4083389283293" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="391.64735626164793" cy="358.16059945215704" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="407.2370418432699" cy="340.33021966526786" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="358.160599452157" cy="391.647356261648" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="410.9720943648165" cy="377.48027495113973" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="427.5026724825767" cy="394.00693524385423" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="394.0069352438542" cy="427.50267248257677" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="443.1994237476316" cy="376.2635655890259" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="468.3355905012415" cy="434.8315091348831" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="491.15116211609165" cy="457.64309523763075" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="506.99742361263117" cy="440.0230438475022" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="510.46822098648084" cy="476.95709075143316" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="526.3521038459606" cy="459.3684075250546" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="476.95709075143316" cy="510.4682209864809" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="553.8130224240795" cy="520.2958801107046" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="569.7713155748106" cy="502.7696436886542" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="573.1341232989827" cy="539.614624873134" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="597.8971483527343" cy="564.3748754078873" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="650.083489480073" cy="616.5561261599884" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="666.5481700105861" cy="633.0193812637484" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="693.0991503166001" cy="659.5682182284662" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="767.1360518367303" cy="733.5999895304116" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="876.4765802672825" cy="842.9346381795981" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="177.4237948507337" cy="129.6399294449015" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="220.37166585355666" cy="154.48268614152136" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="256.5354336496109" cy="175.3881405729436" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="312.01326631519413" cy="152.8463521239857" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="321.6891201481253" cy="131.26460182627557" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="317.1490152833262" cy="210.41303420168464" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="340.79754054768597" cy="169.45258691973737" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="350.66792578896286" cy="147.94981811414723" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="367.25803451698005" cy="184.72015613550326" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="391.8804835443658" cy="198.92848906049426" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="402.0230079611995" cy="177.53973699621855" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="410.9991760269341" cy="155.63590346715753" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="415.001823384287" cy="212.27152628987096" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="436.8671239883377" cy="224.89038976072268" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="447.19472396299557" cy="203.58155684695905" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="457.66124528451013" cy="236.89156408800199" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="468.0616679236266" cy="215.61471098230103" r="2" style="fill: black; stroke: black; stroke-width: 0"/>
+  <circle cx="477.52771256414945" cy="248.35774489139" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="487.9915846004224" cy="227.10900262529123" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="514.9123709021029" cy="269.93564101832715" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="525.4819463468914" cy="248.73424384970136" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="535.1790116192934" cy="227.1198483668835" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="543.9874657130779" cy="205.12834311002186" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="551.8926830719279" cy="182.7962427722968" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="549.7046649356258" cy="290.0180953556616" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="573.3648221071223" cy="303.6753459403717" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="597.0235496647452" cy="317.332029243608" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="607.7775404331832" cy="296.21478184443964" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="620.6810143984081" cy="330.98820927601594" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="631.4788403606626" cy="309.8912559126725" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="642.6707090893414" cy="343.68185407649923" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="666.3261199926387" cy="357.3372110087047" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="697.6822335411383" cy="375.438126347517" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="721.3356852581074" cy="389.0926924463127" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="748.5974088292927" cy="404.8303765526778" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="772.7784659321355" cy="418.78976964940745" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="841.1015240297811" cy="458.23225301516146" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="963.1382471961651" cy="528.6847585572673" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="191.14393838719243" cy="75.59097047818068" r="2" style="fill: black; stroke: black; stroke-width: 0"/>
+  <circle cx="267.7665853219109" cy="47.31337849957262" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="294.2299103494978" cy="54.38825265232945" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="297.6048547936062" cy="30.99471848757016" r="2" style="fill: black; stroke: black; stroke-width: 0"/>
+  <circle cx="349.2482725303414" cy="69.10603544244447" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="353.06629293924607" cy="45.76235123044352" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="355.32579412770764" cy="22.21666103432118" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="389.9216221253927" cy="79.99142828517576" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="393.9859906569129" cy="56.67926575116212" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="396.6578687461365" cy="33.166777982986495" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="416.3364438871028" cy="87.06235256576208" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="449.4947929823612" cy="95.93972629596296" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="453.8386929998903" cy="72.66664115088373" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="481.6697734800474" cy="104.55491052877339" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="486.13559224447243" cy="81.29997511141096" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="508.06931649974786" cy="111.6243010388773" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="512.6235169797355" cy="88.38294400089691" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="516.1151262080598" cy="64.958382447359" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="530.9292124415258" cy="117.74621597410751" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="558.3798060574511" cy="125.09793038752991" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="601.32395067618" cy="136.59980359865457" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="606.1276564912977" cy="113.3986950382025" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="625.6632094339714" cy="143.11900069795982" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="630.5196827932249" cy="119.9267676973375" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="664.2312665317681" cy="153.4497460460696" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="693.5294030491073" cy="161.297759148566" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="748.6656354717584" cy="176.06750484875965" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="793.7499331884459" cy="188.14500674569535" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="915.6918441667295" cy="220.8131484457702" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="236.17258767885795" cy="-23.57630510503019" r="2" style="fill: black; stroke: black; stroke-width: 0"/>
+  <circle cx="273.0457820158314" cy="-23.603220849583202" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="334.8255191094293" cy="-23.633417437345518" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="332.3305412898051" cy="-47.14952802194073" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="361.7809481476903" cy="-23.642969394781968" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="432.6868347484562" cy="-23.661800716343308" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="430.7492680419182" cy="-47.25299841416929" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="474.1023812695313" cy="-23.66992623337317" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="530.194290072854" cy="-23.678712819935857" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="557.5200169859128" cy="-23.682292621686123" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="642.3004230690638" cy="-23.691298748967313" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+  <circle cx="750.181086338479" cy="-23.69959985638849" r="2" style="fill: transparent; stroke: black; stroke-width: 0"/>
+
+  <g transform="scale(1.095),translate(-75,-75)">
+    <path d="M456.27,657.66C490.411,634.769 525.278,606.559 559.646,571.806C708.782,420.996 715.419,153.409 715.419,153.409L650.216,150.596L746.015,54.444L841.814,153.996L781.088,151.521C781.088,151.521 782.686,441.955 620.628,611.142C579.052,654.547 534.963,688.958 491.083,716.238L648.17,980.555L701.699,948.742L668.289,1080.04L536.993,1046.63L590.523,1014.82L432.427,748.801C281.771,823.032 148.53,820.496 148.53,820.496L146.769,885.568L53.452,789.769L150.76,692.971L150.268,755.294C150.268,755.294 262.184,763.308 398.639,691.947L131.07,241.729L77.54,273.542L110.95,142.246L242.246,175.655L188.717,207.468L456.27,657.66Z" style="fill:url(#_Linear1);stroke:black;stroke-width:7px;"/>
+    <defs>
+      <linearGradient id="_Linear1" x1="0" y1="0" x2="1" y2="0" gradientUnits="userSpaceOnUse" gradientTransform="matrix(591.373,92.7922,-92.7922,591.373,107.516,533.415)">
+        <stop offset="0" style="stop-color:rgb(237,0,0);stop-opacity:1"/>
+        <stop offset="1" style="stop-color:rgb(101,171,255);stop-opacity:1"/>
+      </linearGradient>
+    </defs>
+  </g>
+  <g/>
+</svg>

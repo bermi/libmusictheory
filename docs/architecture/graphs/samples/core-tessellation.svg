@@ -1,0 +1,195 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="360" viewBox="0 0 300 360">
+<rect x="0" y="0" width="300" height="360" fill="white" />
+<line class="vl-edge" x1="34.00" y1="66.00" x2="254.00" y2="66.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="34.00" y1="66.00" x2="100.00" y2="118.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="34.00" y1="66.00" x2="254.00" y2="162.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="34.00" y1="66.00" x2="100.00" y2="214.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="34.00" y1="66.00" x2="200.00" y2="300.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="34.00" y1="66.00" x2="22.00" y2="306.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="78.00" y1="66.00" x2="56.00" y2="118.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="78.00" y1="66.00" x2="144.00" y2="118.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="78.00" y1="66.00" x2="56.00" y2="214.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="78.00" y1="66.00" x2="144.00" y2="214.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="78.00" y1="66.00" x2="244.00" y2="300.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="78.00" y1="66.00" x2="66.00" y2="306.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="122.00" y1="66.00" x2="100.00" y2="118.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="122.00" y1="66.00" x2="188.00" y2="118.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="122.00" y1="66.00" x2="100.00" y2="214.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="122.00" y1="66.00" x2="188.00" y2="214.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="122.00" y1="66.00" x2="288.00" y2="300.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="122.00" y1="66.00" x2="110.00" y2="306.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="166.00" y1="66.00" x2="144.00" y2="118.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="166.00" y1="66.00" x2="232.00" y2="118.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="166.00" y1="66.00" x2="144.00" y2="214.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="166.00" y1="66.00" x2="232.00" y2="214.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="166.00" y1="66.00" x2="46.00" y2="252.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="166.00" y1="66.00" x2="154.00" y2="306.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="210.00" y1="66.00" x2="188.00" y2="118.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="210.00" y1="66.00" x2="276.00" y2="118.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="210.00" y1="66.00" x2="188.00" y2="214.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="210.00" y1="66.00" x2="276.00" y2="214.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="210.00" y1="66.00" x2="90.00" y2="252.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="210.00" y1="66.00" x2="198.00" y2="306.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="254.00" y1="66.00" x2="232.00" y2="118.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="254.00" y1="66.00" x2="34.00" y2="162.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="254.00" y1="66.00" x2="232.00" y2="214.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="254.00" y1="66.00" x2="134.00" y2="252.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="254.00" y1="66.00" x2="242.00" y2="306.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="56.00" y1="118.00" x2="276.00" y2="118.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="56.00" y1="118.00" x2="78.00" y2="162.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="56.00" y1="118.00" x2="276.00" y2="214.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="56.00" y1="118.00" x2="178.00" y2="252.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="56.00" y1="118.00" x2="44.00" y2="354.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="100.00" y1="118.00" x2="34.00" y2="162.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="100.00" y1="118.00" x2="122.00" y2="162.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="100.00" y1="118.00" x2="222.00" y2="252.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="100.00" y1="118.00" x2="88.00" y2="354.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="144.00" y1="118.00" x2="78.00" y2="162.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="144.00" y1="118.00" x2="166.00" y2="162.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="144.00" y1="118.00" x2="266.00" y2="252.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="144.00" y1="118.00" x2="132.00" y2="354.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="188.00" y1="118.00" x2="122.00" y2="162.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="188.00" y1="118.00" x2="210.00" y2="162.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="188.00" y1="118.00" x2="68.00" y2="300.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="188.00" y1="118.00" x2="176.00" y2="354.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="232.00" y1="118.00" x2="166.00" y2="162.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="232.00" y1="118.00" x2="254.00" y2="162.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="232.00" y1="118.00" x2="112.00" y2="300.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="232.00" y1="118.00" x2="220.00" y2="354.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="276.00" y1="118.00" x2="210.00" y2="162.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="276.00" y1="118.00" x2="56.00" y2="214.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="276.00" y1="118.00" x2="156.00" y2="300.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="276.00" y1="118.00" x2="264.00" y2="354.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="34.00" y1="162.00" x2="112.00" y2="300.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="34.00" y1="162.00" x2="110.00" y2="306.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="78.00" y1="162.00" x2="156.00" y2="300.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="78.00" y1="162.00" x2="154.00" y2="306.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="122.00" y1="162.00" x2="200.00" y2="300.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="122.00" y1="162.00" x2="198.00" y2="306.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="166.00" y1="162.00" x2="244.00" y2="300.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="166.00" y1="162.00" x2="242.00" y2="306.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="210.00" y1="162.00" x2="288.00" y2="300.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="210.00" y1="162.00" x2="44.00" y2="354.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="254.00" y1="162.00" x2="46.00" y2="252.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="254.00" y1="162.00" x2="88.00" y2="354.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="56.00" y1="214.00" x2="90.00" y2="252.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="56.00" y1="214.00" x2="132.00" y2="354.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="100.00" y1="214.00" x2="134.00" y2="252.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="100.00" y1="214.00" x2="176.00" y2="354.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="144.00" y1="214.00" x2="178.00" y2="252.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="144.00" y1="214.00" x2="220.00" y2="354.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="188.00" y1="214.00" x2="222.00" y2="252.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="188.00" y1="214.00" x2="264.00" y2="354.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="232.00" y1="214.00" x2="266.00" y2="252.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="232.00" y1="214.00" x2="22.00" y2="306.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="276.00" y1="214.00" x2="68.00" y2="300.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="276.00" y1="214.00" x2="66.00" y2="306.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="46.00" y1="252.00" x2="22.00" y2="306.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="90.00" y1="252.00" x2="66.00" y2="306.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="134.00" y1="252.00" x2="110.00" y2="306.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="178.00" y1="252.00" x2="154.00" y2="306.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="222.00" y1="252.00" x2="198.00" y2="306.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="266.00" y1="252.00" x2="242.00" y2="306.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="68.00" y1="300.00" x2="44.00" y2="354.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="112.00" y1="300.00" x2="88.00" y2="354.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="156.00" y1="300.00" x2="132.00" y2="354.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="200.00" y1="300.00" x2="176.00" y2="354.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="244.00" y1="300.00" x2="220.00" y2="354.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<line class="vl-edge" x1="288.00" y1="300.00" x2="264.00" y2="354.00" stroke="#222" stroke-width="0.7" opacity="0.5" />
+<polygon class="tile diatonic hexagon" points="46.56,73.25 34.00,80.50 21.44,73.25 21.44,58.75 34.00,51.50 46.56,58.75 " fill="#00C" stroke="black" stroke-width="1" />
+<text x="34.00" y="66.50" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="white" font-family="sans-serif">CD</text>
+<polygon class="tile diatonic hexagon" points="90.56,73.25 78.00,80.50 65.44,73.25 65.44,58.75 78.00,51.50 90.56,58.75 " fill="#a4f" stroke="black" stroke-width="1" />
+<text x="78.00" y="66.50" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="white" font-family="sans-serif">C#D</text>
+<polygon class="tile diatonic hexagon" points="134.56,73.25 122.00,80.50 109.44,73.25 109.44,58.75 122.00,51.50 134.56,58.75 " fill="#f0f" stroke="black" stroke-width="1" />
+<text x="122.00" y="66.50" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="white" font-family="sans-serif">DD</text>
+<polygon class="tile diatonic hexagon" points="178.56,73.25 166.00,80.50 153.44,73.25 153.44,58.75 166.00,51.50 178.56,58.75 " fill="#a16" stroke="black" stroke-width="1" />
+<text x="166.00" y="66.50" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="white" font-family="sans-serif">EbD</text>
+<polygon class="tile diatonic hexagon" points="222.56,73.25 210.00,80.50 197.44,73.25 197.44,58.75 210.00,51.50 222.56,58.75 " fill="#e02" stroke="black" stroke-width="1" />
+<text x="210.00" y="66.50" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="white" font-family="sans-serif">ED</text>
+<polygon class="tile diatonic hexagon" points="266.56,73.25 254.00,80.50 241.44,73.25 241.44,58.75 254.00,51.50 266.56,58.75 " fill="#f91" stroke="black" stroke-width="1" />
+<text x="254.00" y="66.50" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="white" font-family="sans-serif">FD</text>
+<polygon class="tile diatonic hexagon" points="68.56,125.25 56.00,132.50 43.44,125.25 43.44,110.75 56.00,103.50 68.56,110.75 " fill="#c81" stroke="black" stroke-width="1" />
+<text x="56.00" y="118.50" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="white" font-family="sans-serif">F#D</text>
+<polygon class="tile diatonic hexagon" points="112.56,125.25 100.00,132.50 87.44,125.25 87.44,110.75 100.00,103.50 112.56,110.75 " fill="#1e0" stroke="black" stroke-width="1" />
+<text x="100.00" y="118.50" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="white" font-family="sans-serif">GD</text>
+<polygon class="tile diatonic hexagon" points="156.56,125.25 144.00,132.50 131.44,125.25 131.44,110.75 144.00,103.50 156.56,110.75 " fill="#094" stroke="black" stroke-width="1" />
+<text x="144.00" y="118.50" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="white" font-family="sans-serif">AbD</text>
+<polygon class="tile diatonic hexagon" points="200.56,125.25 188.00,132.50 175.44,125.25 175.44,110.75 188.00,103.50 200.56,110.75 " fill="#0bb" stroke="black" stroke-width="1" />
+<text x="188.00" y="118.50" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="white" font-family="sans-serif">AD</text>
+<polygon class="tile diatonic hexagon" points="244.56,125.25 232.00,132.50 219.44,125.25 219.44,110.75 232.00,103.50 244.56,110.75 " fill="#16b" stroke="black" stroke-width="1" />
+<text x="232.00" y="118.50" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="white" font-family="sans-serif">BbD</text>
+<polygon class="tile diatonic hexagon" points="288.56,125.25 276.00,132.50 263.44,125.25 263.44,110.75 276.00,103.50 288.56,110.75 " fill="#28f" stroke="black" stroke-width="1" />
+<text x="276.00" y="118.50" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="white" font-family="sans-serif">BD</text>
+<polygon class="tile acoustic square" points="42.13,170.13 25.87,170.13 25.87,153.87 42.13,153.87 " fill="#00C" stroke="black" stroke-width="1" />
+<text x="34.00" y="162.50" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="white" font-family="sans-serif">CA</text>
+<polygon class="tile acoustic square" points="86.13,170.13 69.87,170.13 69.87,153.87 86.13,153.87 " fill="#a4f" stroke="black" stroke-width="1" />
+<text x="78.00" y="162.50" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="white" font-family="sans-serif">C#A</text>
+<polygon class="tile acoustic square" points="130.13,170.13 113.87,170.13 113.87,153.87 130.13,153.87 " fill="#f0f" stroke="black" stroke-width="1" />
+<text x="122.00" y="162.50" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="white" font-family="sans-serif">DA</text>
+<polygon class="tile acoustic square" points="174.13,170.13 157.87,170.13 157.87,153.87 174.13,153.87 " fill="#a16" stroke="black" stroke-width="1" />
+<text x="166.00" y="162.50" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="white" font-family="sans-serif">EbA</text>
+<polygon class="tile acoustic square" points="218.13,170.13 201.87,170.13 201.87,153.87 218.13,153.87 " fill="#e02" stroke="black" stroke-width="1" />
+<text x="210.00" y="162.50" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="white" font-family="sans-serif">EA</text>
+<polygon class="tile acoustic square" points="262.13,170.13 245.87,170.13 245.87,153.87 262.13,153.87 " fill="#f91" stroke="black" stroke-width="1" />
+<text x="254.00" y="162.50" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="white" font-family="sans-serif">FA</text>
+<polygon class="tile acoustic square" points="64.13,222.13 47.87,222.13 47.87,205.87 64.13,205.87 " fill="#c81" stroke="black" stroke-width="1" />
+<text x="56.00" y="214.50" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="white" font-family="sans-serif">F#A</text>
+<polygon class="tile acoustic square" points="108.13,222.13 91.87,222.13 91.87,205.87 108.13,205.87 " fill="#1e0" stroke="black" stroke-width="1" />
+<text x="100.00" y="214.50" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="white" font-family="sans-serif">GA</text>
+<polygon class="tile acoustic square" points="152.13,222.13 135.87,222.13 135.87,205.87 152.13,205.87 " fill="#094" stroke="black" stroke-width="1" />
+<text x="144.00" y="214.50" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="white" font-family="sans-serif">AbA</text>
+<polygon class="tile acoustic square" points="196.13,222.13 179.87,222.13 179.87,205.87 196.13,205.87 " fill="#0bb" stroke="black" stroke-width="1" />
+<text x="188.00" y="214.50" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="white" font-family="sans-serif">AA</text>
+<polygon class="tile acoustic square" points="240.13,222.13 223.87,222.13 223.87,205.87 240.13,205.87 " fill="#16b" stroke="black" stroke-width="1" />
+<text x="232.00" y="214.50" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="white" font-family="sans-serif">BbA</text>
+<polygon class="tile acoustic square" points="284.13,222.13 267.87,222.13 267.87,205.87 284.13,205.87 " fill="#28f" stroke="black" stroke-width="1" />
+<text x="276.00" y="214.50" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="white" font-family="sans-serif">BA</text>
+<polygon class="tile harmonic_minor triangle" points="46.00,239.50 56.83,258.25 35.17,258.25 " fill="#00C" stroke="black" stroke-width="1" />
+<text x="46.00" y="252.50" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="white" font-family="sans-serif">Cm</text>
+<polygon class="tile harmonic_minor triangle" points="90.00,239.50 100.83,258.25 79.17,258.25 " fill="#a4f" stroke="black" stroke-width="1" />
+<text x="90.00" y="252.50" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="white" font-family="sans-serif">C#m</text>
+<polygon class="tile harmonic_minor triangle" points="134.00,239.50 144.83,258.25 123.17,258.25 " fill="#f0f" stroke="black" stroke-width="1" />
+<text x="134.00" y="252.50" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="white" font-family="sans-serif">Dm</text>
+<polygon class="tile harmonic_minor triangle" points="178.00,239.50 188.83,258.25 167.17,258.25 " fill="#a16" stroke="black" stroke-width="1" />
+<text x="178.00" y="252.50" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="white" font-family="sans-serif">Ebm</text>
+<polygon class="tile harmonic_minor triangle" points="222.00,239.50 232.83,258.25 211.17,258.25 " fill="#e02" stroke="black" stroke-width="1" />
+<text x="222.00" y="252.50" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="white" font-family="sans-serif">Em</text>
+<polygon class="tile harmonic_minor triangle" points="266.00,239.50 276.83,258.25 255.17,258.25 " fill="#f91" stroke="black" stroke-width="1" />
+<text x="266.00" y="252.50" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="white" font-family="sans-serif">Fm</text>
+<polygon class="tile harmonic_minor triangle" points="68.00,287.50 78.83,306.25 57.17,306.25 " fill="#c81" stroke="black" stroke-width="1" />
+<text x="68.00" y="300.50" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="white" font-family="sans-serif">F#m</text>
+<polygon class="tile harmonic_minor triangle" points="112.00,287.50 122.83,306.25 101.17,306.25 " fill="#1e0" stroke="black" stroke-width="1" />
+<text x="112.00" y="300.50" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="white" font-family="sans-serif">Gm</text>
+<polygon class="tile harmonic_minor triangle" points="156.00,287.50 166.83,306.25 145.17,306.25 " fill="#094" stroke="black" stroke-width="1" />
+<text x="156.00" y="300.50" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="white" font-family="sans-serif">Abm</text>
+<polygon class="tile harmonic_minor triangle" points="200.00,287.50 210.83,306.25 189.17,306.25 " fill="#0bb" stroke="black" stroke-width="1" />
+<text x="200.00" y="300.50" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="white" font-family="sans-serif">Am</text>
+<polygon class="tile harmonic_minor triangle" points="244.00,287.50 254.83,306.25 233.17,306.25 " fill="#16b" stroke="black" stroke-width="1" />
+<text x="244.00" y="300.50" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="white" font-family="sans-serif">Bbm</text>
+<polygon class="tile harmonic_minor triangle" points="288.00,287.50 298.83,306.25 277.17,306.25 " fill="#28f" stroke="black" stroke-width="1" />
+<text x="288.00" y="300.50" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="white" font-family="sans-serif">Bm</text>
+<polygon class="tile harmonic_major diamond" points="34.00,306.00 22.00,318.00 10.00,306.00 22.00,294.00 " fill="#00C" stroke="black" stroke-width="1" />
+<text x="22.00" y="306.50" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="white" font-family="sans-serif">CM</text>
+<polygon class="tile harmonic_major diamond" points="78.00,306.00 66.00,318.00 54.00,306.00 66.00,294.00 " fill="#a4f" stroke="black" stroke-width="1" />
+<text x="66.00" y="306.50" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="white" font-family="sans-serif">C#M</text>
+<polygon class="tile harmonic_major diamond" points="122.00,306.00 110.00,318.00 98.00,306.00 110.00,294.00 " fill="#f0f" stroke="black" stroke-width="1" />
+<text x="110.00" y="306.50" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="white" font-family="sans-serif">DM</text>
+<polygon class="tile harmonic_major diamond" points="166.00,306.00 154.00,318.00 142.00,306.00 154.00,294.00 " fill="#a16" stroke="black" stroke-width="1" />
+<text x="154.00" y="306.50" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="white" font-family="sans-serif">EbM</text>
+<polygon class="tile harmonic_major diamond" points="210.00,306.00 198.00,318.00 186.00,306.00 198.00,294.00 " fill="#e02" stroke="black" stroke-width="1" />
+<text x="198.00" y="306.50" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="white" font-family="sans-serif">EM</text>
+<polygon class="tile harmonic_major diamond" points="254.00,306.00 242.00,318.00 230.00,306.00 242.00,294.00 " fill="#f91" stroke="black" stroke-width="1" />
+<text x="242.00" y="306.50" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="white" font-family="sans-serif">FM</text>
+<polygon class="tile harmonic_major diamond" points="56.00,354.00 44.00,366.00 32.00,354.00 44.00,342.00 " fill="#c81" stroke="black" stroke-width="1" />
+<text x="44.00" y="354.50" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="white" font-family="sans-serif">F#M</text>
+<polygon class="tile harmonic_major diamond" points="100.00,354.00 88.00,366.00 76.00,354.00 88.00,342.00 " fill="#1e0" stroke="black" stroke-width="1" />
+<text x="88.00" y="354.50" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="white" font-family="sans-serif">GM</text>
+<polygon class="tile harmonic_major diamond" points="144.00,354.00 132.00,366.00 120.00,354.00 132.00,342.00 " fill="#094" stroke="black" stroke-width="1" />
+<text x="132.00" y="354.50" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="white" font-family="sans-serif">AbM</text>
+<polygon class="tile harmonic_major diamond" points="188.00,354.00 176.00,366.00 164.00,354.00 176.00,342.00 " fill="#0bb" stroke="black" stroke-width="1" />
+<text x="176.00" y="354.50" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="white" font-family="sans-serif">AM</text>
+<polygon class="tile harmonic_major diamond" points="232.00,354.00 220.00,366.00 208.00,354.00 220.00,342.00 " fill="#16b" stroke="black" stroke-width="1" />
+<text x="220.00" y="354.50" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="white" font-family="sans-serif">BbM</text>
+<polygon class="tile harmonic_major diamond" points="276.00,354.00 264.00,366.00 252.00,354.00 264.00,342.00 " fill="#28f" stroke="black" stroke-width="1" />
+<text x="264.00" y="354.50" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="white" font-family="sans-serif">BM</text>
+</svg>
