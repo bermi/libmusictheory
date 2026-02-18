@@ -89,4 +89,13 @@ For each graph family, document alternative generation approaches used in existi
 
 ## Implementation History (Point-in-Time)
 
-_To be filled at completion._
+- Commit: `613206d3c87c307aa197c3734844d12b43e3ccb7`
+- Date: `2026-02-18 15:44:03 +0100`
+- Shipped behavior:
+- Added architecture summary and per-graph documents under `docs/architecture/graphs/` covering current renderer inventory, alternative programmatic approaches, backend-swappable SVG/bitmap strategy, and migration path to fully algorithmic generation.
+- Added reproducible sample exporter `export_graph_samples.zig` and generated sample SVG assets under `docs/architecture/graphs/samples/`.
+- Updated `verify.sh` with `Graph Architecture Docs` gates requiring architecture documents, sample artifacts, and the sample exporter to exist.
+- Completion gates:
+- `./verify.sh`
+- `zig build verify`
+- `zig build test`
