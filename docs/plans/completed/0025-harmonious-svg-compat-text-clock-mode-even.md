@@ -98,4 +98,11 @@ No work proceeds to 0026 until every kind in this plan meets the 3-point complet
 
 ## Implementation History (Point-in-Time)
 
-_To be filled when implementation is complete._
+- Commit: `0fff14eee024ea3dbce6ae8bf90243b49ed0eca3`
+- Date: `2026-02-18 03:42:47 +0100`
+- Shipped behavior:
+- Implemented exact compatibility for text/clock/mode/even kinds: `vert-text-black` (115/115), `vert-text-b2t-black` (115/115), `center-square-text` (24/24), `even` (3/3), `opc` (7/7), `optc` (885/885), `oc` (564/564).
+- Integrated these kinds into compatibility API enumeration and WASM validation output.
+- Completion gates:
+- `./verify.sh`
+- `zig build verify`

@@ -326,4 +326,12 @@ Do not start the next step until the current step has full exact parity.
 
 ## Implementation History (Point-in-Time)
 
-_To be filled when implementation is complete._
+- Commit: `0fff14eee024ea3dbce6ae8bf90243b49ed0eca3`
+- Date: `2026-02-18 03:42:47 +0100`
+- Shipped behavior:
+- Delivered exact staff/fret parity for all plan kinds: `scale` (494/494), `chord` (1698/1698), `chord-clipped` (2/2), `wide-chord` (1/1), `grand-chord` (2032/2032), `eadgbe` (2278/2278).
+- Added deterministic compatibility renderers (`src/svg/scale_nomod_compat.zig`, `src/svg/chord_compat.zig`, `src/svg/fret_compat.zig`) and generated lookup assets under `src/generated/`.
+- Kept strict compatibility validation integrated into test and Playwright flows.
+- Completion gates:
+- `./verify.sh`
+- `zig build verify`

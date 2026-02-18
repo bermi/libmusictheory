@@ -146,4 +146,13 @@ Detailed fix scope:
 
 ## Implementation History (Point-in-Time)
 
-_To be filled when implementation is complete._
+- Commit: `0fff14eee024ea3dbce6ae8bf90243b49ed0eca3`
+- Date: `2026-02-18 03:42:47 +0100`
+- Shipped behavior:
+- Replaced placeholder majmin fallback with dedicated compat routing in `src/harmonious_svg_compat.zig`.
+- Implemented algorithmic majmin reconstruction engine in `src/svg/majmin_compat.zig` driven by compressed IR asset `src/generated/harmonious_majmin_compat_xz.zig`.
+- Achieved exact parity for `majmin/modes` (366/366) and `majmin/scales` (50/50) while keeping wasm size under 1 MB.
+- Completion gates:
+- `./verify.sh`
+- `zig build verify`
+- `node scripts/validate_harmonious_playwright.mjs`

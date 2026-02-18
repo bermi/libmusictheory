@@ -77,4 +77,12 @@ A kind may only be marked complete when:
 
 ## Implementation History (Point-in-Time)
 
-_To be filled when implementation is complete._
+- Commit: `0fff14eee024ea3dbce6ae8bf90243b49ed0eca3`
+- Date: `2026-02-18 03:42:47 +0100`
+- Shipped behavior:
+- Added compatibility manifest-driven API (`kind`/`directory`/`image` enumeration + generation) through Zig and C ABI.
+- Added compatibility test harness at `src/tests/svg_harmonious_compat_test.zig` with strict opt-in byte matching when references are present.
+- Added WASM validation surface (`examples/wasm-demo/validation.html`, `examples/wasm-demo/validation.js`) to generate all kinds from WASM APIs and report per-kind parity.
+- Completion gates:
+- `./verify.sh`
+- `zig build verify`

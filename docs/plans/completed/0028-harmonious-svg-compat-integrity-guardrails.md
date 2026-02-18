@@ -117,4 +117,14 @@ For each kind group (`0025`, `0026`, `0027`):
 
 ## Implementation History (Point-in-Time)
 
-_To be filled when this plan is completed._
+- Commit: `0fff14eee024ea3dbce6ae8bf90243b49ed0eca3`
+- Date: `2026-02-18 03:42:47 +0100`
+- Shipped behavior:
+- Hardened `verify.sh` with anti-embed scans, majmin placeholder guard, scale/chord anti-hardcoding guards, wasm size gate (`< 1 MB`), and Playwright sampled/full compatibility gates.
+- Added headless Playwright runner `scripts/validate_harmonious_playwright.mjs` that enforces mismatch-preview persistence and fails on any mismatch/missing reference.
+- Final parity baseline is strict: `8634/8634` exact matches, `mismatches=0`, `missing_ref=0`, wasm artifact `885811` bytes.
+- Completion gates:
+- `./verify.sh`
+- `zig build verify`
+- `zig build test`
+- `node scripts/validate_harmonious_playwright.mjs`
