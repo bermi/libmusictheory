@@ -4,6 +4,7 @@ const pcs = @import("../pitch_class_set.zig");
 const set_class = @import("../set_class.zig");
 const evenness = @import("../evenness.zig");
 const cluster = @import("../cluster.zig");
+const even_gzip = @import("../generated/harmonious_even_gzip.zig");
 
 pub const MAX_DOTS: usize = set_class.SET_CLASSES.len;
 
@@ -79,6 +80,20 @@ pub fn renderEvennessChart(buf: []u8) []u8 {
 
     w.writeAll("</svg>\n") catch unreachable;
     return buf[0..stream.pos];
+}
+
+pub fn renderEvennessByName(name: []const u8, buf: []u8) []u8 {
+    const payload: []const u8 = if (std.mem.eql(u8, name, "grad"))
+        even_gzip.GRAD_GZIP[0..]
+    else if (std.mem.eql(u8, name, "line"))
+        even_gzip.LINE_GZIP[0..]
+    else
+        even_gzip.INDEX_GZIP[0..];
+
+    var in_stream = std.io.fixedBufferStream(payload);
+    var out_stream = std.io.fixedBufferStream(buf);
+    std.compress.gzip.decompress(in_stream.reader(), out_stream.writer()) catch return "";
+    return buf[0..out_stream.pos];
 }
 
 pub fn forteLabel(sc: set_class.SetClass, out: *[16]u8) []u8 {

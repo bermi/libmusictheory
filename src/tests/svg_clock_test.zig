@@ -41,3 +41,57 @@ test "optc cluster coloring and center label" {
 
     try testing.expect(std.mem.indexOf(u8, svg, ">0125<") != null);
 }
+
+test "optc harmonious compat emits xml prolog and variant glyph path" {
+    const set = pcs.fromList(&[_]pitch.PitchClass{ 0, 1 });
+    var buf: [16384]u8 = undefined;
+    const svg = clock.renderOPTCHarmoniousCompat(
+        set,
+        "01",
+        .{
+            .cluster_mask = 0,
+            .dash_mask = 0,
+            .black_mask = 0,
+        },
+        &buf,
+    );
+
+    try testing.expect(std.mem.startsWith(u8, svg, "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!DOCTYPE svg"));
+    try testing.expect(std.mem.indexOf(u8, svg, "translate(33, 29.5), scale(0.24)") != null);
+    try testing.expect(std.mem.indexOf(u8, svg, "fill=\"transparent\" />\n\n<circle cx=\"92.00\"") != null);
+}
+
+test "optc harmonious compat renders spoke metadata overlays" {
+    const set = pcs.fromList(&[_]pitch.PitchClass{ 0, 6 });
+    var buf: [16384]u8 = undefined;
+    const svg = clock.renderOPTCHarmoniousCompat(
+        set,
+        "06",
+        .{
+            .cluster_mask = 0,
+            .dash_mask = 65,
+            .black_mask = 65,
+        },
+        &buf,
+    );
+
+    try testing.expect(std.mem.indexOf(u8, svg, "stroke-dasharray=\"1.6,0.8\" d=\"M50,18L50,30\"") != null);
+    try testing.expect(std.mem.indexOf(u8, svg, "stroke=\"black\" stroke-width=\"9\" fill=\"transparent\"  d=\"M50,82L50,70\"") != null);
+}
+
+test "optc harmonious compat adds white spokes for large A-label variants" {
+    const set = pcs.fromList(&[_]pitch.PitchClass{ 0, 1, 3, 5, 6, 8, 10 });
+    var buf: [16384]u8 = undefined;
+    const svg = clock.renderOPTCHarmoniousCompat(
+        set,
+        "013568A",
+        .{
+            .cluster_mask = 0,
+            .dash_mask = 2708,
+            .black_mask = 2708,
+        },
+        &buf,
+    );
+
+    try testing.expect(std.mem.indexOf(u8, svg, "stroke=\"white\" stroke-width=\"5\" fill=\"transparent\"") != null);
+}

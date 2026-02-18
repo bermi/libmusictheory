@@ -105,7 +105,8 @@ test "vertical and center text svg validity" {
     var center_buf: [4096]u8 = undefined;
     const center = text_misc.renderCenterSquareGlyph("A", &center_buf);
     try testing.expect(std.mem.startsWith(u8, center, "<svg"));
-    try testing.expect(std.mem.indexOf(u8, center, ">A<") != null);
+    try testing.expect(std.mem.indexOf(u8, center, "translate(18,0)") != null);
+    try testing.expect(std.mem.indexOf(u8, center, "style=\"fill: gray\"") != null);
 }
 
 test "n tet chart svg validity" {

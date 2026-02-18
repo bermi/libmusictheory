@@ -9,8 +9,8 @@ Build `libmusictheory`, a Zig library exposing a C ABI that implements the compl
 
 ## Lifecycle Status
 
-- Draft: 0001
-- In progress: none
+- Draft: 0001, 0027, 0029, 0030, 0031
+- In progress: 0024, 0025, 0026, 0028
 - Completed: 0002, 0003, 0004, 0005, 0006, 0007, 0008, 0009, 0010, 0011, 0012, 0013, 0014, 0015, 0016, 0017, 0018, 0019, 0020, 0021, 0022, 0023
 
 ## Plan Dependencies (Execute in Order)
@@ -59,6 +59,22 @@ Build `libmusictheory`, a Zig library exposing a C ABI that implements the compl
      ↓ depends on ALL above
 0023-wasm-interactive-docs → Browser-hosted WASM interactive documentation demo
      ↓ depends on 0020, 0022
+0024-harmonious-svg-compat-foundation → compatibility API + exact-match harness + wasm validation page
+     ↓ depends on 0020, 0022, 0023
+0028-harmonious-svg-compat-integrity-guardrails → anti-cheating constraints + wasm size gate + verification hardening
+     ↓ depends on 0024
+0025-harmonious-svg-compat-text-clock-mode-even → exact parity for text/clock/mode/even kinds
+     ↓ depends on 0028
+0026-harmonious-svg-compat-staff-fret → exact parity for staff/chord/fret kinds
+     ↓ depends on 0025
+0027-harmonious-svg-compat-majmin → exact parity for majmin kinds and closure
+     ↓ depends on 0026
+0029-rendering-ir-dual-backend-foundation → shared deterministic rendering IR (SVG parity preserved)
+     ↓ depends on 0024, 0028 (parallel/additive track)
+0030-zig-raster-backend-native → optional native raster backend from shared IR
+     ↓ depends on 0029
+0031-compat-visual-diff-diagnostics → Playwright visual diff diagnostics (non-blocking)
+     ↓ depends on 0024, 0028 (parallel/additive track)
 ```
 
 ## Dependency Graph (Visual)
@@ -95,6 +111,30 @@ Build `libmusictheory`, a Zig library exposing a C ABI that implements the compl
      0022 (Tests)
        │
      0023 (WASM Docs)
+       │
+     0024 (SVG Compat Foundation)
+       │
+     0028 (Compat Integrity Guardrails)
+       │
+     0025 (Compat Text/Clock/Mode/Even)
+       │
+     0026 (Compat Staff/Fret)
+       │
+     0027 (Compat MajMin)
+```
+
+Supplementary additive track (does not replace strict SVG parity):
+
+```
+0024 + 0028
+   │
+ 0029 (Rendering IR)
+   │
+ 0030 (Native Raster Backend, optional)
+
+0024 + 0028
+   │
+ 0031 (Visual Diff Diagnostics, non-blocking)
 ```
 
 ## Phase Summary
@@ -119,10 +159,25 @@ All visualization outputs: clock diagrams, staff notation, fret diagrams, tessel
 
 **Deliverable**: Pure Zig SVG generation for all visualization types.
 
-### Phase 5: Integration (Plans 0020-0022)
+### Phase 5: Integration (Plans 0020-0023)
 C ABI wrapper, compile-time table generation, and comprehensive testing.
 
 **Deliverable**: `libmusictheory.h` + `libmusictheory.a` usable from any language.
+
+### Phase 6: Harmonious SVG Exact Compatibility (Plans 0024-0027)
+Compatibility-driven exact byte match against local harmoniousapp.net SVG references, with API-driven filename/argument generation and WASM validation coverage per kind.
+
+**Deliverable**: exact compatibility verification for all required `tmp/harmoniousapp.net/<kind>/` SVG families.
+
+### Phase 6.5: Harmonious SVG Integrity Guardrails (Plan 0028)
+Lock verification so exact-match progress cannot be faked with embedded reference payloads or oversized wasm artifacts.
+
+**Deliverable**: anti-cheating constraints enforced by verification (`wasm < 1MB`, no reference-svg embedding in generation path, strict Playwright validation).
+
+### Phase 7 (Additive): Shared Rendering IR + Native Raster + Visual Diagnostics (Plans 0029-0031)
+Add optional rendering infrastructure and diagnostics for native/mobile/plugin consumers while keeping SVG byte-parity as the sole compatibility completion target.
+
+**Deliverable**: backend-agnostic rendering pipeline and optional raster/visual-debug tooling that does not relax exact SVG verification.
 
 ## Research Documents Index
 
@@ -197,6 +252,8 @@ Key source files:
 8. C ABI compiles and links from C, Python, and other languages
 9. Compile-time tables match runtime computation results
 10. All static data can be verified against site content
+11. All required harmoniousapp.net SVG kinds can be generated through library APIs and match reference SVG bytes exactly
+12. Any raster/visual diagnostic additions remain additive and must not weaken strict SVG parity gates
 
 ## Verification Protocol
 
@@ -213,7 +270,8 @@ Before implementing any step in this plan:
 All of the following must pass before this plan is considered complete:
 
 - [ ] `./verify.sh` passes
-- [ ] All 22 sub-plans (0002–0022) completed and verified
+- [ ] All required sub-plans (0002–0028) completed and verified
+- [ ] If additive rendering track is adopted, sub-plans 0029–0031 completed and verified
 - [ ] All 336 set classes verified against music21
 - [ ] All 17 modes verified
 - [ ] All ~100 chord types verified against tonal-ts

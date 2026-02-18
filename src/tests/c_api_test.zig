@@ -44,6 +44,14 @@ extern fn lmt_midi_to_fret_positions(note: u8, tuning_ptr: [*c]const u8, out: [*
 extern fn lmt_svg_clock_optc(set: u16, buf: [*c]u8, buf_size: u32) callconv(.c) u32;
 extern fn lmt_svg_fret(frets_ptr: [*c]const i8, buf: [*c]u8, buf_size: u32) callconv(.c) u32;
 extern fn lmt_svg_chord_staff(chord_kind: u8, root: u8, buf: [*c]u8, buf_size: u32) callconv(.c) u32;
+extern fn lmt_wasm_scratch_ptr() callconv(.c) [*c]u8;
+extern fn lmt_wasm_scratch_size() callconv(.c) u32;
+extern fn lmt_svg_compat_kind_count() callconv(.c) u32;
+extern fn lmt_svg_compat_kind_name(kind_index: u32) callconv(.c) [*c]const u8;
+extern fn lmt_svg_compat_kind_directory(kind_index: u32) callconv(.c) [*c]const u8;
+extern fn lmt_svg_compat_image_count(kind_index: u32) callconv(.c) u32;
+extern fn lmt_svg_compat_image_name(kind_index: u32, image_index: u32, buf: [*c]u8, buf_size: u32) callconv(.c) u32;
+extern fn lmt_svg_compat_generate(kind_index: u32, image_index: u32, buf: [*c]u8, buf_size: u32) callconv(.c) u32;
 
 test "c abi header layout and constants" {
     try testing.expectEqual(@as(usize, 2), @sizeOf(c.lmt_pitch_class_set));
@@ -142,4 +150,31 @@ test "c abi svg generators" {
     const len3 = lmt_svg_chord_staff(c.LMT_CHORD_MAJOR, 0, @ptrCast(&svg_buf), @intCast(svg_buf.len));
     try testing.expect(len3 > 0);
     try testing.expect(std.mem.startsWith(u8, svg_buf[0..4], "<svg"));
+}
+
+test "c abi harmonious compatibility surface" {
+    try testing.expect(lmt_wasm_scratch_ptr() != null);
+    try testing.expect(lmt_wasm_scratch_size() >= 4 * 1024 * 1024);
+
+    const kind_count = lmt_svg_compat_kind_count();
+    try testing.expect(kind_count >= 10);
+
+    const kind_name = std.mem.sliceTo(@as([*:0]const u8, @ptrCast(lmt_svg_compat_kind_name(0))), 0);
+    try testing.expect(kind_name.len > 0);
+
+    const kind_dir = std.mem.sliceTo(@as([*:0]const u8, @ptrCast(lmt_svg_compat_kind_directory(0))), 0);
+    try testing.expect(kind_dir.len > 0);
+
+    const image_count = lmt_svg_compat_image_count(0);
+    try testing.expect(image_count > 0);
+
+    var name_buf: [512]u8 = [_]u8{0} ** 512;
+    const name_len = lmt_svg_compat_image_name(0, 0, @ptrCast(&name_buf), @intCast(name_buf.len));
+    try testing.expect(name_len > 0);
+    try testing.expect(std.mem.indexOfScalar(u8, name_buf[0..name_len], '.') != null);
+
+    var svg_buf: [4 * 1024 * 1024]u8 = [_]u8{0} ** (4 * 1024 * 1024);
+    const svg_len = lmt_svg_compat_generate(0, 0, @ptrCast(&svg_buf), @intCast(svg_buf.len));
+    try testing.expect(svg_len > 0);
+    try testing.expect(std.mem.startsWith(u8, svg_buf[0..5], "<svg ") or std.mem.startsWith(u8, svg_buf[0..4], "<svg"));
 }

@@ -352,6 +352,56 @@ else
     unverified "0023 wasm interactive docs demo build (examples/wasm-demo/index.html not yet implemented)"
 fi
 
+if [ -f "$ROOT_DIR/src/tests/svg_harmonious_compat_test.zig" ]; then
+    check_cmd "cd '$ROOT_DIR' && zig build test 2>&1" "0024 harmoniousapp.net compatibility test suite"
+else
+    unverified "0024 harmoniousapp.net compatibility test suite (src/tests/svg_harmonious_compat_test.zig not yet implemented)"
+fi
+
+if [ -f "$ROOT_DIR/examples/wasm-demo/validation.html" ]; then
+    check_cmd "cd '$ROOT_DIR' && zig build wasm-demo 2>&1" "0024 wasm validation page build"
+else
+    unverified "0024 wasm validation page build (examples/wasm-demo/validation.html not yet implemented)"
+fi
+
+if [ -f "$ROOT_DIR/src/harmonious_svg_compat.zig" ]; then
+    check_cmd "cd '$ROOT_DIR' && ! rg -n \"@embedFile\\(|tmp/harmoniousapp\\.net|harmonious_embed_refs\" src/harmonious_svg_compat.zig" "0028 compatibility generator anti-embed guardrail"
+    check_cmd "cd '$ROOT_DIR' && ! rg -n \"\\.majmin_modes, \\.majmin_scales => svg_tessellation\\.renderScaleTessellation\\(buf\\)\" src/harmonious_svg_compat.zig" "0028 majmin compat guardrail (no placeholder tessellation fallback)"
+else
+    unverified "0028 compatibility generator anti-embed guardrail (src/harmonious_svg_compat.zig not yet implemented)"
+fi
+
+if [ -f "$ROOT_DIR/src/svg/scale_nomod_compat.zig" ] && [ -f "$ROOT_DIR/src/harmonious_svg_compat.zig" ]; then
+    check_cmd "cd '$ROOT_DIR' && ! rg -n \"renderScaleStaffByIndex|SCALE_X_BY_INDEX|harmonious_scale_x_by_index\" src/harmonious_svg_compat.zig src/svg/scale_nomod_compat.zig" "0028 scale algorithmic layout guardrail (no index-based x replay)"
+    check_cmd "cd '$ROOT_DIR' && ! rg -n \"std\\.mem\\.eql\\(u8, stem,\" src/svg/scale_nomod_compat.zig" "0028 scale algorithmic layout guardrail (no stem-specific hardcoded exceptions)"
+else
+    unverified "0028 scale algorithmic layout guardrail (scale compat sources missing)"
+fi
+
+if [ -f "$ROOT_DIR/src/svg/chord_compat.zig" ]; then
+    check_cmd "cd '$ROOT_DIR' && ! rg -n \"std\\.mem\\.eql\\(u8, stem,\" src/svg/chord_compat.zig" "0028 chord algorithmic layout guardrail (no stem-specific hardcoded exceptions)"
+    check_cmd "cd '$ROOT_DIR' && ! rg -n \"@embedFile\\(|tmp/harmoniousapp\\.net\" src/svg/chord_compat.zig" "0028 chord algorithmic layout guardrail (no embedded/svg reference payloads)"
+else
+    unverified "0028 chord algorithmic layout guardrail (src/svg/chord_compat.zig missing)"
+fi
+
+if [ -f "$ROOT_DIR/examples/wasm-demo/index.html" ]; then
+    check_cmd "cd '$ROOT_DIR' && test -f zig-out/wasm-demo/libmusictheory.wasm && [ \"$(wc -c < zig-out/wasm-demo/libmusictheory.wasm | tr -d '[:space:]')\" -lt 1048576 ]" "0028 wasm demo size guardrail (<1MB)"
+else
+    unverified "0028 wasm demo size guardrail (<1MB) (examples/wasm-demo/index.html not yet implemented)"
+fi
+
+if [ -d "$ROOT_DIR/tmp/harmoniousapp.net" ] && [ -f "$ROOT_DIR/scripts/validate_harmonious_playwright.mjs" ]; then
+    if command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
+        check_cmd "cd '$ROOT_DIR' && node scripts/validate_harmonious_playwright.mjs --sample-per-kind 5 2>&1" "0024 harmoniousapp.net playwright sampled validation (>=5 per kind, 0 mismatches)"
+        check_cmd "cd '$ROOT_DIR' && node scripts/validate_harmonious_playwright.mjs 2>&1" "0024 harmoniousapp.net playwright validation (0 mismatches)"
+    else
+        unverified "0024 harmoniousapp.net playwright validation (node/npm/python3 missing)"
+    fi
+else
+    unverified "0024 harmoniousapp.net playwright validation (tmp/harmoniousapp.net or script missing)"
+fi
+
 # ───────────────────────────────────────────
 # Summary
 # ───────────────────────────────────────────

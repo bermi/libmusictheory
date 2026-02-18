@@ -49,13 +49,13 @@ pub fn build(b: *std.Build) void {
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/root.zig"),
             .target = wasm_target,
-            .optimize = optimize,
+            .optimize = .ReleaseSmall,
         }),
     });
     wasm_exe.rdynamic = true;
     wasm_exe.entry = .disabled;
     wasm_exe.export_memory = true;
-    wasm_exe.initial_memory = 2 * 1024 * 1024;
+    wasm_exe.initial_memory = 16 * 1024 * 1024;
     wasm_exe.max_memory = 64 * 1024 * 1024;
 
     const install_wasm = b.addInstallFileWithDir(

@@ -58,9 +58,10 @@ pub fn modeRootPitchClass(spec: ModeIconSpec) pitch.PitchClass {
 
     const t = @as(i16, spec.transposition);
     const wrapped = @mod(t, 12);
-    const tonic = @as(u4, @intCast(wrapped));
+    const tonic = @as(u8, @intCast(wrapped));
+    const sum = tonic + @as(u8, base_offset);
 
-    return @as(pitch.PitchClass, @intCast((tonic + base_offset) % 12));
+    return @as(pitch.PitchClass, @intCast(sum % 12));
 }
 
 pub fn degreeRoman(spec: ModeIconSpec) []const u8 {

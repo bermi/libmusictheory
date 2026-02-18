@@ -16,4 +16,6 @@ python3 -m http.server --directory zig-out/wasm-demo 8000
 
 Open <http://localhost:8000>.
 
+Compatibility validation page: <http://localhost:8000/validation.html>.
+
 All music-theory and SVG outputs are produced by the WASM exports from `libmusictheory.wasm`.
