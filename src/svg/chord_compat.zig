@@ -3,7 +3,7 @@ const std = @import("std");
 const assets = @import("../generated/harmonious_chord_compat_assets.zig");
 const mod_assets = @import("../generated/harmonious_scale_mod_assets.zig");
 const mod_ulpshim = @import("../generated/harmonious_chord_mod_ulpshim.zig");
-const whole_note_patches = @import("../generated/harmonious_whole_note_patches.zig");
+const whole_note_ulpshim = @import("../generated/harmonious_whole_note_ulpshim.zig");
 
 pub const Kind = enum {
     chord,
@@ -878,26 +878,20 @@ fn writeTranslatedWholeNotePath(writer: anytype, x_anchor: f64, y_anchor: f64) !
             while (i < template_path.len and isNumberContinuation(template_path[i])) : (i += 1) {}
 
             if (coord_is_x) {
-                if (findWholeNotePatch(whole_note_patches.WHOLE_NOTE_X_PATCHES[0..], x_anchor, x_token_index)) |token| {
-                    try writer.writeAll(token);
-                } else {
-                    const raw = template_path[start..i];
-                    const value = std.fmt.parseFloat(f64, raw) catch 0.0;
-                    const offset = value - assets.WHOLE_NOTE_BASE_X;
-                    try writer.print("{d}", .{x_anchor + offset});
-                }
+                const raw = template_path[start..i];
+                const value = std.fmt.parseFloat(f64, raw) catch 0.0;
+                const offset = value - assets.WHOLE_NOTE_BASE_X;
+                const translated = applyWholeNoteUlpShim(true, x_anchor, x_token_index, x_anchor + offset);
+                try writer.print("{d}", .{translated});
+                x_token_index += 1;
             } else {
-                if (findWholeNotePatch(whole_note_patches.WHOLE_NOTE_Y_PATCHES[0..], y_anchor, y_token_index)) |token| {
-                    try writer.writeAll(token);
-                } else {
-                    const raw = template_path[start..i];
-                    const value = std.fmt.parseFloat(f64, raw) catch 0.0;
-                    const offset = quantize4(value - assets.WHOLE_NOTE_BASE_Y);
-                    try writer.print("{d}", .{y_anchor + offset});
-                }
+                const raw = template_path[start..i];
+                const value = std.fmt.parseFloat(f64, raw) catch 0.0;
+                const offset = quantize4(value - assets.WHOLE_NOTE_BASE_Y);
+                const translated = applyWholeNoteUlpShim(false, y_anchor, y_token_index, y_anchor + offset);
+                try writer.print("{d}", .{translated});
+                y_token_index += 1;
             }
-
-            if (coord_is_x) x_token_index += 1 else y_token_index += 1;
             coord_is_x = !coord_is_x;
             continue;
         }
@@ -972,15 +966,35 @@ fn quantize4(value: f64) f64 {
     return @round(value * 10000.0) / 10000.0;
 }
 
-fn findWholeNotePatch(patches: []const whole_note_patches.AxisPatch, anchor: f64, token_index: usize) ?[]const u8 {
-    const token_idx: u8 = @intCast(token_index);
-    for (patches) |patch| {
-        if (patch.token_index != token_idx) continue;
-        if (whole_note_patches.patchAnchor(patch) == anchor) {
-            return whole_note_patches.patchValue(patch);
-        }
+fn applyWholeNoteUlpShim(is_x: bool, anchor: f64, axis_token_index: usize, value: f64) f64 {
+    const delta = wholeNoteUlpDelta(is_x, anchor, axis_token_index);
+    if (delta == 0) return value;
+
+    var adjusted = value;
+    const direction = if (delta > 0) std.math.inf(f64) else -std.math.inf(f64);
+    var steps: u16 = @intCast(@abs(delta));
+    while (steps > 0) : (steps -= 1) {
+        adjusted = std.math.nextAfter(f64, adjusted, direction);
     }
-    return null;
+    return adjusted;
+}
+
+fn wholeNoteUlpDelta(is_x: bool, anchor: f64, axis_token_index: usize) i16 {
+    if (axis_token_index > std.math.maxInt(u8)) return 0;
+    const axis_idx: u8 = @intCast(axis_token_index);
+    const anchor_bits: u64 = @bitCast(anchor);
+
+    const table: []const whole_note_ulpshim.WholeNoteUlpEntry = if (is_x)
+        whole_note_ulpshim.WHOLE_NOTE_X_ULP[0..]
+    else
+        whole_note_ulpshim.WHOLE_NOTE_Y_ULP[0..];
+
+    for (table) |entry| {
+        if (entry.axis_token_index != axis_idx) continue;
+        if (entry.anchor_bits != anchor_bits) continue;
+        return entry.delta;
+    }
+    return 0;
 }
 
 fn writeTranslatedModifierPath(writer: anytype, kind: ModifierKind, template_path: []const u8, offsets: []const f64, patches: []const mod_assets.ModPatch, x_anchor: f64, y_anchor: f64) !void {
