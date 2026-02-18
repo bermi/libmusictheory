@@ -382,12 +382,18 @@ fi
 if [ -f "$ROOT_DIR/src/svg/chord_compat.zig" ]; then
     check_cmd "cd '$ROOT_DIR' && ! rg -n \"std\\.mem\\.eql\\(u8, stem,\" src/svg/chord_compat.zig" "0028 chord algorithmic layout guardrail (no stem-specific hardcoded exceptions)"
     check_cmd "cd '$ROOT_DIR' && ! rg -n \"@embedFile\\(|tmp/harmoniousapp\\.net\" src/svg/chord_compat.zig" "0028 chord algorithmic layout guardrail (no embedded/svg reference payloads)"
+    check_cmd "cd '$ROOT_DIR' && ! rg -n \"harmonious_chord_mod_x_lookup|harmonious_chord_mod_y_lookup|harmonious_whole_note_x_lookup|harmonious_whole_note_y_lookup\" src/svg/chord_compat.zig" "0032 chord algorithmic layout guardrail (no x/y lookup coordinate replay tables)"
 else
     unverified "0028 chord algorithmic layout guardrail (src/svg/chord_compat.zig missing)"
 fi
 
 if [ -f "$ROOT_DIR/examples/wasm-demo/index.html" ]; then
     check_cmd "cd '$ROOT_DIR' && test -f zig-out/wasm-demo/libmusictheory.wasm && [ \"$(wc -c < zig-out/wasm-demo/libmusictheory.wasm | tr -d '[:space:]')\" -lt 1048576 ]" "0028 wasm demo size guardrail (<1MB)"
+    if [ -f "$ROOT_DIR/scripts/wasm_size_audit.py" ] && command -v python3 >/dev/null 2>&1; then
+        check_cmd "cd '$ROOT_DIR' && python3 scripts/wasm_size_audit.py --wasm zig-out/wasm-demo/libmusictheory.wasm --max-wasm-bytes 900000 --max-data-bytes 760000 --max-reachable-generated-bytes 1800000 --max-coordinate-generated-bytes 170000" "0032 wasm size audit guardrail (section + generated footprint budgets)"
+    else
+        unverified "0032 wasm size audit guardrail (scripts/wasm_size_audit.py or python3 missing)"
+    fi
 else
     unverified "0028 wasm demo size guardrail (<1MB) (examples/wasm-demo/index.html not yet implemented)"
 fi

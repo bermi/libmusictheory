@@ -191,6 +191,7 @@ Add optional rendering infrastructure and diagnostics for native/mobile/plugin c
 - [Keys, Harmony and Progressions](../../research/keys-harmony-and-progressions.md)
 - [Evenness, Voice Leading and Geometry](../../research/evenness-voice-leading-and-geometry.md)
 - [Guitar and Keyboard](../../research/guitar-and-keyboard.md)
+- [WASM Footprint Audit](../../research/wasm-footprint.md)
 
 ### Algorithm Research
 - [Pitch Class Set Operations](../../research/algorithms/pitch-class-set-operations.md)

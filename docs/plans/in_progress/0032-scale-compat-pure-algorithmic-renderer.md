@@ -36,6 +36,11 @@ This plan enforces a stricter definition of done:
 - `harmonious_scale_nomod_keysig_lines`
 - Index-based replay (`harmonious_scale_x_by_index`).
 - Scale key signature accidentals are now emitted algorithmically from reusable modifier glyph paths and anchor rules.
+- Verification now enforces wasm footprint budgets via `scripts/wasm_size_audit.py`:
+- total wasm `< 900000`
+- wasm `DATA` section `< 760000`
+- coordinate-like reachable generated data `< 170000`
+- Chord compatibility path is now guarded against x/y coordinate replay table reintroduction.
 - Remaining open item for strict completion:
 - x-layout still applies a compact deterministic ULP shim table (`src/generated/harmonious_scale_layout_ulpshim.zig`) to mirror V8 floating-point edge behavior; next slice removes/reduces this shim with formula-only parity.
 
