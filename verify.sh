@@ -434,7 +434,7 @@ fi
 if [ -f "$ROOT_DIR/src/svg/scale_nomod_compat.zig" ] && [ -f "$ROOT_DIR/src/harmonious_svg_compat.zig" ]; then
     check_cmd "cd '$ROOT_DIR' && ! rg -n \"renderScaleStaffByIndex|SCALE_X_BY_INDEX|harmonious_scale_x_by_index\" src/harmonious_svg_compat.zig src/svg/scale_nomod_compat.zig" "0028 scale algorithmic layout guardrail (no index-based x replay)"
     check_cmd "cd '$ROOT_DIR' && ! rg -n \"std\\.mem\\.eql\\(u8, stem,\" src/svg/scale_nomod_compat.zig" "0028 scale algorithmic layout guardrail (no stem-specific hardcoded exceptions)"
-    check_cmd "cd '$ROOT_DIR' && ! rg -n \"harmonious_scale_nomod_profile_tuning|harmonious_scale_nomod_names|harmonious_scale_nomod_keysig_lines|SCALE_PROFILE_TUNINGS|layoutTuning\\(|stepUlpNudge\\(|isNoModStem\\(\" src/svg/scale_nomod_compat.zig" "0032 scale pure algorithmic guardrail (no replay tuning/name/keysig tables)"
+    check_cmd "cd '$ROOT_DIR' && ! rg -n \"harmonious_scale_nomod_profile_tuning|harmonious_scale_nomod_names|harmonious_scale_nomod_keysig_lines|SCALE_PROFILE_TUNINGS|layoutTuning\\(|stepUlpNudge\\(|isNoModStem\\(|ModPatch|SHARP_PATCHES|FLAT_PATCHES|NATURAL_PATCHES|DOUBLE_FLAT_PATCHES|resolveModifierOffset\\(\" src/svg/scale_nomod_compat.zig" "0032 scale pure algorithmic guardrail (no replay tuning/name/keysig/patch tables)"
 else
     unverified "0028 scale algorithmic layout guardrail (scale compat sources missing)"
 fi
@@ -449,6 +449,12 @@ if [ -f "$ROOT_DIR/src/svg/chord_compat.zig" ]; then
     check_cmd "cd '$ROOT_DIR' && ! rg -n \"harmonious_whole_note_ulpshim\" src/svg/chord_compat.zig" "0032 chord algorithmic layout guardrail (no whole-note ulp table replay modules)"
 else
     unverified "0028 chord algorithmic layout guardrail (src/svg/chord_compat.zig missing)"
+fi
+
+if [ -f "$ROOT_DIR/src/generated/harmonious_scale_mod_assets.zig" ]; then
+    check_cmd "cd '$ROOT_DIR' && ! rg -n \"ModPatch|SHARP_PATCH|FLAT_PATCH|NATURAL_PATCH|DOUBLE_FLAT_PATCH|_PATCHES\" src/generated/harmonious_scale_mod_assets.zig" "0032 chord algorithmic layout guardrail (no modifier patch replay tables in generated scale modifier assets)"
+else
+    unverified "0032 chord algorithmic layout guardrail (src/generated/harmonious_scale_mod_assets.zig missing)"
 fi
 
 if [ -f "$ROOT_DIR/examples/wasm-demo/index.html" ]; then

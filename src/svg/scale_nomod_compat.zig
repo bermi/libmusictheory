@@ -315,11 +315,6 @@ fn writeTranslatedKeySigModifierPath(writer: anytype, kind: ModifierKind, x_anch
         .flat => mod_assets.FLAT_OFFSETS[0..],
         else => unreachable,
     };
-    const patches: []const mod_assets.ModPatch = switch (kind) {
-        .sharp => mod_assets.SHARP_PATCHES[0..],
-        .flat => mod_assets.FLAT_PATCHES[0..],
-        else => unreachable,
-    };
 
     var i: usize = 0;
     var token_index: usize = 0;
@@ -340,7 +335,7 @@ fn writeTranslatedKeySigModifierPath(writer: anytype, kind: ModifierKind, x_anch
 
             const is_x = (token_index % 2) == 0;
             const anchor = if (is_x) x_anchor else y_anchor;
-            const offset = resolveModifierOffset(token_index, anchor, offsets[token_index], patches);
+            const offset = modifierOffsetForToken(kind, token_index, anchor, offsets[token_index]);
             const translated = normalizeKeySigToken(kind, token_index, anchor + offset);
             try writer.print("{d}", .{translated});
 
@@ -565,22 +560,15 @@ fn writeModifierPath(writer: anytype, attr: AttrBox, kind: ModifierKind, note_x:
         .double_flat => mod_assets.DOUBLE_FLAT_OFFSETS[0..],
     };
 
-    const patches: []const mod_assets.ModPatch = switch (kind) {
-        .sharp => mod_assets.SHARP_PATCHES[0..],
-        .flat => mod_assets.FLAT_PATCHES[0..],
-        .natural => mod_assets.NATURAL_PATCHES[0..],
-        .double_flat => mod_assets.DOUBLE_FLAT_PATCHES[0..],
-    };
-
     const modifier_width: f64 = if (attr.width > 1.0) 15.5 else attr.width;
 
     try writer.writeAll("<path stroke-width=\"0.3\" fill=\"black\" stroke=\"none\" font-family=\"Arial\" font-size=\"10pt\" font-weight=\"normal\" font-style=\"normal\" ");
     try writer.print("x=\"{d}\" y=\"{d}\" width=\"{d}\" height=\"{d}\" d=\"", .{ attr.x, attr.y, modifier_width, attr.height });
-    try writeTranslatedModifierPath(writer, path_d, offsets, patches, x_anchor, note_y);
+    try writeTranslatedModifierPath(writer, kind, path_d, offsets, x_anchor, note_y);
     try writer.writeAll("\" ></path>");
 }
 
-fn writeTranslatedModifierPath(writer: anytype, template_path: []const u8, offsets: []const f64, patches: []const mod_assets.ModPatch, x_anchor: f64, y_anchor: f64) !void {
+fn writeTranslatedModifierPath(writer: anytype, kind: ModifierKind, template_path: []const u8, offsets: []const f64, x_anchor: f64, y_anchor: f64) !void {
     var i: usize = 0;
     var token_index: usize = 0;
 
@@ -600,7 +588,7 @@ fn writeTranslatedModifierPath(writer: anytype, template_path: []const u8, offse
 
             const is_x = (token_index % 2) == 0;
             const anchor = if (is_x) x_anchor else y_anchor;
-            const offset = resolveModifierOffset(token_index, anchor, offsets[token_index], patches);
+            const offset = modifierOffsetForToken(kind, token_index, anchor, offsets[token_index]);
             try writer.print("{d}", .{anchor + offset});
 
             token_index += 1;
@@ -612,15 +600,57 @@ fn writeTranslatedModifierPath(writer: anytype, template_path: []const u8, offse
     }
 }
 
-fn resolveModifierOffset(token_index: usize, anchor: f64, default_offset: f64, patches: []const mod_assets.ModPatch) f64 {
-    for (patches) |patch| {
-        if (patch.token_index != token_index) continue;
-        for (patch.anchors) |patch_anchor| {
-            if (std.math.approxEqAbs(f64, patch_anchor, anchor, 0.000000001)) {
-                return patch.secondary_offset;
-            }
-        }
-        return default_offset;
+fn modifierOffsetForToken(kind: ModifierKind, token_index: usize, anchor: f64, default_offset: f64) f64 {
+    return switch (kind) {
+        .sharp => sharpModifierOffset(token_index, anchor, default_offset),
+        .flat => flatModifierOffset(token_index, anchor, default_offset),
+        .natural => naturalModifierOffset(token_index, anchor, default_offset),
+        .double_flat => doubleFlatModifierOffset(token_index, anchor, default_offset),
+    };
+}
+
+fn sharpModifierOffset(token_index: usize, anchor: f64, default_offset: f64) f64 {
+    if ((token_index == 134 or token_index == 312) and std.math.approxEqAbs(f64, anchor, 51.460650000000001, 0.000000001)) {
+        return 5.6361599999999967;
+    }
+
+    if (token_index == 267 and (std.math.approxEqAbs(f64, anchor, 75, 0.000000001) or std.math.approxEqAbs(f64, anchor, 80, 0.000000001) or std.math.approxEqAbs(f64, anchor, 85, 0.000000001) or std.math.approxEqAbs(f64, anchor, 90, 0.000000001))) {
+        return -9.5212800000000009;
+    }
+
+    if (token_index == 299 and (std.math.approxEqAbs(f64, anchor, 30, 0.000000001) or std.math.approxEqAbs(f64, anchor, 35, 0.000000001))) {
+        return -6.2107199999999985;
+    }
+
+    return default_offset;
+}
+
+fn flatModifierOffset(token_index: usize, anchor: f64, default_offset: f64) f64 {
+    if (token_index == 50 and std.math.approxEqAbs(f64, anchor, 51.460650000000001, 0.000000001)) {
+        return 5.6361599999999967;
+    }
+    return default_offset;
+}
+
+fn naturalModifierOffset(token_index: usize, anchor: f64, default_offset: f64) f64 {
+    if (token_index == 31 and (std.math.approxEqAbs(f64, anchor, 30, 0.000000001) or std.math.approxEqAbs(f64, anchor, 35, 0.000000001))) {
+        return -6.2107199999999985;
+    }
+
+    if ((token_index == 61 or token_index == 63 or token_index == 65) and (std.math.approxEqAbs(f64, anchor, 30, 0.000000001) or std.math.approxEqAbs(f64, anchor, 35, 0.000000001) or std.math.approxEqAbs(f64, anchor, 40, 0.000000001) or std.math.approxEqAbs(f64, anchor, 45, 0.000000001) or std.math.approxEqAbs(f64, anchor, 50, 0.000000001))) {
+        return 12.667679999999997;
+    }
+
+    if (token_index == 121 and std.math.approxEqAbs(f64, anchor, 30, 0.000000001)) {
+        return -1.1217599999999983;
+    }
+
+    return default_offset;
+}
+
+fn doubleFlatModifierOffset(token_index: usize, anchor: f64, default_offset: f64) f64 {
+    if ((token_index == 210 or token_index == 232) and (std.math.approxEqAbs(f64, anchor, 131.15306874999999, 0.000000001) or std.math.approxEqAbs(f64, anchor, 160.84548749999999, 0.000000001) or std.math.approxEqAbs(f64, anchor, 190.53790624999999, 0.000000001) or std.math.approxEqAbs(f64, anchor, 220.23032499999999, 0.000000001))) {
+        return 8.9740799999999865;
     }
     return default_offset;
 }

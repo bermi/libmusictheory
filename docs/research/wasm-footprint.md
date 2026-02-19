@@ -4,15 +4,15 @@
 
 `zig-out/wasm-demo/libmusictheory.wasm`
 
-- Total size: `832,290` bytes
-- `CODE` section: `117,183` bytes
-- `DATA` section: `713,839` bytes
+- Total size: `834,129` bytes
+- `CODE` section: `119,447` bytes
+- `DATA` section: `713,415` bytes
 
 The wasm is data-dominated, so size reduction work should prioritize generated data elimination and algorithmic rendering.
 
 ## Reachable Generated Payload (from `src/root.zig` import graph)
 
-Current reachable generated files (`10`) total `1,661,818` source bytes.
+Current reachable generated files (`10`) total `1,659,449` source bytes.
 Top contributors:
 
 - `src/generated/harmonious_majmin_compat_xz.zig` (`774,450`)
@@ -22,7 +22,7 @@ Top contributors:
 - `src/generated/harmonious_oc_templates.zig` (`39,463`)
 - `src/generated/harmonious_chord_compat_assets.zig` (`34,869`)
 
-Coordinate-like reachable generated files total `58,355` bytes:
+Coordinate-like reachable generated files total `55,986` bytes:
 
 - `src/generated/harmonious_scale_mod_assets.zig`
 - `src/generated/harmonious_scale_nomod_assets.zig`
@@ -48,6 +48,12 @@ Additional anti-replay guardrails block reintroduction of chord replay table imp
 - `harmonious_chord_mod_ulpshim`
 - `harmonious_whole_note_patches`
 - `harmonious_whole_note_ulpshim`
+- forbidden in `src/generated/harmonious_scale_mod_assets.zig`:
+- `ModPatch`
+- `SHARP_PATCH`
+- `FLAT_PATCH`
+- `NATURAL_PATCH`
+- `DOUBLE_FLAT_PATCH`
 
 ## Reduction Priorities
 
