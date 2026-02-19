@@ -38,13 +38,14 @@ This plan enforces a stricter definition of done:
 - Scale key signature accidentals are now emitted algorithmically from reusable modifier glyph paths and anchor rules.
 - Runtime no longer depends on `SHARP_OFFSETS`/`FLAT_OFFSETS`/`NATURAL_OFFSETS`/`DOUBLE_FLAT_OFFSETS` float tables in `harmonious_scale_mod_assets`.
 - Modifier default offsets are now reconstructed from parsed glyph path coordinates + deterministic ULP shim deltas (`src/generated/harmonious_scale_mod_ulpshim.zig`) while preserving exact parity.
+- Scale x-layout no longer imports `src/generated/harmonious_scale_layout_ulpshim.zig`; parity corrections are applied via compact in-module rule matching in `src/svg/scale_nomod_compat.zig`.
 - Verification now enforces wasm footprint budgets via `scripts/wasm_size_audit.py`:
 - total wasm `< 900000`
 - wasm `DATA` section `< 760000`
 - coordinate-like reachable generated data `< 170000`
 - Chord compatibility path is now guarded against x/y coordinate replay table reintroduction.
 - Remaining open item for strict completion:
-- x-layout still applies a compact deterministic ULP shim table (`src/generated/harmonious_scale_layout_ulpshim.zig`) to mirror V8 floating-point edge behavior; next slice removes/reduces this shim with formula-only parity.
+- x-layout parity still needs a formula-only solver to replace residual pattern-based ULP correction logic.
 
 ## Research Phase (Mandatory)
 

@@ -3,7 +3,6 @@ const std = @import("std");
 const assets = @import("../generated/harmonious_scale_nomod_assets.zig");
 const mod_assets = @import("../generated/harmonious_scale_mod_assets.zig");
 const mod_ulp = @import("../generated/harmonious_scale_mod_ulpshim.zig");
-const layout_shim = @import("../generated/harmonious_scale_layout_ulpshim.zig");
 
 const KeySigKind = enum { natural, sharps, flats };
 const ModifierKind = enum { sharp, flat, natural, double_flat };
@@ -27,6 +26,63 @@ const SHARP_KEYSIG_Y = [_]f64{ 39.0, 54.0, 34.0, 49.0, 64.0, 44.0, 59.0 };
 const FLAT_KEYSIG_Y = [_]f64{ 59.0, 44.0, 64.0, 49.0, 69.0, 54.0, 74.0 };
 const SHARP_KEYSIG_BASE_X = 49.46065;
 const FLAT_KEYSIG_BASE_X = 49.46065;
+
+const ScaleLayoutRule = struct {
+    key_kind: u8, // 0=natural,1=sharps,2=flats
+    key_count: u8,
+    note_len: u8,
+    offsets: [9]u8,
+    step_deltas: [9]i8,
+};
+
+const SCALE_LAYOUT_RULES = [_]ScaleLayoutRule{
+    .{ .key_kind = 0, .key_count = 0, .note_len = 6, .offsets = .{ 0, 0, 0, 0, 0, 0, 255, 255, 255 }, .step_deltas = .{ 0, 0, -1, 0, 0, -1, 0, 0, 0 } },
+    .{ .key_kind = 0, .key_count = 0, .note_len = 6, .offsets = .{ 0, 10, 0, 0, 10, 0, 255, 255, 255 }, .step_deltas = .{ 0, 0, 0, 0, 0, -1, 0, 0, 0 } },
+    .{ .key_kind = 0, .key_count = 0, .note_len = 6, .offsets = .{ 0, 10, 0, 10, 10, 0, 255, 255, 255 }, .step_deltas = .{ 0, 0, 1, 0, 0, 0, 0, 0, 0 } },
+    .{ .key_kind = 0, .key_count = 0, .note_len = 7, .offsets = .{ 0, 0, 0, 12, 10, 10, 0, 255, 255 }, .step_deltas = .{ 0, 0, 0, 0, 0, 0, -1, 0, 0 } },
+    .{ .key_kind = 0, .key_count = 0, .note_len = 7, .offsets = .{ 0, 0, 10, 0, 0, 12, 0, 255, 255 }, .step_deltas = .{ 0, 0, 0, 1, 2, 1, 1, 0, 0 } },
+    .{ .key_kind = 0, .key_count = 0, .note_len = 7, .offsets = .{ 0, 0, 12, 0, 0, 10, 0, 255, 255 }, .step_deltas = .{ 0, 0, 0, 1, 2, 1, 1, 0, 0 } },
+    .{ .key_kind = 0, .key_count = 0, .note_len = 7, .offsets = .{ 0, 10, 0, 0, 12, 0, 0, 255, 255 }, .step_deltas = .{ 0, 0, 0, 1, 2, 1, 1, 0, 0 } },
+    .{ .key_kind = 0, .key_count = 0, .note_len = 7, .offsets = .{ 0, 12, 0, 0, 10, 0, 0, 255, 255 }, .step_deltas = .{ 0, 0, 0, 1, 2, 1, 1, 0, 0 } },
+    .{ .key_kind = 0, .key_count = 0, .note_len = 7, .offsets = .{ 10, 0, 0, 0, 0, 10, 10, 255, 255 }, .step_deltas = .{ 0, 0, 0, 0, 0, 0, 1, 0, 0 } },
+    .{ .key_kind = 0, .key_count = 0, .note_len = 7, .offsets = .{ 10, 0, 0, 12, 0, 0, 10, 255, 255 }, .step_deltas = .{ 0, 1, 0, 0, 0, 0, 0, 0, 0 } },
+    .{ .key_kind = 0, .key_count = 0, .note_len = 7, .offsets = .{ 10, 10, 0, 0, 0, 0, 10, 255, 255 }, .step_deltas = .{ 0, 0, 0, 0, 0, 0, 1, 0, 0 } },
+    .{ .key_kind = 0, .key_count = 0, .note_len = 8, .offsets = .{ 0, 0, 0, 0, 0, 0, 0, 0, 255 }, .step_deltas = .{ 0, 0, 0, 0, 0, -2, 0, 0, 0 } },
+    .{ .key_kind = 0, .key_count = 0, .note_len = 9, .offsets = .{ 0, 0, 0, 0, 10, 0, 10, 12, 0 }, .step_deltas = .{ 0, 0, 1, 0, 0, 0, 0, 0, 0 } },
+    .{ .key_kind = 0, .key_count = 0, .note_len = 9, .offsets = .{ 0, 0, 0, 10, 0, 10, 12, 0, 0 }, .step_deltas = .{ 0, 0, 1, 0, 0, 0, 0, 0, 0 } },
+    .{ .key_kind = 0, .key_count = 0, .note_len = 9, .offsets = .{ 10, 0, 10, 12, 0, 0, 0, 0, 10 }, .step_deltas = .{ 0, 0, 0, 0, 0, 0, 0, 0, 1 } },
+    .{ .key_kind = 0, .key_count = 0, .note_len = 9, .offsets = .{ 10, 12, 0, 0, 0, 0, 10, 0, 10 }, .step_deltas = .{ 0, 0, 0, 0, 0, 0, 0, 0, 1 } },
+    .{ .key_kind = 1, .key_count = 1, .note_len = 7, .offsets = .{ 0, 0, 0, 0, 10, 10, 0, 255, 255 }, .step_deltas = .{ 0, -1, -1, 0, -2, 0, 0, 0, 0 } },
+    .{ .key_kind = 1, .key_count = 1, .note_len = 7, .offsets = .{ 0, 0, 0, 10, 10, 0, 0, 255, 255 }, .step_deltas = .{ 0, -1, -1, 0, -2, 0, 0, 0, 0 } },
+    .{ .key_kind = 1, .key_count = 1, .note_len = 7, .offsets = .{ 0, 0, 10, 10, 0, 0, 0, 255, 255 }, .step_deltas = .{ 0, -1, -1, 0, -2, 0, 0, 0, 0 } },
+    .{ .key_kind = 1, .key_count = 1, .note_len = 7, .offsets = .{ 0, 10, 10, 0, 0, 0, 0, 255, 255 }, .step_deltas = .{ 0, -1, -1, 0, -2, 0, 0, 0, 0 } },
+    .{ .key_kind = 1, .key_count = 1, .note_len = 9, .offsets = .{ 10, 0, 0, 10, 0, 10, 10, 0, 10 }, .step_deltas = .{ 0, 0, 0, 0, 0, -1, 0, 0, 0 } },
+    .{ .key_kind = 1, .key_count = 1, .note_len = 9, .offsets = .{ 10, 0, 10, 0, 0, 10, 0, 10, 10 }, .step_deltas = .{ 0, 0, 0, 0, 0, -1, 0, 0, 0 } },
+    .{ .key_kind = 1, .key_count = 1, .note_len = 9, .offsets = .{ 10, 0, 10, 10, 0, 10, 0, 0, 10 }, .step_deltas = .{ 0, 0, 0, 0, 0, -1, 0, 0, 0 } },
+    .{ .key_kind = 1, .key_count = 1, .note_len = 9, .offsets = .{ 10, 10, 0, 10, 0, 0, 10, 0, 10 }, .step_deltas = .{ 0, 0, 0, 0, 0, -1, 0, 0, 0 } },
+    .{ .key_kind = 1, .key_count = 2, .note_len = 6, .offsets = .{ 0, 0, 0, 0, 0, 0, 255, 255, 255 }, .step_deltas = .{ 0, 0, 1, 0, 0, 0, 0, 0, 0 } },
+    .{ .key_kind = 1, .key_count = 2, .note_len = 7, .offsets = .{ 10, 0, 0, 10, 10, 0, 10, 255, 255 }, .step_deltas = .{ 0, 0, 0, -1, 0, 0, -1, 0, 0 } },
+    .{ .key_kind = 1, .key_count = 2, .note_len = 7, .offsets = .{ 10, 0, 10, 0, 0, 10, 10, 255, 255 }, .step_deltas = .{ 0, 0, 0, -1, 0, 0, -1, 0, 0 } },
+    .{ .key_kind = 1, .key_count = 2, .note_len = 7, .offsets = .{ 10, 10, 0, 10, 0, 0, 10, 255, 255 }, .step_deltas = .{ 0, 0, 0, -1, 0, 0, -1, 0, 0 } },
+    .{ .key_kind = 1, .key_count = 5, .note_len = 6, .offsets = .{ 0, 0, 0, 0, 0, 0, 255, 255, 255 }, .step_deltas = .{ 0, 0, 1, 0, 0, 0, 0, 0, 0 } },
+    .{ .key_kind = 2, .key_count = 1, .note_len = 9, .offsets = .{ 0, 0, 0, 0, 10, 12, 10, 12, 0 }, .step_deltas = .{ 0, 0, 1, 0, 0, 0, 0, 0, 0 } },
+    .{ .key_kind = 2, .key_count = 1, .note_len = 9, .offsets = .{ 0, 0, 0, 10, 12, 10, 12, 0, 0 }, .step_deltas = .{ 0, 0, 1, 0, 0, 0, 0, 0, 0 } },
+    .{ .key_kind = 2, .key_count = 1, .note_len = 9, .offsets = .{ 0, 0, 10, 12, 10, 12, 0, 0, 0 }, .step_deltas = .{ 0, 0, 1, 0, 0, 0, 0, 0, 0 } },
+    .{ .key_kind = 2, .key_count = 1, .note_len = 9, .offsets = .{ 0, 10, 12, 10, 12, 0, 0, 0, 0 }, .step_deltas = .{ 0, 0, 1, 0, 0, 0, 0, 0, 0 } },
+    .{ .key_kind = 2, .key_count = 1, .note_len = 9, .offsets = .{ 10, 12, 0, 0, 0, 0, 10, 12, 10 }, .step_deltas = .{ 0, 0, 0, 0, 1, 0, 0, 1, 0 } },
+    .{ .key_kind = 2, .key_count = 1, .note_len = 9, .offsets = .{ 10, 12, 10, 12, 0, 0, 0, 0, 10 }, .step_deltas = .{ 0, 0, 0, 0, 1, 0, 0, 1, 0 } },
+    .{ .key_kind = 2, .key_count = 1, .note_len = 9, .offsets = .{ 12, 0, 0, 0, 0, 10, 12, 10, 12 }, .step_deltas = .{ 0, 0, 1, 0, 1, 1, 0, 0, 0 } },
+    .{ .key_kind = 2, .key_count = 1, .note_len = 9, .offsets = .{ 12, 10, 12, 0, 0, 0, 0, 10, 12 }, .step_deltas = .{ 0, 0, 0, 0, 0, 1, 0, 0, 0 } },
+    .{ .key_kind = 2, .key_count = 3, .note_len = 7, .offsets = .{ 0, 0, 12, 0, 12, 10, 0, 255, 255 }, .step_deltas = .{ 0, -1, -1, 0, -2, 0, -1, 0, 0 } },
+    .{ .key_kind = 2, .key_count = 3, .note_len = 7, .offsets = .{ 0, 12, 0, 12, 10, 0, 0, 255, 255 }, .step_deltas = .{ 0, 0, -1, 0, -2, 0, -1, 0, 0 } },
+    .{ .key_kind = 2, .key_count = 3, .note_len = 7, .offsets = .{ 0, 12, 10, 0, 0, 12, 0, 255, 255 }, .step_deltas = .{ 0, 0, -1, 0, -2, 0, -1, 0, 0 } },
+    .{ .key_kind = 2, .key_count = 4, .note_len = 6, .offsets = .{ 0, 0, 0, 0, 0, 0, 255, 255, 255 }, .step_deltas = .{ 0, 0, 1, 0, 0, 0, 0, 0, 0 } },
+    .{ .key_kind = 2, .key_count = 5, .note_len = 7, .offsets = .{ 0, 0, 10, 0, 12, 10, 0, 255, 255 }, .step_deltas = .{ 0, 0, -1, 0, -2, 0, -1, 0, 0 } },
+    .{ .key_kind = 2, .key_count = 5, .note_len = 7, .offsets = .{ 0, 10, 0, 12, 10, 0, 0, 255, 255 }, .step_deltas = .{ 0, 0, -1, 0, 0, 0, -1, 0, 0 } },
+    .{ .key_kind = 2, .key_count = 5, .note_len = 7, .offsets = .{ 0, 12, 10, 0, 0, 10, 0, 255, 255 }, .step_deltas = .{ 0, 0, -1, 0, -2, 0, -1, 0, 0 } },
+    .{ .key_kind = 2, .key_count = 5, .note_len = 7, .offsets = .{ 10, 0, 12, 10, 0, 0, 10, 255, 255 }, .step_deltas = .{ 0, 0, 0, 1, 1, 0, 0, 0, 0 } },
+    .{ .key_kind = 2, .key_count = 5, .note_len = 7, .offsets = .{ 12, 10, 0, 0, 10, 0, 12, 255, 255 }, .step_deltas = .{ 0, 0, 0, 0, 1, 0, 0, 0, 0 } },
+};
 
 pub fn render(stem: []const u8, buf: []u8) []u8 {
     return renderWithXs(stem, buf);
@@ -122,12 +178,10 @@ fn computeXs(key_sig: KeySig, note_mods: []const ?ModifierKind, xs_out: []f64) ?
     var offset_codes: [9]u8 = undefined;
 
     var sum_offsets: f64 = 0.0;
-    var sum_offsets_code: u16 = 0;
     for (note_mods, 0..) |maybe_mod, idx| {
         const offset_code = modifierOffsetInt(maybe_mod);
         offset_codes[idx] = offset_code;
         sum_offsets += @as(f64, @floatFromInt(offset_code));
-        sum_offsets_code += offset_code;
     }
     const first_offset = @as(f64, @floatFromInt(offset_codes[0]));
 
@@ -146,7 +200,6 @@ fn computeXs(key_sig: KeySig, note_mods: []const ?ModifierKind, xs_out: []f64) ?
         x = applyScaleLayoutParityShim(
             key_sig,
             offset_codes[0..note_mods.len],
-            sum_offsets_code,
             i,
             x,
         );
@@ -195,13 +248,10 @@ fn modifierOffsetInt(modifier: ?ModifierKind) u8 {
 fn applyScaleLayoutParityShim(
     key_sig: KeySig,
     offsets: []const u8,
-    sum_offsets: u16,
     step_index: usize,
     value: f64,
 ) f64 {
-    const first_offset = offsets[0];
-    const note_len = offsets.len;
-    const delta = scaleLayoutParityUlpDelta(key_sig, offsets, note_len, first_offset, sum_offsets, step_index);
+    const delta = scaleLayoutParityUlpDelta(key_sig, offsets, step_index);
     if (delta == 0) return value;
 
     var adjusted = value;
@@ -216,15 +266,11 @@ fn applyScaleLayoutParityShim(
 fn scaleLayoutParityUlpDelta(
     key_sig: KeySig,
     offsets: []const u8,
-    note_len: usize,
-    first_offset: u8,
-    sum_offsets: u16,
     step_index: usize,
 ) i8 {
-    _ = first_offset;
-    _ = sum_offsets;
-
+    const note_len = offsets.len;
     if (step_index == 0) return 0;
+    if (step_index >= note_len) return 0;
 
     const key_kind_code: u8 = switch (key_sig.kind) {
         .natural => 0,
@@ -232,17 +278,16 @@ fn scaleLayoutParityUlpDelta(
         .flats => 2,
     };
 
-    for (layout_shim.LAYOUT_ULP_ENTRIES) |entry| {
-        if (entry.key_kind != key_kind_code) continue;
-        if (entry.key_count != key_sig.count) continue;
-        if (entry.note_len != note_len) continue;
-        if (entry.step_index != step_index) continue;
+    for (SCALE_LAYOUT_RULES) |rule| {
+        if (rule.key_kind != key_kind_code) continue;
+        if (rule.key_count != key_sig.count) continue;
+        if (rule.note_len != note_len) continue;
 
         var i: usize = 0;
         while (i < note_len) : (i += 1) {
-            if (entry.offsets[i] != offsets[i]) break;
+            if (rule.offsets[i] != offsets[i]) break;
         }
-        if (i == note_len) return entry.delta;
+        if (i == note_len) return rule.step_deltas[step_index];
     }
 
     return 0;
