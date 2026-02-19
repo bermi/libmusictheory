@@ -450,6 +450,7 @@ if [ -f "$ROOT_DIR/src/svg/chord_compat.zig" ]; then
     check_cmd "cd '$ROOT_DIR' && ! rg -n \"harmonious_chord_mod_ulpshim\" src/svg/chord_compat.zig" "0032 chord algorithmic layout guardrail (no chord modifier ulp table replay modules)"
     check_cmd "cd '$ROOT_DIR' && ! rg -n \"harmonious_whole_note_patches\" src/svg/chord_compat.zig" "0032 chord algorithmic layout guardrail (no whole-note patch lookup replay tables)"
     check_cmd "cd '$ROOT_DIR' && ! rg -n \"harmonious_whole_note_ulpshim\" src/svg/chord_compat.zig" "0032 chord algorithmic layout guardrail (no whole-note ulp table replay modules)"
+    check_cmd "cd '$ROOT_DIR' && ! rg -n \"110\\.9506\" src/svg/chord_compat.zig" "0032 chord algorithmic layout guardrail (no hardcoded ledger width magic anchor)"
 else
     unverified "0028 chord algorithmic layout guardrail (src/svg/chord_compat.zig missing)"
 fi

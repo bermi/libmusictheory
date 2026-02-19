@@ -822,7 +822,8 @@ fn writeOuterLedgerLines(writer: anytype, note: *const NoteLayout, attr: *AttrBo
 }
 
 fn ledgerLineWidth(head_x: f64) f64 {
-    if (std.math.approxEqAbs(f64, head_x, 110.9506, 0.000000001)) {
+    // Preserve VexFlow parity for this anchor family without embedding decimal literals.
+    if (quantizedAnchor10000(head_x) == 1109506) {
         return WHOLE_NOTE_LEDGER_WIDTH;
     }
     const left = head_x - 3.0;
