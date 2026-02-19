@@ -449,6 +449,7 @@ if [ -f "$ROOT_DIR/src/svg/chord_compat.zig" ]; then
     check_cmd "cd '$ROOT_DIR' && ! rg -n \"harmonious_chord_mod_x_lookup|harmonious_chord_mod_y_lookup|harmonious_whole_note_x_lookup|harmonious_whole_note_y_lookup\" src/svg/chord_compat.zig" "0032 chord algorithmic layout guardrail (no x/y lookup coordinate replay tables)"
     check_cmd "cd '$ROOT_DIR' && ! rg -n \"harmonious_chord_mod_patches\" src/svg/chord_compat.zig" "0032 chord algorithmic layout guardrail (no chord modifier patch lookup replay tables)"
     check_cmd "cd '$ROOT_DIR' && ! rg -n \"harmonious_chord_mod_ulpshim\" src/svg/chord_compat.zig" "0032 chord algorithmic layout guardrail (no chord modifier ulp table replay modules)"
+    check_cmd "cd '$ROOT_DIR' && ! rg -n \"harmonious_scale_mod_ulpshim\" src/svg/chord_compat.zig" "0032 chord algorithmic layout guardrail (no shared scale modifier ulp replay module)"
     check_cmd "cd '$ROOT_DIR' && ! rg -n \"harmonious_whole_note_patches\" src/svg/chord_compat.zig" "0032 chord algorithmic layout guardrail (no whole-note patch lookup replay tables)"
     check_cmd "cd '$ROOT_DIR' && ! rg -n \"harmonious_whole_note_ulpshim\" src/svg/chord_compat.zig" "0032 chord algorithmic layout guardrail (no whole-note ulp table replay modules)"
     check_cmd "cd '$ROOT_DIR' && ! rg -n \"110\\.9506\" src/svg/chord_compat.zig" "0032 chord algorithmic layout guardrail (no hardcoded ledger width magic anchor)"

@@ -38,6 +38,7 @@ This plan enforces a stricter definition of done:
 - Scale key signature accidentals are now emitted algorithmically from reusable modifier glyph paths and anchor rules.
 - Runtime no longer depends on `SHARP_OFFSETS`/`FLAT_OFFSETS`/`NATURAL_OFFSETS`/`DOUBLE_FLAT_OFFSETS` float tables in `harmonious_scale_mod_assets`.
 - Scale modifier defaults no longer depend on `harmonious_scale_mod_ulpshim` at runtime; scale uses dedicated normalized offset glyph templates (`src/generated/harmonious_scale_mod_offset_assets.zig`) and comptime-parsed offset arrays to preserve wasm/native parity.
+- Chord compatibility now also consumes normalized modifier offset glyph templates and no longer imports `harmonious_scale_mod_ulpshim` in runtime generation paths.
 - Scale x-layout no longer imports `src/generated/harmonious_scale_layout_ulpshim.zig`; parity corrections are applied in-module in `src/svg/scale_nomod_compat.zig`.
 - Scale x-layout parity no longer uses signature rule tables (`ScaleLayoutSigRule`/`SCALE_LAYOUT_SIG_RULES`); matching is now tableless branch logic over computed feature counts and edge offsets.
 - Verification now enforces wasm footprint budgets via `scripts/wasm_size_audit.py`:
