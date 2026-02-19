@@ -2,7 +2,6 @@ const std = @import("std");
 
 const assets = @import("../generated/harmonious_chord_compat_assets.zig");
 const mod_assets = @import("../generated/harmonious_scale_mod_assets.zig");
-const mod_ulpshim = @import("../generated/harmonious_chord_mod_ulpshim.zig");
 
 pub const Kind = enum {
     chord,
@@ -1186,20 +1185,246 @@ fn applyModifierUlpShim(kind: ModifierKind, is_x: bool, anchor: f64, axis_token_
 fn modifierUlpDelta(kind: ModifierKind, is_x: bool, anchor: f64, axis_token_index: usize) i8 {
     if (axis_token_index > std.math.maxInt(u8)) return 0;
     const axis_idx: u8 = @intCast(axis_token_index);
+    return switch (kind) {
+        .sharp => if (is_x) sharpModifierXUlpDelta(anchor, axis_idx) else sharpModifierYUlpDelta(anchor, axis_idx),
+        .flat => if (is_x) flatModifierXUlpDelta(anchor, axis_idx) else flatModifierYUlpDelta(anchor, axis_idx),
+        .natural => 0,
+        .double_flat => if (is_x) doubleFlatModifierXUlpDelta(anchor, axis_idx) else doubleFlatModifierYUlpDelta(anchor, axis_idx),
+    };
+}
+
+fn sharpModifierXUlpDelta(anchor: f64, axis_idx: u8) i8 {
+    const anchor_bits: u64 = @bitCast(anchor);
+    if (anchor_bits != 0x404a79ad42c3c9ee) return 0;
+    return switch (axis_idx) {
+        67, 156 => -1,
+        else => 0,
+    };
+}
+
+fn sharpModifierYUlpDelta(anchor: f64, axis_idx: u8) i8 {
+    const q_anchor = quantizedAnchor10000(anchor);
+
+    if (q_anchor == 100000) return sharpModifierYUlpAt10(axis_idx);
+    if (q_anchor == 150000) return sharpModifierYUlpAt15(axis_idx);
+    if (q_anchor == 200000) return sharpModifierYUlpAt20(axis_idx);
+    if (q_anchor == 250000) return sharpModifierYUlpAt25(axis_idx);
+
+    if (q_anchor == 950000 or q_anchor == 1000000 or q_anchor == 1050000 or q_anchor == 1100000) {
+        return if (axis_idx == 133) -1 else 0;
+    }
+
+    if (q_anchor == 1150000) {
+        return switch (axis_idx) {
+            83, 84, 85 => 1,
+            133 => -1,
+            else => 0,
+        };
+    }
+
+    if (q_anchor == 1200000) {
+        return switch (axis_idx) {
+            83, 84, 85 => 1,
+            69, 89, 133 => -1,
+            else => 0,
+        };
+    }
+
+    if (q_anchor == 1250000) {
+        return switch (axis_idx) {
+            46, 83, 84, 85, 96 => 1,
+            69, 89, 109, 133 => -1,
+            else => 0,
+        };
+    }
+
+    if (q_anchor == 1300000) {
+        return switch (axis_idx) {
+            44, 46, 83, 84, 85, 96 => 1,
+            69, 89, 109, 133, 181 => -1,
+            else => 0,
+        };
+    }
+
+    if (q_anchor == 1350000) {
+        return switch (axis_idx) {
+            44, 46, 83, 84, 85, 96, 166 => 1,
+            69, 89, 109, 133, 181 => -1,
+            else => 0,
+        };
+    }
+
+    const is_late_step = isAnchorStep(q_anchor, 1400000, 1950000, 50000) or q_anchor == 2050000 or q_anchor == 2100000 or q_anchor == 2150000;
+    if (is_late_step) {
+        return switch (axis_idx) {
+            44, 46, 83, 84, 85, 96, 166 => 1,
+            69, 89, 109, 146, 181 => -1,
+            else => 0,
+        };
+    }
+
+    return 0;
+}
+
+fn sharpModifierYUlpAt10(axis_idx: u8) i8 {
+    return switch (axis_idx) {
+        9 => 16,
+        12, 25, 54, 105, 107, 108, 110, 147, 148, 149, 151, 153, 166, 175 => 2,
+        34, 44, 46, 96, 106, 124, 125, 180 => 1,
+        10, 11, 18, 23, 38, 42, 45, 118, 119, 120, 121, 129, 130, 152 => -2,
+        37, 43, 47, 48, 70, 71, 89, 100, 109, 112, 122, 131, 161, 162, 163, 164, 165 => -1,
+        133, 146 => -32,
+        136, 140, 150 => 4,
+        135, 142, 144 => -4,
+        else => 0,
+    };
+}
+
+fn sharpModifierYUlpAt15(axis_idx: u8) i8 {
+    return switch (axis_idx) {
+        9 => 2,
+        12, 25, 34, 44, 54, 96, 105, 107, 108, 110, 124, 125, 149, 150, 166, 175 => 1,
+        10, 11, 18, 23, 37, 38, 42, 43, 45, 70, 71, 89, 100, 109, 118, 119, 120, 121, 129, 130, 161 => -1,
+        133, 146 => -2,
+        136, 140 => 8,
+        135, 142, 144 => -8,
+        else => 0,
+    };
+}
+
+fn sharpModifierYUlpAt20(axis_idx: u8) i8 {
+    return switch (axis_idx) {
+        9, 12, 25, 44, 54, 96, 105, 107, 108, 110, 149, 150, 175 => 1,
+        136, 140 => 2,
+        23, 37, 38, 42, 43, 45, 70, 71, 89, 100, 109, 129, 130, 133, 146 => -1,
+        135, 142, 144 => -2,
+        else => 0,
+    };
+}
+
+fn sharpModifierYUlpAt25(axis_idx: u8) i8 {
+    return switch (axis_idx) {
+        9, 44, 54, 105, 107, 108, 110, 136, 140, 149, 175 => 1,
+        37, 38, 42, 43, 45, 70, 71, 109, 133, 135, 142, 144, 146 => -1,
+        else => 0,
+    };
+}
+
+fn flatModifierXUlpDelta(anchor: f64, axis_idx: u8) i8 {
+    if (axis_idx != 25) return 0;
+    const anchor_bits: u64 = @bitCast(anchor);
+    if (anchor_bits == 0x404a79ad42c3c9ee or anchor_bits == 0x404b79ad42c3c9ee) return -1;
+    return 0;
+}
+
+fn flatModifierYUlpDelta(anchor: f64, axis_idx: u8) i8 {
+    const q_anchor = quantizedAnchor10000(anchor);
+
+    if (isAnchorStep(q_anchor, 1350000, 2050000, 50000)) {
+        return if (axis_idx == 52) 1 else 0;
+    }
+
+    return switch (q_anchor) {
+        0 => switch (axis_idx) {
+            12, 22, 23, 34, 35, 43, 44, 45, 46, 47, 48, 50, 51, 52, 60, 61 => 1,
+            29, 30, 31, 32 => 2,
+            49 => 3,
+            19, 27, 54 => -2,
+            20 => -3,
+            53 => -1,
+            59 => -4,
+            else => 0,
+        },
+        50000 => switch (axis_idx) {
+            12 => 8,
+            43, 44, 45, 46, 47, 48, 50, 60, 61 => 2,
+            29, 30, 31, 32, 51, 52 => 1,
+            49 => 6,
+            19 => -64,
+            20 => -6,
+            54 => -1,
+            59 => -4,
+            else => 0,
+        },
+        100000 => switch (axis_idx) {
+            12 => 1,
+            49 => 2,
+            51 => 1,
+            19, 20, 59 => -2,
+            53, 54 => -1,
+            else => 0,
+        },
+        150000 => switch (axis_idx) {
+            49, 51 => 1,
+            19, 20, 59 => -1,
+            else => 0,
+        },
+        200000 => switch (axis_idx) {
+            19 => -1,
+            else => 0,
+        },
+        else => 0,
+    };
+}
+
+fn doubleFlatModifierXUlpDelta(anchor: f64, axis_idx: u8) i8 {
     const anchor_bits: u64 = @bitCast(anchor);
 
-    const table: []const mod_ulpshim.UlpShimEntry = switch (kind) {
-        .sharp => if (is_x) mod_ulpshim.SHARP_X_ULP[0..] else mod_ulpshim.SHARP_Y_ULP[0..],
-        .flat => if (is_x) mod_ulpshim.FLAT_X_ULP[0..] else mod_ulpshim.FLAT_Y_ULP[0..],
-        .natural => return 0,
-        .double_flat => if (is_x) mod_ulpshim.DOUBLE_FLAT_X_ULP[0..] else mod_ulpshim.DOUBLE_FLAT_Y_ULP[0..],
-    };
-
-    for (table) |entry| {
-        if (entry.axis_token_index != axis_idx) continue;
-        if (entry.anchor_bits != anchor_bits) continue;
-        return entry.delta;
+    if (anchor_bits == 0x404a79ad42c3c9ee) {
+        return switch (axis_idx) {
+            3, 13, 67, 79, 94 => 1,
+            18, 23, 55, 96, 97, 98, 99 => -1,
+            else => 0,
+        };
     }
+
+    if (anchor_bits == 0x404f79ad42c3c9ee) {
+        return switch (axis_idx) {
+            3, 67, 79, 94 => 1,
+            else => 0,
+        };
+    }
+
+    if (anchor_bits == 0x4053bcd6a161e4f8 or anchor_bits == 0x40563cd6a161e4f8 or anchor_bits == 0x4058bcd6a161e4f8 or anchor_bits == 0x405b3cd6a161e4f8) {
+        return switch (axis_idx) {
+            16, 47, 109 => -1,
+            else => 0,
+        };
+    }
+
+    return 0;
+}
+
+fn doubleFlatModifierYUlpDelta(anchor: f64, axis_idx: u8) i8 {
+    const q_anchor = quantizedAnchor10000(anchor);
+
+    if (q_anchor == 350000 or q_anchor == 400000 or q_anchor == 550000) {
+        return switch (axis_idx) {
+            54 => 1,
+            59 => -1,
+            else => 0,
+        };
+    }
+
+    if (q_anchor == 700000 or q_anchor == 750000 or q_anchor == 900000) {
+        return switch (axis_idx) {
+            39, 43, 60 => 1,
+            46 => -1,
+            else => 0,
+        };
+    }
+
+    if (q_anchor == 1300000) {
+        return if (axis_idx == 39) 1 else 0;
+    }
+
+    if (q_anchor == 1350000 or q_anchor == 1500000 or q_anchor == 1650000 or q_anchor == 1700000 or q_anchor == 1850000) {
+        return switch (axis_idx) {
+            91, 112 => 1,
+            else => 0,
+        };
+    }
+
     return 0;
 }
 
