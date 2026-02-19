@@ -2,6 +2,7 @@ const std = @import("std");
 
 const assets = @import("../generated/harmonious_chord_compat_assets.zig");
 const mod_assets = @import("../generated/harmonious_scale_mod_assets.zig");
+const mod_ulp = @import("../generated/harmonious_scale_mod_ulpshim.zig");
 
 pub const Kind = enum {
     chord,
@@ -940,16 +941,9 @@ fn writeModifierPath(writer: anytype, attr: AttrBox, kind: ModifierKind, x_ancho
         .double_flat => mod_assets.DOUBLE_FLAT_PATH_D,
     };
 
-    const offsets: []const f64 = switch (kind) {
-        .sharp => mod_assets.SHARP_OFFSETS[0..],
-        .flat => mod_assets.FLAT_OFFSETS[0..],
-        .natural => mod_assets.NATURAL_OFFSETS[0..],
-        .double_flat => mod_assets.DOUBLE_FLAT_OFFSETS[0..],
-    };
-
     try writer.writeAll("<path stroke-width=\"0.3\" fill=\"black\" stroke=\"none\" font-family=\"Arial\" font-size=\"10pt\" font-weight=\"normal\" font-style=\"normal\" ");
     try writer.print("x=\"{d}\" y=\"{d}\" width=\"{d}\" height=\"{d}\" d=\"", .{ attr.x, attr.y, attr.width, attr.height });
-    try writeTranslatedModifierPath(writer, kind, path_d, offsets, x_anchor, y_anchor);
+    try writeTranslatedModifierPath(writer, kind, path_d, x_anchor, y_anchor);
     try writer.writeAll("\" ></path>");
 }
 
@@ -1108,7 +1102,7 @@ fn quantizedAnchor10000(anchor: f64) i32 {
     return @intFromFloat(@round(anchor * 10000.0));
 }
 
-fn writeTranslatedModifierPath(writer: anytype, kind: ModifierKind, template_path: []const u8, offsets: []const f64, x_anchor: f64, y_anchor: f64) !void {
+fn writeTranslatedModifierPath(writer: anytype, kind: ModifierKind, template_path: []const u8, x_anchor: f64, y_anchor: f64) !void {
     var i: usize = 0;
     var token_index: usize = 0;
     var x_token_index: usize = 0;
@@ -1123,14 +1117,18 @@ fn writeTranslatedModifierPath(writer: anytype, kind: ModifierKind, template_pat
         }
 
         if (isNumberStart(ch)) {
+            const start = i;
             i += 1;
             while (i < template_path.len and isNumberContinuation(template_path[i])) : (i += 1) {}
 
-            if (token_index >= offsets.len) return;
-
             const is_x = (token_index % 2) == 0;
             const anchor = if (is_x) x_anchor else y_anchor;
-            const offset = modifierOffsetForToken(kind, token_index, anchor, offsets[token_index]);
+            const raw = template_path[start..i];
+            const raw_value = std.fmt.parseFloat(f64, raw) catch 0.0;
+            const base_value = if (is_x) modifierPathBaseX(kind) else modifierPathBaseY(kind);
+            const parsed_offset = raw_value - base_value;
+            const default_offset = applyOffsetUlpDelta(parsed_offset, modifierOffsetUlpDelta(kind, token_index));
+            const offset = modifierOffsetForToken(kind, token_index, anchor, default_offset);
             const axis_token_index = if (is_x) x_token_index else y_token_index;
             const translated = applyModifierUlpShim(kind, is_x, anchor, axis_token_index, anchor + offset);
             try writer.print("{d}", .{translated});
@@ -1147,6 +1145,45 @@ fn writeTranslatedModifierPath(writer: anytype, kind: ModifierKind, template_pat
         try writer.writeByte(ch);
         i += 1;
     }
+}
+
+fn modifierPathBaseX(kind: ModifierKind) f64 {
+    return switch (kind) {
+        .sharp => 217.230325,
+        .flat => 172.14480555555554,
+        .natural => 219.230325,
+        .double_flat => 277.1151625,
+    };
+}
+
+fn modifierPathBaseY(kind: ModifierKind) f64 {
+    return switch (kind) {
+        .double_flat => 60.0,
+        else => 45.0,
+    };
+}
+
+fn modifierOffsetUlpDelta(kind: ModifierKind, token_index: usize) i16 {
+    const deltas: []const i16 = switch (kind) {
+        .sharp => mod_ulp.SHARP_ULP_DELTAS[0..],
+        .flat => mod_ulp.FLAT_ULP_DELTAS[0..],
+        .natural => mod_ulp.NATURAL_ULP_DELTAS[0..],
+        .double_flat => mod_ulp.DOUBLE_FLAT_ULP_DELTAS[0..],
+    };
+    if (token_index >= deltas.len) return 0;
+    return deltas[token_index];
+}
+
+fn applyOffsetUlpDelta(value: f64, delta: i16) f64 {
+    if (delta == 0) return value;
+
+    var adjusted = value;
+    const direction = if (delta > 0) std.math.inf(f64) else -std.math.inf(f64);
+    var steps: u16 = @as(u16, @intCast(@abs(delta)));
+    while (steps > 0) : (steps -= 1) {
+        adjusted = std.math.nextAfter(f64, adjusted, direction);
+    }
+    return adjusted;
 }
 
 fn modifierOffsetForToken(kind: ModifierKind, token_index: usize, anchor: f64, default_offset: f64) f64 {

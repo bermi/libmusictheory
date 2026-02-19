@@ -26,7 +26,7 @@ This plan enforces a stricter definition of done:
 - Do not embed or load reference SVG contents into generation paths.
 - Do not increase wasm artifact beyond the existing `<1MB` guardrail.
 
-## Current Snapshot (2026-02-18)
+## Current Snapshot (2026-02-19)
 
 - `scale` parity is currently `494/494` exact matches.
 - Full compatibility run remains `8634/8634` exact matches.
@@ -36,6 +36,8 @@ This plan enforces a stricter definition of done:
 - `harmonious_scale_nomod_keysig_lines`
 - Index-based replay (`harmonious_scale_x_by_index`).
 - Scale key signature accidentals are now emitted algorithmically from reusable modifier glyph paths and anchor rules.
+- Runtime no longer depends on `SHARP_OFFSETS`/`FLAT_OFFSETS`/`NATURAL_OFFSETS`/`DOUBLE_FLAT_OFFSETS` float tables in `harmonious_scale_mod_assets`.
+- Modifier default offsets are now reconstructed from parsed glyph path coordinates + deterministic ULP shim deltas (`src/generated/harmonious_scale_mod_ulpshim.zig`) while preserving exact parity.
 - Verification now enforces wasm footprint budgets via `scripts/wasm_size_audit.py`:
 - total wasm `< 900000`
 - wasm `DATA` section `< 760000`
