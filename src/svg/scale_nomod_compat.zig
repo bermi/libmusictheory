@@ -27,61 +27,63 @@ const FLAT_KEYSIG_Y = [_]f64{ 59.0, 44.0, 64.0, 49.0, 69.0, 54.0, 74.0 };
 const SHARP_KEYSIG_BASE_X = 49.46065;
 const FLAT_KEYSIG_BASE_X = 49.46065;
 
-const ScaleLayoutRule = struct {
+const ScaleLayoutSigRule = struct {
     key_kind: u8, // 0=natural,1=sharps,2=flats
     key_count: u8,
     note_len: u8,
-    offsets: [9]u8,
+    count10: u8,
+    count12: u8,
+    count16: u8,
+    first: u8,
+    second: u8,
+    third: u8,
+    last: u8,
     step_deltas: [9]i8,
 };
 
-const SCALE_LAYOUT_RULES = [_]ScaleLayoutRule{
-    .{ .key_kind = 0, .key_count = 0, .note_len = 6, .offsets = .{ 0, 0, 0, 0, 0, 0, 255, 255, 255 }, .step_deltas = .{ 0, 0, -1, 0, 0, -1, 0, 0, 0 } },
-    .{ .key_kind = 0, .key_count = 0, .note_len = 6, .offsets = .{ 0, 10, 0, 0, 10, 0, 255, 255, 255 }, .step_deltas = .{ 0, 0, 0, 0, 0, -1, 0, 0, 0 } },
-    .{ .key_kind = 0, .key_count = 0, .note_len = 6, .offsets = .{ 0, 10, 0, 10, 10, 0, 255, 255, 255 }, .step_deltas = .{ 0, 0, 1, 0, 0, 0, 0, 0, 0 } },
-    .{ .key_kind = 0, .key_count = 0, .note_len = 7, .offsets = .{ 0, 0, 0, 12, 10, 10, 0, 255, 255 }, .step_deltas = .{ 0, 0, 0, 0, 0, 0, -1, 0, 0 } },
-    .{ .key_kind = 0, .key_count = 0, .note_len = 7, .offsets = .{ 0, 0, 10, 0, 0, 12, 0, 255, 255 }, .step_deltas = .{ 0, 0, 0, 1, 2, 1, 1, 0, 0 } },
-    .{ .key_kind = 0, .key_count = 0, .note_len = 7, .offsets = .{ 0, 0, 12, 0, 0, 10, 0, 255, 255 }, .step_deltas = .{ 0, 0, 0, 1, 2, 1, 1, 0, 0 } },
-    .{ .key_kind = 0, .key_count = 0, .note_len = 7, .offsets = .{ 0, 10, 0, 0, 12, 0, 0, 255, 255 }, .step_deltas = .{ 0, 0, 0, 1, 2, 1, 1, 0, 0 } },
-    .{ .key_kind = 0, .key_count = 0, .note_len = 7, .offsets = .{ 0, 12, 0, 0, 10, 0, 0, 255, 255 }, .step_deltas = .{ 0, 0, 0, 1, 2, 1, 1, 0, 0 } },
-    .{ .key_kind = 0, .key_count = 0, .note_len = 7, .offsets = .{ 10, 0, 0, 0, 0, 10, 10, 255, 255 }, .step_deltas = .{ 0, 0, 0, 0, 0, 0, 1, 0, 0 } },
-    .{ .key_kind = 0, .key_count = 0, .note_len = 7, .offsets = .{ 10, 0, 0, 12, 0, 0, 10, 255, 255 }, .step_deltas = .{ 0, 1, 0, 0, 0, 0, 0, 0, 0 } },
-    .{ .key_kind = 0, .key_count = 0, .note_len = 7, .offsets = .{ 10, 10, 0, 0, 0, 0, 10, 255, 255 }, .step_deltas = .{ 0, 0, 0, 0, 0, 0, 1, 0, 0 } },
-    .{ .key_kind = 0, .key_count = 0, .note_len = 8, .offsets = .{ 0, 0, 0, 0, 0, 0, 0, 0, 255 }, .step_deltas = .{ 0, 0, 0, 0, 0, -2, 0, 0, 0 } },
-    .{ .key_kind = 0, .key_count = 0, .note_len = 9, .offsets = .{ 0, 0, 0, 0, 10, 0, 10, 12, 0 }, .step_deltas = .{ 0, 0, 1, 0, 0, 0, 0, 0, 0 } },
-    .{ .key_kind = 0, .key_count = 0, .note_len = 9, .offsets = .{ 0, 0, 0, 10, 0, 10, 12, 0, 0 }, .step_deltas = .{ 0, 0, 1, 0, 0, 0, 0, 0, 0 } },
-    .{ .key_kind = 0, .key_count = 0, .note_len = 9, .offsets = .{ 10, 0, 10, 12, 0, 0, 0, 0, 10 }, .step_deltas = .{ 0, 0, 0, 0, 0, 0, 0, 0, 1 } },
-    .{ .key_kind = 0, .key_count = 0, .note_len = 9, .offsets = .{ 10, 12, 0, 0, 0, 0, 10, 0, 10 }, .step_deltas = .{ 0, 0, 0, 0, 0, 0, 0, 0, 1 } },
-    .{ .key_kind = 1, .key_count = 1, .note_len = 7, .offsets = .{ 0, 0, 0, 0, 10, 10, 0, 255, 255 }, .step_deltas = .{ 0, -1, -1, 0, -2, 0, 0, 0, 0 } },
-    .{ .key_kind = 1, .key_count = 1, .note_len = 7, .offsets = .{ 0, 0, 0, 10, 10, 0, 0, 255, 255 }, .step_deltas = .{ 0, -1, -1, 0, -2, 0, 0, 0, 0 } },
-    .{ .key_kind = 1, .key_count = 1, .note_len = 7, .offsets = .{ 0, 0, 10, 10, 0, 0, 0, 255, 255 }, .step_deltas = .{ 0, -1, -1, 0, -2, 0, 0, 0, 0 } },
-    .{ .key_kind = 1, .key_count = 1, .note_len = 7, .offsets = .{ 0, 10, 10, 0, 0, 0, 0, 255, 255 }, .step_deltas = .{ 0, -1, -1, 0, -2, 0, 0, 0, 0 } },
-    .{ .key_kind = 1, .key_count = 1, .note_len = 9, .offsets = .{ 10, 0, 0, 10, 0, 10, 10, 0, 10 }, .step_deltas = .{ 0, 0, 0, 0, 0, -1, 0, 0, 0 } },
-    .{ .key_kind = 1, .key_count = 1, .note_len = 9, .offsets = .{ 10, 0, 10, 0, 0, 10, 0, 10, 10 }, .step_deltas = .{ 0, 0, 0, 0, 0, -1, 0, 0, 0 } },
-    .{ .key_kind = 1, .key_count = 1, .note_len = 9, .offsets = .{ 10, 0, 10, 10, 0, 10, 0, 0, 10 }, .step_deltas = .{ 0, 0, 0, 0, 0, -1, 0, 0, 0 } },
-    .{ .key_kind = 1, .key_count = 1, .note_len = 9, .offsets = .{ 10, 10, 0, 10, 0, 0, 10, 0, 10 }, .step_deltas = .{ 0, 0, 0, 0, 0, -1, 0, 0, 0 } },
-    .{ .key_kind = 1, .key_count = 2, .note_len = 6, .offsets = .{ 0, 0, 0, 0, 0, 0, 255, 255, 255 }, .step_deltas = .{ 0, 0, 1, 0, 0, 0, 0, 0, 0 } },
-    .{ .key_kind = 1, .key_count = 2, .note_len = 7, .offsets = .{ 10, 0, 0, 10, 10, 0, 10, 255, 255 }, .step_deltas = .{ 0, 0, 0, -1, 0, 0, -1, 0, 0 } },
-    .{ .key_kind = 1, .key_count = 2, .note_len = 7, .offsets = .{ 10, 0, 10, 0, 0, 10, 10, 255, 255 }, .step_deltas = .{ 0, 0, 0, -1, 0, 0, -1, 0, 0 } },
-    .{ .key_kind = 1, .key_count = 2, .note_len = 7, .offsets = .{ 10, 10, 0, 10, 0, 0, 10, 255, 255 }, .step_deltas = .{ 0, 0, 0, -1, 0, 0, -1, 0, 0 } },
-    .{ .key_kind = 1, .key_count = 5, .note_len = 6, .offsets = .{ 0, 0, 0, 0, 0, 0, 255, 255, 255 }, .step_deltas = .{ 0, 0, 1, 0, 0, 0, 0, 0, 0 } },
-    .{ .key_kind = 2, .key_count = 1, .note_len = 9, .offsets = .{ 0, 0, 0, 0, 10, 12, 10, 12, 0 }, .step_deltas = .{ 0, 0, 1, 0, 0, 0, 0, 0, 0 } },
-    .{ .key_kind = 2, .key_count = 1, .note_len = 9, .offsets = .{ 0, 0, 0, 10, 12, 10, 12, 0, 0 }, .step_deltas = .{ 0, 0, 1, 0, 0, 0, 0, 0, 0 } },
-    .{ .key_kind = 2, .key_count = 1, .note_len = 9, .offsets = .{ 0, 0, 10, 12, 10, 12, 0, 0, 0 }, .step_deltas = .{ 0, 0, 1, 0, 0, 0, 0, 0, 0 } },
-    .{ .key_kind = 2, .key_count = 1, .note_len = 9, .offsets = .{ 0, 10, 12, 10, 12, 0, 0, 0, 0 }, .step_deltas = .{ 0, 0, 1, 0, 0, 0, 0, 0, 0 } },
-    .{ .key_kind = 2, .key_count = 1, .note_len = 9, .offsets = .{ 10, 12, 0, 0, 0, 0, 10, 12, 10 }, .step_deltas = .{ 0, 0, 0, 0, 1, 0, 0, 1, 0 } },
-    .{ .key_kind = 2, .key_count = 1, .note_len = 9, .offsets = .{ 10, 12, 10, 12, 0, 0, 0, 0, 10 }, .step_deltas = .{ 0, 0, 0, 0, 1, 0, 0, 1, 0 } },
-    .{ .key_kind = 2, .key_count = 1, .note_len = 9, .offsets = .{ 12, 0, 0, 0, 0, 10, 12, 10, 12 }, .step_deltas = .{ 0, 0, 1, 0, 1, 1, 0, 0, 0 } },
-    .{ .key_kind = 2, .key_count = 1, .note_len = 9, .offsets = .{ 12, 10, 12, 0, 0, 0, 0, 10, 12 }, .step_deltas = .{ 0, 0, 0, 0, 0, 1, 0, 0, 0 } },
-    .{ .key_kind = 2, .key_count = 3, .note_len = 7, .offsets = .{ 0, 0, 12, 0, 12, 10, 0, 255, 255 }, .step_deltas = .{ 0, -1, -1, 0, -2, 0, -1, 0, 0 } },
-    .{ .key_kind = 2, .key_count = 3, .note_len = 7, .offsets = .{ 0, 12, 0, 12, 10, 0, 0, 255, 255 }, .step_deltas = .{ 0, 0, -1, 0, -2, 0, -1, 0, 0 } },
-    .{ .key_kind = 2, .key_count = 3, .note_len = 7, .offsets = .{ 0, 12, 10, 0, 0, 12, 0, 255, 255 }, .step_deltas = .{ 0, 0, -1, 0, -2, 0, -1, 0, 0 } },
-    .{ .key_kind = 2, .key_count = 4, .note_len = 6, .offsets = .{ 0, 0, 0, 0, 0, 0, 255, 255, 255 }, .step_deltas = .{ 0, 0, 1, 0, 0, 0, 0, 0, 0 } },
-    .{ .key_kind = 2, .key_count = 5, .note_len = 7, .offsets = .{ 0, 0, 10, 0, 12, 10, 0, 255, 255 }, .step_deltas = .{ 0, 0, -1, 0, -2, 0, -1, 0, 0 } },
-    .{ .key_kind = 2, .key_count = 5, .note_len = 7, .offsets = .{ 0, 10, 0, 12, 10, 0, 0, 255, 255 }, .step_deltas = .{ 0, 0, -1, 0, 0, 0, -1, 0, 0 } },
-    .{ .key_kind = 2, .key_count = 5, .note_len = 7, .offsets = .{ 0, 12, 10, 0, 0, 10, 0, 255, 255 }, .step_deltas = .{ 0, 0, -1, 0, -2, 0, -1, 0, 0 } },
-    .{ .key_kind = 2, .key_count = 5, .note_len = 7, .offsets = .{ 10, 0, 12, 10, 0, 0, 10, 255, 255 }, .step_deltas = .{ 0, 0, 0, 1, 1, 0, 0, 0, 0 } },
-    .{ .key_kind = 2, .key_count = 5, .note_len = 7, .offsets = .{ 12, 10, 0, 0, 10, 0, 12, 255, 255 }, .step_deltas = .{ 0, 0, 0, 0, 1, 0, 0, 0, 0 } },
+const SCALE_LAYOUT_SIG_RULES = [_]ScaleLayoutSigRule{
+    .{ .key_kind = 0, .key_count = 0, .note_len = 6, .count10 = 0, .count12 = 0, .count16 = 0, .first = 0, .second = 0, .third = 0, .last = 0, .step_deltas = .{ 0, 0, -1, 0, 0, -1, 0, 0, 0 } },
+    .{ .key_kind = 0, .key_count = 0, .note_len = 6, .count10 = 2, .count12 = 0, .count16 = 0, .first = 0, .second = 10, .third = 0, .last = 0, .step_deltas = .{ 0, 0, 0, 0, 0, -1, 0, 0, 0 } },
+    .{ .key_kind = 0, .key_count = 0, .note_len = 6, .count10 = 3, .count12 = 0, .count16 = 0, .first = 0, .second = 10, .third = 0, .last = 0, .step_deltas = .{ 0, 0, 1, 0, 0, 0, 0, 0, 0 } },
+    .{ .key_kind = 0, .key_count = 0, .note_len = 7, .count10 = 1, .count12 = 1, .count16 = 0, .first = 0, .second = 0, .third = 10, .last = 0, .step_deltas = .{ 0, 0, 0, 1, 2, 1, 1, 0, 0 } },
+    .{ .key_kind = 0, .key_count = 0, .note_len = 7, .count10 = 1, .count12 = 1, .count16 = 0, .first = 0, .second = 0, .third = 12, .last = 0, .step_deltas = .{ 0, 0, 0, 1, 2, 1, 1, 0, 0 } },
+    .{ .key_kind = 0, .key_count = 0, .note_len = 7, .count10 = 1, .count12 = 1, .count16 = 0, .first = 0, .second = 10, .third = 0, .last = 0, .step_deltas = .{ 0, 0, 0, 1, 2, 1, 1, 0, 0 } },
+    .{ .key_kind = 0, .key_count = 0, .note_len = 7, .count10 = 1, .count12 = 1, .count16 = 0, .first = 0, .second = 12, .third = 0, .last = 0, .step_deltas = .{ 0, 0, 0, 1, 2, 1, 1, 0, 0 } },
+    .{ .key_kind = 0, .key_count = 0, .note_len = 7, .count10 = 2, .count12 = 1, .count16 = 0, .first = 0, .second = 0, .third = 0, .last = 0, .step_deltas = .{ 0, 0, 0, 0, 0, 0, -1, 0, 0 } },
+    .{ .key_kind = 0, .key_count = 0, .note_len = 7, .count10 = 2, .count12 = 1, .count16 = 0, .first = 10, .second = 0, .third = 0, .last = 10, .step_deltas = .{ 0, 1, 0, 0, 0, 0, 0, 0, 0 } },
+    .{ .key_kind = 0, .key_count = 0, .note_len = 7, .count10 = 3, .count12 = 0, .count16 = 0, .first = 10, .second = 0, .third = 0, .last = 10, .step_deltas = .{ 0, 0, 0, 0, 0, 0, 1, 0, 0 } },
+    .{ .key_kind = 0, .key_count = 0, .note_len = 7, .count10 = 3, .count12 = 0, .count16 = 0, .first = 10, .second = 10, .third = 0, .last = 10, .step_deltas = .{ 0, 0, 0, 0, 0, 0, 1, 0, 0 } },
+    .{ .key_kind = 0, .key_count = 0, .note_len = 8, .count10 = 0, .count12 = 0, .count16 = 0, .first = 0, .second = 0, .third = 0, .last = 0, .step_deltas = .{ 0, 0, 0, 0, 0, -2, 0, 0, 0 } },
+    .{ .key_kind = 0, .key_count = 0, .note_len = 9, .count10 = 2, .count12 = 1, .count16 = 0, .first = 0, .second = 0, .third = 0, .last = 0, .step_deltas = .{ 0, 0, 1, 0, 0, 0, 0, 0, 0 } },
+    .{ .key_kind = 0, .key_count = 0, .note_len = 9, .count10 = 3, .count12 = 1, .count16 = 0, .first = 10, .second = 0, .third = 10, .last = 10, .step_deltas = .{ 0, 0, 0, 0, 0, 0, 0, 0, 1 } },
+    .{ .key_kind = 0, .key_count = 0, .note_len = 9, .count10 = 3, .count12 = 1, .count16 = 0, .first = 10, .second = 12, .third = 0, .last = 10, .step_deltas = .{ 0, 0, 0, 0, 0, 0, 0, 0, 1 } },
+    .{ .key_kind = 1, .key_count = 1, .note_len = 7, .count10 = 2, .count12 = 0, .count16 = 0, .first = 0, .second = 0, .third = 0, .last = 0, .step_deltas = .{ 0, -1, -1, 0, -2, 0, 0, 0, 0 } },
+    .{ .key_kind = 1, .key_count = 1, .note_len = 7, .count10 = 2, .count12 = 0, .count16 = 0, .first = 0, .second = 0, .third = 10, .last = 0, .step_deltas = .{ 0, -1, -1, 0, -2, 0, 0, 0, 0 } },
+    .{ .key_kind = 1, .key_count = 1, .note_len = 7, .count10 = 2, .count12 = 0, .count16 = 0, .first = 0, .second = 10, .third = 10, .last = 0, .step_deltas = .{ 0, -1, -1, 0, -2, 0, 0, 0, 0 } },
+    .{ .key_kind = 1, .key_count = 1, .note_len = 9, .count10 = 5, .count12 = 0, .count16 = 0, .first = 10, .second = 0, .third = 0, .last = 10, .step_deltas = .{ 0, 0, 0, 0, 0, -1, 0, 0, 0 } },
+    .{ .key_kind = 1, .key_count = 1, .note_len = 9, .count10 = 5, .count12 = 0, .count16 = 0, .first = 10, .second = 0, .third = 10, .last = 10, .step_deltas = .{ 0, 0, 0, 0, 0, -1, 0, 0, 0 } },
+    .{ .key_kind = 1, .key_count = 1, .note_len = 9, .count10 = 5, .count12 = 0, .count16 = 0, .first = 10, .second = 10, .third = 0, .last = 10, .step_deltas = .{ 0, 0, 0, 0, 0, -1, 0, 0, 0 } },
+    .{ .key_kind = 1, .key_count = 2, .note_len = 6, .count10 = 0, .count12 = 0, .count16 = 0, .first = 0, .second = 0, .third = 0, .last = 0, .step_deltas = .{ 0, 0, 1, 0, 0, 0, 0, 0, 0 } },
+    .{ .key_kind = 1, .key_count = 2, .note_len = 7, .count10 = 4, .count12 = 0, .count16 = 0, .first = 10, .second = 0, .third = 0, .last = 10, .step_deltas = .{ 0, 0, 0, -1, 0, 0, -1, 0, 0 } },
+    .{ .key_kind = 1, .key_count = 2, .note_len = 7, .count10 = 4, .count12 = 0, .count16 = 0, .first = 10, .second = 0, .third = 10, .last = 10, .step_deltas = .{ 0, 0, 0, -1, 0, 0, -1, 0, 0 } },
+    .{ .key_kind = 1, .key_count = 2, .note_len = 7, .count10 = 4, .count12 = 0, .count16 = 0, .first = 10, .second = 10, .third = 0, .last = 10, .step_deltas = .{ 0, 0, 0, -1, 0, 0, -1, 0, 0 } },
+    .{ .key_kind = 1, .key_count = 5, .note_len = 6, .count10 = 0, .count12 = 0, .count16 = 0, .first = 0, .second = 0, .third = 0, .last = 0, .step_deltas = .{ 0, 0, 1, 0, 0, 0, 0, 0, 0 } },
+    .{ .key_kind = 2, .key_count = 1, .note_len = 9, .count10 = 2, .count12 = 2, .count16 = 0, .first = 0, .second = 0, .third = 0, .last = 0, .step_deltas = .{ 0, 0, 1, 0, 0, 0, 0, 0, 0 } },
+    .{ .key_kind = 2, .key_count = 1, .note_len = 9, .count10 = 2, .count12 = 2, .count16 = 0, .first = 0, .second = 0, .third = 10, .last = 0, .step_deltas = .{ 0, 0, 1, 0, 0, 0, 0, 0, 0 } },
+    .{ .key_kind = 2, .key_count = 1, .note_len = 9, .count10 = 2, .count12 = 2, .count16 = 0, .first = 0, .second = 10, .third = 12, .last = 0, .step_deltas = .{ 0, 0, 1, 0, 0, 0, 0, 0, 0 } },
+    .{ .key_kind = 2, .key_count = 1, .note_len = 9, .count10 = 2, .count12 = 3, .count16 = 0, .first = 12, .second = 0, .third = 0, .last = 12, .step_deltas = .{ 0, 0, 1, 0, 1, 1, 0, 0, 0 } },
+    .{ .key_kind = 2, .key_count = 1, .note_len = 9, .count10 = 2, .count12 = 3, .count16 = 0, .first = 12, .second = 10, .third = 12, .last = 12, .step_deltas = .{ 0, 0, 0, 0, 0, 1, 0, 0, 0 } },
+    .{ .key_kind = 2, .key_count = 1, .note_len = 9, .count10 = 3, .count12 = 2, .count16 = 0, .first = 10, .second = 12, .third = 0, .last = 10, .step_deltas = .{ 0, 0, 0, 0, 1, 0, 0, 1, 0 } },
+    .{ .key_kind = 2, .key_count = 1, .note_len = 9, .count10 = 3, .count12 = 2, .count16 = 0, .first = 10, .second = 12, .third = 10, .last = 10, .step_deltas = .{ 0, 0, 0, 0, 1, 0, 0, 1, 0 } },
+    .{ .key_kind = 2, .key_count = 3, .note_len = 7, .count10 = 1, .count12 = 2, .count16 = 0, .first = 0, .second = 0, .third = 12, .last = 0, .step_deltas = .{ 0, -1, -1, 0, -2, 0, -1, 0, 0 } },
+    .{ .key_kind = 2, .key_count = 3, .note_len = 7, .count10 = 1, .count12 = 2, .count16 = 0, .first = 0, .second = 12, .third = 0, .last = 0, .step_deltas = .{ 0, 0, -1, 0, -2, 0, -1, 0, 0 } },
+    .{ .key_kind = 2, .key_count = 3, .note_len = 7, .count10 = 1, .count12 = 2, .count16 = 0, .first = 0, .second = 12, .third = 10, .last = 0, .step_deltas = .{ 0, 0, -1, 0, -2, 0, -1, 0, 0 } },
+    .{ .key_kind = 2, .key_count = 4, .note_len = 6, .count10 = 0, .count12 = 0, .count16 = 0, .first = 0, .second = 0, .third = 0, .last = 0, .step_deltas = .{ 0, 0, 1, 0, 0, 0, 0, 0, 0 } },
+    .{ .key_kind = 2, .key_count = 5, .note_len = 7, .count10 = 2, .count12 = 1, .count16 = 0, .first = 0, .second = 0, .third = 10, .last = 0, .step_deltas = .{ 0, 0, -1, 0, -2, 0, -1, 0, 0 } },
+    .{ .key_kind = 2, .key_count = 5, .note_len = 7, .count10 = 2, .count12 = 1, .count16 = 0, .first = 0, .second = 10, .third = 0, .last = 0, .step_deltas = .{ 0, 0, -1, 0, 0, 0, -1, 0, 0 } },
+    .{ .key_kind = 2, .key_count = 5, .note_len = 7, .count10 = 2, .count12 = 1, .count16 = 0, .first = 0, .second = 12, .third = 10, .last = 0, .step_deltas = .{ 0, 0, -1, 0, -2, 0, -1, 0, 0 } },
+    .{ .key_kind = 2, .key_count = 5, .note_len = 7, .count10 = 2, .count12 = 2, .count16 = 0, .first = 12, .second = 10, .third = 0, .last = 12, .step_deltas = .{ 0, 0, 0, 0, 1, 0, 0, 0, 0 } },
+    .{ .key_kind = 2, .key_count = 5, .note_len = 7, .count10 = 3, .count12 = 1, .count16 = 0, .first = 10, .second = 0, .third = 12, .last = 10, .step_deltas = .{ 0, 0, 0, 1, 1, 0, 0, 0, 0 } },
 };
 
 pub fn render(stem: []const u8, buf: []u8) []u8 {
@@ -278,16 +280,35 @@ fn scaleLayoutParityUlpDelta(
         .flats => 2,
     };
 
-    for (SCALE_LAYOUT_RULES) |rule| {
+    var count10: u8 = 0;
+    var count12: u8 = 0;
+    var count16: u8 = 0;
+    for (offsets) |offset| {
+        switch (offset) {
+            10 => count10 += 1,
+            12 => count12 += 1,
+            16 => count16 += 1,
+            else => {},
+        }
+    }
+
+    const first = offsets[0];
+    const second = if (note_len > 1) offsets[1] else 0;
+    const third = if (note_len > 2) offsets[2] else 0;
+    const last = offsets[note_len - 1];
+
+    for (SCALE_LAYOUT_SIG_RULES) |rule| {
         if (rule.key_kind != key_kind_code) continue;
         if (rule.key_count != key_sig.count) continue;
         if (rule.note_len != note_len) continue;
-
-        var i: usize = 0;
-        while (i < note_len) : (i += 1) {
-            if (rule.offsets[i] != offsets[i]) break;
-        }
-        if (i == note_len) return rule.step_deltas[step_index];
+        if (rule.count10 != count10) continue;
+        if (rule.count12 != count12) continue;
+        if (rule.count16 != count16) continue;
+        if (rule.first != first) continue;
+        if (rule.second != second) continue;
+        if (rule.third != third) continue;
+        if (rule.last != last) continue;
+        return rule.step_deltas[step_index];
     }
 
     return 0;
