@@ -38,15 +38,15 @@ This plan enforces a stricter definition of done:
 - Scale key signature accidentals are now emitted algorithmically from reusable modifier glyph paths and anchor rules.
 - Runtime no longer depends on `SHARP_OFFSETS`/`FLAT_OFFSETS`/`NATURAL_OFFSETS`/`DOUBLE_FLAT_OFFSETS` float tables in `harmonious_scale_mod_assets`.
 - Modifier default offsets are now reconstructed from parsed glyph path coordinates + deterministic ULP shim deltas (`src/generated/harmonious_scale_mod_ulpshim.zig`) while preserving exact parity.
-- Scale x-layout no longer imports `src/generated/harmonious_scale_layout_ulpshim.zig`; parity corrections are applied via compact in-module rule matching in `src/svg/scale_nomod_compat.zig`.
-- Scale x-layout rule matching is now signature-based (`count10/count12/count16 + leading/trailing offsets`) without explicit per-rule offset arrays.
+- Scale x-layout no longer imports `src/generated/harmonious_scale_layout_ulpshim.zig`; parity corrections are applied in-module in `src/svg/scale_nomod_compat.zig`.
+- Scale x-layout parity no longer uses signature rule tables (`ScaleLayoutSigRule`/`SCALE_LAYOUT_SIG_RULES`); matching is now tableless branch logic over computed feature counts and edge offsets.
 - Verification now enforces wasm footprint budgets via `scripts/wasm_size_audit.py`:
 - total wasm `< 900000`
 - wasm `DATA` section `< 760000`
 - coordinate-like reachable generated data `< 170000`
 - Chord compatibility path is now guarded against x/y coordinate replay table reintroduction.
 - Remaining open item for strict completion:
-- x-layout parity still needs a formula-only solver to replace residual signature-based ULP correction logic.
+- x-layout parity still needs a formula-only solver to replace residual ULP correction branch logic.
 
 ## Research Phase (Mandatory)
 

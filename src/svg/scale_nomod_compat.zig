@@ -27,65 +27,6 @@ const FLAT_KEYSIG_Y = [_]f64{ 59.0, 44.0, 64.0, 49.0, 69.0, 54.0, 74.0 };
 const SHARP_KEYSIG_BASE_X = 49.46065;
 const FLAT_KEYSIG_BASE_X = 49.46065;
 
-const ScaleLayoutSigRule = struct {
-    key_kind: u8, // 0=natural,1=sharps,2=flats
-    key_count: u8,
-    note_len: u8,
-    count10: u8,
-    count12: u8,
-    count16: u8,
-    first: u8,
-    second: u8,
-    third: u8,
-    last: u8,
-    step_deltas: [9]i8,
-};
-
-const SCALE_LAYOUT_SIG_RULES = [_]ScaleLayoutSigRule{
-    .{ .key_kind = 0, .key_count = 0, .note_len = 6, .count10 = 0, .count12 = 0, .count16 = 0, .first = 0, .second = 0, .third = 0, .last = 0, .step_deltas = .{ 0, 0, -1, 0, 0, -1, 0, 0, 0 } },
-    .{ .key_kind = 0, .key_count = 0, .note_len = 6, .count10 = 2, .count12 = 0, .count16 = 0, .first = 0, .second = 10, .third = 0, .last = 0, .step_deltas = .{ 0, 0, 0, 0, 0, -1, 0, 0, 0 } },
-    .{ .key_kind = 0, .key_count = 0, .note_len = 6, .count10 = 3, .count12 = 0, .count16 = 0, .first = 0, .second = 10, .third = 0, .last = 0, .step_deltas = .{ 0, 0, 1, 0, 0, 0, 0, 0, 0 } },
-    .{ .key_kind = 0, .key_count = 0, .note_len = 7, .count10 = 1, .count12 = 1, .count16 = 0, .first = 0, .second = 0, .third = 10, .last = 0, .step_deltas = .{ 0, 0, 0, 1, 2, 1, 1, 0, 0 } },
-    .{ .key_kind = 0, .key_count = 0, .note_len = 7, .count10 = 1, .count12 = 1, .count16 = 0, .first = 0, .second = 0, .third = 12, .last = 0, .step_deltas = .{ 0, 0, 0, 1, 2, 1, 1, 0, 0 } },
-    .{ .key_kind = 0, .key_count = 0, .note_len = 7, .count10 = 1, .count12 = 1, .count16 = 0, .first = 0, .second = 10, .third = 0, .last = 0, .step_deltas = .{ 0, 0, 0, 1, 2, 1, 1, 0, 0 } },
-    .{ .key_kind = 0, .key_count = 0, .note_len = 7, .count10 = 1, .count12 = 1, .count16 = 0, .first = 0, .second = 12, .third = 0, .last = 0, .step_deltas = .{ 0, 0, 0, 1, 2, 1, 1, 0, 0 } },
-    .{ .key_kind = 0, .key_count = 0, .note_len = 7, .count10 = 2, .count12 = 1, .count16 = 0, .first = 0, .second = 0, .third = 0, .last = 0, .step_deltas = .{ 0, 0, 0, 0, 0, 0, -1, 0, 0 } },
-    .{ .key_kind = 0, .key_count = 0, .note_len = 7, .count10 = 2, .count12 = 1, .count16 = 0, .first = 10, .second = 0, .third = 0, .last = 10, .step_deltas = .{ 0, 1, 0, 0, 0, 0, 0, 0, 0 } },
-    .{ .key_kind = 0, .key_count = 0, .note_len = 7, .count10 = 3, .count12 = 0, .count16 = 0, .first = 10, .second = 0, .third = 0, .last = 10, .step_deltas = .{ 0, 0, 0, 0, 0, 0, 1, 0, 0 } },
-    .{ .key_kind = 0, .key_count = 0, .note_len = 7, .count10 = 3, .count12 = 0, .count16 = 0, .first = 10, .second = 10, .third = 0, .last = 10, .step_deltas = .{ 0, 0, 0, 0, 0, 0, 1, 0, 0 } },
-    .{ .key_kind = 0, .key_count = 0, .note_len = 8, .count10 = 0, .count12 = 0, .count16 = 0, .first = 0, .second = 0, .third = 0, .last = 0, .step_deltas = .{ 0, 0, 0, 0, 0, -2, 0, 0, 0 } },
-    .{ .key_kind = 0, .key_count = 0, .note_len = 9, .count10 = 2, .count12 = 1, .count16 = 0, .first = 0, .second = 0, .third = 0, .last = 0, .step_deltas = .{ 0, 0, 1, 0, 0, 0, 0, 0, 0 } },
-    .{ .key_kind = 0, .key_count = 0, .note_len = 9, .count10 = 3, .count12 = 1, .count16 = 0, .first = 10, .second = 0, .third = 10, .last = 10, .step_deltas = .{ 0, 0, 0, 0, 0, 0, 0, 0, 1 } },
-    .{ .key_kind = 0, .key_count = 0, .note_len = 9, .count10 = 3, .count12 = 1, .count16 = 0, .first = 10, .second = 12, .third = 0, .last = 10, .step_deltas = .{ 0, 0, 0, 0, 0, 0, 0, 0, 1 } },
-    .{ .key_kind = 1, .key_count = 1, .note_len = 7, .count10 = 2, .count12 = 0, .count16 = 0, .first = 0, .second = 0, .third = 0, .last = 0, .step_deltas = .{ 0, -1, -1, 0, -2, 0, 0, 0, 0 } },
-    .{ .key_kind = 1, .key_count = 1, .note_len = 7, .count10 = 2, .count12 = 0, .count16 = 0, .first = 0, .second = 0, .third = 10, .last = 0, .step_deltas = .{ 0, -1, -1, 0, -2, 0, 0, 0, 0 } },
-    .{ .key_kind = 1, .key_count = 1, .note_len = 7, .count10 = 2, .count12 = 0, .count16 = 0, .first = 0, .second = 10, .third = 10, .last = 0, .step_deltas = .{ 0, -1, -1, 0, -2, 0, 0, 0, 0 } },
-    .{ .key_kind = 1, .key_count = 1, .note_len = 9, .count10 = 5, .count12 = 0, .count16 = 0, .first = 10, .second = 0, .third = 0, .last = 10, .step_deltas = .{ 0, 0, 0, 0, 0, -1, 0, 0, 0 } },
-    .{ .key_kind = 1, .key_count = 1, .note_len = 9, .count10 = 5, .count12 = 0, .count16 = 0, .first = 10, .second = 0, .third = 10, .last = 10, .step_deltas = .{ 0, 0, 0, 0, 0, -1, 0, 0, 0 } },
-    .{ .key_kind = 1, .key_count = 1, .note_len = 9, .count10 = 5, .count12 = 0, .count16 = 0, .first = 10, .second = 10, .third = 0, .last = 10, .step_deltas = .{ 0, 0, 0, 0, 0, -1, 0, 0, 0 } },
-    .{ .key_kind = 1, .key_count = 2, .note_len = 6, .count10 = 0, .count12 = 0, .count16 = 0, .first = 0, .second = 0, .third = 0, .last = 0, .step_deltas = .{ 0, 0, 1, 0, 0, 0, 0, 0, 0 } },
-    .{ .key_kind = 1, .key_count = 2, .note_len = 7, .count10 = 4, .count12 = 0, .count16 = 0, .first = 10, .second = 0, .third = 0, .last = 10, .step_deltas = .{ 0, 0, 0, -1, 0, 0, -1, 0, 0 } },
-    .{ .key_kind = 1, .key_count = 2, .note_len = 7, .count10 = 4, .count12 = 0, .count16 = 0, .first = 10, .second = 0, .third = 10, .last = 10, .step_deltas = .{ 0, 0, 0, -1, 0, 0, -1, 0, 0 } },
-    .{ .key_kind = 1, .key_count = 2, .note_len = 7, .count10 = 4, .count12 = 0, .count16 = 0, .first = 10, .second = 10, .third = 0, .last = 10, .step_deltas = .{ 0, 0, 0, -1, 0, 0, -1, 0, 0 } },
-    .{ .key_kind = 1, .key_count = 5, .note_len = 6, .count10 = 0, .count12 = 0, .count16 = 0, .first = 0, .second = 0, .third = 0, .last = 0, .step_deltas = .{ 0, 0, 1, 0, 0, 0, 0, 0, 0 } },
-    .{ .key_kind = 2, .key_count = 1, .note_len = 9, .count10 = 2, .count12 = 2, .count16 = 0, .first = 0, .second = 0, .third = 0, .last = 0, .step_deltas = .{ 0, 0, 1, 0, 0, 0, 0, 0, 0 } },
-    .{ .key_kind = 2, .key_count = 1, .note_len = 9, .count10 = 2, .count12 = 2, .count16 = 0, .first = 0, .second = 0, .third = 10, .last = 0, .step_deltas = .{ 0, 0, 1, 0, 0, 0, 0, 0, 0 } },
-    .{ .key_kind = 2, .key_count = 1, .note_len = 9, .count10 = 2, .count12 = 2, .count16 = 0, .first = 0, .second = 10, .third = 12, .last = 0, .step_deltas = .{ 0, 0, 1, 0, 0, 0, 0, 0, 0 } },
-    .{ .key_kind = 2, .key_count = 1, .note_len = 9, .count10 = 2, .count12 = 3, .count16 = 0, .first = 12, .second = 0, .third = 0, .last = 12, .step_deltas = .{ 0, 0, 1, 0, 1, 1, 0, 0, 0 } },
-    .{ .key_kind = 2, .key_count = 1, .note_len = 9, .count10 = 2, .count12 = 3, .count16 = 0, .first = 12, .second = 10, .third = 12, .last = 12, .step_deltas = .{ 0, 0, 0, 0, 0, 1, 0, 0, 0 } },
-    .{ .key_kind = 2, .key_count = 1, .note_len = 9, .count10 = 3, .count12 = 2, .count16 = 0, .first = 10, .second = 12, .third = 0, .last = 10, .step_deltas = .{ 0, 0, 0, 0, 1, 0, 0, 1, 0 } },
-    .{ .key_kind = 2, .key_count = 1, .note_len = 9, .count10 = 3, .count12 = 2, .count16 = 0, .first = 10, .second = 12, .third = 10, .last = 10, .step_deltas = .{ 0, 0, 0, 0, 1, 0, 0, 1, 0 } },
-    .{ .key_kind = 2, .key_count = 3, .note_len = 7, .count10 = 1, .count12 = 2, .count16 = 0, .first = 0, .second = 0, .third = 12, .last = 0, .step_deltas = .{ 0, -1, -1, 0, -2, 0, -1, 0, 0 } },
-    .{ .key_kind = 2, .key_count = 3, .note_len = 7, .count10 = 1, .count12 = 2, .count16 = 0, .first = 0, .second = 12, .third = 0, .last = 0, .step_deltas = .{ 0, 0, -1, 0, -2, 0, -1, 0, 0 } },
-    .{ .key_kind = 2, .key_count = 3, .note_len = 7, .count10 = 1, .count12 = 2, .count16 = 0, .first = 0, .second = 12, .third = 10, .last = 0, .step_deltas = .{ 0, 0, -1, 0, -2, 0, -1, 0, 0 } },
-    .{ .key_kind = 2, .key_count = 4, .note_len = 6, .count10 = 0, .count12 = 0, .count16 = 0, .first = 0, .second = 0, .third = 0, .last = 0, .step_deltas = .{ 0, 0, 1, 0, 0, 0, 0, 0, 0 } },
-    .{ .key_kind = 2, .key_count = 5, .note_len = 7, .count10 = 2, .count12 = 1, .count16 = 0, .first = 0, .second = 0, .third = 10, .last = 0, .step_deltas = .{ 0, 0, -1, 0, -2, 0, -1, 0, 0 } },
-    .{ .key_kind = 2, .key_count = 5, .note_len = 7, .count10 = 2, .count12 = 1, .count16 = 0, .first = 0, .second = 10, .third = 0, .last = 0, .step_deltas = .{ 0, 0, -1, 0, 0, 0, -1, 0, 0 } },
-    .{ .key_kind = 2, .key_count = 5, .note_len = 7, .count10 = 2, .count12 = 1, .count16 = 0, .first = 0, .second = 12, .third = 10, .last = 0, .step_deltas = .{ 0, 0, -1, 0, -2, 0, -1, 0, 0 } },
-    .{ .key_kind = 2, .key_count = 5, .note_len = 7, .count10 = 2, .count12 = 2, .count16 = 0, .first = 12, .second = 10, .third = 0, .last = 12, .step_deltas = .{ 0, 0, 0, 0, 1, 0, 0, 0, 0 } },
-    .{ .key_kind = 2, .key_count = 5, .note_len = 7, .count10 = 3, .count12 = 1, .count16 = 0, .first = 10, .second = 0, .third = 12, .last = 10, .step_deltas = .{ 0, 0, 0, 1, 1, 0, 0, 0, 0 } },
-};
-
 pub fn render(stem: []const u8, buf: []u8) []u8 {
     return renderWithXs(stem, buf);
 }
@@ -274,12 +215,6 @@ fn scaleLayoutParityUlpDelta(
     if (step_index == 0) return 0;
     if (step_index >= note_len) return 0;
 
-    const key_kind_code: u8 = switch (key_sig.kind) {
-        .natural => 0,
-        .sharps => 1,
-        .flats => 2,
-    };
-
     var count10: u8 = 0;
     var count12: u8 = 0;
     var count16: u8 = 0;
@@ -297,21 +232,205 @@ fn scaleLayoutParityUlpDelta(
     const third = if (note_len > 2) offsets[2] else 0;
     const last = offsets[note_len - 1];
 
-    for (SCALE_LAYOUT_SIG_RULES) |rule| {
-        if (rule.key_kind != key_kind_code) continue;
-        if (rule.key_count != key_sig.count) continue;
-        if (rule.note_len != note_len) continue;
-        if (rule.count10 != count10) continue;
-        if (rule.count12 != count12) continue;
-        if (rule.count16 != count16) continue;
-        if (rule.first != first) continue;
-        if (rule.second != second) continue;
-        if (rule.third != third) continue;
-        if (rule.last != last) continue;
-        return rule.step_deltas[step_index];
-    }
+    switch (key_sig.kind) {
+        .natural => {
+            if (key_sig.count != 0) return 0;
 
-    return 0;
+            if (note_len == 6) {
+                if (count10 == 0 and count12 == 0 and count16 == 0 and first == 0 and second == 0 and third == 0 and last == 0) {
+                    return switch (step_index) {
+                        2, 5 => -1,
+                        else => 0,
+                    };
+                }
+                if (count12 == 0 and count16 == 0 and first == 0 and second == 10 and third == 0 and last == 0) {
+                    if (count10 == 2) return if (step_index == 5) -1 else 0;
+                    if (count10 == 3) return if (step_index == 2) 1 else 0;
+                }
+                return 0;
+            }
+
+            if (note_len == 7) {
+                if (count10 == 1 and count12 == 1 and count16 == 0 and first == 0 and last == 0 and
+                    ((second == 0 and (third == 10 or third == 12)) or
+                        (third == 0 and (second == 10 or second == 12))))
+                {
+                    return switch (step_index) {
+                        3 => 1,
+                        4 => 2,
+                        5 => 1,
+                        6 => 1,
+                        else => 0,
+                    };
+                }
+                if (count10 == 2 and count12 == 1 and count16 == 0) {
+                    if (first == 0 and second == 0 and third == 0 and last == 0) {
+                        return if (step_index == 6) -1 else 0;
+                    }
+                    if (first == 10 and second == 0 and third == 0 and last == 10) {
+                        return if (step_index == 1) 1 else 0;
+                    }
+                }
+                if (count10 == 3 and count12 == 0 and count16 == 0 and first == 10 and third == 0 and last == 10 and (second == 0 or second == 10)) {
+                    return if (step_index == 6) 1 else 0;
+                }
+                return 0;
+            }
+
+            if (note_len == 8) {
+                if (count10 == 0 and count12 == 0 and count16 == 0 and first == 0 and second == 0 and third == 0 and last == 0) {
+                    return if (step_index == 5) -2 else 0;
+                }
+                return 0;
+            }
+
+            if (note_len == 9) {
+                if (count10 == 2 and count12 == 1 and count16 == 0 and first == 0 and second == 0 and third == 0 and last == 0) {
+                    return if (step_index == 2) 1 else 0;
+                }
+                if (count10 == 3 and count12 == 1 and count16 == 0 and first == 10 and last == 10 and
+                    ((second == 0 and third == 10) or (second == 12 and third == 0)))
+                {
+                    return if (step_index == 8) 1 else 0;
+                }
+                return 0;
+            }
+
+            return 0;
+        },
+        .sharps => {
+            switch (key_sig.count) {
+                1 => {
+                    if (note_len == 7 and count10 == 2 and count12 == 0 and count16 == 0 and first == 0 and last == 0 and
+                        ((second == 0 and (third == 0 or third == 10)) or
+                            (second == 10 and third == 10)))
+                    {
+                        return switch (step_index) {
+                            1, 2 => -1,
+                            4 => -2,
+                            else => 0,
+                        };
+                    }
+                    if (note_len == 9 and count10 == 5 and count12 == 0 and count16 == 0 and first == 10 and last == 10 and
+                        ((second == 0 and (third == 0 or third == 10)) or
+                            (second == 10 and third == 0)))
+                    {
+                        return if (step_index == 5) -1 else 0;
+                    }
+                    return 0;
+                },
+                2 => {
+                    if (note_len == 6 and count10 == 0 and count12 == 0 and count16 == 0 and first == 0 and second == 0 and third == 0 and last == 0) {
+                        return if (step_index == 2) 1 else 0;
+                    }
+                    if (note_len == 7 and count10 == 4 and count12 == 0 and count16 == 0 and first == 10 and last == 10 and
+                        ((second == 0 and (third == 0 or third == 10)) or
+                            (second == 10 and third == 0)))
+                    {
+                        return switch (step_index) {
+                            3, 6 => -1,
+                            else => 0,
+                        };
+                    }
+                    return 0;
+                },
+                5 => {
+                    if (note_len == 6 and count10 == 0 and count12 == 0 and count16 == 0 and first == 0 and second == 0 and third == 0 and last == 0) {
+                        return if (step_index == 2) 1 else 0;
+                    }
+                    return 0;
+                },
+                else => return 0,
+            }
+        },
+        .flats => {
+            switch (key_sig.count) {
+                1 => {
+                    if (note_len != 9 or count16 != 0) return 0;
+
+                    if (count10 == 2 and count12 == 2 and first == 0 and last == 0 and
+                        ((second == 0 and (third == 0 or third == 10)) or
+                            (second == 10 and third == 12)))
+                    {
+                        return if (step_index == 2) 1 else 0;
+                    }
+                    if (count10 == 2 and count12 == 3 and first == 12 and last == 12) {
+                        if (second == 0 and third == 0) {
+                            return switch (step_index) {
+                                2, 4, 5 => 1,
+                                else => 0,
+                            };
+                        }
+                        if (second == 10 and third == 12) {
+                            return if (step_index == 5) 1 else 0;
+                        }
+                    }
+                    if (count10 == 3 and count12 == 2 and first == 10 and second == 12 and last == 10 and (third == 0 or third == 10)) {
+                        return switch (step_index) {
+                            4, 7 => 1,
+                            else => 0,
+                        };
+                    }
+                    return 0;
+                },
+                3 => {
+                    if (note_len == 7 and count10 == 1 and count12 == 2 and count16 == 0 and first == 0 and last == 0) {
+                        if (second == 0 and third == 12) {
+                            return switch (step_index) {
+                                1, 2, 6 => -1,
+                                4 => -2,
+                                else => 0,
+                            };
+                        }
+                        if (second == 12 and (third == 0 or third == 10)) {
+                            return switch (step_index) {
+                                2, 6 => -1,
+                                4 => -2,
+                                else => 0,
+                            };
+                        }
+                    }
+                    return 0;
+                },
+                4 => {
+                    if (note_len == 6 and count10 == 0 and count12 == 0 and count16 == 0 and first == 0 and second == 0 and third == 0 and last == 0) {
+                        return if (step_index == 2) 1 else 0;
+                    }
+                    return 0;
+                },
+                5 => {
+                    if (note_len == 7 and count16 == 0) {
+                        if (count10 == 2 and count12 == 1 and first == 0 and last == 0) {
+                            if (second == 10 and third == 0) {
+                                return switch (step_index) {
+                                    2, 6 => -1,
+                                    else => 0,
+                                };
+                            }
+                            if ((second == 0 and third == 10) or (second == 12 and third == 10)) {
+                                return switch (step_index) {
+                                    2, 6 => -1,
+                                    4 => -2,
+                                    else => 0,
+                                };
+                            }
+                        }
+                        if (count10 == 2 and count12 == 2 and first == 12 and second == 10 and third == 0 and last == 12) {
+                            return if (step_index == 4) 1 else 0;
+                        }
+                        if (count10 == 3 and count12 == 1 and first == 10 and second == 0 and third == 12 and last == 10) {
+                            return switch (step_index) {
+                                3, 4 => 1,
+                                else => 0,
+                            };
+                        }
+                    }
+                    return 0;
+                },
+                else => return 0,
+            }
+        },
+    }
 }
 
 fn staffYFromToken(token: []const u8) ?f64 {

@@ -437,6 +437,7 @@ if [ -f "$ROOT_DIR/src/svg/scale_nomod_compat.zig" ] && [ -f "$ROOT_DIR/src/harm
     check_cmd "cd '$ROOT_DIR' && ! rg -n \"harmonious_scale_nomod_profile_tuning|harmonious_scale_nomod_names|harmonious_scale_nomod_keysig_lines|SCALE_PROFILE_TUNINGS|layoutTuning\\(|stepUlpNudge\\(|isNoModStem\\(|ModPatch|SHARP_PATCHES|FLAT_PATCHES|NATURAL_PATCHES|DOUBLE_FLAT_PATCHES|resolveModifierOffset\\(\" src/svg/scale_nomod_compat.zig" "0032 scale pure algorithmic guardrail (no replay tuning/name/keysig/patch tables)"
     check_cmd "cd '$ROOT_DIR' && ! rg -n \"harmonious_scale_layout_ulpshim\" src/svg/scale_nomod_compat.zig" "0032 scale pure algorithmic guardrail (no generated layout ulp replay module)"
     check_cmd "cd '$ROOT_DIR' && ! rg -n \"offsets:\\s*\\[9\\]u8|\\.offsets\\s*=\\s*\\.\\{\" src/svg/scale_nomod_compat.zig" "0032 scale pure algorithmic guardrail (no per-rule offset-array replay tables)"
+    check_cmd "cd '$ROOT_DIR' && ! rg -n \"ScaleLayoutSigRule|SCALE_LAYOUT_SIG_RULES\" src/svg/scale_nomod_compat.zig" "0032 scale pure algorithmic guardrail (no signature replay tables)"
 else
     unverified "0028 scale algorithmic layout guardrail (scale compat sources missing)"
 fi
