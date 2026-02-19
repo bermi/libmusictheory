@@ -1,8 +1,7 @@
 const std = @import("std");
 
 const assets = @import("../generated/harmonious_scale_nomod_assets.zig");
-const mod_assets = @import("../generated/harmonious_scale_mod_assets.zig");
-const mod_ulp = @import("../generated/harmonious_scale_mod_ulpshim.zig");
+const mod_assets = @import("../generated/harmonious_scale_mod_offset_assets.zig");
 
 const KeySigKind = enum { natural, sharps, flats };
 const ModifierKind = enum { sharp, flat, natural, double_flat };
@@ -26,6 +25,16 @@ const SHARP_KEYSIG_Y = [_]f64{ 39.0, 54.0, 34.0, 49.0, 64.0, 44.0, 59.0 };
 const FLAT_KEYSIG_Y = [_]f64{ 59.0, 44.0, 64.0, 49.0, 69.0, 54.0, 74.0 };
 const SHARP_KEYSIG_BASE_X = 49.46065;
 const FLAT_KEYSIG_BASE_X = 49.46065;
+
+const SHARP_OFFSET_COUNT = countPathNumbers(mod_assets.SHARP_PATH_D);
+const FLAT_OFFSET_COUNT = countPathNumbers(mod_assets.FLAT_PATH_D);
+const NATURAL_OFFSET_COUNT = countPathNumbers(mod_assets.NATURAL_PATH_D);
+const DOUBLE_FLAT_OFFSET_COUNT = countPathNumbers(mod_assets.DOUBLE_FLAT_PATH_D);
+
+const SHARP_OFFSETS = parsePathOffsets(mod_assets.SHARP_PATH_D, SHARP_OFFSET_COUNT);
+const FLAT_OFFSETS = parsePathOffsets(mod_assets.FLAT_PATH_D, FLAT_OFFSET_COUNT);
+const NATURAL_OFFSETS = parsePathOffsets(mod_assets.NATURAL_PATH_D, NATURAL_OFFSET_COUNT);
+const DOUBLE_FLAT_OFFSETS = parsePathOffsets(mod_assets.DOUBLE_FLAT_PATH_D, DOUBLE_FLAT_OFFSET_COUNT);
 
 pub fn render(stem: []const u8, buf: []u8) []u8 {
     return renderWithXs(stem, buf);
@@ -515,11 +524,8 @@ fn writeTranslatedKeySigModifierPath(writer: anytype, kind: ModifierKind, x_anch
 
             const is_x = (token_index % 2) == 0;
             const anchor = if (is_x) x_anchor else y_anchor;
-            const raw = path_d[start..i];
-            const raw_value = std.fmt.parseFloat(f64, raw) catch 0.0;
-            const base_value = if (is_x) modifierPathBaseX(kind) else modifierPathBaseY(kind);
-            const parsed_offset = raw_value - base_value;
-            const default_offset = applyOffsetUlpDelta(parsed_offset, modifierOffsetUlpDelta(kind, token_index));
+            _ = path_d[start..i];
+            const default_offset = modifierTemplateOffset(kind, token_index);
             const offset = modifierOffsetForToken(kind, token_index, anchor, default_offset);
             const translated = normalizeKeySigToken(kind, token_index, anchor + offset);
             try writer.print("{d}", .{translated});
@@ -765,11 +771,8 @@ fn writeTranslatedModifierPath(writer: anytype, kind: ModifierKind, template_pat
 
             const is_x = (token_index % 2) == 0;
             const anchor = if (is_x) x_anchor else y_anchor;
-            const raw = template_path[start..i];
-            const raw_value = std.fmt.parseFloat(f64, raw) catch 0.0;
-            const base_value = if (is_x) modifierPathBaseX(kind) else modifierPathBaseY(kind);
-            const parsed_offset = raw_value - base_value;
-            const default_offset = applyOffsetUlpDelta(parsed_offset, modifierOffsetUlpDelta(kind, token_index));
+            _ = template_path[start..i];
+            const default_offset = modifierTemplateOffset(kind, token_index);
             const offset = modifierOffsetForToken(kind, token_index, anchor, default_offset);
             try writer.print("{d}", .{anchor + offset});
 
@@ -782,45 +785,6 @@ fn writeTranslatedModifierPath(writer: anytype, kind: ModifierKind, template_pat
     }
 }
 
-fn modifierPathBaseX(kind: ModifierKind) f64 {
-    return switch (kind) {
-        .sharp => 217.230325,
-        .flat => 172.14480555555554,
-        .natural => 219.230325,
-        .double_flat => 277.1151625,
-    };
-}
-
-fn modifierPathBaseY(kind: ModifierKind) f64 {
-    return switch (kind) {
-        .double_flat => 60.0,
-        else => 45.0,
-    };
-}
-
-fn modifierOffsetUlpDelta(kind: ModifierKind, token_index: usize) i16 {
-    const deltas: []const i16 = switch (kind) {
-        .sharp => mod_ulp.SHARP_ULP_DELTAS[0..],
-        .flat => mod_ulp.FLAT_ULP_DELTAS[0..],
-        .natural => mod_ulp.NATURAL_ULP_DELTAS[0..],
-        .double_flat => mod_ulp.DOUBLE_FLAT_ULP_DELTAS[0..],
-    };
-    if (token_index >= deltas.len) return 0;
-    return deltas[token_index];
-}
-
-fn applyOffsetUlpDelta(value: f64, delta: i16) f64 {
-    if (delta == 0) return value;
-
-    var adjusted = value;
-    const direction = if (delta > 0) std.math.inf(f64) else -std.math.inf(f64);
-    var steps: u16 = @as(u16, @intCast(@abs(delta)));
-    while (steps > 0) : (steps -= 1) {
-        adjusted = std.math.nextAfter(f64, adjusted, direction);
-    }
-    return adjusted;
-}
-
 fn modifierOffsetForToken(kind: ModifierKind, token_index: usize, anchor: f64, default_offset: f64) f64 {
     return switch (kind) {
         .sharp => sharpModifierOffset(token_index, anchor, default_offset),
@@ -828,6 +792,59 @@ fn modifierOffsetForToken(kind: ModifierKind, token_index: usize, anchor: f64, d
         .natural => naturalModifierOffset(token_index, anchor, default_offset),
         .double_flat => doubleFlatModifierOffset(token_index, anchor, default_offset),
     };
+}
+
+fn modifierTemplateOffset(kind: ModifierKind, token_index: usize) f64 {
+    return switch (kind) {
+        .sharp => if (token_index < SHARP_OFFSETS.len) SHARP_OFFSETS[token_index] else 0.0,
+        .flat => if (token_index < FLAT_OFFSETS.len) FLAT_OFFSETS[token_index] else 0.0,
+        .natural => if (token_index < NATURAL_OFFSETS.len) NATURAL_OFFSETS[token_index] else 0.0,
+        .double_flat => if (token_index < DOUBLE_FLAT_OFFSETS.len) DOUBLE_FLAT_OFFSETS[token_index] else 0.0,
+    };
+}
+
+fn countPathNumbers(comptime path: []const u8) usize {
+    @setEvalBranchQuota(100000);
+
+    var count: usize = 0;
+    var i: usize = 0;
+
+    while (i < path.len) {
+        if (isNumberStart(path[i])) {
+            count += 1;
+            i += 1;
+            while (i < path.len and isNumberContinuation(path[i])) : (i += 1) {}
+            continue;
+        }
+        i += 1;
+    }
+
+    return count;
+}
+
+fn parsePathOffsets(comptime path: []const u8, comptime count: usize) [count]f64 {
+    @setEvalBranchQuota(100000);
+
+    var out: [count]f64 = undefined;
+    var i: usize = 0;
+    var token_index: usize = 0;
+
+    while (i < path.len) {
+        if (isNumberStart(path[i])) {
+            const start = i;
+            i += 1;
+            while (i < path.len and isNumberContinuation(path[i])) : (i += 1) {}
+
+            if (token_index >= count) @compileError("parsePathOffsets token overflow");
+            out[token_index] = std.fmt.parseFloat(f64, path[start..i]) catch @compileError("invalid numeric token in modifier path");
+            token_index += 1;
+            continue;
+        }
+        i += 1;
+    }
+
+    if (token_index != count) @compileError("parsePathOffsets token count mismatch");
+    return out;
 }
 
 fn sharpModifierOffset(token_index: usize, anchor: f64, default_offset: f64) f64 {
