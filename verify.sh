@@ -464,10 +464,10 @@ else
     unverified "0028 chord algorithmic layout guardrail (src/svg/chord_compat.zig missing)"
 fi
 
-if [ -f "$ROOT_DIR/src/generated/harmonious_scale_mod_assets.zig" ]; then
-    check_cmd "cd '$ROOT_DIR' && ! rg -n \"ModPatch|SHARP_PATCH|FLAT_PATCH|NATURAL_PATCH|DOUBLE_FLAT_PATCH|_PATCHES|SHARP_OFFSETS|FLAT_OFFSETS|NATURAL_OFFSETS|DOUBLE_FLAT_OFFSETS|_OFFSETS\" src/generated/harmonious_scale_mod_assets.zig" "0032 chord algorithmic layout guardrail (no modifier patch/offset replay tables in generated scale modifier assets)"
+if [ -f "$ROOT_DIR/src/generated/harmonious_scale_mod_offset_assets.zig" ]; then
+    check_cmd "cd '$ROOT_DIR' && ! rg -n \"ModPatch|SHARP_PATCH|FLAT_PATCH|NATURAL_PATCH|DOUBLE_FLAT_PATCH|_PATCHES|SHARP_OFFSETS|FLAT_OFFSETS|NATURAL_OFFSETS|DOUBLE_FLAT_OFFSETS|_OFFSETS\" src/generated/harmonious_scale_mod_offset_assets.zig" "0032 chord algorithmic layout guardrail (no modifier patch/offset replay tables in generated scale modifier offset assets)"
 else
-    unverified "0032 chord algorithmic layout guardrail (src/generated/harmonious_scale_mod_assets.zig missing)"
+    unverified "0032 chord algorithmic layout guardrail (src/generated/harmonious_scale_mod_offset_assets.zig missing)"
 fi
 
 if [ -f "$ROOT_DIR/examples/wasm-demo/index.html" ]; then

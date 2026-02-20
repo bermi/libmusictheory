@@ -15,6 +15,7 @@ Notable deltas from the prior baseline:
 
 - `src/generated/harmonious_scale_mod_ulpshim.zig` removed from runtime and deleted.
 - `src/generated/harmonious_scale_layout_ulpshim.zig` removed from runtime and deleted.
+- `src/generated/harmonious_scale_mod_assets.zig` removed from runtime and deleted.
 - `src/generated/harmonious_scale_mod_offset_assets.zig` added as scale/chord normalized accidental offsets.
 
 ## Baseline (2026-02-19)
