@@ -424,6 +424,12 @@ else
     unverified "0024 wasm validation page build (examples/wasm-demo/validation.html not yet implemented)"
 fi
 
+if [ -d "$ROOT_DIR/src" ]; then
+    check_cmd "cd '$ROOT_DIR' && ! rg -n \"harmonious_scale_mod_ulpshim\" src" "0032 global guardrail (no scale modifier ulp replay module imports in src)"
+else
+    unverified "0032 global guardrail (src directory missing)"
+fi
+
 if [ -f "$ROOT_DIR/src/harmonious_svg_compat.zig" ]; then
     check_cmd "cd '$ROOT_DIR' && ! rg -n \"@embedFile\\(|tmp/harmoniousapp\\.net|harmonious_embed_refs\" src/harmonious_svg_compat.zig" "0028 compatibility generator anti-embed guardrail"
     check_cmd "cd '$ROOT_DIR' && ! rg -n \"\\.majmin_modes, \\.majmin_scales => svg_tessellation\\.renderScaleTessellation\\(buf\\)\" src/harmonious_svg_compat.zig" "0028 majmin compat guardrail (no placeholder tessellation fallback)"

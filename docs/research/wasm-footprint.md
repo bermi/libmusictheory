@@ -1,5 +1,21 @@
 # WASM Footprint Audit
 
+## Current Snapshot (2026-02-20)
+
+`zig-out/wasm-demo/libmusictheory.wasm`
+
+- Total size: `834,516` bytes
+- `CODE` section: `121,427` bytes
+- `DATA` section: `711,815` bytes
+
+Reachable generated files (`9`) total `1,627,349` source bytes.
+Coordinate-like reachable generated files total `13,586` bytes.
+
+Notable deltas from the prior baseline:
+
+- `src/generated/harmonious_scale_mod_ulpshim.zig` removed from runtime and deleted.
+- `src/generated/harmonious_scale_mod_offset_assets.zig` added as scale/chord normalized accidental offsets.
+
 ## Baseline (2026-02-19)
 
 `zig-out/wasm-demo/libmusictheory.wasm`
