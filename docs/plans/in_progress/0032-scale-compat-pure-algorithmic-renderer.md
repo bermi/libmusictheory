@@ -50,6 +50,29 @@ This plan enforces a stricter definition of done:
 - Remaining open item for strict completion:
 - x-layout parity still needs a formula-only solver to replace residual ULP correction branch logic.
 
+## Deep Research Addendum (2026-02-20)
+
+Additional no-replay/no-reference-runtime searches were run directly against
+`tmp/harmoniousapp.net/scale/*.svg` notehead `x` coordinates.
+
+Explored and measured:
+- Global arithmetic/quantization variants (base/step/x quantization digits, associativity, iterative gap accumulation, start/end/base ULP shifts): best no-branch model remained `63` files / `112` values mismatched.
+- Decimal-formatter quantization variants (`round` vs fixed decimal roundtrip): no improvement over the best baseline.
+- `f128` intermediate arithmetic path: regressed vs baseline.
+- Global accidental-offset epsilon/ULP parameterization (for none/10/12/16 offsets, plus start/end ULP perturbations): best improved to `60` files / `103` values mismatched, still far from exact parity.
+- Candidate coverage analysis showed all residual misses are tiny (`±1`/`±2` ULP) but require mixed correction behaviors not captured by simple global formulas.
+
+Conclusion:
+- A simple closed-form numeric model in the explored family is insufficient.
+- Remaining strict-completion path should port the relevant VexFlow formatter/tick-context x-layout path more literally (single-voice scale case), then re-run parity.
+
+Next implementation target:
+1. Port `Formatter.preFormat`/`TickContext` x-placement behavior for scale-only notes.
+2. Bind it to existing Zig note/modifier metrics pipeline.
+3. Re-run:
+- `node scripts/validate_harmonious_playwright.mjs --kinds scale`
+- `node scripts/validate_harmonious_playwright.mjs`
+
 ## Research Phase (Mandatory)
 
 ### 1. Source-of-Truth Rendering Model
