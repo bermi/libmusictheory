@@ -426,6 +426,7 @@ fi
 
 if [ -d "$ROOT_DIR/src" ]; then
     check_cmd "cd '$ROOT_DIR' && ! rg -n \"harmonious_scale_mod_ulpshim\" src" "0032 global guardrail (no scale modifier ulp replay module imports in src)"
+    check_cmd "cd '$ROOT_DIR' && ! rg -n \"harmonious_scale_layout_ulpshim\" src" "0032 global guardrail (no scale layout ulp replay module imports in src)"
 else
     unverified "0032 global guardrail (src directory missing)"
 fi
