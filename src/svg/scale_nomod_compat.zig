@@ -19,8 +19,9 @@ const AttrBox = struct {
     height: f64,
 };
 
-const NOTE_START_BASE_X = 51.46065;
-const NOTE_LAYOUT_END_X = 355.0;
+const STAVE_NOTE_START_BASE_X = 39.46065;
+const STAVE_NOTE_END_X = 353.0;
+const NOTE_STAVE_PADDING = 12.0;
 const SHARP_KEYSIG_Y = [_]f64{ 39.0, 54.0, 34.0, 49.0, 64.0, 44.0, 59.0 };
 const FLAT_KEYSIG_Y = [_]f64{ 59.0, 44.0, 64.0, 49.0, 69.0, 54.0, 74.0 };
 const SHARP_KEYSIG_BASE_X = 49.46065;
@@ -123,55 +124,94 @@ fn keySignatureForToken(token: []const u8) ?KeySig {
 }
 
 fn computeXs(key_sig: KeySig, note_mods: []const ?ModifierKind, xs_out: []f64) ?[]const f64 {
+    @setFloatMode(.strict);
     if (note_mods.len == 0) return null;
     if (note_mods.len > xs_out.len) return null;
 
-    const start_x = startXForKeySig(key_sig);
-    var offset_codes: [9]u8 = undefined;
-
-    var sum_offsets: f64 = 0.0;
+    const stave_start_x = startXForKeySig(key_sig);
+    const note_count = note_mods.len;
+    var offsets: [9]f64 = undefined;
     for (note_mods, 0..) |maybe_mod, idx| {
-        const offset_code = modifierOffsetInt(maybe_mod);
-        offset_codes[idx] = offset_code;
-        sum_offsets += @as(f64, @floatFromInt(offset_code));
-    }
-    const first_offset = @as(f64, @floatFromInt(offset_codes[0]));
-
-    const base_gap = quantizeTo(computeBaseGap(start_x, note_mods.len, sum_offsets, first_offset), 19);
-
-    xs_out[0] = start_x + first_offset;
-
-    var cumulative_offsets: f64 = 0.0;
-    const start_first = start_x + first_offset;
-    var i: usize = 1;
-    while (i < note_mods.len) : (i += 1) {
-        cumulative_offsets += @as(f64, @floatFromInt(offset_codes[i]));
-        const step = @as(f64, @floatFromInt(i));
-        const step_term = quantizeTo(step * base_gap, 17);
-        var x = (start_first + cumulative_offsets) + step_term;
-        x = applyScaleLayoutParityShim(
-            key_sig,
-            offset_codes[0..note_mods.len],
-            i,
-            x,
-        );
-        xs_out[i] = x;
+        offsets[idx] = modifierOffset(maybe_mod);
     }
 
-    return xs_out[0..note_mods.len];
-}
+    // Mirror VexFlow formatToStave width derivation:
+    // justifyWidth = stave.getNoteEndX() - stave.getNoteStartX() - 10
+    const justify_width = (STAVE_NOTE_END_X - stave_start_x) - 10.0;
+    const total_ticks = @as(f64, @floatFromInt(note_count * 4096));
+    const pixels_per_tick = justify_width / total_ticks;
 
-fn computeBaseGap(start_x: f64, note_len: usize, sum_offsets: f64, first_offset: f64) f64 {
-    const note_count = @as(f64, @floatFromInt(note_len));
-    const inv = 1.0 / note_count;
-    return ((NOTE_LAYOUT_END_X - start_x) * inv) - ((sum_offsets + first_offset) * inv);
+    var context_x: [9]f64 = undefined;
+    var x: f64 = 0.0;
+    var white_space: f64 = 0.0;
+    var prev_tick: usize = 0;
+    var prev_width: f64 = 0.0;
+    var last_extra_left: f64 = 0.0;
+    var has_last_metrics = false;
+
+    var i: usize = 0;
+    while (i < note_count) : (i += 1) {
+        const tick = i * 4096;
+        const extra_left = offsets[i];
+        const width = 16.0 + extra_left;
+        const pixels_used = width;
+
+        var tick_space = @as(f64, @floatFromInt(tick - prev_tick)) * pixels_per_tick;
+        tick_space = @min(tick_space, pixels_used);
+
+        var set_x = x + tick_space;
+        var min_x: f64 = 0.0;
+        if (has_last_metrics) {
+            min_x = x + prev_width - last_extra_left;
+        }
+        set_x = @max(set_x, min_x);
+
+        var left_px = extra_left;
+        if (has_last_metrics) {
+            white_space = (set_x - x) - (prev_width - last_extra_left);
+        }
+        if (i > 0 and white_space > 0.0) {
+            if (white_space >= left_px) {
+                left_px = 0.0;
+            } else {
+                left_px -= white_space;
+            }
+        }
+        set_x += left_px;
+
+        context_x[i] = set_x;
+        last_extra_left = extra_left;
+        prev_width = width;
+        prev_tick = tick;
+        x = set_x;
+        has_last_metrics = true;
+    }
+
+    const remaining_x = justify_width - (x + prev_width);
+    const leftover_pixels_per_tick = remaining_x / total_ticks;
+    var accumulated_space: f64 = 0.0;
+    prev_tick = 0;
+
+    i = 0;
+    while (i < note_count) : (i += 1) {
+        const tick = i * 4096;
+        const tick_space = @as(f64, @floatFromInt(tick - prev_tick)) * leftover_pixels_per_tick;
+        accumulated_space += tick_space;
+        // Preserve VexFlow's operation ordering: abs = staveStart+padding + (contextX + accumulated)
+        // to match IEEE754 rounding at ULP precision.
+        const tick_x = context_x[i] + accumulated_space;
+        xs_out[i] = (stave_start_x + NOTE_STAVE_PADDING) + tick_x;
+        prev_tick = tick;
+    }
+
+    return xs_out[0..note_count];
 }
 
 fn startXForKeySig(key_sig: KeySig) f64 {
     return switch (key_sig.kind) {
-        .natural => NOTE_START_BASE_X,
-        .sharps => NOTE_START_BASE_X + (10.0 * @as(f64, @floatFromInt(key_sig.count + 1))),
-        .flats => NOTE_START_BASE_X + (10.0 + (8.0 * @as(f64, @floatFromInt(key_sig.count)))),
+        .natural => STAVE_NOTE_START_BASE_X,
+        .sharps => STAVE_NOTE_START_BASE_X + (10.0 * @as(f64, @floatFromInt(key_sig.count + 1))),
+        .flats => STAVE_NOTE_START_BASE_X + (10.0 + (8.0 * @as(f64, @floatFromInt(key_sig.count)))),
     };
 }
 
@@ -184,262 +224,6 @@ fn modifierOffset(modifier: ?ModifierKind) f64 {
         };
     }
     return 0.0;
-}
-
-fn modifierOffsetInt(modifier: ?ModifierKind) u8 {
-    if (modifier) |kind| {
-        return switch (kind) {
-            .sharp => 12,
-            .flat, .natural => 10,
-            .double_flat => 16,
-        };
-    }
-    return 0;
-}
-
-fn applyScaleLayoutParityShim(
-    key_sig: KeySig,
-    offsets: []const u8,
-    step_index: usize,
-    value: f64,
-) f64 {
-    const delta = scaleLayoutParityUlpDelta(key_sig, offsets, step_index);
-    if (delta == 0) return value;
-
-    var adjusted = value;
-    const direction = if (delta > 0) std.math.inf(f64) else -std.math.inf(f64);
-    var steps: u8 = @as(u8, @intCast(@abs(delta)));
-    while (steps > 0) : (steps -= 1) {
-        adjusted = std.math.nextAfter(f64, adjusted, direction);
-    }
-    return adjusted;
-}
-
-fn scaleLayoutParityUlpDelta(
-    key_sig: KeySig,
-    offsets: []const u8,
-    step_index: usize,
-) i8 {
-    const note_len = offsets.len;
-    if (step_index == 0) return 0;
-    if (step_index >= note_len) return 0;
-
-    var count10: u8 = 0;
-    var count12: u8 = 0;
-    var count16: u8 = 0;
-    for (offsets) |offset| {
-        switch (offset) {
-            10 => count10 += 1,
-            12 => count12 += 1,
-            16 => count16 += 1,
-            else => {},
-        }
-    }
-
-    const first = offsets[0];
-    const second = if (note_len > 1) offsets[1] else 0;
-    const third = if (note_len > 2) offsets[2] else 0;
-    const last = offsets[note_len - 1];
-
-    switch (key_sig.kind) {
-        .natural => {
-            if (key_sig.count != 0) return 0;
-
-            if (note_len == 6) {
-                if (count10 == 0 and count12 == 0 and count16 == 0 and first == 0 and second == 0 and third == 0 and last == 0) {
-                    return switch (step_index) {
-                        2, 5 => -1,
-                        else => 0,
-                    };
-                }
-                if (count12 == 0 and count16 == 0 and first == 0 and second == 10 and third == 0 and last == 0) {
-                    if (count10 == 2) return if (step_index == 5) -1 else 0;
-                    if (count10 == 3) return if (step_index == 2) 1 else 0;
-                }
-                return 0;
-            }
-
-            if (note_len == 7) {
-                if (count10 == 1 and count12 == 1 and count16 == 0 and first == 0 and last == 0 and
-                    ((second == 0 and (third == 10 or third == 12)) or
-                        (third == 0 and (second == 10 or second == 12))))
-                {
-                    return switch (step_index) {
-                        3 => 1,
-                        4 => 2,
-                        5 => 1,
-                        6 => 1,
-                        else => 0,
-                    };
-                }
-                if (count10 == 2 and count12 == 1 and count16 == 0) {
-                    if (first == 0 and second == 0 and third == 0 and last == 0) {
-                        return if (step_index == 6) -1 else 0;
-                    }
-                    if (first == 10 and second == 0 and third == 0 and last == 10) {
-                        return if (step_index == 1) 1 else 0;
-                    }
-                }
-                if (count10 == 3 and count12 == 0 and count16 == 0 and first == 10 and third == 0 and last == 10 and (second == 0 or second == 10)) {
-                    return if (step_index == 6) 1 else 0;
-                }
-                return 0;
-            }
-
-            if (note_len == 8) {
-                if (count10 == 0 and count12 == 0 and count16 == 0 and first == 0 and second == 0 and third == 0 and last == 0) {
-                    return if (step_index == 5) -2 else 0;
-                }
-                return 0;
-            }
-
-            if (note_len == 9) {
-                if (count10 == 2 and count12 == 1 and count16 == 0 and first == 0 and second == 0 and third == 0 and last == 0) {
-                    return if (step_index == 2) 1 else 0;
-                }
-                if (count10 == 3 and count12 == 1 and count16 == 0 and first == 10 and last == 10 and
-                    ((second == 0 and third == 10) or (second == 12 and third == 0)))
-                {
-                    return if (step_index == 8) 1 else 0;
-                }
-                return 0;
-            }
-
-            return 0;
-        },
-        .sharps => {
-            switch (key_sig.count) {
-                1 => {
-                    if (note_len == 7 and count10 == 2 and count12 == 0 and count16 == 0 and first == 0 and last == 0 and
-                        ((second == 0 and (third == 0 or third == 10)) or
-                            (second == 10 and third == 10)))
-                    {
-                        return switch (step_index) {
-                            1, 2 => -1,
-                            4 => -2,
-                            else => 0,
-                        };
-                    }
-                    if (note_len == 9 and count10 == 5 and count12 == 0 and count16 == 0 and first == 10 and last == 10 and
-                        ((second == 0 and (third == 0 or third == 10)) or
-                            (second == 10 and third == 0)))
-                    {
-                        return if (step_index == 5) -1 else 0;
-                    }
-                    return 0;
-                },
-                2 => {
-                    if (note_len == 6 and count10 == 0 and count12 == 0 and count16 == 0 and first == 0 and second == 0 and third == 0 and last == 0) {
-                        return if (step_index == 2) 1 else 0;
-                    }
-                    if (note_len == 7 and count10 == 4 and count12 == 0 and count16 == 0 and first == 10 and last == 10 and
-                        ((second == 0 and (third == 0 or third == 10)) or
-                            (second == 10 and third == 0)))
-                    {
-                        return switch (step_index) {
-                            3, 6 => -1,
-                            else => 0,
-                        };
-                    }
-                    return 0;
-                },
-                5 => {
-                    if (note_len == 6 and count10 == 0 and count12 == 0 and count16 == 0 and first == 0 and second == 0 and third == 0 and last == 0) {
-                        return if (step_index == 2) 1 else 0;
-                    }
-                    return 0;
-                },
-                else => return 0,
-            }
-        },
-        .flats => {
-            switch (key_sig.count) {
-                1 => {
-                    if (note_len != 9 or count16 != 0) return 0;
-
-                    if (count10 == 2 and count12 == 2 and first == 0 and last == 0 and
-                        ((second == 0 and (third == 0 or third == 10)) or
-                            (second == 10 and third == 12)))
-                    {
-                        return if (step_index == 2) 1 else 0;
-                    }
-                    if (count10 == 2 and count12 == 3 and first == 12 and last == 12) {
-                        if (second == 0 and third == 0) {
-                            return switch (step_index) {
-                                2, 4, 5 => 1,
-                                else => 0,
-                            };
-                        }
-                        if (second == 10 and third == 12) {
-                            return if (step_index == 5) 1 else 0;
-                        }
-                    }
-                    if (count10 == 3 and count12 == 2 and first == 10 and second == 12 and last == 10 and (third == 0 or third == 10)) {
-                        return switch (step_index) {
-                            4, 7 => 1,
-                            else => 0,
-                        };
-                    }
-                    return 0;
-                },
-                3 => {
-                    if (note_len == 7 and count10 == 1 and count12 == 2 and count16 == 0 and first == 0 and last == 0) {
-                        if (second == 0 and third == 12) {
-                            return switch (step_index) {
-                                1, 2, 6 => -1,
-                                4 => -2,
-                                else => 0,
-                            };
-                        }
-                        if (second == 12 and (third == 0 or third == 10)) {
-                            return switch (step_index) {
-                                2, 6 => -1,
-                                4 => -2,
-                                else => 0,
-                            };
-                        }
-                    }
-                    return 0;
-                },
-                4 => {
-                    if (note_len == 6 and count10 == 0 and count12 == 0 and count16 == 0 and first == 0 and second == 0 and third == 0 and last == 0) {
-                        return if (step_index == 2) 1 else 0;
-                    }
-                    return 0;
-                },
-                5 => {
-                    if (note_len == 7 and count16 == 0) {
-                        if (count10 == 2 and count12 == 1 and first == 0 and last == 0) {
-                            if (second == 10 and third == 0) {
-                                return switch (step_index) {
-                                    2, 6 => -1,
-                                    else => 0,
-                                };
-                            }
-                            if ((second == 0 and third == 10) or (second == 12 and third == 10)) {
-                                return switch (step_index) {
-                                    2, 6 => -1,
-                                    4 => -2,
-                                    else => 0,
-                                };
-                            }
-                        }
-                        if (count10 == 2 and count12 == 2 and first == 12 and second == 10 and third == 0 and last == 12) {
-                            return if (step_index == 4) 1 else 0;
-                        }
-                        if (count10 == 3 and count12 == 1 and first == 10 and second == 0 and third == 12 and last == 10) {
-                            return switch (step_index) {
-                                3, 4 => 1,
-                                else => 0,
-                            };
-                        }
-                    }
-                    return 0;
-                },
-                else => return 0,
-            }
-        },
-    }
 }
 
 fn staffYFromToken(token: []const u8) ?f64 {
