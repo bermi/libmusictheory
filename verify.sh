@@ -427,6 +427,13 @@ fi
 if [ -d "$ROOT_DIR/src" ]; then
     check_cmd "cd '$ROOT_DIR' && ! rg -n \"harmonious_scale_mod_ulpshim\" src" "0032 global guardrail (no scale modifier ulp replay module imports in src)"
     check_cmd "cd '$ROOT_DIR' && ! rg -n \"harmonious_scale_layout_ulpshim\" src" "0032 global guardrail (no scale layout ulp replay module imports in src)"
+    check_cmd "cd '$ROOT_DIR' && test ! -f src/generated/harmonious_scale_x_by_index.zig" "0032 global guardrail (scale by-index replay artifact remains removed)"
+    check_cmd "cd '$ROOT_DIR' && test ! -f src/generated/harmonious_scale_nomod_names.zig" "0032 global guardrail (scale name replay artifact remains removed)"
+    check_cmd "cd '$ROOT_DIR' && test ! -f src/generated/harmonious_scale_nomod_profile_tuning.zig" "0032 global guardrail (scale profile tuning replay artifact remains removed)"
+    check_cmd "cd '$ROOT_DIR' && test ! -f src/generated/harmonious_scale_nomod_keysig_lines.zig" "0032 global guardrail (scale keysig replay artifact remains removed)"
+    check_cmd "cd '$ROOT_DIR' && test ! -f src/generated/harmonious_scale_mod_ulpshim.zig" "0032 global guardrail (scale modifier ulp replay artifact remains removed)"
+    check_cmd "cd '$ROOT_DIR' && test ! -f src/generated/harmonious_scale_layout_ulpshim.zig" "0032 global guardrail (scale layout ulp replay artifact remains removed)"
+    check_cmd "cd '$ROOT_DIR' && test ! -f src/generated/harmonious_scale_mod_assets.zig" "0032 global guardrail (scale absolute modifier asset replay artifact remains removed)"
 else
     unverified "0032 global guardrail (src directory missing)"
 fi
