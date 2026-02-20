@@ -26,7 +26,7 @@ This plan enforces a stricter definition of done:
 - Do not embed or load reference SVG contents into generation paths.
 - Do not increase wasm artifact beyond the existing `<1MB` guardrail.
 
-## Current Snapshot (2026-02-19)
+## Current Snapshot (2026-02-20)
 
 - `scale` parity is currently `494/494` exact matches.
 - Full compatibility run remains `8634/8634` exact matches.
@@ -40,15 +40,14 @@ This plan enforces a stricter definition of done:
 - Scale modifier defaults no longer depend on `harmonious_scale_mod_ulpshim` at runtime; scale uses dedicated normalized offset glyph templates (`src/generated/harmonious_scale_mod_offset_assets.zig`) and comptime-parsed offset arrays to preserve wasm/native parity.
 - Chord compatibility now also consumes normalized modifier offset glyph templates and no longer imports `harmonious_scale_mod_ulpshim` in runtime generation paths.
 - Legacy scale replay generator artifacts have been removed from `src/generated/` (`harmonious_scale_x_by_index`, `harmonious_scale_nomod_names`, `harmonious_scale_nomod_profile_tuning`, `harmonious_scale_nomod_keysig_lines`, `harmonious_scale_layout_ulpshim`, `harmonious_scale_mod_ulpshim`, `harmonious_scale_mod_assets`).
-- Scale x-layout no longer imports `src/generated/harmonious_scale_layout_ulpshim.zig`; parity corrections are applied in-module in `src/svg/scale_nomod_compat.zig`.
-- Scale x-layout parity no longer uses signature rule tables (`ScaleLayoutSigRule`/`SCALE_LAYOUT_SIG_RULES`); matching is now tableless branch logic over computed feature counts and edge offsets.
+- Scale x-layout no longer imports `src/generated/harmonious_scale_layout_ulpshim.zig`; the renderer now uses an in-module algorithmic formatter port in `src/svg/scale_nomod_compat.zig`.
+- Scale x-layout parity no longer uses signature rule tables (`ScaleLayoutSigRule`/`SCALE_LAYOUT_SIG_RULES`) or residual ULP replay branches.
 - Verification now enforces wasm footprint budgets via `scripts/wasm_size_audit.py`:
 - total wasm `< 900000`
 - wasm `DATA` section `< 760000`
 - coordinate-like reachable generated data `< 170000`
 - Chord compatibility path is now guarded against x/y coordinate replay table reintroduction.
-- Remaining open item for strict completion:
-- x-layout parity still needs a formula-only solver to replace residual ULP correction branch logic.
+- Scale x-layout strict parity is now completed via algorithmic VexFlow-compatible operation ordering.
 
 ## Deep Research Addendum (2026-02-20)
 
@@ -63,15 +62,8 @@ Explored and measured:
 - Candidate coverage analysis showed all residual misses are tiny (`±1`/`±2` ULP) but require mixed correction behaviors not captured by simple global formulas.
 
 Conclusion:
-- A simple closed-form numeric model in the explored family is insufficient.
-- Remaining strict-completion path should port the relevant VexFlow formatter/tick-context x-layout path more literally (single-voice scale case), then re-run parity.
-
-Next implementation target:
-1. Port `Formatter.preFormat`/`TickContext` x-placement behavior for scale-only notes.
-2. Bind it to existing Zig note/modifier metrics pipeline.
-3. Re-run:
-- `node scripts/validate_harmonious_playwright.mjs --kinds scale`
-- `node scripts/validate_harmonious_playwright.mjs`
+- A simple closed-form numeric model in the explored family was insufficient.
+- Exact parity was achieved by porting VexFlow formatter/tick-context x-placement semantics and preserving floating-point operation ordering at ULP precision.
 
 ## Research Phase (Mandatory)
 
@@ -165,4 +157,13 @@ All must be true:
 
 ## Implementation History (Point-in-Time)
 
-_To be filled when implementation is complete._
+- `71d27e488cb7f2925e8d25a4e9ea0c83cba7e1f7` (`2026-02-20T16:23:23+01:00`)
+- Shipped behavior:
+- `src/svg/scale_nomod_compat.zig` now computes scale staff x-layout with an algorithmic two-pass formatter model (no replay lookup tables), including VexFlow-compatible justify-width derivation and operation ordering required for byte-exact parity.
+- Guardrail/completion verification:
+- `./verify.sh`
+- `zig build verify`
+- `zig build test`
+- `node scripts/validate_harmonious_playwright.mjs --sample-per-kind 5 --kinds scale`
+- `node scripts/validate_harmonious_playwright.mjs --kinds scale`
+- `node scripts/validate_harmonious_playwright.mjs`
