@@ -98,3 +98,60 @@ The chart reveals:
 - Click to navigate to set class page
 - Filter by cardinality, cluster-free status, etc.
 - Animated transitions when filtering
+
+## Compatibility Reverse-Engineering Notes (2026-02-21)
+
+These notes describe the exact structure of the harmonious compatibility targets:
+`tmp/harmoniousapp.net/even/index.svg`, `tmp/harmoniousapp.net/even/grad.svg`,
+`tmp/harmoniousapp.net/even/line.svg`.
+
+### Confirmed Structural Facts
+
+- `grad.svg` and `line.svg` share the same core chart body.
+  - longest common prefix: `116,436` bytes,
+  - longest common suffix: `8` bytes.
+- Core chart primitives in `grad.svg`:
+  - `588` circles total.
+  - `7` radial guide lines.
+  - `194` visible black point circles (`style="stroke: black; stroke-width: 3"`).
+  - `194` marker symbols in sequence:
+    - cluster-free markers are red triangles (`path d="M0,80 L100,80 L50,-6z"`),
+    - cluster-containing markers are gray circles.
+- Marker style split:
+  - triangles: `78` total (`49` pair style + `29` single style),
+  - circles: `116` total (`79` pair style + `37` single style).
+
+### Domain/Count Inference
+
+- Visible point counts per cardinality ray are:
+  - `[12, 29, 38, 36, 38, 29, 12]` for cardinalities `3..9`.
+- The origin point appears once per ray; assigning origin points by next non-origin point
+  (instead of naive `atan2(0,0)`) is required to avoid a false count skew.
+- This matches unique Forte classes for all cardinalities except `6`:
+  - unique Forte card-6 count is `50`,
+  - compatibility chart uses `36`.
+- Marker kind counts by cardinality exactly match cluster-free vs cluster-containing
+  class counts for these selected domains.
+
+### Card-6 Selection Gap
+
+- A complement-collapse model for cardinality-6 yields `35` classes (`16` cluster-free, `19` clustered).
+- Compatibility requires `36` classes (`16` cluster-free, `20` clustered), so one additional clustered card-6 class is retained beyond pure collapse.
+- This exact card-6 inclusion rule is still unresolved and must be derived before final
+  fully algorithmic parity conversion.
+
+### Open Implementation Constraint
+
+- Do not re-introduce embedded reference payloads for `even/*`.
+- Target implementation should derive:
+  - class domain selection (including exact card-6 rule),
+  - ray ordering,
+  - marker sequencing and placement,
+  - variant-specific decoration blocks (`index` / `grad` / `line`),
+  while preserving byte-exact output parity.
+
+### Audit Automation
+
+- Programmatic guardrail: `scripts/audit_even_compat.py`
+  validates the invariants above against local references and is wired into `./verify.sh`
+  when `tmp/harmoniousapp.net/even/` exists.

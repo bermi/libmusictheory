@@ -488,6 +488,16 @@ else
     unverified "0028 wasm demo size guardrail (<1MB) (examples/wasm-demo/index.html not yet implemented)"
 fi
 
+if [ -d "$ROOT_DIR/tmp/harmoniousapp.net/even" ] && [ -f "$ROOT_DIR/scripts/audit_even_compat.py" ]; then
+    if command -v python3 >/dev/null 2>&1; then
+        check_cmd "cd '$ROOT_DIR' && python3 scripts/audit_even_compat.py --root tmp/harmoniousapp.net >/dev/null" "0034 even compatibility structural audit (reference invariants)"
+    else
+        unverified "0034 even compatibility structural audit (python3 missing)"
+    fi
+else
+    unverified "0034 even compatibility structural audit (tmp/harmoniousapp.net/even or script missing)"
+fi
+
 if [ -d "$ROOT_DIR/tmp/harmoniousapp.net" ] && [ -f "$ROOT_DIR/scripts/validate_harmonious_playwright.mjs" ]; then
     if command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
         check_cmd "cd '$ROOT_DIR' && node scripts/validate_harmonious_playwright.mjs --sample-per-kind 5 2>&1" "0024 harmoniousapp.net playwright sampled validation (>=5 per kind, 0 mismatches)"
