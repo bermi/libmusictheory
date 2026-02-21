@@ -1,6 +1,6 @@
 # 0035 - Even Compat Segmented Gzip Renderer
 
-Status: In Progress
+Status: Completed
 
 ## Objective
 
@@ -56,3 +56,13 @@ Replace the monolithic even compat gzip payload with deterministic segment-by-se
 - No runtime import of `harmonious_even_gzip` in even renderer.
 - `renderEvennessByName` returns byte-identical output for `index|grad|line`.
 - `./verify.sh` passes with wasm size guardrails and `0` compatibility mismatches.
+
+## Implementation History (Point-in-Time)
+
+- `4f3ea84a6981104001c130ff4877c0c1753ab00e` (`2026-02-21T23:14:36+01:00`)
+- Shipped behavior:
+- Replaced monolithic `src/generated/harmonious_even_gzip.zig` usage with explicit segmented gzip assembly in `src/svg/evenness_chart.zig`.
+- Added `scripts/generate_harmonious_even_segment_gzip.py` and generated `src/generated/harmonious_even_segment_gzip.zig` with shared and variant payload segments.
+- Added `0035` verify guardrails in `./verify.sh` to enforce segmented module wiring and prevent fallback to monolithic/uncompressed artifacts.
+- Guardrail/completion verification:
+- `./verify.sh`
