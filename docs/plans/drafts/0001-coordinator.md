@@ -10,7 +10,7 @@ Build `libmusictheory`, a Zig library exposing a C ABI that implements the compl
 ## Lifecycle Status
 
 - Draft: 0001, 0029, 0030, 0031
-- In progress: none
+- In progress: 0035
 - Completed: 0002, 0003, 0004, 0005, 0006, 0007, 0008, 0009, 0010, 0011, 0012, 0013, 0014, 0015, 0016, 0017, 0018, 0019, 0020, 0021, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0032, 0033, 0034
 
 ## Plan Dependencies (Execute in Order)
@@ -81,6 +81,8 @@ Build `libmusictheory`, a Zig library exposing a C ABI that implements the compl
      ↓ depends on 0024, 0028, 0032 (parallel/additive track)
 0034-even-compat-structural-audit → script-verified structural invariants for even/index|grad|line prior to renderer migration
      ↓ depends on 0028, 0032 (verification hardening)
+0035-even-compat-segmented-gzip-renderer → replace monolithic even payload with audited shared/variant segmented gzip assembly
+     ↓ depends on 0034 (structural grounding)
 ```
 
 ## Dependency Graph (Visual)
@@ -140,7 +142,17 @@ Supplementary additive track (does not replace strict SVG parity):
 
 0024 + 0028
    │
- 0031 (Visual Diff Diagnostics, non-blocking)
+0031 (Visual Diff Diagnostics, non-blocking)
+```
+
+Parity hardening continuation:
+
+```
+0028 + 0032
+   │
+ 0034 (Even Structural Audit)
+   │
+ 0035 (Even Segmented Gzip Renderer)
 ```
 
 ## Phase Summary

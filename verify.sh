@@ -477,6 +477,15 @@ else
     unverified "0032 chord algorithmic layout guardrail (src/generated/harmonious_scale_mod_offset_assets.zig missing)"
 fi
 
+if [ -f "$ROOT_DIR/src/generated/harmonious_even_segment_gzip.zig" ]; then
+    check_cmd "cd '$ROOT_DIR' && ! rg -n \"harmonious_even_gzip\" src/svg/evenness_chart.zig" "0035 even compat guardrail (no monolithic even gzip replay import when segmented assets exist)"
+    check_cmd "cd '$ROOT_DIR' && rg -n \"harmonious_even_segment_gzip\" src/svg/evenness_chart.zig" "0035 even compat guardrail (segmented even gzip module wired in)"
+    check_cmd "cd '$ROOT_DIR' && test ! -f src/generated/harmonious_even_gzip.zig" "0035 even compat guardrail (gzip payload artifact removed when segmented assets exist)"
+    check_cmd "cd '$ROOT_DIR' && test ! -f src/generated/harmonious_even_segments.zig" "0035 even compat guardrail (uncompressed segmented payload artifact removed)"
+else
+    unverified "0035 even compat guardrail (segmented even gzip assets not yet present)"
+fi
+
 if [ -f "$ROOT_DIR/examples/wasm-demo/index.html" ]; then
     check_cmd "cd '$ROOT_DIR' && test -f zig-out/wasm-demo/libmusictheory.wasm && [ \"$(wc -c < zig-out/wasm-demo/libmusictheory.wasm | tr -d '[:space:]')\" -lt 1048576 ]" "0028 wasm demo size guardrail (<1MB)"
     if [ -f "$ROOT_DIR/scripts/wasm_size_audit.py" ] && command -v python3 >/dev/null 2>&1; then

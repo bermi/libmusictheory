@@ -4,7 +4,7 @@ const pcs = @import("../pitch_class_set.zig");
 const set_class = @import("../set_class.zig");
 const evenness = @import("../evenness.zig");
 const cluster = @import("../cluster.zig");
-const even_gzip = @import("../generated/harmonious_even_gzip.zig");
+const even_segments = @import("../generated/harmonious_even_segment_gzip.zig");
 
 pub const MAX_DOTS: usize = set_class.SET_CLASSES.len;
 
@@ -83,17 +83,31 @@ pub fn renderEvennessChart(buf: []u8) []u8 {
 }
 
 pub fn renderEvennessByName(name: []const u8, buf: []u8) []u8 {
-    const payload: []const u8 = if (std.mem.eql(u8, name, "grad"))
-        even_gzip.GRAD_GZIP[0..]
-    else if (std.mem.eql(u8, name, "line"))
-        even_gzip.LINE_GZIP[0..]
-    else
-        even_gzip.INDEX_GZIP[0..];
-
-    var in_stream = std.io.fixedBufferStream(payload);
     var out_stream = std.io.fixedBufferStream(buf);
-    std.compress.gzip.decompress(in_stream.reader(), out_stream.writer()) catch return "";
+    if (std.mem.eql(u8, name, "grad")) {
+        if (!appendGzipSegment(even_segments.COMPAT_PREFIX_GZIP[0..], &out_stream)) return "";
+        if (!appendGzipSegment(even_segments.COMMON_BODY_GZIP[0..], &out_stream)) return "";
+        if (!appendGzipSegment(even_segments.GRAD_TAIL_GZIP[0..], &out_stream)) return "";
+        return buf[0..out_stream.pos];
+    }
+
+    if (std.mem.eql(u8, name, "line")) {
+        if (!appendGzipSegment(even_segments.COMPAT_PREFIX_GZIP[0..], &out_stream)) return "";
+        if (!appendGzipSegment(even_segments.COMMON_BODY_GZIP[0..], &out_stream)) return "";
+        if (!appendGzipSegment(even_segments.LINE_TAIL_GZIP[0..], &out_stream)) return "";
+        return buf[0..out_stream.pos];
+    }
+
+    if (!appendGzipSegment(even_segments.INDEX_PREFIX_GZIP[0..], &out_stream)) return "";
+    if (!appendGzipSegment(even_segments.COMMON_BODY_GZIP[0..], &out_stream)) return "";
+    if (!appendGzipSegment(even_segments.INDEX_TAIL_GZIP[0..], &out_stream)) return "";
     return buf[0..out_stream.pos];
+}
+
+fn appendGzipSegment(segment: []const u8, out_stream: *std.io.FixedBufferStream([]u8)) bool {
+    var in_stream = std.io.fixedBufferStream(segment);
+    std.compress.gzip.decompress(in_stream.reader(), out_stream.writer()) catch return false;
+    return true;
 }
 
 pub fn forteLabel(sc: set_class.SetClass, out: *[16]u8) []u8 {
