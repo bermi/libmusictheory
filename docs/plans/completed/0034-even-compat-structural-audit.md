@@ -41,7 +41,7 @@ Status: Completed
 
 ## Implementation History (Point-in-Time)
 
-- `COMMIT_HASH_PLACEHOLDER` (`COMMIT_DATE_PLACEHOLDER`)
+- `21ad6c2e0543416eea9a3fa28f051fbfb999419d` (`2026-02-21T15:23:36+01:00`)
 - Shipped behavior:
 - Added `scripts/audit_even_compat.py` to programmatically validate `even/index|grad|line` structural invariants (ray counts, marker composition, hidden-point parity, and pairwise variant boundaries).
 - Added `0034` verify gate in `./verify.sh` that runs the audit when `tmp/harmoniousapp.net/even/` exists.
