@@ -1,18 +1,140 @@
 const std = @import("std");
-const templates = @import("../generated/harmonious_text_templates.zig");
+const primitives = @import("../generated/harmonious_text_primitives.zig");
 
-fn findTemplate(list: []const templates.TextTemplate, stem: []const u8) ?[]const u8 {
-    for (list) |entry| {
+const PairDeltaStep = struct {
+    dx: i32,
+    dy: i32,
+};
+
+fn findSymbol(ch: u8) ?primitives.SymbolDef {
+    for (primitives.SYMBOLS) |sym| {
+        if (sym.ch == ch) return sym;
+    }
+    return null;
+}
+
+fn findPairDelta(model: primitives.OrientationModel, prev: u8, next: u8) ?PairDeltaStep {
+    for (model.pair_deltas) |entry| {
+        if (entry.prev == prev and entry.next == next) {
+            return .{ .dx = entry.dx, .dy = entry.dy };
+        }
+    }
+    return null;
+}
+
+fn findEdgeBias(model: primitives.OrientationModel, first: u8, last: u8) ?i32 {
+    for (model.edge_biases) |entry| {
+        if (entry.first == first and entry.last == last) return entry.bias2;
+    }
+    return null;
+}
+
+fn findFirstY(model: primitives.OrientationModel, first: u8) ?i32 {
+    for (model.first_y) |entry| {
+        if (entry.first == first) return entry.y;
+    }
+    return null;
+}
+
+fn writeScaledCoord(writer: anytype, value: i32) !void {
+    if (value == 0) {
+        try writer.writeAll("0");
+        return;
+    }
+
+    var magnitude: i64 = value;
+    if (magnitude < 0) {
+        try writer.writeByte('-');
+        magnitude = -magnitude;
+    }
+
+    const whole: i64 = @divFloor(magnitude, 10_000);
+    const frac: i64 = @mod(magnitude, 10_000);
+    try writer.print("{d}", .{whole});
+    if (frac == 0) return;
+
+    var frac_digits: [4]u8 = undefined;
+    var n: u16 = @intCast(frac);
+    var i: usize = 4;
+    while (i > 0) {
+        i -= 1;
+        frac_digits[i] = @as(u8, @intCast('0' + (n % 10)));
+        n /= 10;
+    }
+
+    var end: usize = frac_digits.len;
+    while (end > 0 and frac_digits[end - 1] == '0') : (end -= 1) {}
+    if (end == 0) return;
+
+    try writer.writeByte('.');
+    try writer.writeAll(frac_digits[0..end]);
+}
+
+fn buildVerticalPath(text: []const u8, bottom_to_top: bool, buf: []u8) ?[]const u8 {
+    if (text.len == 0) return null;
+    if (text.len > 64) return null;
+
+    const model = if (bottom_to_top)
+        primitives.VERT_TEXT_B2T_BLACK_MODEL
+    else
+        primitives.VERT_TEXT_BLACK_MODEL;
+
+    var pair_deltas: [64]PairDeltaStep = undefined;
+    var total_dx: i64 = 0;
+    if (text.len > 1) {
+        var i: usize = 0;
+        while (i + 1 < text.len) : (i += 1) {
+            const delta = findPairDelta(model, text[i], text[i + 1]) orelse return null;
+            pair_deltas[i] = delta;
+            total_dx += delta.dx;
+        }
+    }
+
+    const edge_bias = findEdgeBias(model, text[0], text[text.len - 1]) orelse return null;
+    const x0_num: i64 = @as(i64, edge_bias) - total_dx;
+    if (@mod(x0_num, 2) != 0) return null;
+    var symbol_x: i32 = @intCast(@divFloor(x0_num, 2));
+    var symbol_y: i32 = findFirstY(model, text[0]) orelse return null;
+
+    var stream = std.io.fixedBufferStream(buf);
+    const writer = stream.writer();
+
+    var i: usize = 0;
+    while (i < text.len) : (i += 1) {
+        const symbol = findSymbol(text[i]) orelse return null;
+        for (symbol.parts) |part| {
+            if (part.primitive_index >= primitives.PRIMITIVES.len) return null;
+            const primitive = primitives.PRIMITIVES[part.primitive_index];
+
+            const x = symbol_x + part.dx;
+            const y = symbol_y + part.dy;
+
+            writer.writeByte('M') catch return null;
+            writeScaledCoord(writer, x) catch return null;
+            if (model.use_comma) writer.writeByte(',') catch return null;
+            writeScaledCoord(writer, y) catch return null;
+            writer.writeAll(primitive.body) catch return null;
+        }
+
+        if (i + 1 < text.len) {
+            symbol_x += pair_deltas[i].dx;
+            symbol_y += pair_deltas[i].dy;
+        }
+    }
+
+    return buf[0..stream.pos];
+}
+
+fn findCenterTemplate(stem: []const u8) ?[]const u8 {
+    for (primitives.CENTER_SQUARE_TEXT) |entry| {
         if (std.mem.eql(u8, entry.stem, stem)) return entry.path_d;
     }
     return null;
 }
 
 pub fn renderVerticalLabel(text: []const u8, bottom_to_top: bool, buf: []u8) []u8 {
-    const path_d = if (bottom_to_top)
-        findTemplate(&templates.VERT_TEXT_B2T_BLACK, text)
-    else
-        findTemplate(&templates.VERT_TEXT_BLACK, text);
+    var path_buf: [16 * 1024]u8 = undefined;
+    const path_d = buildVerticalPath(text, bottom_to_top, &path_buf);
 
     if (path_d) |d| {
         var stream_exact = std.io.fixedBufferStream(buf);
@@ -44,7 +166,7 @@ pub fn renderVerticalLabel(text: []const u8, bottom_to_top: bool, buf: []u8) []u
 }
 
 pub fn renderCenterSquareGlyph(glyph: []const u8, buf: []u8) []u8 {
-    if (findTemplate(&templates.CENTER_SQUARE_TEXT, glyph)) |d| {
+    if (findCenterTemplate(glyph)) |d| {
         var stream_exact = std.io.fixedBufferStream(buf);
         const exact = stream_exact.writer();
 

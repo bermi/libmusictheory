@@ -517,6 +517,13 @@ else
     unverified "0036 text compatibility primitive audit (vert-text refs or script missing)"
 fi
 
+if [ -f "$ROOT_DIR/src/generated/harmonious_text_primitives.zig" ]; then
+    check_cmd "cd '$ROOT_DIR' && rg -n \"harmonious_text_primitives\" src/svg/text_misc.zig" "0037 text symbolic guardrail (text primitives module wired in)"
+    check_cmd "cd '$ROOT_DIR' && ! rg -n \"harmonious_text_templates|templates\\.VERT_TEXT_BLACK|templates\\.VERT_TEXT_B2T_BLACK\" src/svg/text_misc.zig" "0037 text symbolic guardrail (no per-stem vertical template array usage)"
+else
+    unverified "0037 text symbolic guardrail (symbolic text primitive assets not yet present)"
+fi
+
 if [ -d "$ROOT_DIR/tmp/harmoniousapp.net" ] && [ -f "$ROOT_DIR/scripts/validate_harmonious_playwright.mjs" ]; then
     if command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
         check_cmd "cd '$ROOT_DIR' && node scripts/validate_harmonious_playwright.mjs --sample-per-kind 5 2>&1" "0024 harmoniousapp.net playwright sampled validation (>=5 per kind, 0 mismatches)"
