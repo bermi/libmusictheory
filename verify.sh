@@ -507,6 +507,16 @@ else
     unverified "0034 even compatibility structural audit (tmp/harmoniousapp.net/even or script missing)"
 fi
 
+if [ -d "$ROOT_DIR/tmp/harmoniousapp.net/vert-text-black" ] && [ -d "$ROOT_DIR/tmp/harmoniousapp.net/vert-text-b2t-black" ] && [ -f "$ROOT_DIR/scripts/audit_text_compat_primitives.py" ]; then
+    if command -v python3 >/dev/null 2>&1; then
+        check_cmd "cd '$ROOT_DIR' && python3 scripts/audit_text_compat_primitives.py --root tmp/harmoniousapp.net >/dev/null" "0036 text compatibility primitive audit (reference invariants)"
+    else
+        unverified "0036 text compatibility primitive audit (python3 missing)"
+    fi
+else
+    unverified "0036 text compatibility primitive audit (vert-text refs or script missing)"
+fi
+
 if [ -d "$ROOT_DIR/tmp/harmoniousapp.net" ] && [ -f "$ROOT_DIR/scripts/validate_harmonious_playwright.mjs" ]; then
     if command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
         check_cmd "cd '$ROOT_DIR' && node scripts/validate_harmonious_playwright.mjs --sample-per-kind 5 2>&1" "0024 harmoniousapp.net playwright sampled validation (>=5 per kind, 0 mismatches)"
