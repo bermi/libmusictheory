@@ -1,6 +1,6 @@
 # 0037 - Text Compat Symbolic Renderer
 
-Status: In Progress
+Status: Completed
 
 ## Objective
 
@@ -52,3 +52,15 @@ Replace `vert-text-black` / `vert-text-b2t-black` per-stem path lookup with a sy
 - Vertical text output remains exact (`0` mismatches across all compat kinds).
 - No vertical dependence on per-stem template arrays.
 - `./verify.sh` remains green, including wasm size and Playwright gates.
+
+## Implementation History (Point-in-Time)
+
+- `1b6bd61cbf4aef5bae0a9957ec86bf205b6e309b` (`2026-02-23T21:22:13+01:00`)
+- Shipped behavior:
+- Added `scripts/generate_harmonious_text_primitives.py` to derive vertical symbolic primitives, deterministic pair spacing/bias models, and center-square templates from local harmoniousapp references, with full roundtrip validation.
+- Added `src/generated/harmonious_text_primitives.zig` containing compact symbol primitives and orientation models for exact path reconstruction.
+- Replaced `src/svg/text_misc.zig` vertical per-stem template lookup with symbolic primitive composition while preserving exact SVG wrapper bytes; migrated center-square lookup to the generated primitive module.
+- Updated `./verify.sh` 0037 guardrail to assert symbolic module wiring and absence of old vertical template usage.
+- Guardrail/completion verification:
+- `./verify.sh`
+- `zig build test`
