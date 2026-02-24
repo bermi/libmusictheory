@@ -4,7 +4,7 @@
 > Blocks: None
 > Does not block: 0026, 0027
 
-Status: In Progress
+Status: Completed
 
 ## Objective
 
@@ -92,4 +92,17 @@ This plan is additive:
 
 ## Implementation History (Point-in-Time)
 
-_To be filled when implementation is complete._
+- `68acc4550ecaf8d74e3a08a2d360d7dcc2753217` (`2026-02-24T02:56:39+01:00`)
+- Shipped behavior:
+- Added native raster backend module in `/Users/bermi/code/libmusictheory/src/render/raster.zig` with deterministic RGBA rendering for IR primitives (`rect`, `circle`, `line`) and deterministic surface hashing.
+- Added native C ABI raster surface exports in `/Users/bermi/code/libmusictheory/src/c_api.zig`: `lmt_raster_is_enabled` and `lmt_raster_demo_rgba`.
+- Added build partitioning in `/Users/bermi/code/libmusictheory/build.zig` via `build_options.enable_raster_backend`:
+- native modules/tests: enabled,
+- wasm demo artifact: disabled by default.
+- Added ABI declarations in `/Users/bermi/code/libmusictheory/include/libmusictheory.h`.
+- Added deterministic raster tests in `/Users/bermi/code/libmusictheory/src/tests/raster_test.zig` and ABI coverage in `/Users/bermi/code/libmusictheory/src/tests/c_api_test.zig`.
+- Added 0030 verify gates in `/Users/bermi/code/libmusictheory/verify.sh` to enforce build-option gating, ABI export presence, and deterministic tests.
+- Guardrail/completion verification:
+- `./verify.sh`
+- `zig build verify`
+- `zig build test`
