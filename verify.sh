@@ -535,6 +535,18 @@ else
     unverified "0029 rendering IR guardrail (src/render/ir.zig or src/render/svg_serializer.zig missing)"
 fi
 
+if [ -f "$ROOT_DIR/src/render/raster.zig" ]; then
+    check_cmd "cd '$ROOT_DIR' && rg -n \"enable_raster_backend\" build.zig src/c_api.zig" "0030 raster backend guardrail (build option + abi gating)"
+    check_cmd "cd '$ROOT_DIR' && rg -n \"lmt_raster_\" include/libmusictheory.h src/c_api.zig" "0030 raster backend guardrail (native abi surface exported)"
+    if [ -f "$ROOT_DIR/src/tests/raster_test.zig" ]; then
+        check_cmd "cd '$ROOT_DIR' && zig build test 2>&1" "0030 raster backend determinism test suite"
+    else
+        unverified "0030 raster backend determinism test suite (src/tests/raster_test.zig missing)"
+    fi
+else
+    unverified "0030 raster backend guardrail (src/render/raster.zig missing)"
+fi
+
 if [ -d "$ROOT_DIR/tmp/harmoniousapp.net" ] && [ -f "$ROOT_DIR/scripts/validate_harmonious_playwright.mjs" ]; then
     if command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
         check_cmd "cd '$ROOT_DIR' && node scripts/validate_harmonious_playwright.mjs --sample-per-kind 5 2>&1" "0024 harmoniousapp.net playwright sampled validation (>=5 per kind, 0 mismatches)"

@@ -44,6 +44,8 @@ extern fn lmt_midi_to_fret_positions(note: u8, tuning_ptr: [*c]const u8, out: [*
 extern fn lmt_svg_clock_optc(set: u16, buf: [*c]u8, buf_size: u32) callconv(.c) u32;
 extern fn lmt_svg_fret(frets_ptr: [*c]const i8, buf: [*c]u8, buf_size: u32) callconv(.c) u32;
 extern fn lmt_svg_chord_staff(chord_kind: u8, root: u8, buf: [*c]u8, buf_size: u32) callconv(.c) u32;
+extern fn lmt_raster_is_enabled() callconv(.c) u32;
+extern fn lmt_raster_demo_rgba(width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32;
 extern fn lmt_wasm_scratch_ptr() callconv(.c) [*c]u8;
 extern fn lmt_wasm_scratch_size() callconv(.c) u32;
 extern fn lmt_svg_compat_kind_count() callconv(.c) u32;
@@ -150,6 +152,16 @@ test "c abi svg generators" {
     const len3 = lmt_svg_chord_staff(c.LMT_CHORD_MAJOR, 0, @ptrCast(&svg_buf), @intCast(svg_buf.len));
     try testing.expect(len3 > 0);
     try testing.expect(std.mem.startsWith(u8, svg_buf[0..4], "<svg"));
+}
+
+test "c abi raster generators" {
+    const enabled = lmt_raster_is_enabled();
+    try testing.expect(enabled == 0 or enabled == 1);
+    if (enabled == 0) return error.SkipZigTest;
+
+    var rgba: [64 * 64 * 4]u8 = [_]u8{0} ** (64 * 64 * 4);
+    const written = lmt_raster_demo_rgba(64, 64, @ptrCast(&rgba), @intCast(rgba.len));
+    try testing.expectEqual(@as(u32, rgba.len), written);
 }
 
 test "c abi harmonious compatibility surface" {

@@ -10,28 +10,37 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    const native_build_options = b.addOptions();
+    native_build_options.addOption(bool, "enable_raster_backend", true);
+    lib_mod.addOptions("build_options", native_build_options);
 
     // ── Static library (C ABI) ──────────────────────────────────
+    const static_mod = b.createModule(.{
+        .root_source_file = b.path("src/root.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    static_mod.addOptions("build_options", native_build_options);
+
     const static_lib = b.addLibrary(.{
         .name = "musictheory",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("src/root.zig"),
-            .target = target,
-            .optimize = optimize,
-        }),
+        .root_module = static_mod,
         .linkage = .static,
     });
 
     b.installArtifact(static_lib);
 
     // ── Shared library (C ABI) ──────────────────────────────────
+    const shared_mod = b.createModule(.{
+        .root_source_file = b.path("src/root.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    shared_mod.addOptions("build_options", native_build_options);
+
     const shared_lib = b.addLibrary(.{
         .name = "musictheory",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("src/root.zig"),
-            .target = target,
-            .optimize = optimize,
-        }),
+        .root_module = shared_mod,
         .linkage = .dynamic,
     });
 
@@ -52,6 +61,9 @@ pub fn build(b: *std.Build) void {
             .optimize = .ReleaseSmall,
         }),
     });
+    const wasm_build_options = b.addOptions();
+    wasm_build_options.addOption(bool, "enable_raster_backend", false);
+    wasm_exe.root_module.addOptions("build_options", wasm_build_options);
     wasm_exe.rdynamic = true;
     wasm_exe.entry = .disabled;
     wasm_exe.export_memory = true;

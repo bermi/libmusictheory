@@ -99,6 +99,8 @@ uint8_t lmt_midi_to_fret_positions(lmt_midi_note note, const uint8_t *tuning, lm
 uint32_t lmt_svg_clock_optc(lmt_pitch_class_set set, char *buf, uint32_t buf_size);
 uint32_t lmt_svg_fret(const int8_t *frets, char *buf, uint32_t buf_size);
 uint32_t lmt_svg_chord_staff(lmt_chord_type type, lmt_pitch_class root, char *buf, uint32_t buf_size);
+uint32_t lmt_raster_is_enabled(void);
+uint32_t lmt_raster_demo_rgba(uint32_t width, uint32_t height, uint8_t *out_rgba, uint32_t out_rgba_size);
 char *lmt_wasm_scratch_ptr(void);
 uint32_t lmt_wasm_scratch_size(void);
 uint32_t lmt_svg_compat_kind_count(void);

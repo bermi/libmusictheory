@@ -4,6 +4,8 @@
 > Blocks: None
 > Does not block: 0026, 0027
 
+Status: In Progress
+
 ## Objective
 
 Implement an optional pure-Zig raster backend that renders the shared IR to RGBA buffers for native/mobile/plugin environments.

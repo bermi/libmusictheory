@@ -1,4 +1,5 @@
 const std = @import("std");
+const build_options = @import("build_options");
 const pitch = @import("pitch.zig");
 const pcs = @import("pitch_class_set.zig");
 const set_class = @import("set_class.zig");
@@ -16,6 +17,7 @@ const svg_clock = @import("svg/clock.zig");
 const svg_fret = @import("svg/fret.zig");
 const svg_staff = @import("svg/staff.zig");
 const svg_compat = @import("harmonious_svg_compat.zig");
+const raster = @import("render/raster.zig");
 
 pub const LmtKeyContext = extern struct {
     tonic: u8,
@@ -432,6 +434,30 @@ export fn lmt_svg_chord_staff(chord_kind: u8, root: u8, buf: [*c]u8, buf_size: u
     var svg_buf: [8192]u8 = undefined;
     const svg = svg_staff.renderChordStaff(notes[0..count], k, &svg_buf);
     return copySvgOut(svg, buf, buf_size);
+}
+
+export fn lmt_raster_is_enabled() callconv(.C) u32 {
+    return if (build_options.enable_raster_backend) 1 else 0;
+}
+
+export fn lmt_raster_demo_rgba(width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.C) u32 {
+    if (!build_options.enable_raster_backend) return 0;
+    if (out_rgba == null or width == 0 or height == 0) return 0;
+
+    const required: u64 = @as(u64, width) * @as(u64, height) * 4;
+    if (required == 0 or required > std.math.maxInt(u32)) return 0;
+    if (required > @as(u64, out_rgba_size)) return 0;
+
+    const expected_stride = width * 4;
+    const out_slice = out_rgba[0..@as(usize, @intCast(required))];
+    var surface = raster.Surface{
+        .pixels = out_slice,
+        .width = width,
+        .height = height,
+        .stride = expected_stride,
+    };
+    raster.renderDemoScene(&surface);
+    return @as(u32, @intCast(required));
 }
 
 export fn lmt_svg_compat_kind_count() callconv(.C) u32 {
