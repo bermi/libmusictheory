@@ -4,6 +4,8 @@
 > Blocks: None
 > Does not block: 0026, 0027
 
+Status: In Progress
+
 ## Objective
 
 Add a Playwright-based visual diff workflow to accelerate debugging when byte-exact SVG parity fails.

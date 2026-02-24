@@ -547,6 +547,20 @@ else
     unverified "0030 raster backend guardrail (src/render/raster.zig missing)"
 fi
 
+if [ -d "$ROOT_DIR/tmp/harmoniousapp.net" ] && [ -f "$ROOT_DIR/scripts/validate_harmonious_visual_diff.mjs" ]; then
+    if command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
+        if bash -lc "cd '$ROOT_DIR' && node scripts/validate_harmonious_visual_diff.mjs --sample-per-kind 5 >/dev/null 2>&1"; then
+            pass "0031 compatibility visual diff diagnostics (non-blocking sampled artifacts)"
+        else
+            unverified "0031 compatibility visual diff diagnostics (non-blocking; script execution failed)"
+        fi
+    else
+        unverified "0031 compatibility visual diff diagnostics (node/npm/python3 missing)"
+    fi
+else
+    unverified "0031 compatibility visual diff diagnostics (tmp/harmoniousapp.net or script missing)"
+fi
+
 if [ -d "$ROOT_DIR/tmp/harmoniousapp.net" ] && [ -f "$ROOT_DIR/scripts/validate_harmonious_playwright.mjs" ]; then
     if command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
         check_cmd "cd '$ROOT_DIR' && node scripts/validate_harmonious_playwright.mjs --sample-per-kind 5 2>&1" "0024 harmoniousapp.net playwright sampled validation (>=5 per kind, 0 mismatches)"
