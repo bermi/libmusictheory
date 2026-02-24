@@ -41,6 +41,8 @@ pub const svg_key_sig = @import("svg/key_sig.zig");
 pub const svg_text_misc = @import("svg/text_misc.zig");
 pub const svg_n_tet_chart = @import("svg/n_tet_chart.zig");
 pub const harmonious_svg_compat = @import("harmonious_svg_compat.zig");
+pub const render_ir = @import("render/ir.zig");
+pub const render_svg_serializer = @import("render/svg_serializer.zig");
 
 test {
     _ = @import("tests/pitch_test.zig");
@@ -62,6 +64,7 @@ test {
     _ = @import("tests/svg_misc_test.zig");
     _ = @import("tests/svg_harmonious_compat_test.zig");
     _ = @import("tests/slider_test.zig");
+    _ = @import("tests/render_ir_test.zig");
     _ = @import("tests/c_api_test.zig");
     _ = @import("tests/tables_test.zig");
     _ = @import("tests/integration_test.zig");

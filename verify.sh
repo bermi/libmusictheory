@@ -524,6 +524,17 @@ else
     unverified "0037 text symbolic guardrail (symbolic text primitive assets not yet present)"
 fi
 
+if [ -f "$ROOT_DIR/src/render/ir.zig" ] && [ -f "$ROOT_DIR/src/render/svg_serializer.zig" ]; then
+    check_cmd "cd '$ROOT_DIR' && rg -n \"render/ir\\.zig|render/svg_serializer\\.zig\" src/svg/clock.zig" "0029 rendering IR guardrail (optc pilot wired through render IR + serializer)"
+    if [ -f "$ROOT_DIR/src/tests/render_ir_test.zig" ]; then
+        check_cmd "cd '$ROOT_DIR' && zig build test 2>&1" "0029 rendering IR determinism test suite"
+    else
+        unverified "0029 rendering IR determinism test suite (src/tests/render_ir_test.zig missing)"
+    fi
+else
+    unverified "0029 rendering IR guardrail (src/render/ir.zig or src/render/svg_serializer.zig missing)"
+fi
+
 if [ -d "$ROOT_DIR/tmp/harmoniousapp.net" ] && [ -f "$ROOT_DIR/scripts/validate_harmonious_playwright.mjs" ]; then
     if command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
         check_cmd "cd '$ROOT_DIR' && node scripts/validate_harmonious_playwright.mjs --sample-per-kind 5 2>&1" "0024 harmoniousapp.net playwright sampled validation (>=5 per kind, 0 mismatches)"

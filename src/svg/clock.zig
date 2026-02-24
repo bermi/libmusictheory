@@ -4,6 +4,8 @@ const pcs = @import("../pitch_class_set.zig");
 const cluster = @import("../cluster.zig");
 const set_class = @import("../set_class.zig");
 const optc_templates = @import("../generated/harmonious_optc_templates.zig");
+const render_ir = @import("../render/ir.zig");
+const render_svg_serializer = @import("../render/svg_serializer.zig");
 
 const TAU = std.math.pi * 2.0;
 
@@ -175,32 +177,39 @@ pub fn renderOPTC(set: pcs.PitchClassSet, prime_label: []const u8, buf: []u8) []
 }
 
 pub fn renderOPTCHarmoniousCompat(set: pcs.PitchClassSet, label: []const u8, metadata: OptcCompatMetadata, buf: []u8) []u8 {
-    var stream = std.io.fixedBufferStream(buf);
-    const w = stream.writer();
+    var ops: [512]render_ir.Op = undefined;
+    var builder = render_ir.Builder.init(&ops);
 
     const variant_index = findOptcVariantIndex(label);
     const variant = optc_templates.OPTC_VARIANTS[variant_index];
     const write_spokes = metadata.dash_mask != 0 and metadata.black_mask != 0;
 
-    w.writeAll("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n") catch return "";
-    w.writeAll("<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n") catch return "";
-    w.writeAll("<svg version=\"1.1\" id=\"Layer_1\" xmlns=\"http://www.w3.org/2000/svg\"\n") catch return "";
-    w.writeAll("  xmlns:xlink=\"http://www.w3.org/1999/xlink\" x=\"0px\" y=\"0px\"\n") catch return "";
-    w.writeAll("        width=\"70px\" height=\"70px\" viewBox=\"-7 -7 114 114\"\n") catch return "";
-    w.writeAll("        enable-background=\"new 0 0 70 70\" xml:space=\"preserve\">\n") catch return "";
-    w.writeAll("\n") catch return "";
-    w.writeAll("<!--rect x=\"-200\" y=\"-200\" width=\"400\" height=\"400\" style=\"fill:#eee\" / -->\n") catch return "";
+    builder.raw("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n") catch return "";
+    builder.raw("<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n") catch return "";
+    builder.raw("<svg version=\"1.1\" id=\"Layer_1\" xmlns=\"http://www.w3.org/2000/svg\"\n") catch return "";
+    builder.raw("  xmlns:xlink=\"http://www.w3.org/1999/xlink\" x=\"0px\" y=\"0px\"\n") catch return "";
+    builder.raw("        width=\"70px\" height=\"70px\" viewBox=\"-7 -7 114 114\"\n") catch return "";
+    builder.raw("        enable-background=\"new 0 0 70 70\" xml:space=\"preserve\">\n") catch return "";
+    builder.raw("\n") catch return "";
+    builder.raw("<!--rect x=\"-200\" y=\"-200\" width=\"400\" height=\"400\" style=\"fill:#eee\" / -->\n") catch return "";
 
     if (write_spokes) {
-        w.writeAll("\n") catch return "";
-        writeOptcSpokePaths(w, metadata.dash_mask, metadata.black_mask, label.len >= 7) catch return "";
-        w.writeAll("\n\n") catch return "";
+        builder.raw("\n") catch return "";
+        appendOptcSpokePaths(&builder, metadata.dash_mask, metadata.black_mask, label.len >= 7) catch return "";
+        builder.raw("\n\n") catch return "";
     } else {
-        w.writeAll("\n\n\n") catch return "";
+        builder.raw("\n\n\n") catch return "";
     }
 
-    w.print("<circle cx=\"50.00\" cy=\"50.00\" r=\"20\" stroke=\"black\" stroke-width=\"2\" fill=\"{s}\" />\n", .{variant.center_fill}) catch return "";
-    w.writeAll("\n") catch return "";
+    builder.circle(.{
+        .cx = "50.00",
+        .cy = "50.00",
+        .r = "20",
+        .stroke = "black",
+        .stroke_width = "2",
+        .fill = variant.center_fill,
+    }) catch return "";
+    builder.raw("\n") catch return "";
 
     for (OPTC_COMPAT_PC_ORDER) |pc| {
         const bit = @as(pcs.PitchClassSet, 1) << pc;
@@ -213,38 +222,55 @@ pub fn renderOPTCHarmoniousCompat(set: pcs.PitchClassSet, label: []const u8, met
         else
             "black";
 
-        w.print(
-            "<circle cx=\"{s}\" cy=\"{s}\" r=\"10\" stroke=\"black\" stroke-width=\"3\" fill=\"{s}\" />\n",
-            .{ OPTC_COMPAT_CX[pc], OPTC_COMPAT_CY[pc], fill },
-        ) catch return "";
+        builder.circle(.{
+            .cx = OPTC_COMPAT_CX[pc],
+            .cy = OPTC_COMPAT_CY[pc],
+            .r = "10",
+            .stroke = "black",
+            .stroke_width = "3",
+            .fill = fill,
+        }) catch return "";
     }
 
-    writeBlankLines(w, OPTC_PRE_G_BLANK_LINES[variant_index]) catch return "";
-    w.print("<g transform=\"{s}\">\n", .{variant.transform}) catch return "";
-    w.print("<path fill=\"{s}\" d=\"{s}\"/>\n", .{ variant.text_fill, variant.text_path }) catch return "";
-    w.writeAll("</g>\n") catch return "";
-    writeBlankLines(w, OPTC_POST_G_BLANK_LINES[variant_index]) catch return "";
-    w.writeAll("</svg>\n") catch return "";
+    appendBlankLines(&builder, OPTC_PRE_G_BLANK_LINES[variant_index]) catch return "";
 
+    const g_attrs = [_]render_ir.Attr{
+        .{ .key = "transform", .value = variant.transform },
+    };
+    builder.groupStart(&g_attrs, true) catch return "";
+    builder.path(.{
+        .fill = variant.text_fill,
+        .d = variant.text_path,
+    }) catch return "";
+    builder.groupEnd(true) catch return "";
+    appendBlankLines(&builder, OPTC_POST_G_BLANK_LINES[variant_index]) catch return "";
+    builder.raw("</svg>\n") catch return "";
+
+    var stream = std.io.fixedBufferStream(buf);
+    render_svg_serializer.write(builder.scene(), stream.writer(), .strict) catch return "";
     return buf[0..stream.pos];
 }
 
-fn writeBlankLines(writer: anytype, count: usize) !void {
+fn appendBlankLines(builder: *render_ir.Builder, count: usize) !void {
     var i: usize = 0;
     while (i < count) : (i += 1) {
-        try writer.writeAll("\n");
+        try builder.raw("\n");
     }
 }
 
-fn writeOptcSpokePaths(writer: anytype, dash_mask: pcs.PitchClassSet, black_mask: pcs.PitchClassSet, include_white_overlay: bool) !void {
+fn appendOptcSpokePaths(builder: *render_ir.Builder, dash_mask: pcs.PitchClassSet, black_mask: pcs.PitchClassSet, include_white_overlay: bool) !void {
     var pc: u4 = 0;
     while (pc < 12) : (pc += 1) {
         const bit = @as(pcs.PitchClassSet, 1) << pc;
         if ((dash_mask & bit) != 0) {
-            try writer.print(
-                "<path stroke=\"#777\" stroke-width=\"9\" fill=\"transparent\" stroke-dasharray=\"1.6,0.8\" d=\"{s}\"/>",
-                .{OPTC_COMPAT_SPOKE_PATHS[pc]},
-            );
+            try builder.path(.{
+                .stroke = "#777",
+                .stroke_width = "9",
+                .fill = "transparent",
+                .stroke_dasharray = "1.6,0.8",
+                .d = OPTC_COMPAT_SPOKE_PATHS[pc],
+                .newline = false,
+            });
         }
     }
 
@@ -252,10 +278,14 @@ fn writeOptcSpokePaths(writer: anytype, dash_mask: pcs.PitchClassSet, black_mask
     while (pc < 12) : (pc += 1) {
         const bit = @as(pcs.PitchClassSet, 1) << pc;
         if ((black_mask & bit) != 0) {
-            try writer.print(
-                "<path stroke=\"black\" stroke-width=\"9\" fill=\"transparent\"  d=\"{s}\"/>",
-                .{OPTC_COMPAT_SPOKE_PATHS[pc]},
-            );
+            try builder.path(.{
+                .stroke = "black",
+                .stroke_width = "9",
+                .fill = "transparent",
+                .d = OPTC_COMPAT_SPOKE_PATHS[pc],
+                .spaces_before_d = 2,
+                .newline = false,
+            });
         }
     }
 
@@ -265,10 +295,14 @@ fn writeOptcSpokePaths(writer: anytype, dash_mask: pcs.PitchClassSet, black_mask
     while (pc < 12) : (pc += 1) {
         const bit = @as(pcs.PitchClassSet, 1) << pc;
         if ((black_mask & bit) != 0) {
-            try writer.print(
-                "<path stroke=\"white\" stroke-width=\"5\" fill=\"transparent\"  d=\"{s}\"/>",
-                .{OPTC_COMPAT_SPOKE_PATHS[pc]},
-            );
+            try builder.path(.{
+                .stroke = "white",
+                .stroke_width = "5",
+                .fill = "transparent",
+                .d = OPTC_COMPAT_SPOKE_PATHS[pc],
+                .spaces_before_d = 2,
+                .newline = false,
+            });
         }
     }
 }

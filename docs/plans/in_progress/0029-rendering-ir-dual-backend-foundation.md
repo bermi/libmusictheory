@@ -4,6 +4,8 @@
 > Blocks: 0030
 > Does not block: 0026, 0027
 
+Status: In Progress
+
 ## Objective
 
 Introduce a deterministic rendering intermediate representation (IR) that decouples music-notation geometry/layout from output serialization.
