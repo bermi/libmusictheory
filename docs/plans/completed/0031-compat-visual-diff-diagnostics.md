@@ -4,7 +4,7 @@
 > Blocks: None
 > Does not block: 0026, 0027
 
-Status: In Progress
+Status: Completed
 
 ## Objective
 
@@ -87,4 +87,16 @@ This is diagnostic only:
 
 ## Implementation History (Point-in-Time)
 
-_To be filled when implementation is complete._
+- 2026-02-24 — `8738f1b`
+  - Shipped deterministic Playwright visual diff diagnostics via `scripts/validate_harmonious_visual_diff.mjs`:
+    - sampled-by-kind collection from `validation.html`,
+    - in-browser rasterized generated/reference pair diffs,
+    - artifact output (`generated/reference/diff` PNG + JSON metadata),
+    - aggregate outputs under `tmp/compat-visual-diff/summary.json` and `tmp/compat-visual-diff/report.txt`.
+  - Added non-blocking `0031` verify hook in `./verify.sh` that runs sampled visual diff diagnostics when local harmonious references and toolchain dependencies are present.
+  - Completion gates executed:
+    - `./verify.sh`
+    - `zig build verify`
+    - `zig build test`
+    - `node scripts/validate_harmonious_playwright.mjs`
+    - `node scripts/validate_harmonious_visual_diff.mjs --sample-per-kind 5`
