@@ -4,7 +4,7 @@
 > Blocks: 0030
 > Does not block: 0026, 0027
 
-Status: In Progress
+Status: Completed
 
 ## Objective
 
@@ -101,4 +101,14 @@ Primary purpose:
 
 ## Implementation History (Point-in-Time)
 
-_To be filled when implementation is complete._
+- `cf95fec4a1d59556d10f121ad5cbbec0419682ed` (`2026-02-24T02:44:10+01:00`)
+- Shipped behavior:
+- Added deterministic rendering IR foundation in `/Users/bermi/code/libmusictheory/src/render/ir.zig` with bounded scene builder and explicit primitive operations.
+- Added SVG serializer in `/Users/bermi/code/libmusictheory/src/render/svg_serializer.zig` with strict deterministic attribute ordering and spacing-sensitive path serialization.
+- Migrated `optc` harmonious compatibility pilot (`renderOPTCHarmoniousCompat`) in `/Users/bermi/code/libmusictheory/src/svg/clock.zig` to scene-building + serializer emission while preserving exact compatibility bytes.
+- Added IR determinism tests in `/Users/bermi/code/libmusictheory/src/tests/render_ir_test.zig` and wired them in `/Users/bermi/code/libmusictheory/src/root.zig`.
+- Added 0029 verify gates in `/Users/bermi/code/libmusictheory/verify.sh` for IR module wiring and test-suite presence.
+- Guardrail/completion verification:
+- `./verify.sh`
+- `zig build verify`
+- `zig build test`
