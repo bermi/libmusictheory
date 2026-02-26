@@ -4,7 +4,7 @@
 > Blocks: 0039 (future majmin algorithmic renderer migration)
 > Does not block: strict compatibility validation (already enforced by 0024/0028)
 
-Status: In Progress
+Status: Completed
 
 ## Objective
 
@@ -78,4 +78,17 @@ Add a deterministic structural audit for `tmp/harmoniousapp.net/majmin/*.svg` so
 
 ## Implementation History (Point-in-Time)
 
-_To be filled when implementation is complete._
+- 2026-02-26 — `a4ede1d`
+  - Added deterministic `majmin` structural audit script at `scripts/audit_majmin_compat.py` covering:
+    - filename grammar and per-kind cardinality invariants (`modes=366`, `scales=50`),
+    - token-domain distributions (transposition, shape, rotation),
+    - per-family SVG structural distributions (viewBox, `<path>`, `<a>`),
+    - expected legacy empty-shape special-case files,
+    - zero `<circle>`/`<text>` tag invariants for the majmin graph family.
+  - Added blocking `0038` verify gate in `./verify.sh`:
+    - `python3 scripts/audit_majmin_compat.py --root tmp/harmoniousapp.net >/dev/null`
+  - Completion gates executed:
+    - `./verify.sh`
+    - `zig build verify`
+    - `zig build test`
+    - `python3 scripts/audit_majmin_compat.py --root tmp/harmoniousapp.net`
