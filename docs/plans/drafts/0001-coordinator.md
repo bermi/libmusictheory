@@ -9,7 +9,7 @@ Build `libmusictheory`, a Zig library exposing a C ABI that implements the compl
 
 ## Lifecycle Status
 
-- Draft: 0001
+- Draft: 0001, 0038
 - In progress: none
 - Completed: 0002, 0003, 0004, 0005, 0006, 0007, 0008, 0009, 0010, 0011, 0012, 0013, 0014, 0015, 0016, 0017, 0018, 0019, 0020, 0021, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0032, 0033, 0034, 0035, 0036, 0037
 
@@ -87,6 +87,8 @@ Build `libmusictheory`, a Zig library exposing a C ABI that implements the compl
      ↓ depends on 0028, 0033 (verification + architecture grounding)
 0037-text-compat-symbolic-renderer → replace vertical per-stem path lookup with symbolic primitive composition while preserving exact byte parity
      ↓ depends on 0036 (audited primitive model)
+0038-majmin-compat-structural-audit → script-verified structural invariants for majmin/modes|scales prior to algorithmic renderer migration
+     ↓ depends on 0028, 0033 (verification + architecture grounding)
 ```
 
 ## Dependency Graph (Visual)
