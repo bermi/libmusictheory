@@ -12,7 +12,9 @@ test "majmin scene parser accepts canonical image names" {
     var modes_legacy_count: usize = 0;
     var modes_transpositions: [13]u16 = [_]u16{0} ** 13;
 
-    for (scene.MODE_IMAGE_NAMES, 0..) |name, index| {
+    var index: usize = 0;
+    while (index < scene.MODES_COUNT) : (index += 1) {
+        const name = scene.imageName(.modes, index) orelse return error.TestUnexpectedResult;
         const parsed = scene.parseImageName(.modes, name) orelse return error.TestUnexpectedResult;
         try testing.expect(parsed.kind == .modes);
         try testing.expect(parsed.transposition >= -1 and parsed.transposition <= 11);
@@ -41,7 +43,9 @@ test "majmin scene parser accepts canonical image names" {
     var scales_legacy_count: usize = 0;
     var scales_transpositions: [13]u16 = [_]u16{0} ** 13;
 
-    for (scene.SCALE_IMAGE_NAMES, 0..) |name, index| {
+    index = 0;
+    while (index < scene.SCALES_COUNT) : (index += 1) {
+        const name = scene.imageName(.scales, index) orelse return error.TestUnexpectedResult;
         const parsed = scene.parseImageName(.scales, name) orelse return error.TestUnexpectedResult;
         try testing.expect(parsed.kind == .scales);
         try testing.expect(parsed.transposition >= -1 and parsed.transposition <= 11);
@@ -80,7 +84,9 @@ test "majmin scene enumerator matches canonical order" {
     const enumerated_modes = scene.enumerate(.modes, &scenes) orelse return error.TestUnexpectedResult;
     try testing.expectEqual(scene.MODES_COUNT, enumerated_modes.len);
 
-    for (scene.MODE_IMAGE_NAMES, 0..) |name, i| {
+    var i: usize = 0;
+    while (i < scene.MODES_COUNT) : (i += 1) {
+        const name = scene.imageName(.modes, i) orelse return error.TestUnexpectedResult;
         var stem_buf: [64]u8 = undefined;
         const rebuilt = scene.formatStem(enumerated_modes[i], &stem_buf) orelse return error.TestUnexpectedResult;
         const expected_stem = name[0 .. name.len - 4];
@@ -92,7 +98,9 @@ test "majmin scene enumerator matches canonical order" {
     const enumerated_scales = scene.enumerate(.scales, &scales) orelse return error.TestUnexpectedResult;
     try testing.expectEqual(scene.SCALES_COUNT, enumerated_scales.len);
 
-    for (scene.SCALE_IMAGE_NAMES, 0..) |name, i| {
+    i = 0;
+    while (i < scene.SCALES_COUNT) : (i += 1) {
+        const name = scene.imageName(.scales, i) orelse return error.TestUnexpectedResult;
         var stem_buf: [64]u8 = undefined;
         const rebuilt = scene.formatStem(enumerated_scales[i], &stem_buf) orelse return error.TestUnexpectedResult;
         const expected_stem = name[0 .. name.len - 4];

@@ -24,8 +24,11 @@ pub const Scene = struct {
 pub const MODES_COUNT: usize = 366;
 pub const SCALES_COUNT: usize = 50;
 
-pub const MODE_IMAGE_NAMES = buildImageNames(.modes);
-pub const SCALE_IMAGE_NAMES = buildImageNames(.scales);
+const IMAGE_NAME_SLOT_COUNT: usize = 8;
+const IMAGE_NAME_MAX_LEN: usize = 48;
+
+threadlocal var image_name_slots: [IMAGE_NAME_SLOT_COUNT][IMAGE_NAME_MAX_LEN]u8 = undefined;
+threadlocal var next_image_name_slot: usize = 0;
 
 pub fn parseStem(expected_kind: Kind, stem: []const u8) ?Scene {
     var parts = std.mem.splitScalar(u8, stem, ',');
@@ -136,10 +139,17 @@ pub fn countForKind(kind: Kind) usize {
 }
 
 pub fn imageName(kind: Kind, image_index: usize) ?[]const u8 {
-    return switch (kind) {
-        .modes => if (image_index < MODE_IMAGE_NAMES.len) MODE_IMAGE_NAMES[image_index] else null,
-        .scales => if (image_index < SCALE_IMAGE_NAMES.len) SCALE_IMAGE_NAMES[image_index] else null,
-    };
+    const generated = sceneForIndex(kind, image_index) orelse return null;
+    const slot = acquireImageNameSlot();
+    var stem_buf: [40]u8 = undefined;
+    const stem = formatStem(generated, &stem_buf) orelse return null;
+
+    var stream = std.io.fixedBufferStream(slot[0..]);
+    const w = stream.writer();
+    w.writeAll(stem) catch return null;
+    w.writeAll(".svg") catch return null;
+
+    return slot[0..stream.pos];
 }
 
 pub fn sceneForIndex(kind: Kind, image_index: usize) ?Scene {
@@ -327,48 +337,10 @@ fn parseBoundedInt(token: []const u8, min: i8, max: i8) ?i8 {
     return value;
 }
 
-fn buildImageNames(comptime kind: Kind) [countForKind(kind)][]const u8 {
-    const count = countForKind(kind);
-    var names: [count][]const u8 = undefined;
-
-    inline for (0..count) |i| {
-        const generated = sceneForIndex(kind, i) orelse @compileError("invalid majmin scene index");
-        names[i] = std.fmt.comptimePrint("{s}.svg", .{comptimeStem(generated)});
-    }
-
-    return names;
-}
-
-fn comptimeStem(comptime generated: Scene) []const u8 {
-    const kind_token = switch (generated.kind) {
-        .modes => "modes",
-        .scales => "scales",
-    };
-    const family_token = switch (generated.family) {
-        .legacy => "",
-        .dntri => "dntri",
-        .hex => "hex",
-        .rhomb => "rhomb",
-        .uptri => "uptri",
-    };
-
-    if (generated.family == .legacy) {
-        const variant = generated.variant orelse @compileError("legacy scene missing variant");
-        return std.fmt.comptimePrint("{s},{d},{s},{d},{d}", .{
-            kind_token,
-            generated.transposition,
-            family_token,
-            generated.rotation,
-            variant,
-        });
-    }
-
-    return std.fmt.comptimePrint("{s},{d},{s},{d}", .{
-        kind_token,
-        generated.transposition,
-        family_token,
-        generated.rotation,
-    });
+fn acquireImageNameSlot() *[IMAGE_NAME_MAX_LEN]u8 {
+    const slot = next_image_name_slot;
+    next_image_name_slot = (next_image_name_slot + 1) % IMAGE_NAME_SLOT_COUNT;
+    return &image_name_slots[slot];
 }
 
 fn parseBoundedUnsigned(token: []const u8, min: u8, max: u8) ?u8 {
