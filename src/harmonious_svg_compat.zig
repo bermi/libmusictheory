@@ -103,9 +103,7 @@ fn renderMajmin(info: KindInfo, stem: []const u8, buf: []u8) []u8 {
     const scene = svg_majmin_scene.parseStem(scene_kind, stem) orelse return renderFallback(info.api_name, stem, buf);
 
     const image_index = svg_majmin_scene.imageIndex(scene) orelse return renderFallback(info.api_name, stem, buf);
-    if (image_index >= info.names.len) return renderFallback(info.api_name, stem, buf);
-    const canonical_name = trimSvgSuffix(info.names[image_index]);
-    if (!std.mem.eql(u8, canonical_name, stem)) return renderFallback(info.api_name, stem, buf);
+    if (image_index >= svg_majmin_scene.countForKind(scene_kind)) return renderFallback(info.api_name, stem, buf);
 
     return switch (info.id) {
         .majmin_modes => svg_majmin_compat.render(.modes, image_index, buf),
