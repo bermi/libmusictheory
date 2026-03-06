@@ -517,6 +517,16 @@ else
     unverified "0038 majmin compatibility structural audit (tmp/harmoniousapp.net/majmin or script missing)"
 fi
 
+if [ -d "$ROOT_DIR/tmp/harmoniousapp.net/majmin" ] && [ -f "$ROOT_DIR/scripts/audit_majmin_mode_templates.py" ]; then
+    if command -v python3 >/dev/null 2>&1; then
+        check_cmd "cd '$ROOT_DIR' && python3 scripts/audit_majmin_mode_templates.py --root tmp/harmoniousapp.net >/dev/null" "0039 majmin mode template audit (masked structure invariant by family/rotation)"
+    else
+        unverified "0039 majmin mode template audit (python3 missing)"
+    fi
+else
+    unverified "0039 majmin mode template audit (tmp/harmoniousapp.net/majmin or script missing)"
+fi
+
 if [ -f "$ROOT_DIR/src/svg/majmin_scene.zig" ]; then
     check_cmd "cd '$ROOT_DIR' && rg -n \"svg/majmin_scene\\.zig\" src/harmonious_svg_compat.zig src/root.zig" "0039 majmin topology model guardrail (scene parser wired into compat + root exports)"
     check_cmd "cd '$ROOT_DIR' && rg -n \"svg_majmin_scene\\.imageIndex\\(\" src/harmonious_svg_compat.zig" "0039 majmin topology model guardrail (compat uses algorithmic scene-to-index mapping)"
