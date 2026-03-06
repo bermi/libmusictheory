@@ -100,11 +100,14 @@ fn renderMajmin(info: KindInfo, image_name: []const u8, stem: []const u8, buf: [
         else => return renderFallback(info.api_name, stem, buf),
     };
 
-    if (svg_majmin_scene.parseStem(scene_kind, stem) == null) {
-        return renderFallback(info.api_name, stem, buf);
-    }
+    const scene = svg_majmin_scene.parseStem(scene_kind, stem) orelse return renderFallback(info.api_name, stem, buf);
 
-    const image_index = findImageIndex(info.names, image_name, stem) orelse return renderFallback(info.api_name, stem, buf);
+    const image_index = svg_majmin_scene.imageIndex(scene) orelse return renderFallback(info.api_name, stem, buf);
+    if (image_index >= info.names.len) return renderFallback(info.api_name, stem, buf);
+    const canonical_name = trimSvgSuffix(info.names[image_index]);
+    if (!std.mem.eql(u8, canonical_name, stem)) return renderFallback(info.api_name, stem, buf);
+    _ = image_name;
+
     return switch (info.id) {
         .majmin_modes => svg_majmin_compat.render(.modes, image_index, buf),
         .majmin_scales => svg_majmin_compat.render(.scales, image_index, buf),

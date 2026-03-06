@@ -13,7 +13,7 @@ test "majmin scene parser accepts all manifest names" {
     var modes_legacy_count: usize = 0;
     var modes_transpositions: [13]u16 = [_]u16{0} ** 13;
 
-    for (manifest.MAJMIN_MODES_NAMES) |name| {
+    for (manifest.MAJMIN_MODES_NAMES, 0..) |name, index| {
         const parsed = scene.parseImageName(.modes, name) orelse return error.TestUnexpectedResult;
         try testing.expect(parsed.kind == .modes);
         try testing.expect(parsed.transposition >= -1 and parsed.transposition <= 11);
@@ -35,13 +35,14 @@ test "majmin scene parser accepts all manifest names" {
         const rebuilt = scene.formatStem(parsed, &stem_buf) orelse return error.TestUnexpectedResult;
         const expected_stem = name[0 .. name.len - 4];
         try testing.expectEqualStrings(expected_stem, rebuilt);
+        try testing.expectEqual(index, scene.imageIndex(parsed).?);
     }
 
     var scales_count: usize = 0;
     var scales_legacy_count: usize = 0;
     var scales_transpositions: [13]u16 = [_]u16{0} ** 13;
 
-    for (manifest.MAJMIN_SCALES_NAMES) |name| {
+    for (manifest.MAJMIN_SCALES_NAMES, 0..) |name, index| {
         const parsed = scene.parseImageName(.scales, name) orelse return error.TestUnexpectedResult;
         try testing.expect(parsed.kind == .scales);
         try testing.expect(parsed.transposition >= -1 and parsed.transposition <= 11);
@@ -62,6 +63,7 @@ test "majmin scene parser accepts all manifest names" {
         const rebuilt = scene.formatStem(parsed, &stem_buf) orelse return error.TestUnexpectedResult;
         const expected_stem = name[0 .. name.len - 4];
         try testing.expectEqualStrings(expected_stem, rebuilt);
+        try testing.expectEqual(index, scene.imageIndex(parsed).?);
     }
 
     try testing.expectEqual(@as(usize, 366), modes_count);
@@ -82,6 +84,7 @@ test "majmin scene parser rejects invalid stems" {
     try testing.expect(scene.parseStem(.modes, "modes,0,dntri,2") == null);
     try testing.expect(scene.parseStem(.scales, "scales,-1,,1,1") == null);
     try testing.expect(scene.parseStem(.scales, "scales,-1,dntri,0") == null);
+    try testing.expect(scene.parseStem(.scales, "scales,1,dntri,1") == null);
     try testing.expect(scene.parseStem(.scales, "modes,0,dntri,0") == null);
     try testing.expect(scene.parseStem(.scales, "scales,0,badshape,0") == null);
 }

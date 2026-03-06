@@ -88,7 +88,10 @@ pub fn isValidScene(scene: Scene) bool {
 
     if (scene.variant != null) return false;
     if (scene.rotation < 0 or scene.rotation > 11) return false;
-    if (scene.kind == .scales and scene.transposition < 0) return false;
+    if (scene.kind == .scales) {
+        if (scene.transposition < 0) return false;
+        if (scene.rotation != scaleRotationForTransposition(scene.transposition)) return false;
+    }
     return isAllowedRotation(scene.kind, scene.family, scene.rotation);
 }
 
@@ -117,6 +120,36 @@ pub fn formatStem(scene: Scene, out: []u8) ?[]const u8 {
     }
 
     return out[0..stream.pos];
+}
+
+pub fn imageIndex(scene: Scene) ?usize {
+    if (!isValidScene(scene)) return null;
+
+    if (scene.family == .legacy) {
+        const variant = scene.variant orelse return null;
+        return @as(usize, variant - 1);
+    }
+
+    const family_idx = familyIndex(scene.family) orelse return null;
+
+    return switch (scene.kind) {
+        .modes => blk: {
+            const trans_idx = lookupIndexI8(scene.transposition, MODES_TRANSPOSITION_ORDER[0..]) orelse return null;
+            const rotation_idx = switch (scene.family) {
+                .legacy => return null,
+                .dntri => lookupIndexI8(scene.rotation, MODES_ROTATIONS_DNTRI[0..]) orelse return null,
+                .hex => lookupIndexI8(scene.rotation, MODES_ROTATIONS_HEX[0..]) orelse return null,
+                .rhomb => lookupIndexI8(scene.rotation, MODES_ROTATIONS_RHOMB[0..]) orelse return null,
+                .uptri => lookupIndexI8(scene.rotation, MODES_ROTATIONS_UPTRI[0..]) orelse return null,
+            };
+            break :blk 2 + trans_idx * 28 + family_idx * 7 + rotation_idx;
+        },
+        .scales => blk: {
+            const trans_idx = lookupIndexI8(scene.transposition, SCALES_TRANSPOSITION_ORDER[0..]) orelse return null;
+            if (scene.rotation != scaleRotationForTransposition(scene.transposition)) return null;
+            break :blk 2 + trans_idx * 4 + family_idx;
+        },
+    };
 }
 
 fn trimSvgSuffix(name: []const u8) []const u8 {
@@ -157,6 +190,37 @@ fn isAllowedRotation(kind: Kind, family: Family, rotation: i8) bool {
         },
     };
 }
+
+fn familyIndex(family: Family) ?usize {
+    return switch (family) {
+        .dntri => 0,
+        .hex => 1,
+        .rhomb => 2,
+        .uptri => 3,
+        .legacy => null,
+    };
+}
+
+fn lookupIndexI8(value: i8, options: []const i8) ?usize {
+    for (options, 0..) |candidate, idx| {
+        if (candidate == value) return idx;
+    }
+    return null;
+}
+
+fn scaleRotationForTransposition(transposition: i8) i8 {
+    const t = @as(i32, transposition);
+    const value = @mod(7 * t, 12);
+    return @as(i8, @intCast(value));
+}
+
+const MODES_TRANSPOSITION_ORDER = [_]i8{ -1, 0, 1, 10, 11, 2, 3, 4, 5, 6, 7, 8, 9 };
+const SCALES_TRANSPOSITION_ORDER = [_]i8{ 0, 1, 10, 11, 2, 3, 4, 5, 6, 7, 8, 9 };
+
+const MODES_ROTATIONS_DNTRI = [_]i8{ 0, 1, 10, 11, 3, 4, 7 };
+const MODES_ROTATIONS_HEX = [_]i8{ 0, 1, 10, 11, 7, 8, 9 };
+const MODES_ROTATIONS_RHOMB = [_]i8{ 0, 1, 10, 11, 3, 7, 9 };
+const MODES_ROTATIONS_UPTRI = [_]i8{ 0, 1, 10, 11, 4, 7, 8 };
 
 fn parseBoundedInt(token: []const u8, min: i8, max: i8) ?i8 {
     const value = parseIntI8(token) orelse return null;
