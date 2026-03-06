@@ -1,19 +1,18 @@
 const std = @import("std");
 const testing = std.testing;
 
-const manifest = @import("../generated/harmonious_manifest.zig");
 const scene = @import("../svg/majmin_scene.zig");
 
 fn transpositionIndex(value: i8) usize {
     return @as(usize, @intCast(value + 1));
 }
 
-test "majmin scene parser accepts all manifest names" {
+test "majmin scene parser accepts canonical image names" {
     var modes_count: usize = 0;
     var modes_legacy_count: usize = 0;
     var modes_transpositions: [13]u16 = [_]u16{0} ** 13;
 
-    for (manifest.MAJMIN_MODES_NAMES, 0..) |name, index| {
+    for (scene.MODE_IMAGE_NAMES, 0..) |name, index| {
         const parsed = scene.parseImageName(.modes, name) orelse return error.TestUnexpectedResult;
         try testing.expect(parsed.kind == .modes);
         try testing.expect(parsed.transposition >= -1 and parsed.transposition <= 11);
@@ -42,7 +41,7 @@ test "majmin scene parser accepts all manifest names" {
     var scales_legacy_count: usize = 0;
     var scales_transpositions: [13]u16 = [_]u16{0} ** 13;
 
-    for (manifest.MAJMIN_SCALES_NAMES, 0..) |name, index| {
+    for (scene.SCALE_IMAGE_NAMES, 0..) |name, index| {
         const parsed = scene.parseImageName(.scales, name) orelse return error.TestUnexpectedResult;
         try testing.expect(parsed.kind == .scales);
         try testing.expect(parsed.transposition >= -1 and parsed.transposition <= 11);
@@ -76,12 +75,12 @@ test "majmin scene parser accepts all manifest names" {
     try testing.expectEqual(@as(u16, 4), scales_transpositions[12]);
 }
 
-test "majmin scene enumerator matches manifest canonical order" {
+test "majmin scene enumerator matches canonical order" {
     var scenes: [scene.MODES_COUNT]scene.Scene = undefined;
     const enumerated_modes = scene.enumerate(.modes, &scenes) orelse return error.TestUnexpectedResult;
     try testing.expectEqual(scene.MODES_COUNT, enumerated_modes.len);
 
-    for (manifest.MAJMIN_MODES_NAMES, 0..) |name, i| {
+    for (scene.MODE_IMAGE_NAMES, 0..) |name, i| {
         var stem_buf: [64]u8 = undefined;
         const rebuilt = scene.formatStem(enumerated_modes[i], &stem_buf) orelse return error.TestUnexpectedResult;
         const expected_stem = name[0 .. name.len - 4];
@@ -93,12 +92,36 @@ test "majmin scene enumerator matches manifest canonical order" {
     const enumerated_scales = scene.enumerate(.scales, &scales) orelse return error.TestUnexpectedResult;
     try testing.expectEqual(scene.SCALES_COUNT, enumerated_scales.len);
 
-    for (manifest.MAJMIN_SCALES_NAMES, 0..) |name, i| {
+    for (scene.SCALE_IMAGE_NAMES, 0..) |name, i| {
         var stem_buf: [64]u8 = undefined;
         const rebuilt = scene.formatStem(enumerated_scales[i], &stem_buf) orelse return error.TestUnexpectedResult;
         const expected_stem = name[0 .. name.len - 4];
         try testing.expectEqualStrings(expected_stem, rebuilt);
         try testing.expectEqual(i, scene.imageIndex(enumerated_scales[i]).?);
+    }
+}
+
+test "majmin scene imageName matches sceneForIndex formatting" {
+    var i: usize = 0;
+    while (i < scene.MODES_COUNT) : (i += 1) {
+        const name = scene.imageName(.modes, i) orelse return error.TestUnexpectedResult;
+        const reconstructed = scene.sceneForIndex(.modes, i) orelse return error.TestUnexpectedResult;
+        var stem_buf: [64]u8 = undefined;
+        const stem = scene.formatStem(reconstructed, &stem_buf) orelse return error.TestUnexpectedResult;
+        const expected = std.fmt.allocPrint(testing.allocator, "{s}.svg", .{stem}) catch return error.OutOfMemory;
+        defer testing.allocator.free(expected);
+        try testing.expectEqualStrings(expected, name);
+    }
+
+    i = 0;
+    while (i < scene.SCALES_COUNT) : (i += 1) {
+        const name = scene.imageName(.scales, i) orelse return error.TestUnexpectedResult;
+        const reconstructed = scene.sceneForIndex(.scales, i) orelse return error.TestUnexpectedResult;
+        var stem_buf: [64]u8 = undefined;
+        const stem = scene.formatStem(reconstructed, &stem_buf) orelse return error.TestUnexpectedResult;
+        const expected = std.fmt.allocPrint(testing.allocator, "{s}.svg", .{stem}) catch return error.OutOfMemory;
+        defer testing.allocator.free(expected);
+        try testing.expectEqualStrings(expected, name);
     }
 }
 

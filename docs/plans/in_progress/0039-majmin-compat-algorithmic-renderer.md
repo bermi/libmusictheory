@@ -42,6 +42,9 @@ Replace packed `majmin` compatibility reconstruction (`src/generated/harmonious_
 
 - Build an explicit scene generator from topology parameters.
 - Keep renderer backend swappable (SVG now, raster-ready via IR).
+- Progress:
+  - scene parser + canonical scene/index mapping is implemented and verified;
+  - compatibility `imageCount`/`imageName`/`generateByIndex` now enumerate majmin images via `majmin_scene` (no majmin filename manifest tables in wasm path).
 
 ### Slice B: `scales,*` Exact Parity Cutover
 

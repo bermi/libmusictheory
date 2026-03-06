@@ -62,6 +62,8 @@ pub const KindInfo = struct {
     names: []const []const u8,
 };
 
+pub const EMPTY_NAMES = [_][]const u8{};
+
 HEADER
 
 emit_names "VERT_TEXT_BLACK_NAMES" "vert-text-black"
@@ -75,8 +77,6 @@ emit_names "CENTER_SQUARE_TEXT_NAMES" "center-square-text"
 emit_names "WIDE_CHORD_NAMES" "wide-chord"
 emit_names "CHORD_CLIPPED_NAMES" "chord-clipped"
 emit_names "GRAND_CHORD_NAMES" "grand-chord"
-emit_names "MAJMIN_MODES_NAMES" "majmin" "modes,"
-emit_names "MAJMIN_SCALES_NAMES" "majmin" "scales,"
 emit_names "CHORD_NAMES" "chord"
 emit_names "VERT_TEXT_B2T_BLACK_NAMES" "vert-text-b2t-black"
 
@@ -93,8 +93,8 @@ pub const ALL_KINDS = [_]KindInfo{
     .{ .id = .wide_chord, .api_name = "wide-chord", .directory = "wide-chord", .names = &WIDE_CHORD_NAMES },
     .{ .id = .chord_clipped, .api_name = "chord-clipped", .directory = "chord-clipped", .names = &CHORD_CLIPPED_NAMES },
     .{ .id = .grand_chord, .api_name = "grand-chord", .directory = "grand-chord", .names = &GRAND_CHORD_NAMES },
-    .{ .id = .majmin_modes, .api_name = "majmin/modes", .directory = "majmin", .names = &MAJMIN_MODES_NAMES },
-    .{ .id = .majmin_scales, .api_name = "majmin/scales", .directory = "majmin", .names = &MAJMIN_SCALES_NAMES },
+    .{ .id = .majmin_modes, .api_name = "majmin/modes", .directory = "majmin", .names = &EMPTY_NAMES },
+    .{ .id = .majmin_scales, .api_name = "majmin/scales", .directory = "majmin", .names = &EMPTY_NAMES },
     .{ .id = .chord, .api_name = "chord", .directory = "chord", .names = &CHORD_NAMES },
     .{ .id = .vert_text_b2t_black, .api_name = "vert-text-b2t-black", .directory = "vert-text-b2t-black", .names = &VERT_TEXT_B2T_BLACK_NAMES },
 };

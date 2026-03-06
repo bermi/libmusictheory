@@ -128,6 +128,24 @@ tmp/harmoniousapp.net/majmin/scales,{offset},{highlight},{zoom}.svg
 
 Components vary by view mode — some show all scales, others focus on a single scale's neighborhood.
 
+### Canonical Compatibility Scene Naming (libmusictheory)
+
+The compatibility layer now treats majmin filenames as a canonical scene projection (not a static manifest list):
+
+- Scene key: `(kind, transposition, family, rotation, legacy_variant?)`
+- Families: `dntri`, `hex`, `rhomb`, `uptri`, plus legacy empty-family entries
+- Legacy stems:
+  - modes: `modes,-1,,-3,{1|2}`
+  - scales: `scales,-1,,0,{1|2}`
+- Regular stems:
+  - modes: `modes,{t},{family},{r}`
+  - scales: `scales,{t},{family},{(7*t) mod 12}`
+
+This scene model is used for:
+- algorithmic `imageCount`
+- algorithmic `imageName` enumeration
+- algorithmic scene-to-index mapping in strict compatibility generation
+
 ## Counts
 - 416 SVGs in `tmp/harmoniousapp.net/majmin/` directory
 - These are the largest SVGs on the site (300×360 px with many path elements)

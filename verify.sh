@@ -540,7 +540,9 @@ fi
 if [ -f "$ROOT_DIR/src/svg/majmin_scene.zig" ]; then
     check_cmd "cd '$ROOT_DIR' && rg -n \"svg/majmin_scene\\.zig\" src/harmonious_svg_compat.zig src/root.zig" "0039 majmin topology model guardrail (scene parser wired into compat + root exports)"
     check_cmd "cd '$ROOT_DIR' && rg -n \"svg_majmin_scene\\.imageIndex\\(\" src/harmonious_svg_compat.zig" "0039 majmin topology model guardrail (compat uses algorithmic scene-to-index mapping)"
+    check_cmd "cd '$ROOT_DIR' && rg -n \"svg_majmin_scene\\.imageName\\(\" src/harmonious_svg_compat.zig" "0039 majmin topology model guardrail (compat exposes algorithmic majmin image-name enumeration)"
     check_cmd "cd '$ROOT_DIR' && ! rg -n \"image_index >= info\\.names\\.len\\) return renderFallback|trimSvgSuffix\\(info\\.names\\[image_index\\]\\)\" src/harmonious_svg_compat.zig" "0039 majmin topology model guardrail (render path not dependent on manifest name arrays)"
+    check_cmd "cd '$ROOT_DIR' && ! rg -n \"MAJMIN_MODES_NAMES|MAJMIN_SCALES_NAMES\" src/generated/harmonious_manifest.zig" "0039 majmin topology model guardrail (manifest majmin name tables removed from wasm path)"
     if [ -f "$ROOT_DIR/src/tests/majmin_scene_test.zig" ]; then
         check_cmd "cd '$ROOT_DIR' && zig build test 2>&1" "0039 majmin topology model test suite"
     else

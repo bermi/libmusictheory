@@ -37,17 +37,27 @@ pub fn kindDirectory(kind_index: usize) ?[]const u8 {
 
 pub fn imageCount(kind_index: usize) usize {
     const info = kindInfo(kind_index) orelse return 0;
+    if (majminSceneKindFromId(info.id)) |scene_kind| {
+        return svg_majmin_scene.countForKind(scene_kind);
+    }
     return info.names.len;
 }
 
 pub fn imageName(kind_index: usize, image_index: usize) ?[]const u8 {
     const info = kindInfo(kind_index) orelse return null;
+    if (majminSceneKindFromId(info.id)) |scene_kind| {
+        return svg_majmin_scene.imageName(scene_kind, image_index);
+    }
     if (image_index >= info.names.len) return null;
     return info.names[image_index];
 }
 
 pub fn generateByIndex(kind_index: usize, image_index: usize, buf: []u8) []u8 {
     const info = kindInfo(kind_index) orelse return "";
+    if (majminSceneKindFromId(info.id)) |scene_kind| {
+        const image_name = svg_majmin_scene.imageName(scene_kind, image_index) orelse return "";
+        return generateByName(kind_index, image_name, buf);
+    }
     if (image_index >= info.names.len) return "";
     return generateByName(kind_index, info.names[image_index], buf);
 }
@@ -84,6 +94,14 @@ const ChordLikeKind = enum {
 fn kindInfo(kind_index: usize) ?KindInfo {
     if (kind_index >= manifest.ALL_KINDS.len) return null;
     return manifest.ALL_KINDS[kind_index];
+}
+
+fn majminSceneKindFromId(kind_id: KindId) ?svg_majmin_scene.Kind {
+    return switch (kind_id) {
+        .majmin_modes => .modes,
+        .majmin_scales => .scales,
+        else => null,
+    };
 }
 
 fn trimSvgSuffix(name: []const u8) []const u8 {

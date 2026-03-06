@@ -24,6 +24,9 @@ pub const Scene = struct {
 pub const MODES_COUNT: usize = 366;
 pub const SCALES_COUNT: usize = 50;
 
+pub const MODE_IMAGE_NAMES = buildImageNames(.modes);
+pub const SCALE_IMAGE_NAMES = buildImageNames(.scales);
+
 pub fn parseStem(expected_kind: Kind, stem: []const u8) ?Scene {
     var parts = std.mem.splitScalar(u8, stem, ',');
     const kind_token = parts.next() orelse return null;
@@ -129,6 +132,13 @@ pub fn countForKind(kind: Kind) usize {
     return switch (kind) {
         .modes => MODES_COUNT,
         .scales => SCALES_COUNT,
+    };
+}
+
+pub fn imageName(kind: Kind, image_index: usize) ?[]const u8 {
+    return switch (kind) {
+        .modes => if (image_index < MODE_IMAGE_NAMES.len) MODE_IMAGE_NAMES[image_index] else null,
+        .scales => if (image_index < SCALE_IMAGE_NAMES.len) SCALE_IMAGE_NAMES[image_index] else null,
     };
 }
 
@@ -315,6 +325,50 @@ fn parseBoundedInt(token: []const u8, min: i8, max: i8) ?i8 {
     const value = parseIntI8(token) orelse return null;
     if (value < min or value > max) return null;
     return value;
+}
+
+fn buildImageNames(comptime kind: Kind) [countForKind(kind)][]const u8 {
+    const count = countForKind(kind);
+    var names: [count][]const u8 = undefined;
+
+    inline for (0..count) |i| {
+        const generated = sceneForIndex(kind, i) orelse @compileError("invalid majmin scene index");
+        names[i] = std.fmt.comptimePrint("{s}.svg", .{comptimeStem(generated)});
+    }
+
+    return names;
+}
+
+fn comptimeStem(comptime generated: Scene) []const u8 {
+    const kind_token = switch (generated.kind) {
+        .modes => "modes",
+        .scales => "scales",
+    };
+    const family_token = switch (generated.family) {
+        .legacy => "",
+        .dntri => "dntri",
+        .hex => "hex",
+        .rhomb => "rhomb",
+        .uptri => "uptri",
+    };
+
+    if (generated.family == .legacy) {
+        const variant = generated.variant orelse @compileError("legacy scene missing variant");
+        return std.fmt.comptimePrint("{s},{d},{s},{d},{d}", .{
+            kind_token,
+            generated.transposition,
+            family_token,
+            generated.rotation,
+            variant,
+        });
+    }
+
+    return std.fmt.comptimePrint("{s},{d},{s},{d}", .{
+        kind_token,
+        generated.transposition,
+        family_token,
+        generated.rotation,
+    });
 }
 
 fn parseBoundedUnsigned(token: []const u8, min: u8, max: u8) ?u8 {
