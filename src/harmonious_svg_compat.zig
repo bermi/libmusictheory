@@ -70,7 +70,7 @@ pub fn generateByName(kind_index: usize, image_name: []const u8, buf: []u8) []u8
         .wide_chord => renderChordLike(stem, .wide_chord, buf),
         .grand_chord => renderChordLike(stem, .grand_chord, buf),
         .scale => renderScaleStaff(stem, buf),
-        .majmin_modes, .majmin_scales => renderMajmin(info, image_name, stem, buf),
+        .majmin_modes, .majmin_scales => renderMajmin(info, stem, buf),
     };
 }
 
@@ -93,7 +93,7 @@ fn trimSvgSuffix(name: []const u8) []const u8 {
     return name;
 }
 
-fn renderMajmin(info: KindInfo, image_name: []const u8, stem: []const u8, buf: []u8) []u8 {
+fn renderMajmin(info: KindInfo, stem: []const u8, buf: []u8) []u8 {
     const scene_kind: svg_majmin_scene.Kind = switch (info.id) {
         .majmin_modes => .modes,
         .majmin_scales => .scales,
@@ -106,27 +106,12 @@ fn renderMajmin(info: KindInfo, image_name: []const u8, stem: []const u8, buf: [
     if (image_index >= info.names.len) return renderFallback(info.api_name, stem, buf);
     const canonical_name = trimSvgSuffix(info.names[image_index]);
     if (!std.mem.eql(u8, canonical_name, stem)) return renderFallback(info.api_name, stem, buf);
-    _ = image_name;
 
     return switch (info.id) {
         .majmin_modes => svg_majmin_compat.render(.modes, image_index, buf),
         .majmin_scales => svg_majmin_compat.render(.scales, image_index, buf),
         else => renderFallback(info.api_name, stem, buf),
     };
-}
-
-fn findImageIndex(names: []const []const u8, image_name: []const u8, stem: []const u8) ?usize {
-    var i: usize = 0;
-    while (i < names.len) : (i += 1) {
-        if (std.mem.eql(u8, names[i], image_name)) return i;
-    }
-
-    i = 0;
-    while (i < names.len) : (i += 1) {
-        if (std.mem.eql(u8, trimSvgSuffix(names[i]), stem)) return i;
-    }
-
-    return null;
 }
 
 fn firstCsvField(text: []const u8) []const u8 {
