@@ -76,6 +76,32 @@ test "majmin scene parser accepts all manifest names" {
     try testing.expectEqual(@as(u16, 4), scales_transpositions[12]);
 }
 
+test "majmin scene enumerator matches manifest canonical order" {
+    var scenes: [scene.MODES_COUNT]scene.Scene = undefined;
+    const enumerated_modes = scene.enumerate(.modes, &scenes) orelse return error.TestUnexpectedResult;
+    try testing.expectEqual(scene.MODES_COUNT, enumerated_modes.len);
+
+    for (manifest.MAJMIN_MODES_NAMES, 0..) |name, i| {
+        var stem_buf: [64]u8 = undefined;
+        const rebuilt = scene.formatStem(enumerated_modes[i], &stem_buf) orelse return error.TestUnexpectedResult;
+        const expected_stem = name[0 .. name.len - 4];
+        try testing.expectEqualStrings(expected_stem, rebuilt);
+        try testing.expectEqual(i, scene.imageIndex(enumerated_modes[i]).?);
+    }
+
+    var scales: [scene.SCALES_COUNT]scene.Scene = undefined;
+    const enumerated_scales = scene.enumerate(.scales, &scales) orelse return error.TestUnexpectedResult;
+    try testing.expectEqual(scene.SCALES_COUNT, enumerated_scales.len);
+
+    for (manifest.MAJMIN_SCALES_NAMES, 0..) |name, i| {
+        var stem_buf: [64]u8 = undefined;
+        const rebuilt = scene.formatStem(enumerated_scales[i], &stem_buf) orelse return error.TestUnexpectedResult;
+        const expected_stem = name[0 .. name.len - 4];
+        try testing.expectEqualStrings(expected_stem, rebuilt);
+        try testing.expectEqual(i, scene.imageIndex(enumerated_scales[i]).?);
+    }
+}
+
 test "majmin scene parser rejects invalid stems" {
     try testing.expect(scene.parseStem(.modes, "modes,-1,dntri,0,1") == null);
     try testing.expect(scene.parseStem(.modes, "modes,-1,,0,1") == null);

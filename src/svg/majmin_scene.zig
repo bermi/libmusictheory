@@ -21,6 +21,9 @@ pub const Scene = struct {
     variant: ?u8,
 };
 
+pub const MODES_COUNT: usize = 366;
+pub const SCALES_COUNT: usize = 50;
+
 pub fn parseStem(expected_kind: Kind, stem: []const u8) ?Scene {
     var parts = std.mem.splitScalar(u8, stem, ',');
     const kind_token = parts.next() orelse return null;
@@ -122,6 +125,46 @@ pub fn formatStem(scene: Scene, out: []u8) ?[]const u8 {
     return out[0..stream.pos];
 }
 
+pub fn countForKind(kind: Kind) usize {
+    return switch (kind) {
+        .modes => MODES_COUNT,
+        .scales => SCALES_COUNT,
+    };
+}
+
+pub fn sceneForIndex(kind: Kind, image_index: usize) ?Scene {
+    if (image_index >= countForKind(kind)) return null;
+
+    if (image_index < 2) {
+        return .{
+            .kind = kind,
+            .transposition = -1,
+            .family = .legacy,
+            .rotation = switch (kind) {
+                .modes => -3,
+                .scales => 0,
+            },
+            .variant = @as(u8, @intCast(image_index + 1)),
+        };
+    }
+
+    return switch (kind) {
+        .modes => sceneForModesIndex(image_index),
+        .scales => sceneForScalesIndex(image_index),
+    };
+}
+
+pub fn enumerate(kind: Kind, out: []Scene) ?[]Scene {
+    const count = countForKind(kind);
+    if (out.len < count) return null;
+
+    var i: usize = 0;
+    while (i < count) : (i += 1) {
+        out[i] = sceneForIndex(kind, i) orelse return null;
+    }
+    return out[0..count];
+}
+
 pub fn imageIndex(scene: Scene) ?usize {
     if (!isValidScene(scene)) return null;
 
@@ -214,8 +257,54 @@ fn scaleRotationForTransposition(transposition: i8) i8 {
     return @as(i8, @intCast(value));
 }
 
+fn sceneForModesIndex(image_index: usize) ?Scene {
+    if (image_index < 2 or image_index >= MODES_COUNT) return null;
+    const body = image_index - 2;
+    const trans_idx = body / 28;
+    const within_trans = body % 28;
+    const family_idx = within_trans / 7;
+    const rotation_idx = within_trans % 7;
+
+    const transposition = MODES_TRANSPOSITION_ORDER[trans_idx];
+    const family = FAMILIES[family_idx];
+    const rotations = switch (family) {
+        .legacy => return null,
+        .dntri => MODES_ROTATIONS_DNTRI[0..],
+        .hex => MODES_ROTATIONS_HEX[0..],
+        .rhomb => MODES_ROTATIONS_RHOMB[0..],
+        .uptri => MODES_ROTATIONS_UPTRI[0..],
+    };
+
+    return .{
+        .kind = .modes,
+        .transposition = transposition,
+        .family = family,
+        .rotation = rotations[rotation_idx],
+        .variant = null,
+    };
+}
+
+fn sceneForScalesIndex(image_index: usize) ?Scene {
+    if (image_index < 2 or image_index >= SCALES_COUNT) return null;
+    const body = image_index - 2;
+    const trans_idx = body / 4;
+    const family_idx = body % 4;
+
+    const transposition = SCALES_TRANSPOSITION_ORDER[trans_idx];
+    const family = FAMILIES[family_idx];
+
+    return .{
+        .kind = .scales,
+        .transposition = transposition,
+        .family = family,
+        .rotation = scaleRotationForTransposition(transposition),
+        .variant = null,
+    };
+}
+
 const MODES_TRANSPOSITION_ORDER = [_]i8{ -1, 0, 1, 10, 11, 2, 3, 4, 5, 6, 7, 8, 9 };
 const SCALES_TRANSPOSITION_ORDER = [_]i8{ 0, 1, 10, 11, 2, 3, 4, 5, 6, 7, 8, 9 };
+const FAMILIES = [_]Family{ .dntri, .hex, .rhomb, .uptri };
 
 const MODES_ROTATIONS_DNTRI = [_]i8{ 0, 1, 10, 11, 3, 4, 7 };
 const MODES_ROTATIONS_HEX = [_]i8{ 0, 1, 10, 11, 7, 8, 9 };
