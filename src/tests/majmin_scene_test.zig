@@ -30,6 +30,11 @@ test "majmin scene parser accepts all manifest names" {
             try testing.expect(parsed.rotation >= 0);
             try testing.expectEqual(@as(?u8, null), parsed.variant);
         }
+
+        var stem_buf: [64]u8 = undefined;
+        const rebuilt = scene.formatStem(parsed, &stem_buf) orelse return error.TestUnexpectedResult;
+        const expected_stem = name[0 .. name.len - 4];
+        try testing.expectEqualStrings(expected_stem, rebuilt);
     }
 
     var scales_count: usize = 0;
@@ -52,6 +57,11 @@ test "majmin scene parser accepts all manifest names" {
         } else {
             try testing.expectEqual(@as(?u8, null), parsed.variant);
         }
+
+        var stem_buf: [64]u8 = undefined;
+        const rebuilt = scene.formatStem(parsed, &stem_buf) orelse return error.TestUnexpectedResult;
+        const expected_stem = name[0 .. name.len - 4];
+        try testing.expectEqualStrings(expected_stem, rebuilt);
     }
 
     try testing.expectEqual(@as(usize, 366), modes_count);
@@ -69,7 +79,9 @@ test "majmin scene parser rejects invalid stems" {
     try testing.expect(scene.parseStem(.modes, "modes,-1,,0,1") == null);
     try testing.expect(scene.parseStem(.modes, "modes,12,dntri,0") == null);
     try testing.expect(scene.parseStem(.modes, "modes,0,dntri,-1") == null);
+    try testing.expect(scene.parseStem(.modes, "modes,0,dntri,2") == null);
     try testing.expect(scene.parseStem(.scales, "scales,-1,,1,1") == null);
+    try testing.expect(scene.parseStem(.scales, "scales,-1,dntri,0") == null);
     try testing.expect(scene.parseStem(.scales, "modes,0,dntri,0") == null);
     try testing.expect(scene.parseStem(.scales, "scales,0,badshape,0") == null);
 }
