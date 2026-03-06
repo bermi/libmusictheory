@@ -4,7 +4,7 @@
 > Blocks: 0040+ (majmin payload retirement and further graph migrations)
 > Does not block: current strict compatibility validation
 
-Status: Draft
+Status: In Progress
 
 ## Objective
 

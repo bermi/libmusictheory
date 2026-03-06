@@ -16,6 +16,7 @@ const svg_scale_nomod_compat = @import("svg/scale_nomod_compat.zig");
 const svg_text_misc = @import("svg/text_misc.zig");
 const svg_evenness_chart = @import("svg/evenness_chart.zig");
 const svg_majmin_compat = @import("svg/majmin_compat.zig");
+const svg_majmin_scene = @import("svg/majmin_scene.zig");
 
 pub const KindInfo = manifest.KindInfo;
 pub const KindId = manifest.KindId;
@@ -93,6 +94,16 @@ fn trimSvgSuffix(name: []const u8) []const u8 {
 }
 
 fn renderMajmin(info: KindInfo, image_name: []const u8, stem: []const u8, buf: []u8) []u8 {
+    const scene_kind: svg_majmin_scene.Kind = switch (info.id) {
+        .majmin_modes => .modes,
+        .majmin_scales => .scales,
+        else => return renderFallback(info.api_name, stem, buf),
+    };
+
+    if (svg_majmin_scene.parseStem(scene_kind, stem) == null) {
+        return renderFallback(info.api_name, stem, buf);
+    }
+
     const image_index = findImageIndex(info.names, image_name, stem) orelse return renderFallback(info.api_name, stem, buf);
     return switch (info.id) {
         .majmin_modes => svg_majmin_compat.render(.modes, image_index, buf),

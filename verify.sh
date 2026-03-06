@@ -517,6 +517,17 @@ else
     unverified "0038 majmin compatibility structural audit (tmp/harmoniousapp.net/majmin or script missing)"
 fi
 
+if [ -f "$ROOT_DIR/src/svg/majmin_scene.zig" ]; then
+    check_cmd "cd '$ROOT_DIR' && rg -n \"svg/majmin_scene\\.zig\" src/harmonious_svg_compat.zig src/root.zig" "0039 majmin topology model guardrail (scene parser wired into compat + root exports)"
+    if [ -f "$ROOT_DIR/src/tests/majmin_scene_test.zig" ]; then
+        check_cmd "cd '$ROOT_DIR' && zig build test 2>&1" "0039 majmin topology model test suite"
+    else
+        unverified "0039 majmin topology model test suite (src/tests/majmin_scene_test.zig missing)"
+    fi
+else
+    unverified "0039 majmin topology model guardrail (src/svg/majmin_scene.zig missing)"
+fi
+
 if [ -d "$ROOT_DIR/tmp/harmoniousapp.net/vert-text-black" ] && [ -d "$ROOT_DIR/tmp/harmoniousapp.net/vert-text-b2t-black" ] && [ -f "$ROOT_DIR/scripts/audit_text_compat_primitives.py" ]; then
     if command -v python3 >/dev/null 2>&1; then
         check_cmd "cd '$ROOT_DIR' && python3 scripts/audit_text_compat_primitives.py --root tmp/harmoniousapp.net >/dev/null" "0036 text compatibility primitive audit (reference invariants)"

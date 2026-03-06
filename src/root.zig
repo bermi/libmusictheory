@@ -40,6 +40,7 @@ pub const svg_circle_of_fifths = @import("svg/circle_of_fifths.zig");
 pub const svg_key_sig = @import("svg/key_sig.zig");
 pub const svg_text_misc = @import("svg/text_misc.zig");
 pub const svg_n_tet_chart = @import("svg/n_tet_chart.zig");
+pub const svg_majmin_scene = @import("svg/majmin_scene.zig");
 pub const harmonious_svg_compat = @import("harmonious_svg_compat.zig");
 pub const render_ir = @import("render/ir.zig");
 pub const render_svg_serializer = @import("render/svg_serializer.zig");
@@ -64,6 +65,7 @@ test {
     _ = @import("tests/svg_tessellation_test.zig");
     _ = @import("tests/svg_misc_test.zig");
     _ = @import("tests/svg_harmonious_compat_test.zig");
+    _ = @import("tests/majmin_scene_test.zig");
     _ = @import("tests/slider_test.zig");
     _ = @import("tests/render_ir_test.zig");
     _ = @import("tests/raster_test.zig");
