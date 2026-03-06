@@ -146,6 +146,15 @@ This scene model is used for:
 - algorithmic `imageName` enumeration
 - algorithmic scene-to-index mapping in strict compatibility generation
 
+### Polygon Geometry Invariants (Migration Guardrail)
+
+The majmin tile polygon layer is now audited independently from text/href payloads:
+
+- `modes`: for each `(family, rotation)` group, all 13 transpositions share an identical ordered polygon-path signature.
+- `scales`: for each family, all 12 transpositions share an identical ordered polygon-path signature.
+
+The guardrail is enforced by `scripts/audit_majmin_geometry_templates.py` and wired into `./verify.sh`.
+
 ## Counts
 - 416 SVGs in `tmp/harmoniousapp.net/majmin/` directory
 - These are the largest SVGs on the site (300×360 px with many path elements)

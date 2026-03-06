@@ -45,6 +45,7 @@ Replace packed `majmin` compatibility reconstruction (`src/generated/harmonious_
 - Progress:
   - scene parser + canonical scene/index mapping is implemented and verified;
   - compatibility `imageCount`/`imageName`/`generateByIndex` now enumerate majmin images via `majmin_scene` (no majmin filename manifest tables in wasm path).
+  - polygon geometry invariants are now audited by group (`modes`: family+rotation, `scales`: family), confirming geometry templates are transposition-invariant where expected.
 
 ### Slice B: `scales,*` Exact Parity Cutover
 
