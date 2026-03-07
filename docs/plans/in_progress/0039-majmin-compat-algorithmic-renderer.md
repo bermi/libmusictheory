@@ -46,6 +46,7 @@ Replace packed `majmin` compatibility reconstruction (`src/generated/harmonious_
   - scene parser + canonical scene/index mapping is implemented and verified;
   - compatibility `imageCount`/`imageName`/`generateByIndex` now enumerate majmin images via `majmin_scene` (no majmin filename manifest tables in wasm path).
   - polygon geometry invariants are now audited by group (`modes`: family+rotation, `scales`: family), confirming geometry templates are transposition-invariant where expected.
+  - `majmin/scales` parametric decomposition invariants are now audited (`scripts/audit_majmin_scales_parametric.py`): one skeleton per family, stable static-vs-dynamic slot partition (`href/style/path`), and constrained cross-family path divergence for a fixed transposition.
 
 ### Slice B: `scales,*` Exact Parity Cutover
 

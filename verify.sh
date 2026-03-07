@@ -537,6 +537,16 @@ else
     unverified "0039 majmin scale template audit (tmp/harmoniousapp.net/majmin or script missing)"
 fi
 
+if [ -d "$ROOT_DIR/tmp/harmoniousapp.net/majmin" ] && [ -f "$ROOT_DIR/scripts/audit_majmin_scales_parametric.py" ]; then
+    if command -v python3 >/dev/null 2>&1; then
+        check_cmd "cd '$ROOT_DIR' && python3 scripts/audit_majmin_scales_parametric.py --root tmp/harmoniousapp.net >/dev/null" "0039 majmin scales parametric audit (family decomposition + transposition slot invariants)"
+    else
+        unverified "0039 majmin scales parametric audit (python3 missing)"
+    fi
+else
+    unverified "0039 majmin scales parametric audit (tmp/harmoniousapp.net/majmin or script missing)"
+fi
+
 if [ -d "$ROOT_DIR/tmp/harmoniousapp.net/majmin" ] && [ -f "$ROOT_DIR/scripts/audit_majmin_geometry_templates.py" ]; then
     if command -v python3 >/dev/null 2>&1; then
         check_cmd "cd '$ROOT_DIR' && python3 scripts/audit_majmin_geometry_templates.py --root tmp/harmoniousapp.net >/dev/null" "0039 majmin geometry template audit (polygon geometry invariant across scene groups)"
