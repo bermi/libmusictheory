@@ -1,6 +1,6 @@
 const std = @import("std");
 const builtin = @import("builtin");
-const pack_data = @import("../generated/harmonious_majmin_compat_xz.zig");
+const pack_data = @import("../generated/harmonious_majmin_scene_pack_xz.zig");
 const majmin_scene = @import("majmin_scene.zig");
 
 const SCALE_I128: i128 = 100_000_000_000_000_000;
@@ -8,6 +8,11 @@ const MARKER_HREF: u8 = 0x1d;
 const MARKER_STYLE: u8 = 0x1e;
 const MARKER_D: u8 = 0x1f;
 const MARKER_NUM: u8 = 0x01;
+
+const LEGACY_KIND_COUNT: usize = 2;
+const LEGACY_VARIANT_COUNT: usize = 2;
+
+const MODE_TRANS_VALUES = [_]i8{ -1, 0, 1, 10, 11, 2, 3, 4, 5, 6, 7, 8, 9 };
 
 pub const Kind = enum {
     modes,
@@ -27,67 +32,41 @@ const OffsetInfo = struct {
     dy: i128,
 };
 
-const FileInfo = struct {
-    skeleton_id: u32,
-    href_count: u16,
-    style_count: u16,
-    d_count: u16,
-    href_off: u32,
-    style_off: u32,
-    d_off: u32,
-};
-
 const DRef = struct {
     template_id: u16,
     offset_id: u16,
 };
 
-const SCALE_FAMILY_COUNT: usize = 4;
-const SCALE_TRANSPOSITION_COUNT: usize = 12;
-const SCALE_HREF_SLOT_COUNT: usize = 153;
-const SCALE_STYLE_SLOT_COUNT: usize = 324;
-const SCALE_D_SLOT_COUNT: usize = 324;
-const SCALE_HREF_BASE_UNIQUE_COUNT: usize = 44;
-const SCALE_STYLE_BASE_UNIQUE_COUNT: usize = 4;
-const SCALE_D_BASE_UNIQUE_COUNT: usize = 248;
-
-const MODE_GROUP_COUNT: usize = 28;
-const MODE_TRANS_COUNT: usize = 13;
-const MODE_MAX_HREF_SLOT_COUNT: usize = 151;
-const MODE_MAX_STYLE_SLOT_COUNT: usize = 374;
-const MODE_MAX_D_SLOT_COUNT: usize = 374;
-const MODE_MAX_HREF_BASE_UNIQUE_COUNT: usize = 151;
-const MODE_MAX_STYLE_BASE_UNIQUE_COUNT: usize = 374;
-const MODE_MAX_D_BASE_UNIQUE_COUNT: usize = 374;
-
-const MODE_TRANS_VALUES = [_]i8{ -1, 0, 1, 10, 11, 2, 3, 4, 5, 6, 7, 8, 9 };
-
-const ScaleFamilyModel = struct {
-    skeleton_id: u32,
-    href_slot_base: [SCALE_HREF_SLOT_COUNT]u8,
-    style_slot_base: [SCALE_STYLE_SLOT_COUNT]u8,
-    d_slot_base: [SCALE_D_SLOT_COUNT]u16,
-    href_map: [SCALE_TRANSPOSITION_COUNT][SCALE_HREF_BASE_UNIQUE_COUNT]u16,
-    style_map: [SCALE_TRANSPOSITION_COUNT][SCALE_STYLE_BASE_UNIQUE_COUNT]u16,
-    d_map: [SCALE_TRANSPOSITION_COUNT][SCALE_D_BASE_UNIQUE_COUNT]DRef,
-};
-
 const ModeGroupModel = struct {
     family: majmin_scene.Family,
     rotation: i8,
-    skeleton_id: u32,
+    skeleton_id: u16,
     href_slot_count: u16,
     style_slot_count: u16,
     d_slot_count: u16,
     href_base_count: u16,
     style_base_count: u16,
     d_base_count: u16,
-    href_slot_base: [MODE_MAX_HREF_SLOT_COUNT]u16,
-    style_slot_base: [MODE_MAX_STYLE_SLOT_COUNT]u16,
-    d_slot_base: [MODE_MAX_D_SLOT_COUNT]u16,
-    href_map: [MODE_TRANS_COUNT][MODE_MAX_HREF_BASE_UNIQUE_COUNT]u16,
-    style_map: [MODE_TRANS_COUNT][MODE_MAX_STYLE_BASE_UNIQUE_COUNT]u16,
-    d_map: [MODE_TRANS_COUNT][MODE_MAX_D_BASE_UNIQUE_COUNT]DRef,
+    href_slot_base: [pack_data.MODE_MAX_HREF_SLOT_COUNT]u16,
+    style_slot_base: [pack_data.MODE_MAX_STYLE_SLOT_COUNT]u16,
+    d_slot_base: [pack_data.MODE_MAX_D_SLOT_COUNT]u16,
+    href_map: [pack_data.MODE_TRANS_COUNT][pack_data.MODE_MAX_HREF_BASE_COUNT]u16,
+    style_map: [pack_data.MODE_TRANS_COUNT][pack_data.MODE_MAX_STYLE_BASE_COUNT]u16,
+    d_map: [pack_data.MODE_TRANS_COUNT][pack_data.MODE_MAX_D_BASE_COUNT]DRef,
+};
+
+const ScaleFamilyModel = struct {
+    family: majmin_scene.Family,
+    skeleton_id: u16,
+    href_base_count: u16,
+    style_base_count: u16,
+    d_base_count: u16,
+    href_slot_base: [pack_data.SCALE_HREF_SLOT_COUNT]u16,
+    style_slot_base: [pack_data.SCALE_STYLE_SLOT_COUNT]u16,
+    d_slot_base: [pack_data.SCALE_D_SLOT_COUNT]u16,
+    href_map: [pack_data.SCALE_TRANS_COUNT][pack_data.SCALE_HREF_BASE_COUNT]u16,
+    style_map: [pack_data.SCALE_TRANS_COUNT][pack_data.SCALE_STYLE_BASE_COUNT]u16,
+    d_map: [pack_data.SCALE_TRANS_COUNT][pack_data.SCALE_D_BASE_COUNT]DRef,
 };
 
 var decoded_ready: bool = false;
@@ -103,12 +82,20 @@ var href_off: [pack_data.HREF_COUNT]u32 = undefined;
 var href_len: [pack_data.HREF_COUNT]u16 = undefined;
 var templates: [pack_data.TEMPLATE_COUNT]TemplateInfo = undefined;
 var offsets: [pack_data.OFFSET_COUNT]OffsetInfo = undefined;
-var files: [pack_data.FILE_COUNT]FileInfo = undefined;
-
-var scales_models_ready: bool = false;
-var scale_family_models: [SCALE_FAMILY_COUNT]ScaleFamilyModel = undefined;
-var modes_models_ready: bool = false;
-var mode_group_models: [MODE_GROUP_COUNT]ModeGroupModel = undefined;
+var mode_group_models: [pack_data.MODE_GROUP_COUNT]ModeGroupModel = undefined;
+var scale_family_models: [pack_data.SCALE_FAMILY_COUNT]ScaleFamilyModel = undefined;
+var legacy_payload_off: [LEGACY_KIND_COUNT][LEGACY_VARIANT_COUNT]u32 = [_][LEGACY_VARIANT_COUNT]u32{
+    [_]u32{ 0, 0 },
+    [_]u32{ 0, 0 },
+};
+var legacy_payload_len: [LEGACY_KIND_COUNT][LEGACY_VARIANT_COUNT]u32 = [_][LEGACY_VARIANT_COUNT]u32{
+    [_]u32{ 0, 0 },
+    [_]u32{ 0, 0 },
+};
+var legacy_payload_present: [LEGACY_KIND_COUNT][LEGACY_VARIANT_COUNT]bool = [_][LEGACY_VARIANT_COUNT]bool{
+    [_]bool{ false, false },
+    [_]bool{ false, false },
+};
 
 fn decodePackIfNeeded() bool {
     if (decoded_ready) return true;
@@ -157,12 +144,28 @@ fn readI128At(off: usize) ?i128 {
     return std.mem.readInt(i128, @as(*const [16]u8, @ptrCast(bytes.ptr)), .little);
 }
 
+fn familyFromId(id: u16) ?majmin_scene.Family {
+    return switch (id) {
+        0 => .dntri,
+        1 => .hex,
+        2 => .rhomb,
+        3 => .uptri,
+        else => null,
+    };
+}
+
+fn decodeSignedI8(raw: u16) ?i8 {
+    const signed16: i16 = @bitCast(raw);
+    if (signed16 < std.math.minInt(i8) or signed16 > std.math.maxInt(i8)) return null;
+    return @as(i8, @intCast(signed16));
+}
+
 fn parsePackIfNeeded() bool {
     if (parsed_ready) return true;
     if (!decodePackIfNeeded()) return false;
 
     if (decoded_pack.len < 8) return false;
-    if (!std.mem.eql(u8, decoded_pack[0..8], "MJMN2\x00\x00\x00")) return false;
+    if (!std.mem.eql(u8, decoded_pack[0..8], "MJM3\x00\x00\x00\x00")) return false;
 
     var cursor: usize = 8;
 
@@ -176,67 +179,72 @@ fn parsePackIfNeeded() bool {
     cursor += 4;
     const offset_count = readU32At(cursor) orelse return false;
     cursor += 4;
-    const file_count = readU32At(cursor) orelse return false;
+    const mode_group_count = readU32At(cursor) orelse return false;
     cursor += 4;
-    const mode_count = readU32At(cursor) orelse return false;
+    const scale_family_count = readU32At(cursor) orelse return false;
     cursor += 4;
-    const scale_count = readU32At(cursor) orelse return false;
+    const legacy_count = readU32At(cursor) orelse return false;
     cursor += 4;
 
-    if (skeleton_count != pack_data.SKELETON_COUNT) return false;
-    if (style_count != pack_data.STYLE_COUNT) return false;
-    if (href_count != pack_data.HREF_COUNT) return false;
-    if (template_count != pack_data.TEMPLATE_COUNT) return false;
-    if (offset_count != pack_data.OFFSET_COUNT) return false;
-    if (file_count != pack_data.FILE_COUNT) return false;
-    if (mode_count != pack_data.MODE_COUNT) return false;
-    if (scale_count != pack_data.SCALE_COUNT) return false;
+    if (skeleton_count != @as(u32, @intCast(pack_data.SKELETON_COUNT))) return false;
+    if (style_count != @as(u32, @intCast(pack_data.STYLE_COUNT))) return false;
+    if (href_count != @as(u32, @intCast(pack_data.HREF_COUNT))) return false;
+    if (template_count != @as(u32, @intCast(pack_data.TEMPLATE_COUNT))) return false;
+    if (offset_count != @as(u32, @intCast(pack_data.OFFSET_COUNT))) return false;
+    if (mode_group_count != @as(u32, @intCast(pack_data.MODE_GROUP_COUNT))) return false;
+    if (scale_family_count != @as(u32, @intCast(pack_data.SCALE_FAMILY_COUNT))) return false;
+    if (legacy_count != @as(u32, @intCast(pack_data.LEGACY_COUNT))) return false;
 
     var i: usize = 0;
-    while (i < skeleton_count) : (i += 1) {
+    while (i < pack_data.SKELETON_COUNT) : (i += 1) {
         const len = readU32At(cursor) orelse return false;
         cursor += 4;
-        if (cursor + len > decoded_pack.len) return false;
+        const len_usize: usize = @intCast(len);
+        if (cursor + len_usize > decoded_pack.len) return false;
         skeleton_off[i] = @as(u32, @intCast(cursor));
         skeleton_len[i] = len;
-        cursor += len;
+        cursor += len_usize;
     }
 
     i = 0;
-    while (i < style_count) : (i += 1) {
+    while (i < pack_data.STYLE_COUNT) : (i += 1) {
         const len = readU16At(cursor) orelse return false;
         cursor += 2;
-        if (cursor + len > decoded_pack.len) return false;
+        const len_usize: usize = @intCast(len);
+        if (cursor + len_usize > decoded_pack.len) return false;
         style_off[i] = @as(u32, @intCast(cursor));
         style_len[i] = len;
-        cursor += len;
+        cursor += len_usize;
     }
 
     i = 0;
-    while (i < href_count) : (i += 1) {
+    while (i < pack_data.HREF_COUNT) : (i += 1) {
         const len = readU16At(cursor) orelse return false;
         cursor += 2;
-        if (cursor + len > decoded_pack.len) return false;
+        const len_usize: usize = @intCast(len);
+        if (cursor + len_usize > decoded_pack.len) return false;
         href_off[i] = @as(u32, @intCast(cursor));
         href_len[i] = len;
-        cursor += len;
+        cursor += len_usize;
     }
 
     i = 0;
-    while (i < template_count) : (i += 1) {
+    while (i < pack_data.TEMPLATE_COUNT) : (i += 1) {
         const fmt_len = readU32At(cursor) orelse return false;
         cursor += 4;
         const num_count = readU16At(cursor) orelse return false;
         cursor += 2;
-        if (cursor + fmt_len > decoded_pack.len) return false;
+        const fmt_len_usize: usize = @intCast(fmt_len);
+        if (cursor + fmt_len_usize > decoded_pack.len) return false;
         const fmt_off = cursor;
-        cursor += fmt_len;
+        cursor += fmt_len_usize;
 
-        if (cursor + num_count > decoded_pack.len) return false;
+        const num_count_usize: usize = @intCast(num_count);
+        if (cursor + num_count_usize > decoded_pack.len) return false;
         const flags_off = cursor;
-        cursor += num_count;
+        cursor += num_count_usize;
 
-        const base_bytes: usize = @as(usize, num_count) * 16;
+        const base_bytes: usize = num_count_usize * 16;
         if (cursor + base_bytes > decoded_pack.len) return false;
         const base_off = cursor;
         cursor += base_bytes;
@@ -251,7 +259,7 @@ fn parsePackIfNeeded() bool {
     }
 
     i = 0;
-    while (i < offset_count) : (i += 1) {
+    while (i < pack_data.OFFSET_COUNT) : (i += 1) {
         const dx = readI128At(cursor) orelse return false;
         cursor += 16;
         const dy = readI128At(cursor) orelse return false;
@@ -260,42 +268,235 @@ fn parsePackIfNeeded() bool {
     }
 
     i = 0;
-    while (i < file_count) : (i += 1) {
-        const skeleton_id = readU32At(cursor) orelse return false;
-        cursor += 4;
-        const href_count_file = readU16At(cursor) orelse return false;
+    while (i < pack_data.MODE_GROUP_COUNT) : (i += 1) {
+        const family_id = readU16At(cursor) orelse return false;
         cursor += 2;
-        const style_count_file = readU16At(cursor) orelse return false;
+        const rotation_raw = readU16At(cursor) orelse return false;
         cursor += 2;
-        const d_count_file = readU16At(cursor) orelse return false;
+        const skeleton_id = readU16At(cursor) orelse return false;
+        cursor += 2;
+        const href_slot_count = readU16At(cursor) orelse return false;
+        cursor += 2;
+        const style_slot_count = readU16At(cursor) orelse return false;
+        cursor += 2;
+        const d_slot_count = readU16At(cursor) orelse return false;
+        cursor += 2;
+        const href_base_count = readU16At(cursor) orelse return false;
+        cursor += 2;
+        const style_base_count = readU16At(cursor) orelse return false;
+        cursor += 2;
+        const d_base_count = readU16At(cursor) orelse return false;
         cursor += 2;
 
-        const href_off_file = cursor;
-        const href_bytes = @as(usize, href_count_file) * 2;
-        if (cursor + href_bytes > decoded_pack.len) return false;
-        cursor += href_bytes;
+        if (skeleton_id >= @as(u16, @intCast(pack_data.SKELETON_COUNT))) return false;
+        if (href_slot_count > @as(u16, @intCast(pack_data.MODE_MAX_HREF_SLOT_COUNT))) return false;
+        if (style_slot_count > @as(u16, @intCast(pack_data.MODE_MAX_STYLE_SLOT_COUNT))) return false;
+        if (d_slot_count > @as(u16, @intCast(pack_data.MODE_MAX_D_SLOT_COUNT))) return false;
+        if (href_base_count > @as(u16, @intCast(pack_data.MODE_MAX_HREF_BASE_COUNT))) return false;
+        if (style_base_count > @as(u16, @intCast(pack_data.MODE_MAX_STYLE_BASE_COUNT))) return false;
+        if (d_base_count > @as(u16, @intCast(pack_data.MODE_MAX_D_BASE_COUNT))) return false;
 
-        const style_off_file = cursor;
-        const style_bytes = @as(usize, style_count_file) * 2;
-        if (cursor + style_bytes > decoded_pack.len) return false;
-        cursor += style_bytes;
+        var model: ModeGroupModel = undefined;
+        model.family = familyFromId(family_id) orelse return false;
+        model.rotation = decodeSignedI8(rotation_raw) orelse return false;
+        model.skeleton_id = skeleton_id;
+        model.href_slot_count = href_slot_count;
+        model.style_slot_count = style_slot_count;
+        model.d_slot_count = d_slot_count;
+        model.href_base_count = href_base_count;
+        model.style_base_count = style_base_count;
+        model.d_base_count = d_base_count;
 
-        const d_off_file = cursor;
-        const d_bytes = @as(usize, d_count_file) * 4;
-        if (cursor + d_bytes > decoded_pack.len) return false;
-        cursor += d_bytes;
+        var slot_i: usize = 0;
+        while (slot_i < @as(usize, href_slot_count)) : (slot_i += 1) {
+            const base_index = readU16At(cursor) orelse return false;
+            cursor += 2;
+            if (base_index >= href_base_count) return false;
+            model.href_slot_base[slot_i] = base_index;
+        }
 
-        files[i] = .{
-            .skeleton_id = skeleton_id,
-            .href_count = href_count_file,
-            .style_count = style_count_file,
-            .d_count = d_count_file,
-            .href_off = @as(u32, @intCast(href_off_file)),
-            .style_off = @as(u32, @intCast(style_off_file)),
-            .d_off = @as(u32, @intCast(d_off_file)),
-        };
+        slot_i = 0;
+        while (slot_i < @as(usize, style_slot_count)) : (slot_i += 1) {
+            const base_index = readU16At(cursor) orelse return false;
+            cursor += 2;
+            if (base_index >= style_base_count) return false;
+            model.style_slot_base[slot_i] = base_index;
+        }
+
+        slot_i = 0;
+        while (slot_i < @as(usize, d_slot_count)) : (slot_i += 1) {
+            const base_index = readU16At(cursor) orelse return false;
+            cursor += 2;
+            if (base_index >= d_base_count) return false;
+            model.d_slot_base[slot_i] = base_index;
+        }
+
+        var trans_i: usize = 0;
+        while (trans_i < pack_data.MODE_TRANS_COUNT) : (trans_i += 1) {
+            var base_i: usize = 0;
+            while (base_i < @as(usize, href_base_count)) : (base_i += 1) {
+                const id = readU16At(cursor) orelse return false;
+                cursor += 2;
+                if (id >= @as(u16, @intCast(pack_data.HREF_COUNT))) return false;
+                model.href_map[trans_i][base_i] = id;
+            }
+
+            base_i = 0;
+            while (base_i < @as(usize, style_base_count)) : (base_i += 1) {
+                const id = readU16At(cursor) orelse return false;
+                cursor += 2;
+                if (id >= @as(u16, @intCast(pack_data.STYLE_COUNT))) return false;
+                model.style_map[trans_i][base_i] = id;
+            }
+
+            base_i = 0;
+            while (base_i < @as(usize, d_base_count)) : (base_i += 1) {
+                const template_id = readU16At(cursor) orelse return false;
+                cursor += 2;
+                const offset_id = readU16At(cursor) orelse return false;
+                cursor += 2;
+                if (template_id >= @as(u16, @intCast(pack_data.TEMPLATE_COUNT))) return false;
+                if (offset_id >= @as(u16, @intCast(pack_data.OFFSET_COUNT))) return false;
+                model.d_map[trans_i][base_i] = .{
+                    .template_id = template_id,
+                    .offset_id = offset_id,
+                };
+            }
+        }
+
+        mode_group_models[i] = model;
     }
 
+    i = 0;
+    while (i < pack_data.SCALE_FAMILY_COUNT) : (i += 1) {
+        const family_id = readU16At(cursor) orelse return false;
+        cursor += 2;
+        const skeleton_id = readU16At(cursor) orelse return false;
+        cursor += 2;
+        const href_base_count = readU16At(cursor) orelse return false;
+        cursor += 2;
+        const style_base_count = readU16At(cursor) orelse return false;
+        cursor += 2;
+        const d_base_count = readU16At(cursor) orelse return false;
+        cursor += 2;
+
+        if (skeleton_id >= @as(u16, @intCast(pack_data.SKELETON_COUNT))) return false;
+        if (href_base_count > @as(u16, @intCast(pack_data.SCALE_HREF_BASE_COUNT))) return false;
+        if (style_base_count > @as(u16, @intCast(pack_data.SCALE_STYLE_BASE_COUNT))) return false;
+        if (d_base_count > @as(u16, @intCast(pack_data.SCALE_D_BASE_COUNT))) return false;
+
+        var model: ScaleFamilyModel = undefined;
+        model.family = familyFromId(family_id) orelse return false;
+        model.skeleton_id = skeleton_id;
+        model.href_base_count = href_base_count;
+        model.style_base_count = style_base_count;
+        model.d_base_count = d_base_count;
+
+        var slot_i: usize = 0;
+        while (slot_i < pack_data.SCALE_HREF_SLOT_COUNT) : (slot_i += 1) {
+            const base_index = readU16At(cursor) orelse return false;
+            cursor += 2;
+            if (base_index >= href_base_count) return false;
+            model.href_slot_base[slot_i] = base_index;
+        }
+
+        slot_i = 0;
+        while (slot_i < pack_data.SCALE_STYLE_SLOT_COUNT) : (slot_i += 1) {
+            const base_index = readU16At(cursor) orelse return false;
+            cursor += 2;
+            if (base_index >= style_base_count) return false;
+            model.style_slot_base[slot_i] = base_index;
+        }
+
+        slot_i = 0;
+        while (slot_i < pack_data.SCALE_D_SLOT_COUNT) : (slot_i += 1) {
+            const base_index = readU16At(cursor) orelse return false;
+            cursor += 2;
+            if (base_index >= d_base_count) return false;
+            model.d_slot_base[slot_i] = base_index;
+        }
+
+        var trans_i: usize = 0;
+        while (trans_i < pack_data.SCALE_TRANS_COUNT) : (trans_i += 1) {
+            var base_i: usize = 0;
+            while (base_i < @as(usize, href_base_count)) : (base_i += 1) {
+                const id = readU16At(cursor) orelse return false;
+                cursor += 2;
+                if (id >= @as(u16, @intCast(pack_data.HREF_COUNT))) return false;
+                model.href_map[trans_i][base_i] = id;
+            }
+
+            base_i = 0;
+            while (base_i < @as(usize, style_base_count)) : (base_i += 1) {
+                const id = readU16At(cursor) orelse return false;
+                cursor += 2;
+                if (id >= @as(u16, @intCast(pack_data.STYLE_COUNT))) return false;
+                model.style_map[trans_i][base_i] = id;
+            }
+
+            base_i = 0;
+            while (base_i < @as(usize, d_base_count)) : (base_i += 1) {
+                const template_id = readU16At(cursor) orelse return false;
+                cursor += 2;
+                const offset_id = readU16At(cursor) orelse return false;
+                cursor += 2;
+                if (template_id >= @as(u16, @intCast(pack_data.TEMPLATE_COUNT))) return false;
+                if (offset_id >= @as(u16, @intCast(pack_data.OFFSET_COUNT))) return false;
+                model.d_map[trans_i][base_i] = .{
+                    .template_id = template_id,
+                    .offset_id = offset_id,
+                };
+            }
+        }
+
+        scale_family_models[i] = model;
+    }
+
+    var kind_i: usize = 0;
+    while (kind_i < LEGACY_KIND_COUNT) : (kind_i += 1) {
+        var variant_i: usize = 0;
+        while (variant_i < LEGACY_VARIANT_COUNT) : (variant_i += 1) {
+            legacy_payload_present[kind_i][variant_i] = false;
+            legacy_payload_off[kind_i][variant_i] = 0;
+            legacy_payload_len[kind_i][variant_i] = 0;
+        }
+    }
+
+    i = 0;
+    while (i < pack_data.LEGACY_COUNT) : (i += 1) {
+        const kind_id = readU16At(cursor) orelse return false;
+        cursor += 2;
+        const variant = readU16At(cursor) orelse return false;
+        cursor += 2;
+        const payload_len = readU32At(cursor) orelse return false;
+        cursor += 4;
+
+        if (kind_id >= @as(u16, @intCast(LEGACY_KIND_COUNT))) return false;
+        if (variant < 1 or variant > @as(u16, LEGACY_VARIANT_COUNT)) return false;
+
+        const payload_len_usize: usize = @intCast(payload_len);
+        if (cursor + payload_len_usize > decoded_pack.len) return false;
+
+        const kind_index: usize = @intCast(kind_id);
+        const variant_index: usize = @intCast(variant - 1);
+        if (legacy_payload_present[kind_index][variant_index]) return false;
+
+        legacy_payload_present[kind_index][variant_index] = true;
+        legacy_payload_off[kind_index][variant_index] = @as(u32, @intCast(cursor));
+        legacy_payload_len[kind_index][variant_index] = payload_len;
+
+        cursor += payload_len_usize;
+    }
+
+    kind_i = 0;
+    while (kind_i < LEGACY_KIND_COUNT) : (kind_i += 1) {
+        var variant_i: usize = 0;
+        while (variant_i < LEGACY_VARIANT_COUNT) : (variant_i += 1) {
+            if (!legacy_payload_present[kind_i][variant_i]) return false;
+        }
+    }
+
+    if (cursor != decoded_pack.len) return false;
     parsed_ready = true;
     return true;
 }
@@ -377,228 +578,11 @@ fn getStringById(off_table: []const u32, len_table: []const u16, id: usize) ?[]c
     return decoded_pack[start .. start + len];
 }
 
-fn readFileHrefIds(file: FileInfo, out: []u16) bool {
-    if (out.len != @as(usize, file.href_count)) return false;
-    var i: usize = 0;
-    while (i < out.len) : (i += 1) {
-        out[i] = readU16At(@as(usize, file.href_off) + i * 2) orelse return false;
-    }
-    return true;
-}
-
-fn readFileStyleIds(file: FileInfo, out: []u16) bool {
-    if (out.len != @as(usize, file.style_count)) return false;
-    var i: usize = 0;
-    while (i < out.len) : (i += 1) {
-        out[i] = readU16At(@as(usize, file.style_off) + i * 2) orelse return false;
-    }
-    return true;
-}
-
-fn readFileDRefs(file: FileInfo, out: []DRef) bool {
-    if (out.len != @as(usize, file.d_count)) return false;
-    var i: usize = 0;
-    while (i < out.len) : (i += 1) {
-        const base = @as(usize, file.d_off) + i * 4;
-        const template_id = readU16At(base) orelse return false;
-        const offset_id = readU16At(base + 2) orelse return false;
-        out[i] = .{ .template_id = template_id, .offset_id = offset_id };
-    }
-    return true;
-}
-
-fn scaleFamilyIndex(family: majmin_scene.Family) ?usize {
-    return switch (family) {
-        .dntri => 0,
-        .hex => 1,
-        .rhomb => 2,
-        .uptri => 3,
-        .legacy => null,
-    };
-}
-
-fn scaleRotationForTransposition(transposition: i8) i8 {
-    const t: i32 = transposition;
-    return @as(i8, @intCast(@mod(7 * t, 12)));
-}
-
-fn appendUniqueU16(value: u16, unique: []u16, unique_len: *usize) ?usize {
-    var i: usize = 0;
-    while (i < unique_len.*) : (i += 1) {
-        if (unique[i] == value) return i;
-    }
-    if (unique_len.* >= unique.len) return null;
-    unique[unique_len.*] = value;
-    unique_len.* += 1;
-    return unique_len.* - 1;
-}
-
-fn dRefEqual(a: DRef, b: DRef) bool {
-    return a.template_id == b.template_id and a.offset_id == b.offset_id;
-}
-
-fn appendUniqueDRef(value: DRef, unique: []DRef, unique_len: *usize) ?usize {
-    var i: usize = 0;
-    while (i < unique_len.*) : (i += 1) {
-        if (dRefEqual(unique[i], value)) return i;
-    }
-    if (unique_len.* >= unique.len) return null;
-    unique[unique_len.*] = value;
-    unique_len.* += 1;
-    return unique_len.* - 1;
-}
-
-fn initScaleModels() bool {
-    if (scales_models_ready) return true;
-    if (!parsePackIfNeeded()) return false;
-
-    const families = [_]majmin_scene.Family{ .dntri, .hex, .rhomb, .uptri };
-    const invalid_u16 = std.math.maxInt(u16);
-    const invalid_dref: DRef = .{ .template_id = invalid_u16, .offset_id = invalid_u16 };
-
-    for (families, 0..) |family, family_index| {
-        var base_href_ids: [SCALE_HREF_SLOT_COUNT]u16 = undefined;
-        var base_style_ids: [SCALE_STYLE_SLOT_COUNT]u16 = undefined;
-        var base_d_refs: [SCALE_D_SLOT_COUNT]DRef = undefined;
-
-        const base_scene: majmin_scene.Scene = .{
-            .kind = .scales,
-            .transposition = 0,
-            .family = family,
-            .rotation = 0,
-            .variant = null,
-        };
-        const base_image_index = majmin_scene.imageIndex(base_scene) orelse return false;
-        const base_file_index = pack_data.MODE_COUNT + base_image_index;
-        if (base_file_index >= files.len) return false;
-        const base_file = files[base_file_index];
-
-        if (!readFileHrefIds(base_file, &base_href_ids)) return false;
-        if (!readFileStyleIds(base_file, &base_style_ids)) return false;
-        if (!readFileDRefs(base_file, &base_d_refs)) return false;
-
-        var model: ScaleFamilyModel = undefined;
-        model.skeleton_id = base_file.skeleton_id;
-
-        var href_base_unique: [SCALE_HREF_BASE_UNIQUE_COUNT]u16 = undefined;
-        var href_base_unique_len: usize = 0;
-        for (base_href_ids, 0..) |id, slot_index| {
-            const base_index = appendUniqueU16(id, href_base_unique[0..], &href_base_unique_len) orelse return false;
-            model.href_slot_base[slot_index] = @as(u8, @intCast(base_index));
-        }
-        if (href_base_unique_len != SCALE_HREF_BASE_UNIQUE_COUNT) return false;
-
-        var style_base_unique: [SCALE_STYLE_BASE_UNIQUE_COUNT]u16 = undefined;
-        var style_base_unique_len: usize = 0;
-        for (base_style_ids, 0..) |id, slot_index| {
-            const base_index = appendUniqueU16(id, style_base_unique[0..], &style_base_unique_len) orelse return false;
-            model.style_slot_base[slot_index] = @as(u8, @intCast(base_index));
-        }
-        if (style_base_unique_len != SCALE_STYLE_BASE_UNIQUE_COUNT) return false;
-
-        var d_base_unique: [SCALE_D_BASE_UNIQUE_COUNT]DRef = undefined;
-        var d_base_unique_len: usize = 0;
-        for (base_d_refs, 0..) |d_ref, slot_index| {
-            const base_index = appendUniqueDRef(d_ref, d_base_unique[0..], &d_base_unique_len) orelse return false;
-            model.d_slot_base[slot_index] = @as(u16, @intCast(base_index));
-        }
-        if (d_base_unique_len != SCALE_D_BASE_UNIQUE_COUNT) return false;
-
-        var transposition: usize = 0;
-        while (transposition < SCALE_TRANSPOSITION_COUNT) : (transposition += 1) {
-            var href_row: [SCALE_HREF_BASE_UNIQUE_COUNT]u16 = [_]u16{invalid_u16} ** SCALE_HREF_BASE_UNIQUE_COUNT;
-            var style_row: [SCALE_STYLE_BASE_UNIQUE_COUNT]u16 = [_]u16{invalid_u16} ** SCALE_STYLE_BASE_UNIQUE_COUNT;
-            var d_row: [SCALE_D_BASE_UNIQUE_COUNT]DRef = [_]DRef{invalid_dref} ** SCALE_D_BASE_UNIQUE_COUNT;
-
-            const t: i8 = @as(i8, @intCast(transposition));
-            const scene: majmin_scene.Scene = .{
-                .kind = .scales,
-                .transposition = t,
-                .family = family,
-                .rotation = scaleRotationForTransposition(t),
-                .variant = null,
-            };
-            const image_index = majmin_scene.imageIndex(scene) orelse return false;
-            const file_index = pack_data.MODE_COUNT + image_index;
-            if (file_index >= files.len) return false;
-            const file = files[file_index];
-
-            var href_ids: [SCALE_HREF_SLOT_COUNT]u16 = undefined;
-            var style_ids: [SCALE_STYLE_SLOT_COUNT]u16 = undefined;
-            var d_refs: [SCALE_D_SLOT_COUNT]DRef = undefined;
-            if (!readFileHrefIds(file, &href_ids)) return false;
-            if (!readFileStyleIds(file, &style_ids)) return false;
-            if (!readFileDRefs(file, &d_refs)) return false;
-
-            for (href_ids, 0..) |id, slot_index| {
-                const base_index: usize = model.href_slot_base[slot_index];
-                if (href_row[base_index] == invalid_u16) {
-                    href_row[base_index] = id;
-                } else if (href_row[base_index] != id) {
-                    return false;
-                }
-            }
-            for (style_ids, 0..) |id, slot_index| {
-                const base_index: usize = model.style_slot_base[slot_index];
-                if (style_row[base_index] == invalid_u16) {
-                    style_row[base_index] = id;
-                } else if (style_row[base_index] != id) {
-                    return false;
-                }
-            }
-            for (d_refs, 0..) |d_ref, slot_index| {
-                const base_index: usize = model.d_slot_base[slot_index];
-                if (dRefEqual(d_row[base_index], invalid_dref)) {
-                    d_row[base_index] = d_ref;
-                } else if (!dRefEqual(d_row[base_index], d_ref)) {
-                    return false;
-                }
-            }
-
-            for (href_row) |value| {
-                if (value == invalid_u16) return false;
-            }
-            for (style_row) |value| {
-                if (value == invalid_u16) return false;
-            }
-            for (d_row) |value| {
-                if (dRefEqual(value, invalid_dref)) return false;
-            }
-
-            model.href_map[transposition] = href_row;
-            model.style_map[transposition] = style_row;
-            model.d_map[transposition] = d_row;
-        }
-
-        scale_family_models[family_index] = model;
-    }
-
-    scales_models_ready = true;
-    return true;
-}
-
-const ModeGroupKey = struct {
-    family: majmin_scene.Family,
-    rotation: i8,
-};
-
 fn modeTranspositionIndex(transposition: i8) ?usize {
     for (MODE_TRANS_VALUES, 0..) |candidate, idx| {
         if (candidate == transposition) return idx;
     }
     return null;
-}
-
-fn appendModeGroupIfMissing(groups: *[MODE_GROUP_COUNT]ModeGroupKey, group_len: *usize, family: majmin_scene.Family, rotation: i8) bool {
-    var i: usize = 0;
-    while (i < group_len.*) : (i += 1) {
-        const existing = groups[i];
-        if (existing.family == family and existing.rotation == rotation) return true;
-    }
-    if (group_len.* >= groups.len) return false;
-    groups[group_len.*] = .{ .family = family, .rotation = rotation };
-    group_len.* += 1;
-    return true;
 }
 
 fn modeGroupIndex(family: majmin_scene.Family, rotation: i8) ?usize {
@@ -610,226 +594,48 @@ fn modeGroupIndex(family: majmin_scene.Family, rotation: i8) ?usize {
     return null;
 }
 
-fn initModeModels() bool {
-    if (modes_models_ready) return true;
-    if (!parsePackIfNeeded()) return false;
-
-    const invalid_u16 = std.math.maxInt(u16);
-    const invalid_dref: DRef = .{ .template_id = invalid_u16, .offset_id = invalid_u16 };
-
-    var groups: [MODE_GROUP_COUNT]ModeGroupKey = undefined;
-    var group_len: usize = 0;
-
-    var image_index: usize = 2;
-    while (image_index < pack_data.MODE_COUNT) : (image_index += 1) {
-        const scene = majmin_scene.sceneForIndex(.modes, image_index) orelse return false;
-        if (scene.family == .legacy) continue;
-        if (!appendModeGroupIfMissing(&groups, &group_len, scene.family, scene.rotation)) return false;
+fn scaleFamilyModelIndex(family: majmin_scene.Family) ?usize {
+    var i: usize = 0;
+    while (i < scale_family_models.len) : (i += 1) {
+        if (scale_family_models[i].family == family) return i;
     }
-    if (group_len != MODE_GROUP_COUNT) return false;
-
-    for (groups, 0..) |group, group_index| {
-        var model: ModeGroupModel = undefined;
-        model.family = group.family;
-        model.rotation = group.rotation;
-
-        const base_scene: majmin_scene.Scene = .{
-            .kind = .modes,
-            .transposition = -1,
-            .family = group.family,
-            .rotation = group.rotation,
-            .variant = null,
-        };
-        const base_image_index = majmin_scene.imageIndex(base_scene) orelse return false;
-        if (base_image_index >= pack_data.MODE_COUNT) return false;
-        const base_file = files[base_image_index];
-
-        const href_slot_count: usize = @as(usize, base_file.href_count);
-        const style_slot_count: usize = @as(usize, base_file.style_count);
-        const d_slot_count: usize = @as(usize, base_file.d_count);
-        if (href_slot_count > MODE_MAX_HREF_SLOT_COUNT) return false;
-        if (style_slot_count > MODE_MAX_STYLE_SLOT_COUNT) return false;
-        if (d_slot_count > MODE_MAX_D_SLOT_COUNT) return false;
-
-        model.skeleton_id = base_file.skeleton_id;
-        model.href_slot_count = base_file.href_count;
-        model.style_slot_count = base_file.style_count;
-        model.d_slot_count = base_file.d_count;
-
-        var base_href_ids: [MODE_MAX_HREF_SLOT_COUNT]u16 = undefined;
-        var base_style_ids: [MODE_MAX_STYLE_SLOT_COUNT]u16 = undefined;
-        var base_d_refs: [MODE_MAX_D_SLOT_COUNT]DRef = undefined;
-        if (!readFileHrefIds(base_file, base_href_ids[0..href_slot_count])) return false;
-        if (!readFileStyleIds(base_file, base_style_ids[0..style_slot_count])) return false;
-        if (!readFileDRefs(base_file, base_d_refs[0..d_slot_count])) return false;
-
-        var href_base_unique: [MODE_MAX_HREF_BASE_UNIQUE_COUNT]u16 = undefined;
-        var href_base_unique_len: usize = 0;
-        for (base_href_ids[0..href_slot_count], 0..) |id, slot_index| {
-            const base_index = appendUniqueU16(id, href_base_unique[0..], &href_base_unique_len) orelse return false;
-            model.href_slot_base[slot_index] = @as(u16, @intCast(base_index));
-        }
-        if (href_base_unique_len > MODE_MAX_HREF_BASE_UNIQUE_COUNT) return false;
-        model.href_base_count = @as(u16, @intCast(href_base_unique_len));
-
-        var style_base_unique: [MODE_MAX_STYLE_BASE_UNIQUE_COUNT]u16 = undefined;
-        var style_base_unique_len: usize = 0;
-        for (base_style_ids[0..style_slot_count], 0..) |id, slot_index| {
-            const base_index = appendUniqueU16(id, style_base_unique[0..], &style_base_unique_len) orelse return false;
-            model.style_slot_base[slot_index] = @as(u16, @intCast(base_index));
-        }
-        if (style_base_unique_len > MODE_MAX_STYLE_BASE_UNIQUE_COUNT) return false;
-        model.style_base_count = @as(u16, @intCast(style_base_unique_len));
-
-        var d_base_unique: [MODE_MAX_D_BASE_UNIQUE_COUNT]DRef = undefined;
-        var d_base_unique_len: usize = 0;
-        for (base_d_refs[0..d_slot_count], 0..) |d_ref, slot_index| {
-            const base_index = appendUniqueDRef(d_ref, d_base_unique[0..], &d_base_unique_len) orelse return false;
-            model.d_slot_base[slot_index] = @as(u16, @intCast(base_index));
-        }
-        if (d_base_unique_len > MODE_MAX_D_BASE_UNIQUE_COUNT) return false;
-        model.d_base_count = @as(u16, @intCast(d_base_unique_len));
-
-        for (MODE_TRANS_VALUES, 0..) |transposition, transposition_index| {
-            var href_row: [MODE_MAX_HREF_BASE_UNIQUE_COUNT]u16 = [_]u16{invalid_u16} ** MODE_MAX_HREF_BASE_UNIQUE_COUNT;
-            var style_row: [MODE_MAX_STYLE_BASE_UNIQUE_COUNT]u16 = [_]u16{invalid_u16} ** MODE_MAX_STYLE_BASE_UNIQUE_COUNT;
-            var d_row: [MODE_MAX_D_BASE_UNIQUE_COUNT]DRef = [_]DRef{invalid_dref} ** MODE_MAX_D_BASE_UNIQUE_COUNT;
-
-            const scene: majmin_scene.Scene = .{
-                .kind = .modes,
-                .transposition = transposition,
-                .family = group.family,
-                .rotation = group.rotation,
-                .variant = null,
-            };
-            const image_idx = majmin_scene.imageIndex(scene) orelse return false;
-            if (image_idx >= pack_data.MODE_COUNT) return false;
-            const file = files[image_idx];
-
-            if (file.href_count != base_file.href_count) return false;
-            if (file.style_count != base_file.style_count) return false;
-            if (file.d_count != base_file.d_count) return false;
-
-            var href_ids: [MODE_MAX_HREF_SLOT_COUNT]u16 = undefined;
-            var style_ids: [MODE_MAX_STYLE_SLOT_COUNT]u16 = undefined;
-            var d_refs: [MODE_MAX_D_SLOT_COUNT]DRef = undefined;
-            if (!readFileHrefIds(file, href_ids[0..href_slot_count])) return false;
-            if (!readFileStyleIds(file, style_ids[0..style_slot_count])) return false;
-            if (!readFileDRefs(file, d_refs[0..d_slot_count])) return false;
-
-            for (href_ids[0..href_slot_count], 0..) |id, slot_index| {
-                const base_index: usize = model.href_slot_base[slot_index];
-                if (href_row[base_index] == invalid_u16) {
-                    href_row[base_index] = id;
-                } else if (href_row[base_index] != id) {
-                    return false;
-                }
-            }
-            for (style_ids[0..style_slot_count], 0..) |id, slot_index| {
-                const base_index: usize = model.style_slot_base[slot_index];
-                if (style_row[base_index] == invalid_u16) {
-                    style_row[base_index] = id;
-                } else if (style_row[base_index] != id) {
-                    return false;
-                }
-            }
-            for (d_refs[0..d_slot_count], 0..) |d_ref, slot_index| {
-                const base_index: usize = model.d_slot_base[slot_index];
-                if (dRefEqual(d_row[base_index], invalid_dref)) {
-                    d_row[base_index] = d_ref;
-                } else if (!dRefEqual(d_row[base_index], d_ref)) {
-                    return false;
-                }
-            }
-
-            var i: usize = 0;
-            while (i < href_base_unique_len) : (i += 1) {
-                if (href_row[i] == invalid_u16) return false;
-            }
-            i = 0;
-            while (i < style_base_unique_len) : (i += 1) {
-                if (style_row[i] == invalid_u16) return false;
-            }
-            i = 0;
-            while (i < d_base_unique_len) : (i += 1) {
-                if (dRefEqual(d_row[i], invalid_dref)) return false;
-            }
-
-            model.href_map[transposition_index] = href_row;
-            model.style_map[transposition_index] = style_row;
-            model.d_map[transposition_index] = d_row;
-        }
-
-        mode_group_models[group_index] = model;
-    }
-
-    modes_models_ready = true;
-    return true;
+    return null;
 }
 
-fn renderFileByIndex(file_index: usize, buf: []u8) []u8 {
-    if (file_index >= files.len) return "";
+fn legacyKindIndex(kind: Kind) usize {
+    return switch (kind) {
+        .modes => 0,
+        .scales => 1,
+    };
+}
 
-    const f = files[file_index];
-    if (f.skeleton_id >= skeleton_off.len) return "";
+fn renderLegacy(kind: Kind, image_index: usize, buf: []u8) []u8 {
+    if (image_index >= LEGACY_VARIANT_COUNT) return "";
+    const kind_index = legacyKindIndex(kind);
+    if (!legacy_payload_present[kind_index][image_index]) return "";
 
-    const skeleton_start = @as(usize, skeleton_off[f.skeleton_id]);
-    const skeleton_size = @as(usize, skeleton_len[f.skeleton_id]);
-    if (skeleton_start + skeleton_size > decoded_pack.len) return "";
-    const skeleton = decoded_pack[skeleton_start .. skeleton_start + skeleton_size];
+    const start = @as(usize, legacy_payload_off[kind_index][image_index]);
+    const len = @as(usize, legacy_payload_len[kind_index][image_index]);
+    if (start + len > decoded_pack.len) return "";
+    if (len > buf.len) return "";
 
-    var href_i: usize = 0;
-    var style_i: usize = 0;
-    var d_i: usize = 0;
-
-    var stream = std.io.fixedBufferStream(buf);
-    const w = stream.writer();
-
-    for (skeleton) |ch| {
-        switch (ch) {
-            MARKER_HREF => {
-                if (href_i >= f.href_count) return "";
-                const id = readU16At(@as(usize, f.href_off) + href_i * 2) orelse return "";
-                const text = getStringById(href_off[0..], href_len[0..], id) orelse return "";
-                w.writeAll(text) catch return "";
-                href_i += 1;
-            },
-            MARKER_STYLE => {
-                if (style_i >= f.style_count) return "";
-                const id = readU16At(@as(usize, f.style_off) + style_i * 2) orelse return "";
-                const text = getStringById(style_off[0..], style_len[0..], id) orelse return "";
-                w.writeAll(text) catch return "";
-                style_i += 1;
-            },
-            MARKER_D => {
-                if (d_i >= f.d_count) return "";
-                const base = @as(usize, f.d_off) + d_i * 4;
-                const tid = readU16At(base) orelse return "";
-                const oid = readU16At(base + 2) orelse return "";
-                renderTemplatePath(w, tid, oid) catch return "";
-                d_i += 1;
-            },
-            else => w.writeByte(ch) catch return "",
-        }
-    }
-
-    if (href_i != f.href_count or style_i != f.style_count or d_i != f.d_count) return "";
-    return buf[0..stream.pos];
+    std.mem.copyForwards(u8, buf[0..len], decoded_pack[start .. start + len]);
+    return buf[0..len];
 }
 
 fn renderModes(image_index: usize, buf: []u8) []u8 {
-    if (image_index >= pack_data.MODE_COUNT) return "";
-    if (image_index < 2) return renderFileByIndex(image_index, buf);
-    if (!initModeModels()) return "";
+    if (image_index >= majmin_scene.MODES_COUNT) return "";
+    if (image_index < LEGACY_VARIANT_COUNT) return renderLegacy(.modes, image_index, buf);
 
     const scene = majmin_scene.sceneForIndex(.modes, image_index) orelse return "";
     const group_index = modeGroupIndex(scene.family, scene.rotation) orelse return "";
     const transposition_index = modeTranspositionIndex(scene.transposition) orelse return "";
     const model = mode_group_models[group_index];
 
-    if (model.skeleton_id >= skeleton_off.len) return "";
-    const skeleton_start = @as(usize, skeleton_off[model.skeleton_id]);
-    const skeleton_size = @as(usize, skeleton_len[model.skeleton_id]);
+    const skeleton_index: usize = @intCast(model.skeleton_id);
+    if (skeleton_index >= skeleton_off.len) return "";
+    const skeleton_start = @as(usize, skeleton_off[skeleton_index]);
+    const skeleton_size = @as(usize, skeleton_len[skeleton_index]);
     if (skeleton_start + skeleton_size > decoded_pack.len) return "";
     const skeleton = decoded_pack[skeleton_start .. skeleton_start + skeleton_size];
 
@@ -884,22 +690,26 @@ fn renderModes(image_index: usize, buf: []u8) []u8 {
 }
 
 fn renderScales(image_index: usize, buf: []u8) []u8 {
-    if (image_index >= pack_data.SCALE_COUNT) return "";
-    if (image_index < 2) return renderFileByIndex(pack_data.MODE_COUNT + image_index, buf);
-    if (!initScaleModels()) return "";
+    if (image_index >= majmin_scene.SCALES_COUNT) return "";
+    if (image_index < LEGACY_VARIANT_COUNT) return renderLegacy(.scales, image_index, buf);
 
     const scene = majmin_scene.sceneForIndex(.scales, image_index) orelse return "";
-    const family_index = scaleFamilyIndex(scene.family) orelse return "";
-    if (scene.transposition < 0 or scene.transposition > 11) return "";
+    const family_index = scaleFamilyModelIndex(scene.family) orelse return "";
+    if (scene.transposition < 0 or scene.transposition >= @as(i8, @intCast(pack_data.SCALE_TRANS_COUNT))) return "";
     const transposition_index: usize = @intCast(scene.transposition);
 
     const model = scale_family_models[family_index];
-    if (model.skeleton_id >= skeleton_off.len) return "";
+    const skeleton_index: usize = @intCast(model.skeleton_id);
+    if (skeleton_index >= skeleton_off.len) return "";
 
-    const skeleton_start = @as(usize, skeleton_off[model.skeleton_id]);
-    const skeleton_size = @as(usize, skeleton_len[model.skeleton_id]);
+    const skeleton_start = @as(usize, skeleton_off[skeleton_index]);
+    const skeleton_size = @as(usize, skeleton_len[skeleton_index]);
     if (skeleton_start + skeleton_size > decoded_pack.len) return "";
     const skeleton = decoded_pack[skeleton_start .. skeleton_start + skeleton_size];
+
+    const href_base_count: usize = model.href_base_count;
+    const style_base_count: usize = model.style_base_count;
+    const d_base_count: usize = model.d_base_count;
 
     var href_i: usize = 0;
     var style_i: usize = 0;
@@ -911,27 +721,27 @@ fn renderScales(image_index: usize, buf: []u8) []u8 {
     for (skeleton) |ch| {
         switch (ch) {
             MARKER_HREF => {
-                if (href_i >= SCALE_HREF_SLOT_COUNT) return "";
+                if (href_i >= pack_data.SCALE_HREF_SLOT_COUNT) return "";
                 const base_index: usize = model.href_slot_base[href_i];
-                if (base_index >= SCALE_HREF_BASE_UNIQUE_COUNT) return "";
+                if (base_index >= href_base_count) return "";
                 const id = model.href_map[transposition_index][base_index];
                 const text = getStringById(href_off[0..], href_len[0..], @as(usize, id)) orelse return "";
                 w.writeAll(text) catch return "";
                 href_i += 1;
             },
             MARKER_STYLE => {
-                if (style_i >= SCALE_STYLE_SLOT_COUNT) return "";
+                if (style_i >= pack_data.SCALE_STYLE_SLOT_COUNT) return "";
                 const base_index: usize = model.style_slot_base[style_i];
-                if (base_index >= SCALE_STYLE_BASE_UNIQUE_COUNT) return "";
+                if (base_index >= style_base_count) return "";
                 const id = model.style_map[transposition_index][base_index];
                 const text = getStringById(style_off[0..], style_len[0..], @as(usize, id)) orelse return "";
                 w.writeAll(text) catch return "";
                 style_i += 1;
             },
             MARKER_D => {
-                if (d_i >= SCALE_D_SLOT_COUNT) return "";
+                if (d_i >= pack_data.SCALE_D_SLOT_COUNT) return "";
                 const base_index: usize = model.d_slot_base[d_i];
-                if (base_index >= SCALE_D_BASE_UNIQUE_COUNT) return "";
+                if (base_index >= d_base_count) return "";
                 const d_ref = model.d_map[transposition_index][base_index];
                 renderTemplatePath(w, @as(usize, d_ref.template_id), @as(usize, d_ref.offset_id)) catch return "";
                 d_i += 1;
@@ -940,7 +750,7 @@ fn renderScales(image_index: usize, buf: []u8) []u8 {
         }
     }
 
-    if (href_i != SCALE_HREF_SLOT_COUNT or style_i != SCALE_STYLE_SLOT_COUNT or d_i != SCALE_D_SLOT_COUNT) return "";
+    if (href_i != pack_data.SCALE_HREF_SLOT_COUNT or style_i != pack_data.SCALE_STYLE_SLOT_COUNT or d_i != pack_data.SCALE_D_SLOT_COUNT) return "";
     return buf[0..stream.pos];
 }
 

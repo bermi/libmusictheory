@@ -7,7 +7,7 @@
 - `src/svg/tessellation.zig:77` `buildAdjacency`
 - `src/svg/tessellation.zig:112` `renderScaleTessellation`
 - Compatibility majmin:
-- `src/svg/majmin_compat.zig:321` `render`
+- `src/svg/majmin_compat.zig:768` `render`
 
 Kinds covered:
 
@@ -16,7 +16,11 @@ Kinds covered:
 ## Current Approach
 
 - Core tessellation map is algorithmically generated from tile geometry and adjacency rules.
-- Majmin compatibility output currently reconstructs SVG from packed compressed templates/offset streams (`src/generated/harmonious_majmin_compat_xz.zig`) for exact parity.
+- Majmin compatibility output now reconstructs SVG from a compact scene pack (`src/generated/harmonious_majmin_scene_pack_xz.zig`) using:
+- grouped `modes` transposition remaps (`family + rotation`),
+- family-based `scales` transposition remaps,
+- shared skeleton/style/href/path template primitives,
+- raw legacy overview payloads for the two historical overview variants per kind.
 
 ## Alternative Programmatic Approaches Studied
 
@@ -27,7 +31,7 @@ Kinds covered:
 Decision:
 
 - Keep algorithmic tessellation as canonical layout source.
-- Replace majmin packed reconstruction with rule-based scene composition over shared tessellation graph.
+- Use deterministic scene composition over grouped transposition/family rules for strict majmin byte parity.
 
 ## Swappable Backend Plan
 
@@ -42,9 +46,9 @@ Backend mapping:
 
 ## Path to Fully Algorithmic
 
-1. Extract majmin topology rules from packed templates into explicit graph/layout rules.
-2. Generate tile/link/style layers from data model rather than packed text payload.
-3. Keep parity snapshots as regression fixtures while removing packed source dependency.
+1. Replace scene-pack path remap payload with computed link/path placement rules.
+2. Generate tile/link/style layers from the tessellation data model rather than packed skeleton templates.
+3. Keep strict parity fixtures while progressively deleting scene-pack primitive tables.
 
 ## Samples
 

@@ -1,22 +1,21 @@
 # WASM Footprint Audit
 
-## Current Snapshot (2026-02-20)
+## Current Snapshot (2026-03-10)
 
 `zig-out/wasm-demo/libmusictheory.wasm`
 
-- Total size: `834,516` bytes
-- `CODE` section: `121,427` bytes
-- `DATA` section: `711,815` bytes
+- Total size: `671,101` bytes
+- `CODE` section: `133,707` bytes
+- `DATA` section: `536,055` bytes
 
-Reachable generated files (`9`) total `1,627,349` source bytes.
+Reachable generated files (`9`) total `1,511,555` source bytes.
 Coordinate-like reachable generated files total `13,586` bytes.
 
 Notable deltas from the prior baseline:
 
-- `src/generated/harmonious_scale_mod_ulpshim.zig` removed from runtime and deleted.
-- `src/generated/harmonious_scale_layout_ulpshim.zig` removed from runtime and deleted.
-- `src/generated/harmonious_scale_mod_assets.zig` removed from runtime and deleted.
-- `src/generated/harmonious_scale_mod_offset_assets.zig` added as scale/chord normalized accidental offsets.
+- `src/generated/harmonious_majmin_compat_xz.zig` is no longer reachable from wasm.
+- `src/generated/harmonious_majmin_scene_pack_xz.zig` replaced the old majmin compat payload.
+- Strict compatibility still holds (`8634/8634`, `0` mismatches) while shrinking wasm footprint.
 
 ## Baseline (2026-02-19)
 
@@ -30,25 +29,22 @@ The wasm is data-dominated, so size reduction work should prioritize generated d
 
 ## Reachable Generated Payload (from `src/root.zig` import graph)
 
-Current reachable generated files (`11`) total `1,643,210` source bytes.
+Current reachable generated files (`9`) total `1,511,555` source bytes.
 Top contributors:
 
-- `src/generated/harmonious_majmin_compat_xz.zig` (`774,450`)
-- `src/generated/harmonious_even_gzip.zig` (`315,029`)
-- `src/generated/harmonious_manifest.zig` (`248,324`)
-- `src/generated/harmonious_text_templates.zig` (`187,309`)
+- `src/generated/harmonious_majmin_scene_pack_xz.zig` (`988,786`)
+- `src/generated/harmonious_manifest.zig` (`236,976`)
+- `src/generated/harmonious_even_segment_gzip.zig` (`161,003`)
 - `src/generated/harmonious_oc_templates.zig` (`39,463`)
 - `src/generated/harmonious_chord_compat_assets.zig` (`34,869`)
+- `src/generated/harmonious_text_primitives.zig` (`22,553`)
 - `src/generated/harmonious_scale_nomod_assets.zig` (`13,586`)
-- `src/generated/harmonious_scale_layout_ulpshim.zig` (`11,918`)
-- `src/generated/harmonious_scale_mod_assets.zig` (`10,681`)
-- `src/generated/harmonious_scale_mod_ulpshim.zig` (`3,562`)
+- `src/generated/harmonious_scale_mod_offset_assets.zig` (`10,300`)
+- `src/generated/harmonious_optc_templates.zig` (`4,019`)
 
-Coordinate-like reachable generated files total `36,185` bytes:
+Coordinate-like reachable generated files total `13,586` bytes:
 
-- `src/generated/harmonious_scale_mod_assets.zig`
 - `src/generated/harmonious_scale_nomod_assets.zig`
-- `src/generated/harmonious_scale_layout_ulpshim.zig`
 
 ## Guardrails
 
@@ -83,7 +79,7 @@ Additional anti-replay guardrails block reintroduction of chord replay table imp
 
 ## Reduction Priorities
 
-1. Replace `majmin` packed templates with algorithmic renderer.
+1. Replace `majmin` scene-pack remap payload with direct computed scene geometry/routing.
 2. Replace `even` packed payload with algorithmic rendering.
 3. Reduce compatibility manifest payload by deriving image arguments/names algorithmically where possible.
-4. Continue removing coordinate-like patch/shim tables as strict parity formulas become available.
+4. Continue removing residual coordinate-like tables as strict parity formulas become available.

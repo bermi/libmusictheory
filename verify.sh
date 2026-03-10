@@ -558,11 +558,13 @@ else
 fi
 
 if [ -f "$ROOT_DIR/src/svg/majmin_scene.zig" ]; then
-    if [ -f "$ROOT_DIR/src/generated/harmonious_majmin_compat_xz.zig" ]; then
-        check_cmd "cd '$ROOT_DIR' && [ \$(wc -c < src/generated/harmonious_majmin_compat_xz.zig) -le 780000 ]" "0039 majmin payload reduction guardrail (compat source payload <= 780KB while algorithmic cutover progresses)"
+    if [ -f "$ROOT_DIR/src/generated/harmonious_majmin_scene_pack_xz.zig" ]; then
+        check_cmd "cd '$ROOT_DIR' && [ \$(wc -c < src/generated/harmonious_majmin_scene_pack_xz.zig) -le 1100000 ]" "0039 majmin payload reduction guardrail (scene-pack source payload <= 1.1MB while algorithmic cutover progresses)"
     else
-        unverified "0039 majmin payload reduction guardrail (src/generated/harmonious_majmin_compat_xz.zig missing)"
+        unverified "0039 majmin payload reduction guardrail (src/generated/harmonious_majmin_scene_pack_xz.zig missing)"
     fi
+    check_cmd "cd '$ROOT_DIR' && rg -n \"harmonious_majmin_scene_pack_xz\" src/svg/majmin_compat.zig" "0039 majmin scene-pack guardrail (renderer imports compact scene pack asset)"
+    check_cmd "cd '$ROOT_DIR' && ! rg -n \"harmonious_majmin_compat_xz\" src/svg/majmin_compat.zig src/harmonious_svg_compat.zig src/root.zig" "0039 majmin scene-pack guardrail (legacy compat payload not reachable from wasm path)"
     check_cmd "cd '$ROOT_DIR' && rg -n \"svg/majmin_scene\\.zig\" src/harmonious_svg_compat.zig src/root.zig" "0039 majmin topology model guardrail (scene parser wired into compat + root exports)"
     check_cmd "cd '$ROOT_DIR' && rg -n \"svg_majmin_scene\\.imageIndex\\(\" src/harmonious_svg_compat.zig" "0039 majmin topology model guardrail (compat uses algorithmic scene-to-index mapping)"
     check_cmd "cd '$ROOT_DIR' && rg -n \"svg_majmin_scene\\.imageName\\(\" src/harmonious_svg_compat.zig" "0039 majmin topology model guardrail (compat exposes algorithmic majmin image-name enumeration)"
