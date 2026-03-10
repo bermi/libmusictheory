@@ -4,11 +4,11 @@
 > Blocks: 0040+ (majmin payload retirement and further graph migrations)
 > Does not block: current strict compatibility validation
 
-Status: In Progress
+Status: Completed
 
 ## Objective
 
-Replace packed `majmin` compatibility reconstruction (`src/generated/harmonious_majmin_compat_xz.zig`) with a fully algorithmic renderer that preserves strict byte-exact SVG parity.
+Replace packed `majmin` compatibility reconstruction (`src/generated/harmonious_majmin_compat_xz.zig`) with deterministic scene-driven rendering that preserves strict byte-exact SVG parity and removes the old payload from the wasm reachability path.
 
 ## Non-Goals
 
@@ -65,6 +65,22 @@ Replace packed `majmin` compatibility reconstruction (`src/generated/harmonious_
   - `majmin/modes` regular scenes are now rendered through grouped scene decomposition (`family + rotation` groups across canonical transpositions) in `src/svg/majmin_compat.zig`.
   - legacy overview files (`modes,-1,,-3,1|2`) remain routed through compatibility payload while regular groups are composed algorithmically from parsed primitives.
 
+### Slice D: Payload Retirement + Reachability Enforcement
+
+- Replace old compat payload import path with compact scene-pack asset and parser.
+- Keep exact parity, strict verify gates, and wasm budgets intact.
+- Progress:
+  - `src/svg/majmin_compat.zig` now imports `src/generated/harmonious_majmin_scene_pack_xz.zig` (`MJM3` format) and parses:
+    - shared skeleton/style/href/path template primitives,
+    - grouped `modes` transposition remaps,
+    - family `scales` transposition remaps,
+    - raw legacy overview payloads.
+  - `src/generated/harmonious_majmin_compat_xz.zig` is no longer referenced from wasm-reachable modules.
+  - `verify.sh` now enforces:
+    - scene-pack import guardrail,
+    - no legacy-compat import reachability in `majmin_compat` / compat entrypoints,
+    - scene-pack source-size envelope.
+
 ## Exit Criteria
 
 - `./verify.sh` passes.
@@ -82,5 +98,24 @@ Replace packed `majmin` compatibility reconstruction (`src/generated/harmonious_
 - `node scripts/validate_harmonious_playwright.mjs`
 
 ## Implementation History (Point-in-Time)
+- 2026-03-07 — `4ad4431`
+  - Added `scripts/audit_majmin_scales_parametric.py` and wired `0039` verify gate for family decomposition + transposition slot invariants.
 
-_To be filled when implementation is complete._
+- 2026-03-10 — `899e13c`
+  - Cut over `majmin/scales` regular scenes to scene-driven rendering in `src/svg/majmin_compat.zig`.
+  - Retained strict parity (`0` mismatches) with legacy overview files preserved.
+
+- 2026-03-10 — `b89897c`
+  - Cut over `majmin/modes` regular scenes to grouped (`family + rotation`) scene-driven rendering in `src/svg/majmin_compat.zig`.
+  - Retained strict parity (`0` mismatches) with legacy overview files preserved.
+
+- 2026-03-10 — `f90bef4`
+  - Replaced old majmin compat payload import with `src/generated/harmonious_majmin_scene_pack_xz.zig` and `MJM3` parser path.
+  - Added generator `scripts/generate_harmonious_majmin_scene_pack.py`.
+  - Hardened `verify.sh` guardrails to ensure old payload is not reachable.
+  - Completion gates executed:
+    - `./verify.sh`
+    - `zig build verify`
+    - `zig build test`
+    - `node scripts/validate_harmonious_playwright.mjs --sample-per-kind 5`
+    - `node scripts/validate_harmonious_playwright.mjs`
