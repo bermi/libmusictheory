@@ -1,6 +1,7 @@
 const std = @import("std");
 const builtin = @import("builtin");
 const pack_data = @import("../generated/harmonious_majmin_compat_xz.zig");
+const majmin_scene = @import("majmin_scene.zig");
 
 const SCALE_I128: i128 = 100_000_000_000_000_000;
 const MARKER_HREF: u8 = 0x1d;
@@ -36,6 +37,30 @@ const FileInfo = struct {
     d_off: u32,
 };
 
+const DRef = struct {
+    template_id: u16,
+    offset_id: u16,
+};
+
+const SCALE_FAMILY_COUNT: usize = 4;
+const SCALE_TRANSPOSITION_COUNT: usize = 12;
+const SCALE_HREF_SLOT_COUNT: usize = 153;
+const SCALE_STYLE_SLOT_COUNT: usize = 324;
+const SCALE_D_SLOT_COUNT: usize = 324;
+const SCALE_HREF_BASE_UNIQUE_COUNT: usize = 44;
+const SCALE_STYLE_BASE_UNIQUE_COUNT: usize = 4;
+const SCALE_D_BASE_UNIQUE_COUNT: usize = 248;
+
+const ScaleFamilyModel = struct {
+    skeleton_id: u32,
+    href_slot_base: [SCALE_HREF_SLOT_COUNT]u8,
+    style_slot_base: [SCALE_STYLE_SLOT_COUNT]u8,
+    d_slot_base: [SCALE_D_SLOT_COUNT]u16,
+    href_map: [SCALE_TRANSPOSITION_COUNT][SCALE_HREF_BASE_UNIQUE_COUNT]u16,
+    style_map: [SCALE_TRANSPOSITION_COUNT][SCALE_STYLE_BASE_UNIQUE_COUNT]u16,
+    d_map: [SCALE_TRANSPOSITION_COUNT][SCALE_D_BASE_UNIQUE_COUNT]DRef,
+};
+
 var decoded_ready: bool = false;
 var parsed_ready: bool = false;
 
@@ -50,6 +75,9 @@ var href_len: [pack_data.HREF_COUNT]u16 = undefined;
 var templates: [pack_data.TEMPLATE_COUNT]TemplateInfo = undefined;
 var offsets: [pack_data.OFFSET_COUNT]OffsetInfo = undefined;
 var files: [pack_data.FILE_COUNT]FileInfo = undefined;
+
+var scales_models_ready: bool = false;
+var scale_family_models: [SCALE_FAMILY_COUNT]ScaleFamilyModel = undefined;
 
 fn decodePackIfNeeded() bool {
     if (decoded_ready) return true;
@@ -318,13 +346,207 @@ fn getStringById(off_table: []const u32, len_table: []const u16, id: usize) ?[]c
     return decoded_pack[start .. start + len];
 }
 
-pub fn render(kind: Kind, image_index: usize, buf: []u8) []u8 {
-    if (!parsePackIfNeeded()) return "";
+fn readFileHrefIds(file: FileInfo, out: []u16) bool {
+    if (out.len != @as(usize, file.href_count)) return false;
+    var i: usize = 0;
+    while (i < out.len) : (i += 1) {
+        out[i] = readU16At(@as(usize, file.href_off) + i * 2) orelse return false;
+    }
+    return true;
+}
 
-    const file_index = switch (kind) {
-        .modes => image_index,
-        .scales => pack_data.MODE_COUNT + image_index,
+fn readFileStyleIds(file: FileInfo, out: []u16) bool {
+    if (out.len != @as(usize, file.style_count)) return false;
+    var i: usize = 0;
+    while (i < out.len) : (i += 1) {
+        out[i] = readU16At(@as(usize, file.style_off) + i * 2) orelse return false;
+    }
+    return true;
+}
+
+fn readFileDRefs(file: FileInfo, out: []DRef) bool {
+    if (out.len != @as(usize, file.d_count)) return false;
+    var i: usize = 0;
+    while (i < out.len) : (i += 1) {
+        const base = @as(usize, file.d_off) + i * 4;
+        const template_id = readU16At(base) orelse return false;
+        const offset_id = readU16At(base + 2) orelse return false;
+        out[i] = .{ .template_id = template_id, .offset_id = offset_id };
+    }
+    return true;
+}
+
+fn scaleFamilyIndex(family: majmin_scene.Family) ?usize {
+    return switch (family) {
+        .dntri => 0,
+        .hex => 1,
+        .rhomb => 2,
+        .uptri => 3,
+        .legacy => null,
     };
+}
+
+fn scaleRotationForTransposition(transposition: i8) i8 {
+    const t: i32 = transposition;
+    return @as(i8, @intCast(@mod(7 * t, 12)));
+}
+
+fn appendUniqueU16(value: u16, unique: []u16, unique_len: *usize) ?usize {
+    var i: usize = 0;
+    while (i < unique_len.*) : (i += 1) {
+        if (unique[i] == value) return i;
+    }
+    if (unique_len.* >= unique.len) return null;
+    unique[unique_len.*] = value;
+    unique_len.* += 1;
+    return unique_len.* - 1;
+}
+
+fn dRefEqual(a: DRef, b: DRef) bool {
+    return a.template_id == b.template_id and a.offset_id == b.offset_id;
+}
+
+fn appendUniqueDRef(value: DRef, unique: []DRef, unique_len: *usize) ?usize {
+    var i: usize = 0;
+    while (i < unique_len.*) : (i += 1) {
+        if (dRefEqual(unique[i], value)) return i;
+    }
+    if (unique_len.* >= unique.len) return null;
+    unique[unique_len.*] = value;
+    unique_len.* += 1;
+    return unique_len.* - 1;
+}
+
+fn initScaleModels() bool {
+    if (scales_models_ready) return true;
+    if (!parsePackIfNeeded()) return false;
+
+    const families = [_]majmin_scene.Family{ .dntri, .hex, .rhomb, .uptri };
+    const invalid_u16 = std.math.maxInt(u16);
+    const invalid_dref: DRef = .{ .template_id = invalid_u16, .offset_id = invalid_u16 };
+
+    for (families, 0..) |family, family_index| {
+        var base_href_ids: [SCALE_HREF_SLOT_COUNT]u16 = undefined;
+        var base_style_ids: [SCALE_STYLE_SLOT_COUNT]u16 = undefined;
+        var base_d_refs: [SCALE_D_SLOT_COUNT]DRef = undefined;
+
+        const base_scene: majmin_scene.Scene = .{
+            .kind = .scales,
+            .transposition = 0,
+            .family = family,
+            .rotation = 0,
+            .variant = null,
+        };
+        const base_image_index = majmin_scene.imageIndex(base_scene) orelse return false;
+        const base_file_index = pack_data.MODE_COUNT + base_image_index;
+        if (base_file_index >= files.len) return false;
+        const base_file = files[base_file_index];
+
+        if (!readFileHrefIds(base_file, &base_href_ids)) return false;
+        if (!readFileStyleIds(base_file, &base_style_ids)) return false;
+        if (!readFileDRefs(base_file, &base_d_refs)) return false;
+
+        var model: ScaleFamilyModel = undefined;
+        model.skeleton_id = base_file.skeleton_id;
+
+        var href_base_unique: [SCALE_HREF_BASE_UNIQUE_COUNT]u16 = undefined;
+        var href_base_unique_len: usize = 0;
+        for (base_href_ids, 0..) |id, slot_index| {
+            const base_index = appendUniqueU16(id, href_base_unique[0..], &href_base_unique_len) orelse return false;
+            model.href_slot_base[slot_index] = @as(u8, @intCast(base_index));
+        }
+        if (href_base_unique_len != SCALE_HREF_BASE_UNIQUE_COUNT) return false;
+
+        var style_base_unique: [SCALE_STYLE_BASE_UNIQUE_COUNT]u16 = undefined;
+        var style_base_unique_len: usize = 0;
+        for (base_style_ids, 0..) |id, slot_index| {
+            const base_index = appendUniqueU16(id, style_base_unique[0..], &style_base_unique_len) orelse return false;
+            model.style_slot_base[slot_index] = @as(u8, @intCast(base_index));
+        }
+        if (style_base_unique_len != SCALE_STYLE_BASE_UNIQUE_COUNT) return false;
+
+        var d_base_unique: [SCALE_D_BASE_UNIQUE_COUNT]DRef = undefined;
+        var d_base_unique_len: usize = 0;
+        for (base_d_refs, 0..) |d_ref, slot_index| {
+            const base_index = appendUniqueDRef(d_ref, d_base_unique[0..], &d_base_unique_len) orelse return false;
+            model.d_slot_base[slot_index] = @as(u16, @intCast(base_index));
+        }
+        if (d_base_unique_len != SCALE_D_BASE_UNIQUE_COUNT) return false;
+
+        var transposition: usize = 0;
+        while (transposition < SCALE_TRANSPOSITION_COUNT) : (transposition += 1) {
+            var href_row: [SCALE_HREF_BASE_UNIQUE_COUNT]u16 = [_]u16{invalid_u16} ** SCALE_HREF_BASE_UNIQUE_COUNT;
+            var style_row: [SCALE_STYLE_BASE_UNIQUE_COUNT]u16 = [_]u16{invalid_u16} ** SCALE_STYLE_BASE_UNIQUE_COUNT;
+            var d_row: [SCALE_D_BASE_UNIQUE_COUNT]DRef = [_]DRef{invalid_dref} ** SCALE_D_BASE_UNIQUE_COUNT;
+
+            const t: i8 = @as(i8, @intCast(transposition));
+            const scene: majmin_scene.Scene = .{
+                .kind = .scales,
+                .transposition = t,
+                .family = family,
+                .rotation = scaleRotationForTransposition(t),
+                .variant = null,
+            };
+            const image_index = majmin_scene.imageIndex(scene) orelse return false;
+            const file_index = pack_data.MODE_COUNT + image_index;
+            if (file_index >= files.len) return false;
+            const file = files[file_index];
+
+            var href_ids: [SCALE_HREF_SLOT_COUNT]u16 = undefined;
+            var style_ids: [SCALE_STYLE_SLOT_COUNT]u16 = undefined;
+            var d_refs: [SCALE_D_SLOT_COUNT]DRef = undefined;
+            if (!readFileHrefIds(file, &href_ids)) return false;
+            if (!readFileStyleIds(file, &style_ids)) return false;
+            if (!readFileDRefs(file, &d_refs)) return false;
+
+            for (href_ids, 0..) |id, slot_index| {
+                const base_index: usize = model.href_slot_base[slot_index];
+                if (href_row[base_index] == invalid_u16) {
+                    href_row[base_index] = id;
+                } else if (href_row[base_index] != id) {
+                    return false;
+                }
+            }
+            for (style_ids, 0..) |id, slot_index| {
+                const base_index: usize = model.style_slot_base[slot_index];
+                if (style_row[base_index] == invalid_u16) {
+                    style_row[base_index] = id;
+                } else if (style_row[base_index] != id) {
+                    return false;
+                }
+            }
+            for (d_refs, 0..) |d_ref, slot_index| {
+                const base_index: usize = model.d_slot_base[slot_index];
+                if (dRefEqual(d_row[base_index], invalid_dref)) {
+                    d_row[base_index] = d_ref;
+                } else if (!dRefEqual(d_row[base_index], d_ref)) {
+                    return false;
+                }
+            }
+
+            for (href_row) |value| {
+                if (value == invalid_u16) return false;
+            }
+            for (style_row) |value| {
+                if (value == invalid_u16) return false;
+            }
+            for (d_row) |value| {
+                if (dRefEqual(value, invalid_dref)) return false;
+            }
+
+            model.href_map[transposition] = href_row;
+            model.style_map[transposition] = style_row;
+            model.d_map[transposition] = d_row;
+        }
+
+        scale_family_models[family_index] = model;
+    }
+
+    scales_models_ready = true;
+    return true;
+}
+
+fn renderFileByIndex(file_index: usize, buf: []u8) []u8 {
     if (file_index >= files.len) return "";
 
     const f = files[file_index];
@@ -372,4 +594,73 @@ pub fn render(kind: Kind, image_index: usize, buf: []u8) []u8 {
 
     if (href_i != f.href_count or style_i != f.style_count or d_i != f.d_count) return "";
     return buf[0..stream.pos];
+}
+
+fn renderScales(image_index: usize, buf: []u8) []u8 {
+    if (image_index >= pack_data.SCALE_COUNT) return "";
+    if (image_index < 2) return renderFileByIndex(pack_data.MODE_COUNT + image_index, buf);
+    if (!initScaleModels()) return "";
+
+    const scene = majmin_scene.sceneForIndex(.scales, image_index) orelse return "";
+    const family_index = scaleFamilyIndex(scene.family) orelse return "";
+    if (scene.transposition < 0 or scene.transposition > 11) return "";
+    const transposition_index: usize = @intCast(scene.transposition);
+
+    const model = scale_family_models[family_index];
+    if (model.skeleton_id >= skeleton_off.len) return "";
+
+    const skeleton_start = @as(usize, skeleton_off[model.skeleton_id]);
+    const skeleton_size = @as(usize, skeleton_len[model.skeleton_id]);
+    if (skeleton_start + skeleton_size > decoded_pack.len) return "";
+    const skeleton = decoded_pack[skeleton_start .. skeleton_start + skeleton_size];
+
+    var href_i: usize = 0;
+    var style_i: usize = 0;
+    var d_i: usize = 0;
+
+    var stream = std.io.fixedBufferStream(buf);
+    const w = stream.writer();
+
+    for (skeleton) |ch| {
+        switch (ch) {
+            MARKER_HREF => {
+                if (href_i >= SCALE_HREF_SLOT_COUNT) return "";
+                const base_index: usize = model.href_slot_base[href_i];
+                if (base_index >= SCALE_HREF_BASE_UNIQUE_COUNT) return "";
+                const id = model.href_map[transposition_index][base_index];
+                const text = getStringById(href_off[0..], href_len[0..], @as(usize, id)) orelse return "";
+                w.writeAll(text) catch return "";
+                href_i += 1;
+            },
+            MARKER_STYLE => {
+                if (style_i >= SCALE_STYLE_SLOT_COUNT) return "";
+                const base_index: usize = model.style_slot_base[style_i];
+                if (base_index >= SCALE_STYLE_BASE_UNIQUE_COUNT) return "";
+                const id = model.style_map[transposition_index][base_index];
+                const text = getStringById(style_off[0..], style_len[0..], @as(usize, id)) orelse return "";
+                w.writeAll(text) catch return "";
+                style_i += 1;
+            },
+            MARKER_D => {
+                if (d_i >= SCALE_D_SLOT_COUNT) return "";
+                const base_index: usize = model.d_slot_base[d_i];
+                if (base_index >= SCALE_D_BASE_UNIQUE_COUNT) return "";
+                const d_ref = model.d_map[transposition_index][base_index];
+                renderTemplatePath(w, @as(usize, d_ref.template_id), @as(usize, d_ref.offset_id)) catch return "";
+                d_i += 1;
+            },
+            else => w.writeByte(ch) catch return "",
+        }
+    }
+
+    if (href_i != SCALE_HREF_SLOT_COUNT or style_i != SCALE_STYLE_SLOT_COUNT or d_i != SCALE_D_SLOT_COUNT) return "";
+    return buf[0..stream.pos];
+}
+
+pub fn render(kind: Kind, image_index: usize, buf: []u8) []u8 {
+    if (!parsePackIfNeeded()) return "";
+    return switch (kind) {
+        .modes => renderFileByIndex(image_index, buf),
+        .scales => renderScales(image_index, buf),
+    };
 }

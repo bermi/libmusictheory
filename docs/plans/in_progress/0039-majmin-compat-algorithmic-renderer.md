@@ -52,6 +52,10 @@ Replace packed `majmin` compatibility reconstruction (`src/generated/harmonious_
 
 - Cut over `majmin/scales` first with strict parity verification.
 - Preserve `modes` on compatibility payload until scales are fully stable.
+- Progress:
+  - `majmin/scales` regular scenes are now rendered via a family/transposition model in `src/svg/majmin_compat.zig` (slot-base arrays + transposition remap tables), rather than direct per-file dispatch.
+  - legacy overview files (`scales,-1,,0,1|2`) remain routed through compatibility payload while regular family scenes are composed algorithmically from parsed primitives.
+  - strict compatibility remains green (`0` mismatches) across sampled and full Playwright validation.
 
 ### Slice C: `modes,*` Exact Parity Cutover
 
