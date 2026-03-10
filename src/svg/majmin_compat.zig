@@ -51,6 +51,17 @@ const SCALE_HREF_BASE_UNIQUE_COUNT: usize = 44;
 const SCALE_STYLE_BASE_UNIQUE_COUNT: usize = 4;
 const SCALE_D_BASE_UNIQUE_COUNT: usize = 248;
 
+const MODE_GROUP_COUNT: usize = 28;
+const MODE_TRANS_COUNT: usize = 13;
+const MODE_MAX_HREF_SLOT_COUNT: usize = 151;
+const MODE_MAX_STYLE_SLOT_COUNT: usize = 374;
+const MODE_MAX_D_SLOT_COUNT: usize = 374;
+const MODE_MAX_HREF_BASE_UNIQUE_COUNT: usize = 151;
+const MODE_MAX_STYLE_BASE_UNIQUE_COUNT: usize = 374;
+const MODE_MAX_D_BASE_UNIQUE_COUNT: usize = 374;
+
+const MODE_TRANS_VALUES = [_]i8{ -1, 0, 1, 10, 11, 2, 3, 4, 5, 6, 7, 8, 9 };
+
 const ScaleFamilyModel = struct {
     skeleton_id: u32,
     href_slot_base: [SCALE_HREF_SLOT_COUNT]u8,
@@ -59,6 +70,24 @@ const ScaleFamilyModel = struct {
     href_map: [SCALE_TRANSPOSITION_COUNT][SCALE_HREF_BASE_UNIQUE_COUNT]u16,
     style_map: [SCALE_TRANSPOSITION_COUNT][SCALE_STYLE_BASE_UNIQUE_COUNT]u16,
     d_map: [SCALE_TRANSPOSITION_COUNT][SCALE_D_BASE_UNIQUE_COUNT]DRef,
+};
+
+const ModeGroupModel = struct {
+    family: majmin_scene.Family,
+    rotation: i8,
+    skeleton_id: u32,
+    href_slot_count: u16,
+    style_slot_count: u16,
+    d_slot_count: u16,
+    href_base_count: u16,
+    style_base_count: u16,
+    d_base_count: u16,
+    href_slot_base: [MODE_MAX_HREF_SLOT_COUNT]u16,
+    style_slot_base: [MODE_MAX_STYLE_SLOT_COUNT]u16,
+    d_slot_base: [MODE_MAX_D_SLOT_COUNT]u16,
+    href_map: [MODE_TRANS_COUNT][MODE_MAX_HREF_BASE_UNIQUE_COUNT]u16,
+    style_map: [MODE_TRANS_COUNT][MODE_MAX_STYLE_BASE_UNIQUE_COUNT]u16,
+    d_map: [MODE_TRANS_COUNT][MODE_MAX_D_BASE_UNIQUE_COUNT]DRef,
 };
 
 var decoded_ready: bool = false;
@@ -78,6 +107,8 @@ var files: [pack_data.FILE_COUNT]FileInfo = undefined;
 
 var scales_models_ready: bool = false;
 var scale_family_models: [SCALE_FAMILY_COUNT]ScaleFamilyModel = undefined;
+var modes_models_ready: bool = false;
+var mode_group_models: [MODE_GROUP_COUNT]ModeGroupModel = undefined;
 
 fn decodePackIfNeeded() bool {
     if (decoded_ready) return true;
@@ -546,6 +577,196 @@ fn initScaleModels() bool {
     return true;
 }
 
+const ModeGroupKey = struct {
+    family: majmin_scene.Family,
+    rotation: i8,
+};
+
+fn modeTranspositionIndex(transposition: i8) ?usize {
+    for (MODE_TRANS_VALUES, 0..) |candidate, idx| {
+        if (candidate == transposition) return idx;
+    }
+    return null;
+}
+
+fn appendModeGroupIfMissing(groups: *[MODE_GROUP_COUNT]ModeGroupKey, group_len: *usize, family: majmin_scene.Family, rotation: i8) bool {
+    var i: usize = 0;
+    while (i < group_len.*) : (i += 1) {
+        const existing = groups[i];
+        if (existing.family == family and existing.rotation == rotation) return true;
+    }
+    if (group_len.* >= groups.len) return false;
+    groups[group_len.*] = .{ .family = family, .rotation = rotation };
+    group_len.* += 1;
+    return true;
+}
+
+fn modeGroupIndex(family: majmin_scene.Family, rotation: i8) ?usize {
+    var i: usize = 0;
+    while (i < mode_group_models.len) : (i += 1) {
+        const model = mode_group_models[i];
+        if (model.family == family and model.rotation == rotation) return i;
+    }
+    return null;
+}
+
+fn initModeModels() bool {
+    if (modes_models_ready) return true;
+    if (!parsePackIfNeeded()) return false;
+
+    const invalid_u16 = std.math.maxInt(u16);
+    const invalid_dref: DRef = .{ .template_id = invalid_u16, .offset_id = invalid_u16 };
+
+    var groups: [MODE_GROUP_COUNT]ModeGroupKey = undefined;
+    var group_len: usize = 0;
+
+    var image_index: usize = 2;
+    while (image_index < pack_data.MODE_COUNT) : (image_index += 1) {
+        const scene = majmin_scene.sceneForIndex(.modes, image_index) orelse return false;
+        if (scene.family == .legacy) continue;
+        if (!appendModeGroupIfMissing(&groups, &group_len, scene.family, scene.rotation)) return false;
+    }
+    if (group_len != MODE_GROUP_COUNT) return false;
+
+    for (groups, 0..) |group, group_index| {
+        var model: ModeGroupModel = undefined;
+        model.family = group.family;
+        model.rotation = group.rotation;
+
+        const base_scene: majmin_scene.Scene = .{
+            .kind = .modes,
+            .transposition = -1,
+            .family = group.family,
+            .rotation = group.rotation,
+            .variant = null,
+        };
+        const base_image_index = majmin_scene.imageIndex(base_scene) orelse return false;
+        if (base_image_index >= pack_data.MODE_COUNT) return false;
+        const base_file = files[base_image_index];
+
+        const href_slot_count: usize = @as(usize, base_file.href_count);
+        const style_slot_count: usize = @as(usize, base_file.style_count);
+        const d_slot_count: usize = @as(usize, base_file.d_count);
+        if (href_slot_count > MODE_MAX_HREF_SLOT_COUNT) return false;
+        if (style_slot_count > MODE_MAX_STYLE_SLOT_COUNT) return false;
+        if (d_slot_count > MODE_MAX_D_SLOT_COUNT) return false;
+
+        model.skeleton_id = base_file.skeleton_id;
+        model.href_slot_count = base_file.href_count;
+        model.style_slot_count = base_file.style_count;
+        model.d_slot_count = base_file.d_count;
+
+        var base_href_ids: [MODE_MAX_HREF_SLOT_COUNT]u16 = undefined;
+        var base_style_ids: [MODE_MAX_STYLE_SLOT_COUNT]u16 = undefined;
+        var base_d_refs: [MODE_MAX_D_SLOT_COUNT]DRef = undefined;
+        if (!readFileHrefIds(base_file, base_href_ids[0..href_slot_count])) return false;
+        if (!readFileStyleIds(base_file, base_style_ids[0..style_slot_count])) return false;
+        if (!readFileDRefs(base_file, base_d_refs[0..d_slot_count])) return false;
+
+        var href_base_unique: [MODE_MAX_HREF_BASE_UNIQUE_COUNT]u16 = undefined;
+        var href_base_unique_len: usize = 0;
+        for (base_href_ids[0..href_slot_count], 0..) |id, slot_index| {
+            const base_index = appendUniqueU16(id, href_base_unique[0..], &href_base_unique_len) orelse return false;
+            model.href_slot_base[slot_index] = @as(u16, @intCast(base_index));
+        }
+        if (href_base_unique_len > MODE_MAX_HREF_BASE_UNIQUE_COUNT) return false;
+        model.href_base_count = @as(u16, @intCast(href_base_unique_len));
+
+        var style_base_unique: [MODE_MAX_STYLE_BASE_UNIQUE_COUNT]u16 = undefined;
+        var style_base_unique_len: usize = 0;
+        for (base_style_ids[0..style_slot_count], 0..) |id, slot_index| {
+            const base_index = appendUniqueU16(id, style_base_unique[0..], &style_base_unique_len) orelse return false;
+            model.style_slot_base[slot_index] = @as(u16, @intCast(base_index));
+        }
+        if (style_base_unique_len > MODE_MAX_STYLE_BASE_UNIQUE_COUNT) return false;
+        model.style_base_count = @as(u16, @intCast(style_base_unique_len));
+
+        var d_base_unique: [MODE_MAX_D_BASE_UNIQUE_COUNT]DRef = undefined;
+        var d_base_unique_len: usize = 0;
+        for (base_d_refs[0..d_slot_count], 0..) |d_ref, slot_index| {
+            const base_index = appendUniqueDRef(d_ref, d_base_unique[0..], &d_base_unique_len) orelse return false;
+            model.d_slot_base[slot_index] = @as(u16, @intCast(base_index));
+        }
+        if (d_base_unique_len > MODE_MAX_D_BASE_UNIQUE_COUNT) return false;
+        model.d_base_count = @as(u16, @intCast(d_base_unique_len));
+
+        for (MODE_TRANS_VALUES, 0..) |transposition, transposition_index| {
+            var href_row: [MODE_MAX_HREF_BASE_UNIQUE_COUNT]u16 = [_]u16{invalid_u16} ** MODE_MAX_HREF_BASE_UNIQUE_COUNT;
+            var style_row: [MODE_MAX_STYLE_BASE_UNIQUE_COUNT]u16 = [_]u16{invalid_u16} ** MODE_MAX_STYLE_BASE_UNIQUE_COUNT;
+            var d_row: [MODE_MAX_D_BASE_UNIQUE_COUNT]DRef = [_]DRef{invalid_dref} ** MODE_MAX_D_BASE_UNIQUE_COUNT;
+
+            const scene: majmin_scene.Scene = .{
+                .kind = .modes,
+                .transposition = transposition,
+                .family = group.family,
+                .rotation = group.rotation,
+                .variant = null,
+            };
+            const image_idx = majmin_scene.imageIndex(scene) orelse return false;
+            if (image_idx >= pack_data.MODE_COUNT) return false;
+            const file = files[image_idx];
+
+            if (file.href_count != base_file.href_count) return false;
+            if (file.style_count != base_file.style_count) return false;
+            if (file.d_count != base_file.d_count) return false;
+
+            var href_ids: [MODE_MAX_HREF_SLOT_COUNT]u16 = undefined;
+            var style_ids: [MODE_MAX_STYLE_SLOT_COUNT]u16 = undefined;
+            var d_refs: [MODE_MAX_D_SLOT_COUNT]DRef = undefined;
+            if (!readFileHrefIds(file, href_ids[0..href_slot_count])) return false;
+            if (!readFileStyleIds(file, style_ids[0..style_slot_count])) return false;
+            if (!readFileDRefs(file, d_refs[0..d_slot_count])) return false;
+
+            for (href_ids[0..href_slot_count], 0..) |id, slot_index| {
+                const base_index: usize = model.href_slot_base[slot_index];
+                if (href_row[base_index] == invalid_u16) {
+                    href_row[base_index] = id;
+                } else if (href_row[base_index] != id) {
+                    return false;
+                }
+            }
+            for (style_ids[0..style_slot_count], 0..) |id, slot_index| {
+                const base_index: usize = model.style_slot_base[slot_index];
+                if (style_row[base_index] == invalid_u16) {
+                    style_row[base_index] = id;
+                } else if (style_row[base_index] != id) {
+                    return false;
+                }
+            }
+            for (d_refs[0..d_slot_count], 0..) |d_ref, slot_index| {
+                const base_index: usize = model.d_slot_base[slot_index];
+                if (dRefEqual(d_row[base_index], invalid_dref)) {
+                    d_row[base_index] = d_ref;
+                } else if (!dRefEqual(d_row[base_index], d_ref)) {
+                    return false;
+                }
+            }
+
+            var i: usize = 0;
+            while (i < href_base_unique_len) : (i += 1) {
+                if (href_row[i] == invalid_u16) return false;
+            }
+            i = 0;
+            while (i < style_base_unique_len) : (i += 1) {
+                if (style_row[i] == invalid_u16) return false;
+            }
+            i = 0;
+            while (i < d_base_unique_len) : (i += 1) {
+                if (dRefEqual(d_row[i], invalid_dref)) return false;
+            }
+
+            model.href_map[transposition_index] = href_row;
+            model.style_map[transposition_index] = style_row;
+            model.d_map[transposition_index] = d_row;
+        }
+
+        mode_group_models[group_index] = model;
+    }
+
+    modes_models_ready = true;
+    return true;
+}
+
 fn renderFileByIndex(file_index: usize, buf: []u8) []u8 {
     if (file_index >= files.len) return "";
 
@@ -593,6 +814,72 @@ fn renderFileByIndex(file_index: usize, buf: []u8) []u8 {
     }
 
     if (href_i != f.href_count or style_i != f.style_count or d_i != f.d_count) return "";
+    return buf[0..stream.pos];
+}
+
+fn renderModes(image_index: usize, buf: []u8) []u8 {
+    if (image_index >= pack_data.MODE_COUNT) return "";
+    if (image_index < 2) return renderFileByIndex(image_index, buf);
+    if (!initModeModels()) return "";
+
+    const scene = majmin_scene.sceneForIndex(.modes, image_index) orelse return "";
+    const group_index = modeGroupIndex(scene.family, scene.rotation) orelse return "";
+    const transposition_index = modeTranspositionIndex(scene.transposition) orelse return "";
+    const model = mode_group_models[group_index];
+
+    if (model.skeleton_id >= skeleton_off.len) return "";
+    const skeleton_start = @as(usize, skeleton_off[model.skeleton_id]);
+    const skeleton_size = @as(usize, skeleton_len[model.skeleton_id]);
+    if (skeleton_start + skeleton_size > decoded_pack.len) return "";
+    const skeleton = decoded_pack[skeleton_start .. skeleton_start + skeleton_size];
+
+    const href_slot_count: usize = model.href_slot_count;
+    const style_slot_count: usize = model.style_slot_count;
+    const d_slot_count: usize = model.d_slot_count;
+    const href_base_count: usize = model.href_base_count;
+    const style_base_count: usize = model.style_base_count;
+    const d_base_count: usize = model.d_base_count;
+
+    var href_i: usize = 0;
+    var style_i: usize = 0;
+    var d_i: usize = 0;
+
+    var stream = std.io.fixedBufferStream(buf);
+    const w = stream.writer();
+
+    for (skeleton) |ch| {
+        switch (ch) {
+            MARKER_HREF => {
+                if (href_i >= href_slot_count) return "";
+                const base_index: usize = model.href_slot_base[href_i];
+                if (base_index >= href_base_count) return "";
+                const id = model.href_map[transposition_index][base_index];
+                const text = getStringById(href_off[0..], href_len[0..], @as(usize, id)) orelse return "";
+                w.writeAll(text) catch return "";
+                href_i += 1;
+            },
+            MARKER_STYLE => {
+                if (style_i >= style_slot_count) return "";
+                const base_index: usize = model.style_slot_base[style_i];
+                if (base_index >= style_base_count) return "";
+                const id = model.style_map[transposition_index][base_index];
+                const text = getStringById(style_off[0..], style_len[0..], @as(usize, id)) orelse return "";
+                w.writeAll(text) catch return "";
+                style_i += 1;
+            },
+            MARKER_D => {
+                if (d_i >= d_slot_count) return "";
+                const base_index: usize = model.d_slot_base[d_i];
+                if (base_index >= d_base_count) return "";
+                const d_ref = model.d_map[transposition_index][base_index];
+                renderTemplatePath(w, @as(usize, d_ref.template_id), @as(usize, d_ref.offset_id)) catch return "";
+                d_i += 1;
+            },
+            else => w.writeByte(ch) catch return "",
+        }
+    }
+
+    if (href_i != href_slot_count or style_i != style_slot_count or d_i != d_slot_count) return "";
     return buf[0..stream.pos];
 }
 
@@ -660,7 +947,7 @@ fn renderScales(image_index: usize, buf: []u8) []u8 {
 pub fn render(kind: Kind, image_index: usize, buf: []u8) []u8 {
     if (!parsePackIfNeeded()) return "";
     return switch (kind) {
-        .modes => renderFileByIndex(image_index, buf),
+        .modes => renderModes(image_index, buf),
         .scales => renderScales(image_index, buf),
     };
 }

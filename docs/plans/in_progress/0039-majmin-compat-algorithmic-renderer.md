@@ -61,6 +61,9 @@ Replace packed `majmin` compatibility reconstruction (`src/generated/harmonious_
 
 - Cut over `majmin/modes` using the same scene rules.
 - Remove packed majmin reconstruction dependency after full parity.
+- Progress:
+  - `majmin/modes` regular scenes are now rendered through grouped scene decomposition (`family + rotation` groups across canonical transpositions) in `src/svg/majmin_compat.zig`.
+  - legacy overview files (`modes,-1,,-3,1|2`) remain routed through compatibility payload while regular groups are composed algorithmically from parsed primitives.
 
 ## Exit Criteria
 

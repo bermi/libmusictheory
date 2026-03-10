@@ -568,6 +568,8 @@ if [ -f "$ROOT_DIR/src/svg/majmin_scene.zig" ]; then
     check_cmd "cd '$ROOT_DIR' && rg -n \"svg_majmin_scene\\.imageName\\(\" src/harmonious_svg_compat.zig" "0039 majmin topology model guardrail (compat exposes algorithmic majmin image-name enumeration)"
     check_cmd "cd '$ROOT_DIR' && ! rg -n \"image_index >= info\\.names\\.len\\) return renderFallback|trimSvgSuffix\\(info\\.names\\[image_index\\]\\)\" src/harmonious_svg_compat.zig" "0039 majmin topology model guardrail (render path not dependent on manifest name arrays)"
     check_cmd "cd '$ROOT_DIR' && ! rg -n \"MAJMIN_MODES_NAMES|MAJMIN_SCALES_NAMES\" src/generated/harmonious_manifest.zig" "0039 majmin topology model guardrail (manifest majmin name tables removed from wasm path)"
+    check_cmd "cd '$ROOT_DIR' && rg -n \"renderModes\\(\" src/svg/majmin_compat.zig" "0039 majmin modes cutover guardrail (dedicated algorithmic modes renderer present)"
+    check_cmd "cd '$ROOT_DIR' && ! rg -n \"\\.modes\\s*=>\\s*renderFileByIndex\\(image_index,\\s*buf\\)\" src/svg/majmin_compat.zig" "0039 majmin modes cutover guardrail (no direct per-file modes replay dispatch)"
     check_cmd "cd '$ROOT_DIR' && rg -n \"renderScales\\(\" src/svg/majmin_compat.zig" "0039 majmin scales cutover guardrail (dedicated algorithmic scales renderer present)"
     check_cmd "cd '$ROOT_DIR' && ! rg -n \"\\.scales\\s*=>\\s*pack_data\\.MODE_COUNT\\s*\\+\\s*image_index\" src/svg/majmin_compat.zig" "0039 majmin scales cutover guardrail (no direct per-file scales replay dispatch)"
     if [ -f "$ROOT_DIR/src/tests/majmin_scene_test.zig" ]; then
