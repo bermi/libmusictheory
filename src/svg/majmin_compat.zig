@@ -1,6 +1,7 @@
 const std = @import("std");
 const builtin = @import("builtin");
 const pack_data = @import("../generated/harmonious_majmin_scene_pack_xz.zig");
+const mode_geometry_data = @import("../generated/harmonious_majmin_modes_geometry_refs.zig");
 const majmin_scene = @import("majmin_scene.zig");
 const majmin_scales_geometry = @import("majmin_scales_geometry.zig");
 
@@ -99,6 +100,9 @@ var legacy_payload_present: [LEGACY_KIND_COUNT][LEGACY_VARIANT_COUNT]bool = [_][
 };
 
 comptime {
+    if (mode_geometry_data.MODE_GROUP_COUNT != pack_data.MODE_GROUP_COUNT) {
+        @compileError("mode geometry group metadata mismatch between generated mode-geometry refs and scene pack");
+    }
     if (pack_data.SCALE_GEOMETRY_D_SLOT_COUNT != majmin_scales_geometry.SCALE_GEOMETRY_PATH_COUNT) {
         @compileError("scale geometry slot boundary mismatch between pack metadata and geometry module");
     }
@@ -652,10 +656,13 @@ fn renderModes(image_index: usize, buf: []u8) []u8 {
     const href_base_count: usize = model.href_base_count;
     const style_base_count: usize = model.style_base_count;
     const d_base_count: usize = model.d_base_count;
+    const geometry_slot_count: usize = mode_geometry_data.MODE_GEOMETRY_SLOT_COUNTS[group_index];
+    if (geometry_slot_count > mode_geometry_data.MODE_MAX_GEOMETRY_SLOT_COUNT) return "";
 
     var href_i: usize = 0;
     var style_i: usize = 0;
     var d_i: usize = 0;
+    var d_slot_i: usize = 0;
 
     var stream = std.io.fixedBufferStream(buf);
     const w = stream.writer();
@@ -681,19 +688,25 @@ fn renderModes(image_index: usize, buf: []u8) []u8 {
                 style_i += 1;
             },
             MARKER_D => {
-                if (d_i >= d_slot_count) return "";
-                const slot_index = d_i;
-                const base_index: usize = model.d_slot_base[slot_index];
-                if (base_index >= d_base_count) return "";
-                const d_ref = model.d_map[transposition_index][base_index];
-                renderTemplatePath(w, @as(usize, d_ref.template_id), @as(usize, d_ref.offset_id)) catch return "";
+                if (d_i >= geometry_slot_count + d_slot_count) return "";
+                if (d_i < geometry_slot_count) {
+                    const d_ref = mode_geometry_data.MODE_GEOMETRY_REFS[group_index][d_i];
+                    renderTemplatePath(w, @as(usize, d_ref.template_id), @as(usize, d_ref.offset_id)) catch return "";
+                } else {
+                    if (d_slot_i >= d_slot_count) return "";
+                    const base_index: usize = model.d_slot_base[d_slot_i];
+                    if (base_index >= d_base_count) return "";
+                    const d_ref = model.d_map[transposition_index][base_index];
+                    renderTemplatePath(w, @as(usize, d_ref.template_id), @as(usize, d_ref.offset_id)) catch return "";
+                    d_slot_i += 1;
+                }
                 d_i += 1;
             },
             else => w.writeByte(ch) catch return "",
         }
     }
 
-    if (href_i != href_slot_count or style_i != style_slot_count or d_i != d_slot_count) return "";
+    if (href_i != href_slot_count or style_i != style_slot_count or d_slot_i != d_slot_count or d_i != geometry_slot_count + d_slot_count) return "";
     return buf[0..stream.pos];
 }
 

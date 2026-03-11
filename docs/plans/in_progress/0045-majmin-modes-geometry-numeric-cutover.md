@@ -3,7 +3,7 @@
 > Dependencies: 0044
 > Follow-up: additional payload-prune slices as needed
 
-Status: Draft
+Status: In progress
 
 ## Objective
 

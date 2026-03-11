@@ -567,10 +567,21 @@ else
     unverified "0040 majmin scales geometry slot audit (tmp/harmoniousapp.net/majmin or script missing)"
 fi
 
+if [ -d "$ROOT_DIR/tmp/harmoniousapp.net/majmin" ] && [ -f "$ROOT_DIR/scripts/audit_majmin_modes_geometry_slots.py" ]; then
+    if command -v python3 >/dev/null 2>&1; then
+        check_cmd "cd '$ROOT_DIR' && python3 scripts/audit_majmin_modes_geometry_slots.py --root tmp/harmoniousapp.net >/dev/null" "0045 majmin modes geometry slot audit (grouped invariant prefix geometry slots)"
+    else
+        unverified "0045 majmin modes geometry slot audit (python3 missing)"
+    fi
+else
+    unverified "0045 majmin modes geometry slot audit (tmp/harmoniousapp.net/majmin or script missing)"
+fi
+
 if [ -f "$ROOT_DIR/src/svg/majmin_scene.zig" ]; then
     if [ -f "$ROOT_DIR/src/generated/harmonious_majmin_scene_pack_xz.zig" ]; then
         check_cmd "cd '$ROOT_DIR' && [ \$(wc -c < src/generated/harmonious_majmin_scene_pack_xz.zig) -le 1100000 ]" "0039 majmin payload reduction guardrail (scene-pack source payload <= 1.1MB while algorithmic cutover progresses)"
         check_cmd "cd '$ROOT_DIR' && awk '/pub const PACK_RAW_LEN:/ {gsub(\";\", \"\", \$6); if (\$6 + 0 < 6503908) ok=1} END {exit(ok ? 0 : 1)}' src/generated/harmonious_majmin_scene_pack_xz.zig" "0044 majmin scales geometry prune guardrail (raw scene-pack payload reduced below pre-0044 baseline)"
+        check_cmd "cd '$ROOT_DIR' && awk '/pub const PACK_RAW_LEN:/ {gsub(\";\", \"\", \$6); if (\$6 + 0 < 6488900) ok=1} END {exit(ok ? 0 : 1)}' src/generated/harmonious_majmin_scene_pack_xz.zig" "0045 majmin modes geometry prune guardrail (raw scene-pack payload reduced below pre-0045 baseline)"
     else
         unverified "0039 majmin payload reduction guardrail (src/generated/harmonious_majmin_scene_pack_xz.zig missing)"
     fi
@@ -601,6 +612,9 @@ if [ -f "$ROOT_DIR/src/svg/majmin_scene.zig" ]; then
         check_cmd "cd '$ROOT_DIR' && rg -n \"pub const SCALE_NON_GEOMETRY_D_SLOT_COUNT:\\s*usize\\s*=\\s*248\" src/generated/harmonious_majmin_scene_pack_xz.zig" "0044 majmin scales geometry prune guardrail (generated pack exposes non-geometry d-slot count)"
         check_cmd "cd '$ROOT_DIR' && rg -n \"\\[pack_data\\.SCALE_NON_GEOMETRY_D_SLOT_COUNT\\]u16\" src/svg/majmin_compat.zig" "0044 majmin scales geometry prune guardrail (scale model stores only non-geometry d-slot map)"
         check_cmd "cd '$ROOT_DIR' && ! rg -n \"model\\.d_slot_base\\[d_i\\]\" src/svg/majmin_compat.zig" "0044 majmin scales geometry prune guardrail (render path avoids geometry-indexed d-slot replay lookup)"
+        check_cmd "cd '$ROOT_DIR' && rg -n \"harmonious_majmin_modes_geometry_refs\" src/svg/majmin_compat.zig src/generated/harmonious_majmin_modes_geometry_refs.zig" "0045 majmin modes geometry guardrail (dedicated modes geometry refs module wired)"
+        check_cmd "cd '$ROOT_DIR' && rg -n \"MODE_GEOMETRY_SLOT_COUNTS\" src/svg/majmin_compat.zig src/generated/harmonious_majmin_modes_geometry_refs.zig" "0045 majmin modes geometry guardrail (render path uses grouped geometry-slot counts)"
+        check_cmd "cd '$ROOT_DIR' && ! rg -n \"pub const MODE_MAX_D_SLOT_COUNT:\\s*usize\\s*=\\s*374\" src/generated/harmonious_majmin_scene_pack_xz.zig" "0045 majmin modes geometry prune guardrail (mode d-slot replay max reduced from pre-0045 baseline)"
     else
         unverified "0040 majmin scales geometry cutover guardrail (src/svg/majmin_scales_geometry.zig missing)"
     fi

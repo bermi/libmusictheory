@@ -25,6 +25,7 @@ SCALE = 10**17
 TAG_RE = re.compile(r"<(/?)([a-zA-Z]+)([^>]*)>")
 ATTR_RE = re.compile(r'([a-zA-Z_:][\w:.-]*)="([^"]*)"')
 NUM_RE = re.compile(r"[+-]?(?:\d+\.\d*|\.\d+|\d+)(?:[eE][+-]?\d+)?")
+LINEAR_PATH_RE = re.compile(r"^[MLHVZmlhvz0-9eE+.,\-\s]+$")
 
 MARKER_HREF = "\x1d"
 MARKER_STYLE = "\x1e"
@@ -90,6 +91,7 @@ class ParsedFile:
     href_ids: List[int]
     style_ids: List[int]
     d_refs: List[Tuple[int, int]]
+    geometry_slot_count: int
 
 
 @dataclass
@@ -97,6 +99,8 @@ class ModeGroupRecord:
     family: str
     rotation: int
     skeleton_id: int
+    geometry_slot_count: int
+    geometry_refs: List[Tuple[int, int]]
     href_slot_base: List[int]
     style_slot_base: List[int]
     d_slot_base: List[int]
@@ -298,6 +302,14 @@ def parse_file(svg_text: str) -> tuple[str, List[str], List[str], List[str]]:
     return "".join(out_parts), href_values, style_values, d_values
 
 
+def is_polygon_geometry_path(style: str, d_attr: str) -> bool:
+    if "stroke-width: 1.5" not in style:
+        return False
+    if "stroke-linejoin: bevel" not in style:
+        return False
+    return bool(LINEAR_PATH_RE.fullmatch(d_attr))
+
+
 def intern(intern_map: Dict, arr: List, value):
     existing = intern_map.get(value)
     if existing is not None:
@@ -334,6 +346,19 @@ def parse_regular_svg(
     href_ids = [intern(href_map, hrefs, h) for h in href_vals]
     style_ids = [intern(style_map, styles, s) for s in style_vals]
 
+    if len(style_vals) != len(d_vals):
+        raise ValueError(f"{path}: style/d slot mismatch ({len(style_vals)} vs {len(d_vals)})")
+
+    geometry_slot_count = 0
+    seen_non_geometry = False
+    for style, d_attr in zip(style_vals, d_vals):
+        if is_polygon_geometry_path(style, d_attr):
+            if seen_non_geometry:
+                raise ValueError(f"{path}: geometry slots must be a contiguous prefix")
+            geometry_slot_count += 1
+        else:
+            seen_non_geometry = True
+
     d_refs: List[Tuple[int, int]] = []
     for d_i, d in enumerate(d_vals):
         if kind == "scales" and d_i < SCALE_GEOMETRY_D_SLOT_COUNT:
@@ -348,6 +373,7 @@ def parse_regular_svg(
         href_ids=href_ids,
         style_ids=style_ids,
         d_refs=d_refs,
+        geometry_slot_count=geometry_slot_count,
     )
 
 
@@ -357,6 +383,13 @@ def build_mode_group(
     regular: Dict[tuple[str, int, str, int], ParsedFile],
 ) -> ModeGroupRecord:
     base = regular[("modes", -1, family, rotation)]
+    geometry_slot_count = base.geometry_slot_count
+    if geometry_slot_count <= 0:
+        raise ValueError(f"mode group {family}/{rotation}: zero geometry prefix slots")
+    if geometry_slot_count > len(base.d_refs):
+        raise ValueError(f"mode group {family}/{rotation}: invalid geometry slot count {geometry_slot_count}")
+    geometry_refs = base.d_refs[0:geometry_slot_count]
+    base_non_geometry_refs = base.d_refs[geometry_slot_count:]
 
     href_base: List[int] = []
     href_base_idx: Dict[int, int] = {}
@@ -383,7 +416,7 @@ def build_mode_group(
     d_base: List[Tuple[int, int]] = []
     d_base_idx: Dict[Tuple[int, int], int] = {}
     d_slot_base: List[int] = []
-    for value in base.d_refs:
+    for value in base_non_geometry_refs:
         idx = d_base_idx.get(value)
         if idx is None:
             idx = len(d_base)
@@ -401,8 +434,16 @@ def build_mode_group(
             raise ValueError(f"mode group {family}/{rotation}: href count mismatch at t={transposition}")
         if len(row.style_ids) != len(base.style_ids):
             raise ValueError(f"mode group {family}/{rotation}: style count mismatch at t={transposition}")
+        if row.geometry_slot_count != geometry_slot_count:
+            raise ValueError(
+                f"mode group {family}/{rotation}: geometry slot count mismatch at t={transposition}"
+                f" ({row.geometry_slot_count} vs {geometry_slot_count})"
+            )
         if len(row.d_refs) != len(base.d_refs):
             raise ValueError(f"mode group {family}/{rotation}: d count mismatch at t={transposition}")
+        if row.d_refs[0:geometry_slot_count] != geometry_refs:
+            raise ValueError(f"mode group {family}/{rotation}: geometry refs mismatch at t={transposition}")
+        row_non_geometry_refs = row.d_refs[geometry_slot_count:]
 
         href_row = [-1] * len(href_base)
         for slot_base, value in zip(href_slot_base, row.href_ids):
@@ -421,7 +462,7 @@ def build_mode_group(
                 raise ValueError(f"mode group {family}/{rotation}: inconsistent style mapping at t={transposition}")
 
         d_row = [(-1, -1)] * len(d_base)
-        for slot_base, value in zip(d_slot_base, row.d_refs):
+        for slot_base, value in zip(d_slot_base, row_non_geometry_refs):
             prev = d_row[slot_base]
             if prev == (-1, -1):
                 d_row[slot_base] = value
@@ -443,6 +484,8 @@ def build_mode_group(
         family=family,
         rotation=rotation,
         skeleton_id=base.skeleton_id,
+        geometry_slot_count=geometry_slot_count,
+        geometry_refs=geometry_refs,
         href_slot_base=href_slot_base,
         style_slot_base=style_slot_base,
         d_slot_base=d_slot_base,
@@ -569,7 +612,7 @@ def write_i128(buf: bytearray, value: int) -> None:
     buf.extend(int(value).to_bytes(16, byteorder="little", signed=True))
 
 
-def build_pack(majmin_dir: str) -> tuple[bytes, dict[str, int]]:
+def build_pack(majmin_dir: str) -> tuple[bytes, dict[str, int], List[ModeGroupRecord]]:
     skeleton_map: Dict[str, int] = {}
     style_map: Dict[str, int] = {}
     href_map: Dict[str, int] = {}
@@ -635,6 +678,7 @@ def build_pack(majmin_dir: str) -> tuple[bytes, dict[str, int]]:
     mode_max_href_base = max(len(group.href_map[0]) for group in mode_groups)
     mode_max_style_base = max(len(group.style_map[0]) for group in mode_groups)
     mode_max_d_base = max(len(group.d_map[0]) for group in mode_groups)
+    mode_max_geometry_slots = max(group.geometry_slot_count for group in mode_groups)
     scale_non_geometry_d_slots = max(len(group.d_slot_base) for group in scale_families)
     scale_max_d_base = max(len(group.d_map[0]) for group in scale_families)
 
@@ -736,10 +780,11 @@ def build_pack(majmin_dir: str) -> tuple[bytes, dict[str, int]]:
         "mode_max_href_base": mode_max_href_base,
         "mode_max_style_base": mode_max_style_base,
         "mode_max_d_base": mode_max_d_base,
+        "mode_max_geometry_slots": mode_max_geometry_slots,
         "scale_non_geometry_d_slots": scale_non_geometry_d_slots,
         "scale_max_d_base": scale_max_d_base,
     }
-    return bytes(pack), stats
+    return bytes(pack), stats, mode_groups
 
 
 def write_zig(out_path: str, xz_payload: bytes, stats: dict[str, int]) -> None:
@@ -785,20 +830,50 @@ def write_zig(out_path: str, xz_payload: bytes, stats: dict[str, int]) -> None:
         f.write("};\n")
 
 
+def write_modes_geometry_zig(out_path: str, mode_groups: List[ModeGroupRecord], stats: dict[str, int]) -> None:
+    with open(out_path, "w", encoding="utf-8") as f:
+        f.write("// Auto-generated by scripts/generate_harmonious_majmin_scene_pack.py\n")
+        f.write("// Source: tmp/harmoniousapp.net/majmin/modes,*.svg\n\n")
+        f.write(f"pub const MODE_GROUP_COUNT: usize = {len(mode_groups)};\n")
+        f.write(f"pub const MODE_MAX_GEOMETRY_SLOT_COUNT: usize = {stats['mode_max_geometry_slots']};\n\n")
+        f.write("pub const DRef = struct {\n")
+        f.write("    template_id: u16,\n")
+        f.write("    offset_id: u16,\n")
+        f.write("};\n\n")
+        f.write("pub const MODE_GEOMETRY_SLOT_COUNTS = [_]u16{\n")
+        for group in mode_groups:
+            f.write(f"    {group.geometry_slot_count},\n")
+        f.write("};\n\n")
+        f.write("pub const MODE_GEOMETRY_REFS = [_][MODE_MAX_GEOMETRY_SLOT_COUNT]DRef{\n")
+        for group in mode_groups:
+            f.write("    .{\n")
+            for tid, oid in group.geometry_refs:
+                f.write(f"        .{{ .template_id = {tid}, .offset_id = {oid} }},\n")
+            pad = stats["mode_max_geometry_slots"] - len(group.geometry_refs)
+            for _ in range(pad):
+                f.write("        .{ .template_id = 0, .offset_id = 0 },\n")
+            f.write("    },\n")
+        f.write("};\n")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--majmin-dir", default="tmp/harmoniousapp.net/majmin")
     parser.add_argument("--out-zig", default="src/generated/harmonious_majmin_scene_pack_xz.zig")
+    parser.add_argument("--out-mode-geometry-zig", default="src/generated/harmonious_majmin_modes_geometry_refs.zig")
     args = parser.parse_args()
 
-    raw, stats = build_pack(args.majmin_dir)
+    raw, stats, mode_groups = build_pack(args.majmin_dir)
     xz_payload = lzma.compress(raw, format=lzma.FORMAT_XZ, preset=9 | lzma.PRESET_EXTREME)
     os.makedirs(os.path.dirname(args.out_zig), exist_ok=True)
     write_zig(args.out_zig, xz_payload, stats)
+    os.makedirs(os.path.dirname(args.out_mode_geometry_zig), exist_ok=True)
+    write_modes_geometry_zig(args.out_mode_geometry_zig, mode_groups, stats)
 
     print(
         f"Wrote {args.out_zig} | raw={len(raw)} bytes | xz={len(xz_payload)} bytes"
     )
+    print(f"Wrote {args.out_mode_geometry_zig}")
     print(
         "counts:",
         f"skeletons={stats['skeleton_count']}",
