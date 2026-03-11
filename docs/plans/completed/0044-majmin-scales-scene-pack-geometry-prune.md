@@ -3,7 +3,7 @@
 > Dependencies: 0043
 > Blocks: 0045
 
-Status: In progress
+Status: Completed
 
 ## Objective
 
@@ -42,4 +42,17 @@ Remove scales-geometry replay payload from `harmonious_majmin_scene_pack_xz` gen
 
 ## Implementation History (Point-in-Time)
 
-_To be filled when completed._
+- 2026-03-11 — `828ea5f`
+  - Updated `scripts/generate_harmonious_majmin_scene_pack.py` to omit scales geometry-slot `d` replay intern/mapping (`0..75`) and emit only non-geometry scales `d` slot mapping/count metadata.
+  - Regenerated `src/generated/harmonious_majmin_scene_pack_xz.zig` with new scales metadata constants (`SCALE_GEOMETRY_D_SLOT_COUNT`, `SCALE_NON_GEOMETRY_D_SLOT_COUNT`) and reduced `SCALE_D_BASE_COUNT` (`248 -> 173`).
+  - Simplified scales decode/render path in `src/svg/majmin_compat.zig` so scales `d_slot_base` stores only non-geometry slots while geometry slots are always rendered by `majmin_scales_geometry`.
+  - Added `0044` verify guardrails in `verify.sh` for:
+    - reduced raw scene-pack baseline (`PACK_RAW_LEN < 6503908`),
+    - required scales geometry/non-geometry slot constants in generated pack,
+    - no geometry-indexed scales replay lookup in render path.
+  - Completion gates executed:
+    - `./verify.sh`
+    - `zig build verify`
+    - `zig build test`
+    - `node scripts/validate_harmonious_playwright.mjs --sample-per-kind 5`
+    - `node scripts/validate_harmonious_playwright.mjs`
