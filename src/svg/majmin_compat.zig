@@ -64,7 +64,7 @@ const ScaleFamilyModel = struct {
     d_base_count: u16,
     href_slot_base: [pack_data.SCALE_HREF_SLOT_COUNT]u16,
     style_slot_base: [pack_data.SCALE_STYLE_SLOT_COUNT]u16,
-    d_slot_base: [pack_data.SCALE_D_SLOT_COUNT]u16,
+    d_slot_base: [pack_data.SCALE_NON_GEOMETRY_D_SLOT_COUNT]u16,
     href_map: [pack_data.SCALE_TRANS_COUNT][pack_data.SCALE_HREF_BASE_COUNT]u16,
     style_map: [pack_data.SCALE_TRANS_COUNT][pack_data.SCALE_STYLE_BASE_COUNT]u16,
     d_map: [pack_data.SCALE_TRANS_COUNT][pack_data.SCALE_D_BASE_COUNT]DRef,
@@ -97,6 +97,12 @@ var legacy_payload_present: [LEGACY_KIND_COUNT][LEGACY_VARIANT_COUNT]bool = [_][
     [_]bool{ false, false },
     [_]bool{ false, false },
 };
+
+comptime {
+    if (pack_data.SCALE_GEOMETRY_D_SLOT_COUNT != majmin_scales_geometry.SCALE_GEOMETRY_PATH_COUNT) {
+        @compileError("scale geometry slot boundary mismatch between pack metadata and geometry module");
+    }
+}
 
 fn decodePackIfNeeded() bool {
     if (decoded_ready) return true;
@@ -410,7 +416,7 @@ fn parsePackIfNeeded() bool {
         }
 
         slot_i = 0;
-        while (slot_i < pack_data.SCALE_D_SLOT_COUNT) : (slot_i += 1) {
+        while (slot_i < pack_data.SCALE_NON_GEOMETRY_D_SLOT_COUNT) : (slot_i += 1) {
             const base_index = readU16At(cursor) orelse return false;
             cursor += 2;
             if (base_index >= d_base_count) return false;
@@ -676,7 +682,8 @@ fn renderModes(image_index: usize, buf: []u8) []u8 {
             },
             MARKER_D => {
                 if (d_i >= d_slot_count) return "";
-                const base_index: usize = model.d_slot_base[d_i];
+                const slot_index = d_i;
+                const base_index: usize = model.d_slot_base[slot_index];
                 if (base_index >= d_base_count) return "";
                 const d_ref = model.d_map[transposition_index][base_index];
                 renderTemplatePath(w, @as(usize, d_ref.template_id), @as(usize, d_ref.offset_id)) catch return "";
@@ -715,6 +722,7 @@ fn renderScales(image_index: usize, buf: []u8) []u8 {
     var href_i: usize = 0;
     var style_i: usize = 0;
     var d_i: usize = 0;
+    var d_slot_i: usize = 0;
 
     var stream = std.io.fixedBufferStream(buf);
     const w = stream.writer();
@@ -744,10 +752,12 @@ fn renderScales(image_index: usize, buf: []u8) []u8 {
                 if (d_i < majmin_scales_geometry.SCALE_GEOMETRY_PATH_COUNT) {
                     majmin_scales_geometry.writePathForSlot(w, d_i) catch return "";
                 } else {
-                    const base_index: usize = model.d_slot_base[d_i];
+                    if (d_slot_i >= pack_data.SCALE_NON_GEOMETRY_D_SLOT_COUNT) return "";
+                    const base_index: usize = model.d_slot_base[d_slot_i];
                     if (base_index >= d_base_count) return "";
                     const d_ref = model.d_map[transposition_index][base_index];
                     renderTemplatePath(w, @as(usize, d_ref.template_id), @as(usize, d_ref.offset_id)) catch return "";
+                    d_slot_i += 1;
                 }
                 d_i += 1;
             },
@@ -755,7 +765,7 @@ fn renderScales(image_index: usize, buf: []u8) []u8 {
         }
     }
 
-    if (href_i != pack_data.SCALE_HREF_SLOT_COUNT or style_i != pack_data.SCALE_STYLE_SLOT_COUNT or d_i != pack_data.SCALE_D_SLOT_COUNT) return "";
+    if (href_i != pack_data.SCALE_HREF_SLOT_COUNT or style_i != pack_data.SCALE_STYLE_SLOT_COUNT or d_i != pack_data.SCALE_D_SLOT_COUNT or d_slot_i != pack_data.SCALE_NON_GEOMETRY_D_SLOT_COUNT) return "";
     return buf[0..stream.pos];
 }
 

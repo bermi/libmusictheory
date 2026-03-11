@@ -570,6 +570,7 @@ fi
 if [ -f "$ROOT_DIR/src/svg/majmin_scene.zig" ]; then
     if [ -f "$ROOT_DIR/src/generated/harmonious_majmin_scene_pack_xz.zig" ]; then
         check_cmd "cd '$ROOT_DIR' && [ \$(wc -c < src/generated/harmonious_majmin_scene_pack_xz.zig) -le 1100000 ]" "0039 majmin payload reduction guardrail (scene-pack source payload <= 1.1MB while algorithmic cutover progresses)"
+        check_cmd "cd '$ROOT_DIR' && awk '/pub const PACK_RAW_LEN:/ {gsub(\";\", \"\", \$6); if (\$6 + 0 < 6503908) ok=1} END {exit(ok ? 0 : 1)}' src/generated/harmonious_majmin_scene_pack_xz.zig" "0044 majmin scales geometry prune guardrail (raw scene-pack payload reduced below pre-0044 baseline)"
     else
         unverified "0039 majmin payload reduction guardrail (src/generated/harmonious_majmin_scene_pack_xz.zig missing)"
     fi
@@ -596,6 +597,10 @@ if [ -f "$ROOT_DIR/src/svg/majmin_scene.zig" ]; then
         check_cmd "cd '$ROOT_DIR' && rg -n \"pub const SCALE_GEOMETRY_STEP_X:\\s*f64\\s*=\\s*27\\.2\" src/svg/majmin_scales_geometry.zig" "0043 majmin scales analytic guardrail (x-step constant present)"
         check_cmd "cd '$ROOT_DIR' && rg -n \"pub const SCALE_GEOMETRY_STEP_Y:\\s*f64\\s*=\\s*47\\.11178196587346\" src/svg/majmin_scales_geometry.zig" "0043 majmin scales analytic guardrail (y-step constant present)"
         check_cmd "cd '$ROOT_DIR' && rg -n \"fn xCoordFor\\(|fn yCoordFor\\(\" src/svg/majmin_scales_geometry.zig" "0043 majmin scales analytic guardrail (analytic coordinate functions present)"
+        check_cmd "cd '$ROOT_DIR' && rg -n \"pub const SCALE_GEOMETRY_D_SLOT_COUNT:\\s*usize\\s*=\\s*76\" src/generated/harmonious_majmin_scene_pack_xz.zig" "0044 majmin scales geometry prune guardrail (generated pack exposes geometry slot boundary)"
+        check_cmd "cd '$ROOT_DIR' && rg -n \"pub const SCALE_NON_GEOMETRY_D_SLOT_COUNT:\\s*usize\\s*=\\s*248\" src/generated/harmonious_majmin_scene_pack_xz.zig" "0044 majmin scales geometry prune guardrail (generated pack exposes non-geometry d-slot count)"
+        check_cmd "cd '$ROOT_DIR' && rg -n \"\\[pack_data\\.SCALE_NON_GEOMETRY_D_SLOT_COUNT\\]u16\" src/svg/majmin_compat.zig" "0044 majmin scales geometry prune guardrail (scale model stores only non-geometry d-slot map)"
+        check_cmd "cd '$ROOT_DIR' && ! rg -n \"model\\.d_slot_base\\[d_i\\]\" src/svg/majmin_compat.zig" "0044 majmin scales geometry prune guardrail (render path avoids geometry-indexed d-slot replay lookup)"
     else
         unverified "0040 majmin scales geometry cutover guardrail (src/svg/majmin_scales_geometry.zig missing)"
     fi

@@ -34,6 +34,9 @@ MARKER_NUM = "\x01"
 FAMILIES = ("dntri", "hex", "rhomb", "uptri")
 MODE_TRANS_ORDER = (-1, 0, 1, 10, 11, 2, 3, 4, 5, 6, 7, 8, 9)
 SCALE_TRANS_ORDER = tuple(range(12))
+SCALE_D_SLOT_COUNT = 324
+SCALE_GEOMETRY_D_SLOT_COUNT = 76
+SCALE_NON_GEOMETRY_D_SLOT_COUNT = SCALE_D_SLOT_COUNT - SCALE_GEOMETRY_D_SLOT_COUNT
 MODE_ROTATIONS_BY_FAMILY = {
     "dntri": (0, 1, 10, 11, 3, 4, 7),
     "hex": (0, 1, 10, 11, 7, 8, 9),
@@ -311,6 +314,7 @@ def read_svg(path: str) -> str:
 
 
 def parse_regular_svg(
+    kind: str,
     path: str,
     skeleton_map: Dict[str, int],
     style_map: Dict[str, int],
@@ -331,7 +335,9 @@ def parse_regular_svg(
     style_ids = [intern(style_map, styles, s) for s in style_vals]
 
     d_refs: List[Tuple[int, int]] = []
-    for d in d_vals:
+    for d_i, d in enumerate(d_vals):
+        if kind == "scales" and d_i < SCALE_GEOMETRY_D_SLOT_COUNT:
+            continue
         tpl_key, off = make_template(d)
         tid = intern(template_map, templates, tpl_key)
         oid = intern(offset_map, offsets, off)
@@ -451,6 +457,10 @@ def build_scale_family(
     regular: Dict[tuple[str, int, str, int], ParsedFile],
 ) -> ScaleFamilyRecord:
     base = regular[("scales", 0, family, 0)]
+    if len(base.d_refs) != SCALE_NON_GEOMETRY_D_SLOT_COUNT:
+        raise ValueError(
+            f"scale family {family}: expected {SCALE_NON_GEOMETRY_D_SLOT_COUNT} non-geometry d refs, got {len(base.d_refs)}"
+        )
 
     href_base: List[int] = []
     href_base_idx: Dict[int, int] = {}
@@ -492,6 +502,8 @@ def build_scale_family(
     for transposition in SCALE_TRANS_ORDER:
         rotation = (7 * transposition) % 12
         row = regular[("scales", transposition, family, rotation)]
+        if len(row.d_refs) != len(base.d_refs):
+            raise ValueError(f"scale family {family}: d count mismatch at t={transposition}")
 
         href_row = [-1] * len(href_base)
         for slot_base, value in zip(href_slot_base, row.href_ids):
@@ -589,6 +601,7 @@ def build_pack(majmin_dir: str) -> tuple[bytes, dict[str, int]]:
         transposition = int(trans_tok)
         rotation = int(rotation_tok)
         regular[(kind, transposition, family, rotation)] = parse_regular_svg(
+            kind,
             path,
             skeleton_map,
             style_map,
@@ -622,6 +635,8 @@ def build_pack(majmin_dir: str) -> tuple[bytes, dict[str, int]]:
     mode_max_href_base = max(len(group.href_map[0]) for group in mode_groups)
     mode_max_style_base = max(len(group.style_map[0]) for group in mode_groups)
     mode_max_d_base = max(len(group.d_map[0]) for group in mode_groups)
+    scale_non_geometry_d_slots = max(len(group.d_slot_base) for group in scale_families)
+    scale_max_d_base = max(len(group.d_map[0]) for group in scale_families)
 
     pack = bytearray()
     pack.extend(b"MJM3\x00\x00\x00\x00")
@@ -721,6 +736,8 @@ def build_pack(majmin_dir: str) -> tuple[bytes, dict[str, int]]:
         "mode_max_href_base": mode_max_href_base,
         "mode_max_style_base": mode_max_style_base,
         "mode_max_d_base": mode_max_d_base,
+        "scale_non_geometry_d_slots": scale_non_geometry_d_slots,
+        "scale_max_d_base": scale_max_d_base,
     }
     return bytes(pack), stats
 
@@ -742,10 +759,12 @@ def write_zig(out_path: str, xz_payload: bytes, stats: dict[str, int]) -> None:
         f.write("pub const SCALE_TRANS_COUNT: usize = 12;\n")
         f.write("pub const SCALE_HREF_SLOT_COUNT: usize = 153;\n")
         f.write("pub const SCALE_STYLE_SLOT_COUNT: usize = 324;\n")
-        f.write("pub const SCALE_D_SLOT_COUNT: usize = 324;\n")
+        f.write(f"pub const SCALE_D_SLOT_COUNT: usize = {SCALE_D_SLOT_COUNT};\n")
+        f.write(f"pub const SCALE_GEOMETRY_D_SLOT_COUNT: usize = {SCALE_GEOMETRY_D_SLOT_COUNT};\n")
+        f.write(f"pub const SCALE_NON_GEOMETRY_D_SLOT_COUNT: usize = {stats['scale_non_geometry_d_slots']};\n")
         f.write("pub const SCALE_HREF_BASE_COUNT: usize = 44;\n")
         f.write("pub const SCALE_STYLE_BASE_COUNT: usize = 4;\n")
-        f.write("pub const SCALE_D_BASE_COUNT: usize = 248;\n")
+        f.write(f"pub const SCALE_D_BASE_COUNT: usize = {stats['scale_max_d_base']};\n")
         f.write(f"pub const MODE_MAX_HREF_SLOT_COUNT: usize = {stats['mode_max_href_slots']};\n")
         f.write(f"pub const MODE_MAX_STYLE_SLOT_COUNT: usize = {stats['mode_max_style_slots']};\n")
         f.write(f"pub const MODE_MAX_D_SLOT_COUNT: usize = {stats['mode_max_d_slots']};\n")
