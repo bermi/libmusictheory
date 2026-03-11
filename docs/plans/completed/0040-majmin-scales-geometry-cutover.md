@@ -4,7 +4,7 @@
 > Blocks: 0041+ (majmin text/link fully procedural migration)
 > Does not block: strict compatibility verification
 
-Status: In progress
+Status: Completed
 
 ## Objective
 
@@ -74,4 +74,13 @@ Scope for this plan:
 
 ## Implementation History (Point-in-Time)
 
-_To be filled at completion._
+- 2026-03-11 — `fdee739`
+  - Added scales-geometry-slot audit (`scripts/audit_majmin_scales_geometry_slots.py`) and wired `0040` guardrails in `verify.sh`.
+  - Added dedicated scales geometry module (`src/svg/majmin_scales_geometry.zig`) and routed `renderScales` geometry slots (`d_i < 76`) through it.
+  - Added geometry module unit coverage (`src/tests/majmin_scales_geometry_test.zig`) and test registration in `src/root.zig`.
+  - Completion gates executed:
+    - `./verify.sh`
+    - `zig build verify`
+    - `zig build test`
+    - `node scripts/validate_harmonious_playwright.mjs --sample-per-kind 5`
+    - `node scripts/validate_harmonious_playwright.mjs`

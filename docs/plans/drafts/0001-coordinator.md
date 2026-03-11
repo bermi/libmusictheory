@@ -9,9 +9,9 @@ Build `libmusictheory`, a Zig library exposing a C ABI that implements the compl
 
 ## Lifecycle Status
 
-- Draft: 0001
-- In progress: 0040
-- Completed: 0002, 0003, 0004, 0005, 0006, 0007, 0008, 0009, 0010, 0011, 0012, 0013, 0014, 0015, 0016, 0017, 0018, 0019, 0020, 0021, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0032, 0033, 0034, 0035, 0036, 0037, 0038, 0039
+- Draft: 0001, 0041, 0043, 0044, 0045
+- In progress: 0042
+- Completed: 0002, 0003, 0004, 0005, 0006, 0007, 0008, 0009, 0010, 0011, 0012, 0013, 0014, 0015, 0016, 0017, 0018, 0019, 0020, 0021, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0032, 0033, 0034, 0035, 0036, 0037, 0038, 0039, 0040
 
 ## Plan Dependencies (Execute in Order)
 
@@ -93,6 +93,16 @@ Build `libmusictheory`, a Zig library exposing a C ABI that implements the compl
      ↓ depends on 0038, 0028, 0029 (audited structure + guardrails + IR foundation)
 0040-majmin-scales-geometry-cutover → procedural cutover for invariant scales geometry layer while preserving exact parity
      ↓ depends on 0039, 0038, 0028 (scene model + audits + guardrails)
+0041-majmin-numeric-renderer-master → coordinate milestone track for removing replay-style geometry/path payloads from majmin while preserving strict parity
+     ↓ depends on 0040, 0039, 0028
+0042-majmin-scales-geometry-template-renderer → replace per-path replay strings with slot/shape renderer backed by compact coordinate topology tables
+     ↓ depends on 0041, 0040
+0043-majmin-scales-geometry-analytic-coordinates → replace coordinate token tables with computed decimal coordinate emitters and stricter anti-replay guardrails
+     ↓ depends on 0042
+0044-majmin-scales-scene-pack-geometry-prune → remove scales geometry payload from scene-pack generation + parser path
+     ↓ depends on 0043
+0045-majmin-modes-geometry-numeric-cutover → apply numeric geometry renderer strategy to modes groups and prune corresponding replay payload
+     ↓ depends on 0044
 ```
 
 ## Dependency Graph (Visual)
@@ -168,11 +178,21 @@ Parity hardening continuation:
    │
  0037 (Text Symbolic Renderer)
    │
- 0038 (MajMin Structural Audit)
+0038 (MajMin Structural Audit)
    │
- 0039 (MajMin Algorithmic Scene Renderer)
+0039 (MajMin Algorithmic Scene Renderer)
    │
- 0040 (MajMin Scales Geometry Cutover)
+0040 (MajMin Scales Geometry Cutover)
+   │
+0041 (MajMin Numeric Renderer Master)
+   │
+0042 (Scales Geometry Template Renderer)
+   │
+0043 (Scales Geometry Analytic Coordinates)
+   │
+0044 (Scales Scene-Pack Geometry Prune)
+   │
+0045 (Modes Geometry Numeric Cutover)
 ```
 
 ## Phase Summary

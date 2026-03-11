@@ -588,6 +588,10 @@ if [ -f "$ROOT_DIR/src/svg/majmin_scene.zig" ]; then
         check_cmd "cd '$ROOT_DIR' && rg -n \"pub const SCALE_GEOMETRY_PATH_COUNT:\\s*usize\\s*=\\s*76\" src/svg/majmin_scales_geometry.zig" "0040 majmin scales geometry cutover guardrail (explicit geometry slot count)"
         check_cmd "cd '$ROOT_DIR' && rg -n \"majmin_scales_geometry\" src/svg/majmin_compat.zig" "0040 majmin scales geometry cutover guardrail (compat renderer imports geometry module)"
         check_cmd "cd '$ROOT_DIR' && rg -n \"d_i\\s*<\\s*majmin_scales_geometry\\.SCALE_GEOMETRY_PATH_COUNT\" src/svg/majmin_compat.zig" "0040 majmin scales geometry cutover guardrail (geometry slots dispatched procedurally)"
+        check_cmd "cd '$ROOT_DIR' && ! rg -n \"pub const SCALE_GEOMETRY_PATHS\\s*=\\s*\\[_\\]\\[\\]const u8\" src/svg/majmin_scales_geometry.zig" "0042 majmin scales geometry template guardrail (no full per-slot path replay table)"
+        check_cmd "cd '$ROOT_DIR' && rg -n \"pub const SCALE_GEOMETRY_CLUSTER_COUNT:\\s*usize\\s*=\\s*19\" src/svg/majmin_scales_geometry.zig" "0042 majmin scales geometry template guardrail (cluster topology constant)"
+        check_cmd "cd '$ROOT_DIR' && rg -n \"pub const SCALE_GEOMETRY_SHAPES_PER_CLUSTER:\\s*usize\\s*=\\s*4\" src/svg/majmin_scales_geometry.zig" "0042 majmin scales geometry template guardrail (shape topology constant)"
+        check_cmd "cd '$ROOT_DIR' && rg -n \"pub fn writePathForSlot\\(\" src/svg/majmin_scales_geometry.zig" "0042 majmin scales geometry template guardrail (template emitter entrypoint)"
     else
         unverified "0040 majmin scales geometry cutover guardrail (src/svg/majmin_scales_geometry.zig missing)"
     fi

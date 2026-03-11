@@ -742,8 +742,7 @@ fn renderScales(image_index: usize, buf: []u8) []u8 {
             MARKER_D => {
                 if (d_i >= pack_data.SCALE_D_SLOT_COUNT) return "";
                 if (d_i < majmin_scales_geometry.SCALE_GEOMETRY_PATH_COUNT) {
-                    const geometry_d = majmin_scales_geometry.pathForSlot(d_i) orelse return "";
-                    w.writeAll(geometry_d) catch return "";
+                    majmin_scales_geometry.writePathForSlot(w, d_i) catch return "";
                 } else {
                     const base_index: usize = model.d_slot_base[d_i];
                     if (base_index >= d_base_count) return "";
