@@ -592,6 +592,10 @@ if [ -f "$ROOT_DIR/src/svg/majmin_scene.zig" ]; then
         check_cmd "cd '$ROOT_DIR' && rg -n \"pub const SCALE_GEOMETRY_CLUSTER_COUNT:\\s*usize\\s*=\\s*19\" src/svg/majmin_scales_geometry.zig" "0042 majmin scales geometry template guardrail (cluster topology constant)"
         check_cmd "cd '$ROOT_DIR' && rg -n \"pub const SCALE_GEOMETRY_SHAPES_PER_CLUSTER:\\s*usize\\s*=\\s*4\" src/svg/majmin_scales_geometry.zig" "0042 majmin scales geometry template guardrail (shape topology constant)"
         check_cmd "cd '$ROOT_DIR' && rg -n \"pub fn writePathForSlot\\(\" src/svg/majmin_scales_geometry.zig" "0042 majmin scales geometry template guardrail (template emitter entrypoint)"
+        check_cmd "cd '$ROOT_DIR' && ! rg -n \"const X_TOKENS|const Y_TOKENS|const CLUSTERS_X|const CLUSTERS_Y\" src/svg/majmin_scales_geometry.zig" "0043 majmin scales analytic guardrail (no coordinate token replay dictionaries)"
+        check_cmd "cd '$ROOT_DIR' && rg -n \"pub const SCALE_GEOMETRY_STEP_X:\\s*f64\\s*=\\s*27\\.2\" src/svg/majmin_scales_geometry.zig" "0043 majmin scales analytic guardrail (x-step constant present)"
+        check_cmd "cd '$ROOT_DIR' && rg -n \"pub const SCALE_GEOMETRY_STEP_Y:\\s*f64\\s*=\\s*47\\.11178196587346\" src/svg/majmin_scales_geometry.zig" "0043 majmin scales analytic guardrail (y-step constant present)"
+        check_cmd "cd '$ROOT_DIR' && rg -n \"fn xCoordFor\\(|fn yCoordFor\\(\" src/svg/majmin_scales_geometry.zig" "0043 majmin scales analytic guardrail (analytic coordinate functions present)"
     else
         unverified "0040 majmin scales geometry cutover guardrail (src/svg/majmin_scales_geometry.zig missing)"
     fi

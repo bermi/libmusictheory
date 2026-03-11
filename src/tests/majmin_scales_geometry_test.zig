@@ -5,6 +5,8 @@ test "majmin scales geometry slot table is complete and stable" {
     try std.testing.expectEqual(@as(usize, 76), geometry.SCALE_GEOMETRY_PATH_COUNT);
     try std.testing.expectEqual(@as(usize, 19), geometry.SCALE_GEOMETRY_CLUSTER_COUNT);
     try std.testing.expectEqual(@as(usize, 4), geometry.SCALE_GEOMETRY_SHAPES_PER_CLUSTER);
+    try std.testing.expectEqual(@as(f64, 27.2), geometry.SCALE_GEOMETRY_STEP_X);
+    try std.testing.expectEqual(@as(f64, 47.11178196587346), geometry.SCALE_GEOMETRY_STEP_Y);
 
     var buf: [512]u8 = undefined;
     var i: usize = 0;
