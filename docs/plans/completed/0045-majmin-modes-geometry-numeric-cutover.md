@@ -3,7 +3,7 @@
 > Dependencies: 0044
 > Follow-up: additional payload-prune slices as needed
 
-Status: In progress
+Status: Completed
 
 ## Objective
 
@@ -42,4 +42,21 @@ Apply the numeric geometry renderer strategy used for scales to `majmin/modes` g
 
 ## Implementation History (Point-in-Time)
 
-_To be filled when completed._
+- 2026-03-11 — `9ccb68c`
+  - Added grouped modes geometry-slot invariant audit (`scripts/audit_majmin_modes_geometry_slots.py`) and wired it into `verify.sh`.
+  - Updated `scripts/generate_harmonious_majmin_scene_pack.py` to:
+    - detect per-group modes geometry prefix slots,
+    - pack only non-geometry modes `d` replay maps,
+    - emit dedicated grouped modes geometry refs module (`src/generated/harmonious_majmin_modes_geometry_refs.zig`).
+  - Regenerated `src/generated/harmonious_majmin_scene_pack_xz.zig` with reduced modes replay dimensions (`MODE_MAX_D_SLOT_COUNT: 374 -> 248`, `MODE_MAX_D_BASE_COUNT: 223 -> 148`) and reduced raw pack payload (`PACK_RAW_LEN: 6488900 -> 6373012`).
+  - Updated `src/svg/majmin_compat.zig` to render modes geometry prefix slots from grouped refs while using scene-pack replay only for non-geometry mode slots.
+  - Added `0045` verify guardrails in `verify.sh` for:
+    - reduced raw scene-pack baseline (`PACK_RAW_LEN < 6488900`),
+    - grouped modes geometry module wiring (`harmonious_majmin_modes_geometry_refs`, `MODE_GEOMETRY_SLOT_COUNTS`),
+    - reduced mode replay max slots (`MODE_MAX_D_SLOT_COUNT` no longer baseline `374`).
+  - Completion gates executed:
+    - `./verify.sh`
+    - `zig build verify`
+    - `zig build test`
+    - `node scripts/validate_harmonious_playwright.mjs --sample-per-kind 5`
+    - `node scripts/validate_harmonious_playwright.mjs`
