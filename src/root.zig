@@ -66,6 +66,7 @@ test {
     _ = @import("tests/svg_misc_test.zig");
     _ = @import("tests/svg_harmonious_compat_test.zig");
     _ = @import("tests/majmin_scene_test.zig");
+    _ = @import("tests/majmin_scales_geometry_test.zig");
     _ = @import("tests/slider_test.zig");
     _ = @import("tests/render_ir_test.zig");
     _ = @import("tests/raster_test.zig");

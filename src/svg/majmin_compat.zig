@@ -2,6 +2,7 @@ const std = @import("std");
 const builtin = @import("builtin");
 const pack_data = @import("../generated/harmonious_majmin_scene_pack_xz.zig");
 const majmin_scene = @import("majmin_scene.zig");
+const majmin_scales_geometry = @import("majmin_scales_geometry.zig");
 
 const SCALE_I128: i128 = 100_000_000_000_000_000;
 const MARKER_HREF: u8 = 0x1d;
@@ -740,10 +741,15 @@ fn renderScales(image_index: usize, buf: []u8) []u8 {
             },
             MARKER_D => {
                 if (d_i >= pack_data.SCALE_D_SLOT_COUNT) return "";
-                const base_index: usize = model.d_slot_base[d_i];
-                if (base_index >= d_base_count) return "";
-                const d_ref = model.d_map[transposition_index][base_index];
-                renderTemplatePath(w, @as(usize, d_ref.template_id), @as(usize, d_ref.offset_id)) catch return "";
+                if (d_i < majmin_scales_geometry.SCALE_GEOMETRY_PATH_COUNT) {
+                    const geometry_d = majmin_scales_geometry.pathForSlot(d_i) orelse return "";
+                    w.writeAll(geometry_d) catch return "";
+                } else {
+                    const base_index: usize = model.d_slot_base[d_i];
+                    if (base_index >= d_base_count) return "";
+                    const d_ref = model.d_map[transposition_index][base_index];
+                    renderTemplatePath(w, @as(usize, d_ref.template_id), @as(usize, d_ref.offset_id)) catch return "";
+                }
                 d_i += 1;
             },
             else => w.writeByte(ch) catch return "",

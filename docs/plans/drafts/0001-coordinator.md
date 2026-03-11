@@ -10,7 +10,7 @@ Build `libmusictheory`, a Zig library exposing a C ABI that implements the compl
 ## Lifecycle Status
 
 - Draft: 0001
-- In progress: (none)
+- In progress: 0040
 - Completed: 0002, 0003, 0004, 0005, 0006, 0007, 0008, 0009, 0010, 0011, 0012, 0013, 0014, 0015, 0016, 0017, 0018, 0019, 0020, 0021, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0032, 0033, 0034, 0035, 0036, 0037, 0038, 0039
 
 ## Plan Dependencies (Execute in Order)
@@ -91,6 +91,8 @@ Build `libmusictheory`, a Zig library exposing a C ABI that implements the compl
      ↓ depends on 0028, 0033 (verification + architecture grounding)
 0039-majmin-compat-algorithmic-renderer → replace packed majmin compatibility payload with deterministic algorithmic scene generation
      ↓ depends on 0038, 0028, 0029 (audited structure + guardrails + IR foundation)
+0040-majmin-scales-geometry-cutover → procedural cutover for invariant scales geometry layer while preserving exact parity
+     ↓ depends on 0039, 0038, 0028 (scene model + audits + guardrails)
 ```
 
 ## Dependency Graph (Visual)
@@ -165,6 +167,12 @@ Parity hardening continuation:
 0036 (Text Primitive Audit)
    │
  0037 (Text Symbolic Renderer)
+   │
+ 0038 (MajMin Structural Audit)
+   │
+ 0039 (MajMin Algorithmic Scene Renderer)
+   │
+ 0040 (MajMin Scales Geometry Cutover)
 ```
 
 ## Phase Summary

@@ -557,6 +557,16 @@ else
     unverified "0039 majmin geometry template audit (tmp/harmoniousapp.net/majmin or script missing)"
 fi
 
+if [ -d "$ROOT_DIR/tmp/harmoniousapp.net/majmin" ] && [ -f "$ROOT_DIR/scripts/audit_majmin_scales_geometry_slots.py" ]; then
+    if command -v python3 >/dev/null 2>&1; then
+        check_cmd "cd '$ROOT_DIR' && python3 scripts/audit_majmin_scales_geometry_slots.py --root tmp/harmoniousapp.net >/dev/null" "0040 majmin scales geometry slot audit (first 76 slots invariant geometry layer)"
+    else
+        unverified "0040 majmin scales geometry slot audit (python3 missing)"
+    fi
+else
+    unverified "0040 majmin scales geometry slot audit (tmp/harmoniousapp.net/majmin or script missing)"
+fi
+
 if [ -f "$ROOT_DIR/src/svg/majmin_scene.zig" ]; then
     if [ -f "$ROOT_DIR/src/generated/harmonious_majmin_scene_pack_xz.zig" ]; then
         check_cmd "cd '$ROOT_DIR' && [ \$(wc -c < src/generated/harmonious_majmin_scene_pack_xz.zig) -le 1100000 ]" "0039 majmin payload reduction guardrail (scene-pack source payload <= 1.1MB while algorithmic cutover progresses)"
@@ -574,6 +584,13 @@ if [ -f "$ROOT_DIR/src/svg/majmin_scene.zig" ]; then
     check_cmd "cd '$ROOT_DIR' && ! rg -n \"\\.modes\\s*=>\\s*renderFileByIndex\\(image_index,\\s*buf\\)\" src/svg/majmin_compat.zig" "0039 majmin modes cutover guardrail (no direct per-file modes replay dispatch)"
     check_cmd "cd '$ROOT_DIR' && rg -n \"renderScales\\(\" src/svg/majmin_compat.zig" "0039 majmin scales cutover guardrail (dedicated algorithmic scales renderer present)"
     check_cmd "cd '$ROOT_DIR' && ! rg -n \"\\.scales\\s*=>\\s*pack_data\\.MODE_COUNT\\s*\\+\\s*image_index\" src/svg/majmin_compat.zig" "0039 majmin scales cutover guardrail (no direct per-file scales replay dispatch)"
+    if [ -f "$ROOT_DIR/src/svg/majmin_scales_geometry.zig" ]; then
+        check_cmd "cd '$ROOT_DIR' && rg -n \"pub const SCALE_GEOMETRY_PATH_COUNT:\\s*usize\\s*=\\s*76\" src/svg/majmin_scales_geometry.zig" "0040 majmin scales geometry cutover guardrail (explicit geometry slot count)"
+        check_cmd "cd '$ROOT_DIR' && rg -n \"majmin_scales_geometry\" src/svg/majmin_compat.zig" "0040 majmin scales geometry cutover guardrail (compat renderer imports geometry module)"
+        check_cmd "cd '$ROOT_DIR' && rg -n \"d_i\\s*<\\s*majmin_scales_geometry\\.SCALE_GEOMETRY_PATH_COUNT\" src/svg/majmin_compat.zig" "0040 majmin scales geometry cutover guardrail (geometry slots dispatched procedurally)"
+    else
+        unverified "0040 majmin scales geometry cutover guardrail (src/svg/majmin_scales_geometry.zig missing)"
+    fi
     if [ -f "$ROOT_DIR/src/tests/majmin_scene_test.zig" ]; then
         check_cmd "cd '$ROOT_DIR' && zig build test 2>&1" "0039 majmin topology model test suite"
     else
