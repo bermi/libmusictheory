@@ -4,7 +4,7 @@
 > Parent track: strict harmonious SVG parity
 > Scope: `majmin/modes` + `majmin/scales` regular scenes (legacy overview files stay compatibility-routed until explicitly replaced)
 
-Status: Draft
+Status: In progress
 
 ## Objective
 

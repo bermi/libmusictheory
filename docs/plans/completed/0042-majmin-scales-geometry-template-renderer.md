@@ -3,7 +3,7 @@
 > Dependencies: 0041, 0040
 > Blocks: 0043
 
-Status: In progress
+Status: Completed
 
 ## Objective
 
@@ -46,4 +46,14 @@ Replace the 76 replay-style scales geometry `d` strings with a deterministic tem
 
 ## Implementation History (Point-in-Time)
 
-_To be filled when completed._
+- 2026-03-11 — `d92ac5c`
+  - Replaced full per-slot scales geometry path replay strings with a slot/cluster/shape template renderer in `src/svg/majmin_scales_geometry.zig`.
+  - Updated compat routing to stream geometry slots through `writePathForSlot` in `src/svg/majmin_compat.zig`.
+  - Expanded geometry tests in `src/tests/majmin_scales_geometry_test.zig`.
+  - Added `0042` verify guardrails to enforce no full per-slot replay table and require template topology constants/entrypoint.
+  - Completion gates executed:
+    - `./verify.sh`
+    - `zig build verify`
+    - `zig build test`
+    - `node scripts/validate_harmonious_playwright.mjs --sample-per-kind 5`
+    - `node scripts/validate_harmonious_playwright.mjs`
