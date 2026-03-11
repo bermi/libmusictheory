@@ -4,7 +4,7 @@
 > Parent track: strict harmonious SVG parity
 > Scope: `majmin/modes` + `majmin/scales` regular scenes (legacy overview files stay compatibility-routed until explicitly replaced)
 
-Status: In progress
+Status: Completed
 
 ## Objective
 
@@ -68,4 +68,17 @@ Migrate majmin regular-scene geometry rendering from replay-style payload usage 
 
 ## Implementation History (Point-in-Time)
 
-_To be filled when milestone chain is complete._
+- 2026-03-11 — `d92ac5c`, `2a8fc75`
+  - 0042 delivered: replaced scales full-path replay with slot/cluster/shape template emission and promoted `0041` to active master tracking.
+- 2026-03-11 — `2c93650`, `371b4fb`
+  - 0043 delivered: replaced scales coordinate token replay with analytic coordinate contexts and completed lifecycle.
+- 2026-03-11 — `828ea5f`, `0758317`
+  - 0044 delivered: pruned scales geometry replay from scene-pack model and completed lifecycle.
+- 2026-03-11 — `9ccb68c`, `bedccd2`
+  - 0045 delivered: cut over modes grouped geometry rendering path and pruned modes geometry replay from scene-pack model.
+- Completion gates (final milestone state) executed:
+  - `./verify.sh`
+  - `zig build verify`
+  - `zig build test`
+  - `node scripts/validate_harmonious_playwright.mjs --sample-per-kind 5`
+  - `node scripts/validate_harmonious_playwright.mjs`
