@@ -3,7 +3,7 @@
 > Dependencies: 0045
 > Follow-up: algorithmic enumerators by kind (future slices)
 
-Status: In Progress
+Status: Completed
 
 ## Objective
 
@@ -49,3 +49,24 @@ Remove `src/generated/harmonious_manifest.zig` from the WASM compatibility runti
 - `zig build test`
 - `node scripts/validate_harmonious_playwright.mjs --sample-per-kind 5`
 - `node scripts/validate_harmonious_playwright.mjs`
+
+## Implementation History (Point-in-Time)
+
+- 2026-03-11 — `b3d9e8c`
+  - Added compact packed image-name generation pipeline:
+    - `scripts/generate_harmonious_name_pack.py`
+    - `src/generated/harmonious_name_pack_xz.zig`
+    - `src/harmonious_name_pack.zig` runtime xz decode/index module.
+  - Reworked `src/harmonious_svg_compat.zig` to remove runtime dependency on `src/generated/harmonious_manifest.zig` and serve non-majmin `imageCount`/`imageName` from name-pack while preserving existing render logic.
+  - Added focused decode/index tests in `src/tests/harmonious_name_pack_test.zig` and wired them in `src/root.zig`.
+  - Added `0046` verify guardrails in `verify.sh`:
+    - runtime path forbidden from importing `generated/harmonious_manifest.zig`,
+    - compact name-pack wiring checks,
+    - tightened wasm size budgets (`<512KiB` total, stricter data/reachable-generated budgets).
+  - Updated coordinator + wasm footprint research docs with post-cutover metrics.
+  - Completion gates executed:
+    - `./verify.sh` (Playwright sampled + full pass, `8634/8634` exact matches)
+    - `zig build verify`
+    - `zig build test`
+    - `node scripts/validate_harmonious_playwright.mjs --sample-per-kind 5`
+    - `node scripts/validate_harmonious_playwright.mjs`
