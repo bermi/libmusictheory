@@ -1,21 +1,21 @@
 # WASM Footprint Audit
 
-## Current Snapshot (2026-03-10)
+## Current Snapshot (2026-03-11)
 
 `zig-out/wasm-demo/libmusictheory.wasm`
 
-- Total size: `671,101` bytes
-- `CODE` section: `133,707` bytes
-- `DATA` section: `536,055` bytes
+- Total size: `517,223` bytes
+- `CODE` section: `137,670` bytes
+- `DATA` section: `378,211` bytes
 
-Reachable generated files (`9`) total `1,511,555` source bytes.
+Reachable generated files (`10`) total `1,558,179` source bytes.
 Coordinate-like reachable generated files total `13,586` bytes.
 
 Notable deltas from the prior baseline:
 
-- `src/generated/harmonious_majmin_compat_xz.zig` is no longer reachable from wasm.
-- `src/generated/harmonious_majmin_scene_pack_xz.zig` replaced the old majmin compat payload.
-- Strict compatibility still holds (`8634/8634`, `0` mismatches) while shrinking wasm footprint.
+- `src/generated/harmonious_manifest.zig` is no longer reachable from wasm runtime path.
+- New compact name-pack payload `src/generated/harmonious_name_pack_xz.zig` replaces pointer-heavy manifest name arrays for non-majmin enumeration.
+- Strict compatibility still holds (`8634/8634`, `0` mismatches) while shrinking wasm footprint below `512 KiB`.
 
 ## Baseline (2026-02-19)
 
@@ -29,12 +29,13 @@ The wasm is data-dominated, so size reduction work should prioritize generated d
 
 ## Reachable Generated Payload (from `src/root.zig` import graph)
 
-Current reachable generated files (`9`) total `1,511,555` source bytes.
+Current reachable generated files (`10`) total `1,558,179` source bytes.
 Top contributors:
 
-- `src/generated/harmonious_majmin_scene_pack_xz.zig` (`988,786`)
-- `src/generated/harmonious_manifest.zig` (`236,976`)
+- `src/generated/harmonious_majmin_scene_pack_xz.zig` (`989,501`)
+- `src/generated/harmonious_majmin_modes_geometry_refs.zig` (`172,026`)
 - `src/generated/harmonious_even_segment_gzip.zig` (`161,003`)
+- `src/generated/harmonious_name_pack_xz.zig` (`110,859`)
 - `src/generated/harmonious_oc_templates.zig` (`39,463`)
 - `src/generated/harmonious_chord_compat_assets.zig` (`34,869`)
 - `src/generated/harmonious_text_primitives.zig` (`22,553`)
@@ -50,9 +51,9 @@ Coordinate-like reachable generated files total `13,586` bytes:
 
 `./verify.sh` now runs `scripts/wasm_size_audit.py` with enforced budgets:
 
-- wasm total: `< 900,000` bytes
-- wasm `DATA` section: `< 760,000` bytes
-- reachable generated footprint: `< 1,800,000` bytes
+- wasm total: `< 524,288` bytes
+- wasm `DATA` section: `< 480,000` bytes
+- reachable generated footprint: `< 1,600,000` bytes
 - reachable coordinate-like generated footprint: `< 170,000` bytes
 
 Additional anti-replay guardrails block reintroduction of chord replay table imports:
@@ -79,7 +80,7 @@ Additional anti-replay guardrails block reintroduction of chord replay table imp
 
 ## Reduction Priorities
 
-1. Replace `majmin` scene-pack remap payload with direct computed scene geometry/routing.
-2. Replace `even` packed payload with algorithmic rendering.
-3. Reduce compatibility manifest payload by deriving image arguments/names algorithmically where possible.
+1. Replace `harmonious_name_pack_xz` driven enumeration with per-kind algorithmic image-name generation.
+2. Continue reducing `majmin` scene-pack payload through numeric/algorithmic decomposition.
+3. Replace remaining packed compatibility payloads (`even`, `oc`, `optc`, staff/fret families) with audited algorithmic emitters.
 4. Continue removing residual coordinate-like tables as strict parity formulas become available.

@@ -441,8 +441,16 @@ fi
 if [ -f "$ROOT_DIR/src/harmonious_svg_compat.zig" ]; then
     check_cmd "cd '$ROOT_DIR' && ! rg -n \"@embedFile\\(|tmp/harmoniousapp\\.net|harmonious_embed_refs\" src/harmonious_svg_compat.zig" "0028 compatibility generator anti-embed guardrail"
     check_cmd "cd '$ROOT_DIR' && ! rg -n \"\\.majmin_modes, \\.majmin_scales => svg_tessellation\\.renderScaleTessellation\\(buf\\)\" src/harmonious_svg_compat.zig" "0028 majmin compat guardrail (no placeholder tessellation fallback)"
+    check_cmd "cd '$ROOT_DIR' && ! rg -n \"generated/harmonious_manifest\\.zig\" src/harmonious_svg_compat.zig src/root.zig src/c_api.zig" "0046 wasm compat name-pack guardrail (runtime path not coupled to harmonious_manifest)"
 else
     unverified "0028 compatibility generator anti-embed guardrail (src/harmonious_svg_compat.zig not yet implemented)"
+fi
+
+if [ -f "$ROOT_DIR/src/harmonious_name_pack.zig" ] && [ -f "$ROOT_DIR/src/generated/harmonious_name_pack_xz.zig" ]; then
+    check_cmd "cd '$ROOT_DIR' && rg -n \"harmonious_name_pack_xz\" src/harmonious_name_pack.zig src/harmonious_svg_compat.zig" "0046 wasm compat name-pack guardrail (compact name-pack module wired)"
+    check_cmd "cd '$ROOT_DIR' && ! rg -n \"generated/harmonious_manifest\\.zig\" src/harmonious_name_pack.zig src/harmonious_svg_compat.zig" "0046 wasm compat name-pack guardrail (no fallback manifest import in name-pack path)"
+else
+    unverified "0046 wasm compat name-pack guardrail (name-pack sources missing)"
 fi
 
 if [ -f "$ROOT_DIR/src/svg/scale_nomod_compat.zig" ] && [ -f "$ROOT_DIR/src/harmonious_svg_compat.zig" ]; then
@@ -487,14 +495,14 @@ else
 fi
 
 if [ -f "$ROOT_DIR/examples/wasm-demo/index.html" ]; then
-    check_cmd "cd '$ROOT_DIR' && test -f zig-out/wasm-demo/libmusictheory.wasm && [ \"$(wc -c < zig-out/wasm-demo/libmusictheory.wasm | tr -d '[:space:]')\" -lt 1048576 ]" "0028 wasm demo size guardrail (<1MB)"
+    check_cmd "cd '$ROOT_DIR' && test -f zig-out/wasm-demo/libmusictheory.wasm && [ \"$(wc -c < zig-out/wasm-demo/libmusictheory.wasm | tr -d '[:space:]')\" -lt 524288 ]" "0046 wasm demo size guardrail (<512KiB)"
     if [ -f "$ROOT_DIR/scripts/wasm_size_audit.py" ] && command -v python3 >/dev/null 2>&1; then
-        check_cmd "cd '$ROOT_DIR' && python3 scripts/wasm_size_audit.py --wasm zig-out/wasm-demo/libmusictheory.wasm --max-wasm-bytes 900000 --max-data-bytes 760000 --max-reachable-generated-bytes 1800000 --max-coordinate-generated-bytes 170000" "0032 wasm size audit guardrail (section + generated footprint budgets)"
+        check_cmd "cd '$ROOT_DIR' && python3 scripts/wasm_size_audit.py --wasm zig-out/wasm-demo/libmusictheory.wasm --max-wasm-bytes 524288 --max-data-bytes 480000 --max-reachable-generated-bytes 1600000 --max-coordinate-generated-bytes 170000" "0046 wasm size audit guardrail (section + generated footprint budgets)"
     else
-        unverified "0032 wasm size audit guardrail (scripts/wasm_size_audit.py or python3 missing)"
+        unverified "0046 wasm size audit guardrail (scripts/wasm_size_audit.py or python3 missing)"
     fi
 else
-    unverified "0028 wasm demo size guardrail (<1MB) (examples/wasm-demo/index.html not yet implemented)"
+    unverified "0046 wasm demo size guardrail (<512KiB) (examples/wasm-demo/index.html not yet implemented)"
 fi
 
 if [ -d "$ROOT_DIR/tmp/harmoniousapp.net/even" ] && [ -f "$ROOT_DIR/scripts/audit_even_compat.py" ]; then

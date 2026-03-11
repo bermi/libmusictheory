@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const manifest = @import("generated/harmonious_manifest.zig");
+const name_pack = @import("harmonious_name_pack.zig");
 const oc_templates = @import("generated/harmonious_oc_templates.zig");
 const pitch = @import("pitch.zig");
 const pcs = @import("pitch_class_set.zig");
@@ -18,11 +18,50 @@ const svg_evenness_chart = @import("svg/evenness_chart.zig");
 const svg_majmin_compat = @import("svg/majmin_compat.zig");
 const svg_majmin_scene = @import("svg/majmin_scene.zig");
 
-pub const KindInfo = manifest.KindInfo;
-pub const KindId = manifest.KindId;
+pub const KindId = enum(u8) {
+    vert_text_black,
+    even,
+    scale,
+    opc,
+    oc,
+    optc,
+    eadgbe,
+    center_square_text,
+    wide_chord,
+    chord_clipped,
+    grand_chord,
+    majmin_modes,
+    majmin_scales,
+    chord,
+    vert_text_b2t_black,
+};
+
+pub const KindInfo = struct {
+    id: KindId,
+    api_name: []const u8,
+    directory: []const u8,
+};
+
+const ALL_KINDS = [_]KindInfo{
+    .{ .id = .vert_text_black, .api_name = "vert-text-black", .directory = "vert-text-black" },
+    .{ .id = .even, .api_name = "even", .directory = "even" },
+    .{ .id = .scale, .api_name = "scale", .directory = "scale" },
+    .{ .id = .opc, .api_name = "opc", .directory = "opc" },
+    .{ .id = .oc, .api_name = "oc", .directory = "oc" },
+    .{ .id = .optc, .api_name = "optc", .directory = "optc" },
+    .{ .id = .eadgbe, .api_name = "eadgbe", .directory = "eadgbe" },
+    .{ .id = .center_square_text, .api_name = "center-square-text", .directory = "center-square-text" },
+    .{ .id = .wide_chord, .api_name = "wide-chord", .directory = "wide-chord" },
+    .{ .id = .chord_clipped, .api_name = "chord-clipped", .directory = "chord-clipped" },
+    .{ .id = .grand_chord, .api_name = "grand-chord", .directory = "grand-chord" },
+    .{ .id = .majmin_modes, .api_name = "majmin/modes", .directory = "majmin" },
+    .{ .id = .majmin_scales, .api_name = "majmin/scales", .directory = "majmin" },
+    .{ .id = .chord, .api_name = "chord", .directory = "chord" },
+    .{ .id = .vert_text_b2t_black, .api_name = "vert-text-b2t-black", .directory = "vert-text-b2t-black" },
+};
 
 pub fn kindCount() usize {
-    return manifest.ALL_KINDS.len;
+    return ALL_KINDS.len;
 }
 
 pub fn kindName(kind_index: usize) ?[]const u8 {
@@ -40,7 +79,7 @@ pub fn imageCount(kind_index: usize) usize {
     if (majminSceneKindFromId(info.id)) |scene_kind| {
         return svg_majmin_scene.countForKind(scene_kind);
     }
-    return info.names.len;
+    return name_pack.imageCount(kind_index);
 }
 
 pub fn imageName(kind_index: usize, image_index: usize) ?[]const u8 {
@@ -48,8 +87,7 @@ pub fn imageName(kind_index: usize, image_index: usize) ?[]const u8 {
     if (majminSceneKindFromId(info.id)) |scene_kind| {
         return svg_majmin_scene.imageName(scene_kind, image_index);
     }
-    if (image_index >= info.names.len) return null;
-    return info.names[image_index];
+    return name_pack.imageName(kind_index, image_index);
 }
 
 pub fn generateByIndex(kind_index: usize, image_index: usize, buf: []u8) []u8 {
@@ -58,8 +96,8 @@ pub fn generateByIndex(kind_index: usize, image_index: usize, buf: []u8) []u8 {
         const image_name = svg_majmin_scene.imageName(scene_kind, image_index) orelse return "";
         return generateByName(kind_index, image_name, buf);
     }
-    if (image_index >= info.names.len) return "";
-    return generateByName(kind_index, info.names[image_index], buf);
+    const image_name = name_pack.imageName(kind_index, image_index) orelse return "";
+    return generateByName(kind_index, image_name, buf);
 }
 
 pub fn generateByName(kind_index: usize, image_name: []const u8, buf: []u8) []u8 {
@@ -92,8 +130,8 @@ const ChordLikeKind = enum {
 };
 
 fn kindInfo(kind_index: usize) ?KindInfo {
-    if (kind_index >= manifest.ALL_KINDS.len) return null;
-    return manifest.ALL_KINDS[kind_index];
+    if (kind_index >= ALL_KINDS.len) return null;
+    return ALL_KINDS[kind_index];
 }
 
 fn majminSceneKindFromId(kind_id: KindId) ?svg_majmin_scene.Kind {
