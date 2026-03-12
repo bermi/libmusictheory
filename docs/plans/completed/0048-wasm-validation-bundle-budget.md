@@ -53,7 +53,7 @@ while preserving full harmonious compatibility validation behavior and exact SVG
 
 ## Implementation History (Point-in-Time)
 
-- 2026-03-12 — `<pending commit>`
+- 2026-03-12 — `0522936`
   - Switched wasm export roots in `build.zig` to validation-required C ABI only (`lmt_svg_compat_*` + scratch + memory export).
   - Kept `rdynamic = false` and retained parity-critical wasm logic entirely in Zig/WASM.
   - Made installed `zig-out/wasm-demo` assets validation-focused:
