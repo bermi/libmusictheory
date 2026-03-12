@@ -53,18 +53,54 @@ pub fn build(b: *std.Build) void {
         .os_tag = .freestanding,
     });
 
+    const wasm_mod = b.createModule(.{
+        .root_source_file = b.path("src/root.zig"),
+        .target = wasm_target,
+        .optimize = .ReleaseSmall,
+    });
+    wasm_mod.export_symbol_names = &.{
+        "lmt_pcs_from_list",
+        "lmt_pcs_to_list",
+        "lmt_pcs_cardinality",
+        "lmt_pcs_transpose",
+        "lmt_pcs_invert",
+        "lmt_pcs_complement",
+        "lmt_pcs_is_subset",
+        "lmt_prime_form",
+        "lmt_forte_prime",
+        "lmt_is_cluster_free",
+        "lmt_evenness_distance",
+        "lmt_scale",
+        "lmt_mode",
+        "lmt_spell_note",
+        "lmt_spell_note_parts",
+        "lmt_chord",
+        "lmt_chord_name",
+        "lmt_roman_numeral",
+        "lmt_roman_numeral_parts",
+        "lmt_fret_to_midi",
+        "lmt_midi_to_fret_positions",
+        "lmt_svg_clock_optc",
+        "lmt_svg_fret",
+        "lmt_svg_chord_staff",
+        "lmt_wasm_scratch_ptr",
+        "lmt_wasm_scratch_size",
+        "lmt_svg_compat_kind_count",
+        "lmt_svg_compat_kind_name",
+        "lmt_svg_compat_kind_directory",
+        "lmt_svg_compat_image_count",
+        "lmt_svg_compat_image_name",
+        "lmt_svg_compat_generate",
+    };
+
     const wasm_exe = b.addExecutable(.{
         .name = "libmusictheory",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("src/root.zig"),
-            .target = wasm_target,
-            .optimize = .ReleaseSmall,
-        }),
+        .root_module = wasm_mod,
     });
     const wasm_build_options = b.addOptions();
     wasm_build_options.addOption(bool, "enable_raster_backend", false);
-    wasm_exe.root_module.addOptions("build_options", wasm_build_options);
-    wasm_exe.rdynamic = true;
+    wasm_mod.addOptions("build_options", wasm_build_options);
+    wasm_exe.rdynamic = false;
     wasm_exe.entry = .disabled;
     wasm_exe.export_memory = true;
     wasm_exe.initial_memory = 16 * 1024 * 1024;

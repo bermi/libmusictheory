@@ -495,7 +495,14 @@ else
 fi
 
 if [ -f "$ROOT_DIR/examples/wasm-demo/index.html" ]; then
+    check_cmd "cd '$ROOT_DIR' && rg -n \"wasm_mod\\.export_symbol_names\\s*=\\s*&\\.\\{\" build.zig" "0047 wasm explicit export roots guardrail (build.zig defines wasm export symbol roots)"
+    check_cmd "cd '$ROOT_DIR' && rg -n \"wasm_exe\\.rdynamic\\s*=\\s*false\" build.zig" "0047 wasm explicit export roots guardrail (rdynamic disabled for wasm)"
     check_cmd "cd '$ROOT_DIR' && test -f zig-out/wasm-demo/libmusictheory.wasm && [ \"$(wc -c < zig-out/wasm-demo/libmusictheory.wasm | tr -d '[:space:]')\" -lt 524288 ]" "0046 wasm demo size guardrail (<512KiB)"
+    if [ -f "$ROOT_DIR/scripts/check_wasm_exports.mjs" ] && command -v node >/dev/null 2>&1; then
+        check_cmd "cd '$ROOT_DIR' && node scripts/check_wasm_exports.mjs --wasm zig-out/wasm-demo/libmusictheory.wasm" "0047 wasm explicit export roots guardrail (required demo/compat exports are present)"
+    else
+        unverified "0047 wasm explicit export roots guardrail (scripts/check_wasm_exports.mjs or node missing)"
+    fi
     if [ -f "$ROOT_DIR/scripts/wasm_size_audit.py" ] && command -v python3 >/dev/null 2>&1; then
         check_cmd "cd '$ROOT_DIR' && python3 scripts/wasm_size_audit.py --wasm zig-out/wasm-demo/libmusictheory.wasm --max-wasm-bytes 524288 --max-data-bytes 480000 --max-reachable-generated-bytes 1600000 --max-coordinate-generated-bytes 170000" "0046 wasm size audit guardrail (section + generated footprint budgets)"
     else
