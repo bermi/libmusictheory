@@ -11,7 +11,7 @@ Build `libmusictheory`, a Zig library exposing a C ABI that implements the compl
 
 - Draft: 0001
 - In progress: none
-- Completed: 0002, 0003, 0004, 0005, 0006, 0007, 0008, 0009, 0010, 0011, 0012, 0013, 0014, 0015, 0016, 0017, 0018, 0019, 0020, 0021, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0032, 0033, 0034, 0035, 0036, 0037, 0038, 0039, 0040, 0041, 0042, 0043, 0044, 0045, 0046, 0047
+- Completed: 0002, 0003, 0004, 0005, 0006, 0007, 0008, 0009, 0010, 0011, 0012, 0013, 0014, 0015, 0016, 0017, 0018, 0019, 0020, 0021, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0032, 0033, 0034, 0035, 0036, 0037, 0038, 0039, 0040, 0041, 0042, 0043, 0044, 0045, 0046, 0047, 0048
 
 ## Plan Dependencies (Execute in Order)
 
@@ -107,6 +107,8 @@ Build `libmusictheory`, a Zig library exposing a C ABI that implements the compl
      ↓ depends on 0045
 0047-wasm-explicit-export-roots → replace wasm `rdynamic` reachability with explicit exported C ABI roots to reduce binary size while preserving demo/compat behavior
      ↓ depends on 0046
+0048-wasm-validation-bundle-budget → enforce validation bundle `(wasm + installed js) <= 512KiB` with validation-focused export/asset surface and strict parity retention
+     ↓ depends on 0047
 ```
 
 ## Dependency Graph (Visual)
@@ -201,6 +203,8 @@ Parity hardening continuation:
 0046 (WASM Compat Name-Pack Cutover)
    │
 0047 (WASM Explicit Export Roots)
+   │
+0048 (WASM Validation Bundle Budget)
 ```
 
 ## Phase Summary

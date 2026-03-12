@@ -59,30 +59,6 @@ pub fn build(b: *std.Build) void {
         .optimize = .ReleaseSmall,
     });
     wasm_mod.export_symbol_names = &.{
-        "lmt_pcs_from_list",
-        "lmt_pcs_to_list",
-        "lmt_pcs_cardinality",
-        "lmt_pcs_transpose",
-        "lmt_pcs_invert",
-        "lmt_pcs_complement",
-        "lmt_pcs_is_subset",
-        "lmt_prime_form",
-        "lmt_forte_prime",
-        "lmt_is_cluster_free",
-        "lmt_evenness_distance",
-        "lmt_scale",
-        "lmt_mode",
-        "lmt_spell_note",
-        "lmt_spell_note_parts",
-        "lmt_chord",
-        "lmt_chord_name",
-        "lmt_roman_numeral",
-        "lmt_roman_numeral_parts",
-        "lmt_fret_to_midi",
-        "lmt_midi_to_fret_positions",
-        "lmt_svg_clock_optc",
-        "lmt_svg_fret",
-        "lmt_svg_chord_staff",
         "lmt_wasm_scratch_ptr",
         "lmt_wasm_scratch_size",
         "lmt_svg_compat_kind_count",
@@ -111,16 +87,43 @@ pub fn build(b: *std.Build) void {
         .prefix,
         "wasm-demo/libmusictheory.wasm",
     );
-    const install_demo_assets = b.addInstallDirectory(.{
-        .source_dir = b.path("examples/wasm-demo"),
-        .install_dir = .prefix,
-        .install_subdir = "wasm-demo",
-    });
+    const install_validation_html = b.addInstallFileWithDir(
+        b.path("examples/wasm-demo/validation.html"),
+        .prefix,
+        "wasm-demo/validation.html",
+    );
+    const install_validation_js = b.addInstallFileWithDir(
+        b.path("examples/wasm-demo/validation.js"),
+        .prefix,
+        "wasm-demo/validation.js",
+    );
+    const install_validation_css = b.addInstallFileWithDir(
+        b.path("examples/wasm-demo/styles.css"),
+        .prefix,
+        "wasm-demo/styles.css",
+    );
+    const wasm_demo_write = b.addWriteFiles();
+    const index_stub = wasm_demo_write.add("index.html", "<!doctype html><meta charset=\"utf-8\"><title>Validation Bundle</title><meta http-equiv=\"refresh\" content=\"0; url=validation.html\"><p>Validation-focused wasm bundle. Open <a href=\"validation.html\">validation.html</a>.</p>\n");
+    const app_stub = wasm_demo_write.add("app.js", "// Validation-focused wasm bundle: interactive demo app is not shipped in this profile.\\n");
+    const install_index_stub = b.addInstallFileWithDir(
+        index_stub,
+        .prefix,
+        "wasm-demo/index.html",
+    );
+    const install_app_stub = b.addInstallFileWithDir(
+        app_stub,
+        .prefix,
+        "wasm-demo/app.js",
+    );
 
     const wasm_demo_step = b.step("wasm-demo", "Build WebAssembly interactive demo");
     wasm_demo_step.dependOn(&wasm_exe.step);
     wasm_demo_step.dependOn(&install_wasm.step);
-    wasm_demo_step.dependOn(&install_demo_assets.step);
+    wasm_demo_step.dependOn(&install_validation_html.step);
+    wasm_demo_step.dependOn(&install_validation_js.step);
+    wasm_demo_step.dependOn(&install_validation_css.step);
+    wasm_demo_step.dependOn(&install_index_stub.step);
+    wasm_demo_step.dependOn(&install_app_stub.step);
 
     // ── Unit tests ──────────────────────────────────────────────
     const lib_tests = b.addTest(.{

@@ -1,21 +1,28 @@
 # WASM Footprint Audit
 
-## Current Snapshot (2026-03-11)
+## Current Snapshot (2026-03-12)
 
 `zig-out/wasm-demo/libmusictheory.wasm`
 
-- Total size: `517,223` bytes
-- `CODE` section: `137,670` bytes
-- `DATA` section: `378,211` bytes
+- Total size: `499,854` bytes
+- `CODE` section: `125,581` bytes
+- `DATA` section: `373,511` bytes
 
 Reachable generated files (`10`) total `1,558,179` source bytes.
 Coordinate-like reachable generated files total `13,586` bytes.
 
 Notable deltas from the prior baseline:
 
-- `src/generated/harmonious_manifest.zig` is no longer reachable from wasm runtime path.
-- New compact name-pack payload `src/generated/harmonious_name_pack_xz.zig` replaces pointer-heavy manifest name arrays for non-majmin enumeration.
-- Strict compatibility still holds (`8634/8634`, `0` mismatches) while shrinking wasm footprint below `512 KiB`.
+- Validation-focused wasm export roots now retain only compatibility APIs needed by `validation.html`.
+- Installed wasm-demo bundle now enforces a hard budget gate:
+  - `wasm + installed js <= 524,288 bytes`.
+- Strict compatibility still holds (`8634/8634`, `0` mismatches) while shrinking wasm footprint below `500 KiB`.
+
+Validation bundle footprint (`zig-out/wasm-demo`):
+
+- `libmusictheory.wasm`: `499,854` bytes
+- `.js` total (`validation.js` + output stub `app.js`): `15,714` bytes
+- Combined: `515,568` bytes
 
 ## Baseline (2026-02-19)
 

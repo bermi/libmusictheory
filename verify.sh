@@ -499,10 +499,11 @@ if [ -f "$ROOT_DIR/examples/wasm-demo/index.html" ]; then
     check_cmd "cd '$ROOT_DIR' && rg -n \"wasm_exe\\.rdynamic\\s*=\\s*false\" build.zig" "0047 wasm explicit export roots guardrail (rdynamic disabled for wasm)"
     check_cmd "cd '$ROOT_DIR' && test -f zig-out/wasm-demo/libmusictheory.wasm && [ \"$(wc -c < zig-out/wasm-demo/libmusictheory.wasm | tr -d '[:space:]')\" -lt 524288 ]" "0046 wasm demo size guardrail (<512KiB)"
     if [ -f "$ROOT_DIR/scripts/check_wasm_exports.mjs" ] && command -v node >/dev/null 2>&1; then
-        check_cmd "cd '$ROOT_DIR' && node scripts/check_wasm_exports.mjs --wasm zig-out/wasm-demo/libmusictheory.wasm" "0047 wasm explicit export roots guardrail (required demo/compat exports are present)"
+        check_cmd "cd '$ROOT_DIR' && node scripts/check_wasm_exports.mjs --profile validation --wasm zig-out/wasm-demo/libmusictheory.wasm" "0047 wasm explicit export roots guardrail (required validation exports are present)"
     else
         unverified "0047 wasm explicit export roots guardrail (scripts/check_wasm_exports.mjs or node missing)"
     fi
+    check_cmd "cd '$ROOT_DIR' && python3 -c \"import pathlib,sys; root=pathlib.Path('zig-out/wasm-demo'); wasm=root/'libmusictheory.wasm'; js_total=sum(p.stat().st_size for p in root.glob('*.js')); combined=wasm.stat().st_size+js_total; print(f'wasm={wasm.stat().st_size} js_total={js_total} combined={combined}'); sys.exit(0 if combined <= 524288 else 1)\"" "0048 wasm validation bundle guardrail (installed wasm+js <= 512KiB)"
     if [ -f "$ROOT_DIR/scripts/wasm_size_audit.py" ] && command -v python3 >/dev/null 2>&1; then
         check_cmd "cd '$ROOT_DIR' && python3 scripts/wasm_size_audit.py --wasm zig-out/wasm-demo/libmusictheory.wasm --max-wasm-bytes 524288 --max-data-bytes 480000 --max-reachable-generated-bytes 1600000 --max-coordinate-generated-bytes 170000" "0046 wasm size audit guardrail (section + generated footprint budgets)"
     else
