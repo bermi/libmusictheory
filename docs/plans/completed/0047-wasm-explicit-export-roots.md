@@ -50,7 +50,7 @@ Replace wasm `rdynamic` linkage with explicit export roots so `libmusictheory.wa
 
 ## Implementation History (Point-in-Time)
 
-- 2026-03-12 — `<pending commit>`
+- 2026-03-12 — `d702708`
   - Added wasm export-surface verification script:
     - `scripts/check_wasm_exports.mjs`
   - Added `0047` guardrails to `verify.sh` for:
