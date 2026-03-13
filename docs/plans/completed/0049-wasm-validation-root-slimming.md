@@ -52,7 +52,7 @@ Build `zig-out/wasm-demo/libmusictheory.wasm` from a dedicated validation-only Z
 
 ## Implementation History (Point-in-Time)
 
-- 2026-03-13 — `PENDING_HASH`
+- 2026-03-13 — `d8ed9f8`
   - Added `src/wasm_validation_api.zig` and switched the wasm-demo target in `build.zig` to root at that dedicated validation-only ABI instead of `src/root.zig`.
   - Extended `verify.sh` with `0049` guardrails for:
     - dedicated validation wasm-root wiring,
