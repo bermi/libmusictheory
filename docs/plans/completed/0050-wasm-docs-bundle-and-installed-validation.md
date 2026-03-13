@@ -60,7 +60,7 @@ Make the documented local browser workflows actually work:
 
 ## Implementation History (Point-in-Time)
 
-- 2026-03-13 — `PENDING_HASH`
+- 2026-03-13 — `ab8ccb5`
   - Updated `build.zig` to produce two installed browser outputs:
     - `zig-out/wasm-demo`: validation-focused slim bundle using `src/wasm_validation_api.zig`,
     - `zig-out/wasm-docs`: full interactive docs bundle using `src/root.zig` with the full demo export surface.
