@@ -18,8 +18,10 @@ const samplePerKindFromEnv = process.env.LMT_VALIDATION_SAMPLE_PER_KIND || "";
 const kindsFromEnv = process.env.LMT_VALIDATION_KINDS || "";
 const requestedPort = parsePort(process.env.LMT_VALIDATION_PORT || "");
 
-const validationPath = path.join(rootDir, "zig-out", "wasm-demo", "validation.html");
-const referenceDir = path.join(rootDir, "tmp", "harmoniousapp.net");
+const installDir = path.join(rootDir, "zig-out", "wasm-demo");
+const validationPath = path.join(installDir, "validation.html");
+const sourceReferenceDir = path.join(rootDir, "tmp", "harmoniousapp.net");
+const installedReferenceDir = path.join(installDir, "tmp", "harmoniousapp.net");
 
 function parsePositiveInt(raw, label) {
   if (raw == null || String(raw).trim() === "") return null;
@@ -169,9 +171,9 @@ async function waitForServer(url, deadlineMs) {
 }
 
 function startServer(port) {
-  const args = ["-m", "http.server", String(port), "--bind", host, "--directory", rootDir];
+  const args = ["-m", "http.server", String(port), "--bind", host, "--directory", installDir];
   const child = spawn("python3", args, {
-    cwd: rootDir,
+    cwd: installDir,
     stdio: ["ignore", "pipe", "pipe"],
   });
 
@@ -216,15 +218,18 @@ async function main() {
   if (!fs.existsSync(validationPath)) {
     throw new Error(`missing validation page: ${validationPath}`);
   }
-  if (!fs.existsSync(referenceDir)) {
-    console.log(`skip: reference directory not found: ${referenceDir}`);
+  if (!fs.existsSync(sourceReferenceDir)) {
+    console.log(`skip: reference directory not found: ${sourceReferenceDir}`);
     return;
+  }
+  if (!fs.existsSync(installedReferenceDir)) {
+    throw new Error(`missing installed reference directory: ${installedReferenceDir} (run 'zig build wasm-demo')`);
   }
 
   const port = await resolveValidationPort();
   const { child: server, stderrRef } = startServer(port);
   const baseUrl = `http://${host}:${port}`;
-  const validationUrl = new URL(`${baseUrl}/zig-out/wasm-demo/validation.html`);
+  const validationUrl = new URL(`${baseUrl}/validation.html`);
   if (args.samplePerKind != null) {
     validationUrl.searchParams.set("sample_per_kind", String(args.samplePerKind));
   }

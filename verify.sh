@@ -412,6 +412,12 @@ else
     unverified "0023 wasm interactive docs demo build (examples/wasm-demo/index.html not yet implemented)"
 fi
 
+if [ -f "$ROOT_DIR/examples/wasm-demo/index.html" ] && rg -Fq 'step("wasm-docs"' "$ROOT_DIR/build.zig"; then
+    check_cmd "cd '$ROOT_DIR' && zig build wasm-docs 2>&1" "0050 wasm full docs bundle build"
+else
+    unverified "0050 wasm full docs bundle build (wasm-docs target not yet implemented)"
+fi
+
 if [ -f "$ROOT_DIR/src/tests/svg_harmonious_compat_test.zig" ]; then
     check_cmd "cd '$ROOT_DIR' && zig build test 2>&1" "0024 harmoniousapp.net compatibility test suite"
 else
@@ -501,8 +507,8 @@ else
 fi
 
 if [ -f "$ROOT_DIR/examples/wasm-demo/index.html" ]; then
-    check_cmd "cd '$ROOT_DIR' && rg -n \"wasm_mod\\.export_symbol_names\\s*=\\s*&\\.\\{\" build.zig" "0047 wasm explicit export roots guardrail (build.zig defines wasm export symbol roots)"
-    check_cmd "cd '$ROOT_DIR' && rg -n \"wasm_exe\\.rdynamic\\s*=\\s*false\" build.zig" "0047 wasm explicit export roots guardrail (rdynamic disabled for wasm)"
+    check_cmd "cd '$ROOT_DIR' && rg -n -e \"wasm_mod\\.export_symbol_names\\s*=\\s*&validation_export_symbols\" -e \"wasm_mod\\.export_symbol_names\\s*=\\s*&\\.\\{\" build.zig" "0047 wasm explicit export roots guardrail (build.zig defines wasm export symbol roots)"
+    check_cmd "cd '$ROOT_DIR' && rg -n -e \"wasm_exe\\.rdynamic\\s*=\\s*false\" -e \"fn configureWasmExe\\(exe: \\*std\\.Build\\.Step\\.Compile\\) void\" -e \"exe\\.rdynamic\\s*=\\s*false\" build.zig" "0047 wasm explicit export roots guardrail (rdynamic disabled for wasm)"
     check_cmd "cd '$ROOT_DIR' && test -f zig-out/wasm-demo/libmusictheory.wasm && [ \"$(wc -c < zig-out/wasm-demo/libmusictheory.wasm | tr -d '[:space:]')\" -lt 524288 ]" "0046 wasm demo size guardrail (<512KiB)"
     if [ -f "$ROOT_DIR/scripts/check_wasm_exports.mjs" ] && command -v node >/dev/null 2>&1; then
         check_cmd "cd '$ROOT_DIR' && node scripts/check_wasm_exports.mjs --profile validation --wasm zig-out/wasm-demo/libmusictheory.wasm" "0047 wasm explicit export roots guardrail (required validation exports are present)"
@@ -521,8 +527,28 @@ if [ -f "$ROOT_DIR/examples/wasm-demo/index.html" ]; then
     else
         unverified "0049 wasm validation root guardrail (src/wasm_validation_api.zig not yet implemented)"
     fi
+    if [ -d "$ROOT_DIR/tmp/harmoniousapp.net" ] && rg -Fq 'wasm-demo/tmp/harmoniousapp.net' "$ROOT_DIR/build.zig"; then
+        check_cmd "cd '$ROOT_DIR' && test -d zig-out/wasm-demo/tmp/harmoniousapp.net && test -f zig-out/wasm-demo/tmp/harmoniousapp.net/even/index.svg" "0050 installed validation bundle guardrail (local harmonious refs mirrored into wasm-demo output)"
+    else
+        unverified "0050 installed validation bundle guardrail (wasm-demo ref mirror not yet implemented)"
+    fi
 else
     unverified "0046 wasm demo size guardrail (<512KiB) (examples/wasm-demo/index.html not yet implemented)"
+fi
+
+if [ -f "$ROOT_DIR/examples/wasm-demo/index.html" ] && rg -Fq 'step("wasm-docs"' "$ROOT_DIR/build.zig"; then
+    if [ -f "$ROOT_DIR/scripts/check_wasm_exports.mjs" ] && command -v node >/dev/null 2>&1; then
+        check_cmd "cd '$ROOT_DIR' && test -f zig-out/wasm-docs/libmusictheory.wasm && node scripts/check_wasm_exports.mjs --profile full_demo --wasm zig-out/wasm-docs/libmusictheory.wasm" "0050 wasm full docs export guardrail (required full-demo exports are present)"
+    else
+        unverified "0050 wasm full docs export guardrail (scripts/check_wasm_exports.mjs or node missing)"
+    fi
+    if [ -d "$ROOT_DIR/tmp/harmoniousapp.net" ] && rg -Fq 'wasm-docs/tmp/harmoniousapp.net' "$ROOT_DIR/build.zig"; then
+        check_cmd "cd '$ROOT_DIR' && test -d zig-out/wasm-docs/tmp/harmoniousapp.net && test -f zig-out/wasm-docs/tmp/harmoniousapp.net/even/index.svg" "0050 installed docs bundle guardrail (local harmonious refs mirrored into wasm-docs output)"
+    else
+        unverified "0050 installed docs bundle guardrail (wasm-docs ref mirror not yet implemented)"
+    fi
+else
+    unverified "0050 wasm full docs export guardrail (wasm-docs target not yet implemented)"
 fi
 
 if [ -d "$ROOT_DIR/tmp/harmoniousapp.net/even" ] && [ -f "$ROOT_DIR/scripts/audit_even_compat.py" ]; then
@@ -718,6 +744,16 @@ if [ -d "$ROOT_DIR/tmp/harmoniousapp.net" ] && [ -f "$ROOT_DIR/scripts/validate_
     fi
 else
     unverified "0024 harmoniousapp.net playwright validation (tmp/harmoniousapp.net or script missing)"
+fi
+
+if [ -f "$ROOT_DIR/scripts/validate_wasm_docs_playwright.mjs" ]; then
+    if command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
+        check_cmd "cd '$ROOT_DIR' && node scripts/validate_wasm_docs_playwright.mjs 2>&1" "0050 wasm full docs playwright smoke validation"
+    else
+        unverified "0050 wasm full docs playwright smoke validation (node/npm/python3 missing)"
+    fi
+else
+    unverified "0050 wasm full docs playwright smoke validation (script not yet implemented)"
 fi
 
 # ───────────────────────────────────────────

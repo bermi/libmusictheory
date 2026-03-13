@@ -1,5 +1,75 @@
 const std = @import("std");
 
+const validation_export_symbols = [_][]const u8{
+    "lmt_wasm_scratch_ptr",
+    "lmt_wasm_scratch_size",
+    "lmt_svg_compat_kind_count",
+    "lmt_svg_compat_kind_name",
+    "lmt_svg_compat_kind_directory",
+    "lmt_svg_compat_image_count",
+    "lmt_svg_compat_image_name",
+    "lmt_svg_compat_generate",
+};
+
+const full_demo_export_symbols = [_][]const u8{
+    "lmt_pcs_from_list",
+    "lmt_pcs_to_list",
+    "lmt_pcs_cardinality",
+    "lmt_pcs_transpose",
+    "lmt_pcs_invert",
+    "lmt_pcs_complement",
+    "lmt_pcs_is_subset",
+    "lmt_prime_form",
+    "lmt_forte_prime",
+    "lmt_is_cluster_free",
+    "lmt_evenness_distance",
+    "lmt_scale",
+    "lmt_mode",
+    "lmt_spell_note",
+    "lmt_spell_note_parts",
+    "lmt_chord",
+    "lmt_chord_name",
+    "lmt_roman_numeral",
+    "lmt_roman_numeral_parts",
+    "lmt_fret_to_midi",
+    "lmt_midi_to_fret_positions",
+    "lmt_svg_clock_optc",
+    "lmt_svg_fret",
+    "lmt_svg_chord_staff",
+    "lmt_wasm_scratch_ptr",
+    "lmt_wasm_scratch_size",
+    "lmt_svg_compat_kind_count",
+    "lmt_svg_compat_kind_name",
+    "lmt_svg_compat_kind_directory",
+    "lmt_svg_compat_image_count",
+    "lmt_svg_compat_image_name",
+    "lmt_svg_compat_generate",
+};
+
+fn localDirExists(rel_path: []const u8) bool {
+    std.fs.cwd().access(rel_path, .{}) catch return false;
+    return true;
+}
+
+fn maybeInstallDirectory(b: *std.Build, step: *std.Build.Step, source_rel_path: []const u8, install_subdir: []const u8) void {
+    if (!localDirExists(source_rel_path)) return;
+
+    const install_dir = b.addInstallDirectory(.{
+        .source_dir = b.path(source_rel_path),
+        .install_dir = .prefix,
+        .install_subdir = install_subdir,
+    });
+    step.dependOn(&install_dir.step);
+}
+
+fn configureWasmExe(exe: *std.Build.Step.Compile) void {
+    exe.rdynamic = false;
+    exe.entry = .disabled;
+    exe.export_memory = true;
+    exe.initial_memory = 16 * 1024 * 1024;
+    exe.max_memory = 64 * 1024 * 1024;
+}
+
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
@@ -58,26 +128,13 @@ pub fn build(b: *std.Build) void {
         .target = wasm_target,
         .optimize = .ReleaseSmall,
     });
-    wasm_mod.export_symbol_names = &.{
-        "lmt_wasm_scratch_ptr",
-        "lmt_wasm_scratch_size",
-        "lmt_svg_compat_kind_count",
-        "lmt_svg_compat_kind_name",
-        "lmt_svg_compat_kind_directory",
-        "lmt_svg_compat_image_count",
-        "lmt_svg_compat_image_name",
-        "lmt_svg_compat_generate",
-    };
+    wasm_mod.export_symbol_names = &validation_export_symbols;
 
     const wasm_exe = b.addExecutable(.{
-        .name = "libmusictheory",
+        .name = "libmusictheory_validation",
         .root_module = wasm_mod,
     });
-    wasm_exe.rdynamic = false;
-    wasm_exe.entry = .disabled;
-    wasm_exe.export_memory = true;
-    wasm_exe.initial_memory = 16 * 1024 * 1024;
-    wasm_exe.max_memory = 64 * 1024 * 1024;
+    configureWasmExe(wasm_exe);
 
     const install_wasm = b.addInstallFileWithDir(
         wasm_exe.getEmittedBin(),
@@ -100,7 +157,7 @@ pub fn build(b: *std.Build) void {
         "wasm-demo/styles.css",
     );
     const wasm_demo_write = b.addWriteFiles();
-    const index_stub = wasm_demo_write.add("index.html", "<!doctype html><meta charset=\"utf-8\"><title>Validation Bundle</title><meta http-equiv=\"refresh\" content=\"0; url=validation.html\"><p>Validation-focused wasm bundle. Open <a href=\"validation.html\">validation.html</a>.</p>\n");
+    const index_stub = wasm_demo_write.add("index.html", "<!doctype html><meta charset=\"utf-8\"><title>Validation Bundle</title><p>Validation-focused wasm bundle.</p><p>Open <a href=\"validation.html\">validation.html</a>.</p><p>For the full interactive API docs bundle, run <code>zig build wasm-docs</code> and serve <code>zig-out/wasm-docs</code>.</p>\n");
     const app_stub = wasm_demo_write.add("app.js", "// Validation-focused wasm bundle: interactive demo app is not shipped in this profile.\\n");
     const install_index_stub = b.addInstallFileWithDir(
         index_stub,
@@ -121,6 +178,64 @@ pub fn build(b: *std.Build) void {
     wasm_demo_step.dependOn(&install_validation_css.step);
     wasm_demo_step.dependOn(&install_index_stub.step);
     wasm_demo_step.dependOn(&install_app_stub.step);
+    maybeInstallDirectory(b, wasm_demo_step, "tmp/harmoniousapp.net", "wasm-demo/tmp/harmoniousapp.net");
+
+    const wasm_docs_mod = b.createModule(.{
+        .root_source_file = b.path("src/root.zig"),
+        .target = wasm_target,
+        .optimize = .ReleaseSmall,
+    });
+    const wasm_docs_build_options = b.addOptions();
+    wasm_docs_build_options.addOption(bool, "enable_raster_backend", false);
+    wasm_docs_mod.addOptions("build_options", wasm_docs_build_options);
+    wasm_docs_mod.export_symbol_names = &full_demo_export_symbols;
+
+    const wasm_docs_exe = b.addExecutable(.{
+        .name = "libmusictheory_docs",
+        .root_module = wasm_docs_mod,
+    });
+    configureWasmExe(wasm_docs_exe);
+
+    const install_docs_wasm = b.addInstallFileWithDir(
+        wasm_docs_exe.getEmittedBin(),
+        .prefix,
+        "wasm-docs/libmusictheory.wasm",
+    );
+    const install_docs_index = b.addInstallFileWithDir(
+        b.path("examples/wasm-demo/index.html"),
+        .prefix,
+        "wasm-docs/index.html",
+    );
+    const install_docs_app = b.addInstallFileWithDir(
+        b.path("examples/wasm-demo/app.js"),
+        .prefix,
+        "wasm-docs/app.js",
+    );
+    const install_docs_styles = b.addInstallFileWithDir(
+        b.path("examples/wasm-demo/styles.css"),
+        .prefix,
+        "wasm-docs/styles.css",
+    );
+    const install_docs_validation_html = b.addInstallFileWithDir(
+        b.path("examples/wasm-demo/validation.html"),
+        .prefix,
+        "wasm-docs/validation.html",
+    );
+    const install_docs_validation_js = b.addInstallFileWithDir(
+        b.path("examples/wasm-demo/validation.js"),
+        .prefix,
+        "wasm-docs/validation.js",
+    );
+
+    const wasm_docs_step = b.step("wasm-docs", "Build WebAssembly full interactive docs bundle");
+    wasm_docs_step.dependOn(&wasm_docs_exe.step);
+    wasm_docs_step.dependOn(&install_docs_wasm.step);
+    wasm_docs_step.dependOn(&install_docs_index.step);
+    wasm_docs_step.dependOn(&install_docs_app.step);
+    wasm_docs_step.dependOn(&install_docs_styles.step);
+    wasm_docs_step.dependOn(&install_docs_validation_html.step);
+    wasm_docs_step.dependOn(&install_docs_validation_js.step);
+    maybeInstallDirectory(b, wasm_docs_step, "tmp/harmoniousapp.net", "wasm-docs/tmp/harmoniousapp.net");
 
     // ── Unit tests ──────────────────────────────────────────────
     const lib_tests = b.addTest(.{

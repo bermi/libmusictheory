@@ -16,6 +16,9 @@ const timeoutMs = Number.parseInt(process.env.LMT_VISUAL_DIFF_TIMEOUT_MS || "180
 const referenceRoot = process.env.LMT_HARMONIOUS_REF_ROOT || "/tmp/harmoniousapp.net";
 const defaultOutDir = path.join(rootDir, "tmp", "compat-visual-diff");
 const requestedPort = parsePort(process.env.LMT_VALIDATION_PORT || "");
+const installDir = path.join(rootDir, "zig-out", "wasm-demo");
+const sourceReferenceDir = path.join(rootDir, "tmp", "harmoniousapp.net");
+const installedReferenceDir = path.join(installDir, "tmp", "harmoniousapp.net");
 
 function parsePositiveInt(raw, label) {
   if (raw == null || String(raw).trim() === "") return null;
@@ -166,9 +169,9 @@ async function waitForServer(url, deadlineMs) {
 }
 
 function startServer(port) {
-  const args = ["-m", "http.server", String(port), "--bind", host, "--directory", rootDir];
+  const args = ["-m", "http.server", String(port), "--bind", host, "--directory", installDir];
   const child = spawn("python3", args, {
-    cwd: rootDir,
+    cwd: installDir,
     stdio: ["ignore", "pipe", "pipe"],
   });
 
@@ -358,15 +361,17 @@ async function computeVisualDiffs(page, entries) {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  const validationPath = path.join(rootDir, "zig-out", "wasm-demo", "validation.html");
-  const referenceDir = path.join(rootDir, "tmp", "harmoniousapp.net");
+  const validationPath = path.join(installDir, "validation.html");
 
   if (!fs.existsSync(validationPath)) {
     throw new Error(`missing validation page: ${validationPath}`);
   }
-  if (!fs.existsSync(referenceDir)) {
-    console.log(`skip: reference directory not found: ${referenceDir}`);
+  if (!fs.existsSync(sourceReferenceDir)) {
+    console.log(`skip: reference directory not found: ${sourceReferenceDir}`);
     return;
+  }
+  if (!fs.existsSync(installedReferenceDir)) {
+    throw new Error(`missing installed reference directory: ${installedReferenceDir} (run 'zig build wasm-demo')`);
   }
 
   fs.rmSync(args.outDir, { recursive: true, force: true });
@@ -378,7 +383,7 @@ async function main() {
   const port = await resolveValidationPort();
   const { child: server, stderrRef } = startServer(port);
   const baseUrl = `http://${host}:${port}`;
-  const validationUrl = new URL(`${baseUrl}/zig-out/wasm-demo/validation.html`);
+  const validationUrl = new URL(`${baseUrl}/validation.html`);
   validationUrl.searchParams.set("sample_per_kind", String(args.samplePerKind));
   if (Array.isArray(args.kinds) && args.kinds.length > 0) {
     validationUrl.searchParams.set("kinds", args.kinds.join(","));

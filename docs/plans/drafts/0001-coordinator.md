@@ -11,7 +11,7 @@ Build `libmusictheory`, a Zig library exposing a C ABI that implements the compl
 
 - Draft: 0001
 - In progress: none
-- Completed: 0002, 0003, 0004, 0005, 0006, 0007, 0008, 0009, 0010, 0011, 0012, 0013, 0014, 0015, 0016, 0017, 0018, 0019, 0020, 0021, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0032, 0033, 0034, 0035, 0036, 0037, 0038, 0039, 0040, 0041, 0042, 0043, 0044, 0045, 0046, 0047, 0048, 0049
+- Completed: 0002, 0003, 0004, 0005, 0006, 0007, 0008, 0009, 0010, 0011, 0012, 0013, 0014, 0015, 0016, 0017, 0018, 0019, 0020, 0021, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0032, 0033, 0034, 0035, 0036, 0037, 0038, 0039, 0040, 0041, 0042, 0043, 0044, 0045, 0046, 0047, 0048, 0049, 0050
 
 ## Plan Dependencies (Execute in Order)
 
@@ -111,6 +111,8 @@ Build `libmusictheory`, a Zig library exposing a C ABI that implements the compl
      ↓ depends on 0047
 0049-wasm-validation-root-slimming → build validation wasm from a dedicated minimal root and push installed bundle below strict decimal 500000 bytes
      ↓ depends on 0048
+0050-wasm-docs-bundle-and-installed-validation → make installed validation/docs browser workflows actually work and verify both via Playwright
+     ↓ depends on 0049
 ```
 
 ## Dependency Graph (Visual)
@@ -209,6 +211,8 @@ Parity hardening continuation:
 0048 (WASM Validation Bundle Budget)
    │
 0049 (WASM Validation Root Slimming)
+   │
+0050 (Installed Validation + Full Docs Bundle)
 ```
 
 ## Phase Summary
