@@ -9,7 +9,7 @@ Build `libmusictheory`, a Zig library exposing a C ABI that implements the compl
 
 ## Lifecycle Status
 
-- Draft: 0001
+- Draft: 0001, 0051
 - In progress: none
 - Completed: 0002, 0003, 0004, 0005, 0006, 0007, 0008, 0009, 0010, 0011, 0012, 0013, 0014, 0015, 0016, 0017, 0018, 0019, 0020, 0021, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0032, 0033, 0034, 0035, 0036, 0037, 0038, 0039, 0040, 0041, 0042, 0043, 0044, 0045, 0046, 0047, 0048, 0049, 0050
 
@@ -113,6 +113,8 @@ Build `libmusictheory`, a Zig library exposing a C ABI that implements the compl
      ↓ depends on 0048
 0050-wasm-docs-bundle-and-installed-validation → make installed validation/docs browser workflows actually work and verify both via Playwright
      ↓ depends on 0049
+0051-bitmap-proof-and-55pct-rgba-master → coordinate the additive 55% bitmap proof lane with direct RGBA rendering, anti-cheat guardrails, and drift-based verification
+     ↓ depends on 0030, 0031, 0050
 ```
 
 ## Dependency Graph (Visual)
@@ -213,6 +215,8 @@ Parity hardening continuation:
 0049 (WASM Validation Root Slimming)
    │
 0050 (Installed Validation + Full Docs Bundle)
+   │
+0051 (55% Bitmap Proof Master)
 ```
 
 ## Phase Summary
@@ -256,6 +260,11 @@ Lock verification so exact-match progress cannot be faked with embedded referenc
 Add optional rendering infrastructure and diagnostics for native/mobile/plugin consumers while keeping SVG byte-parity as the sole compatibility completion target.
 
 **Deliverable**: backend-agnostic rendering pipeline and optional raster/visual-debug tooling that does not relax exact SVG verification.
+
+### Phase 7.5 (Planned Additive): 55% Bitmap Proof Track (Plan 0051)
+Add a second proof lane that validates direct algorithmic RGBA rendering at canonical `55%` target size against scaled harmonious references, without allowing candidate SVG raster shortcuts or replacing exact SVG parity.
+
+**Deliverable**: a staged master plan for bitmap proof with explicit anti-cheat rules, RGBA ABI requirements, deterministic diff metrics, and per-family closure gates.
 
 ## Research Documents Index
 
