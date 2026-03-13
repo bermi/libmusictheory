@@ -1,28 +1,30 @@
 # WASM Footprint Audit
 
-## Current Snapshot (2026-03-12)
+## Current Snapshot (2026-03-13)
 
 `zig-out/wasm-demo/libmusictheory.wasm`
 
-- Total size: `499,854` bytes
-- `CODE` section: `125,581` bytes
-- `DATA` section: `373,511` bytes
+- Total size: `481,724` bytes
+- `CODE` section: `113,436` bytes
+- `DATA` section: `367,567` bytes
 
-Reachable generated files (`10`) total `1,558,179` source bytes.
+Reachable generated files (`10`) total `1,524,491` source bytes.
 Coordinate-like reachable generated files total `13,586` bytes.
 
 Notable deltas from the prior baseline:
 
-- Validation-focused wasm export roots now retain only compatibility APIs needed by `validation.html`.
-- Installed wasm-demo bundle now enforces a hard budget gate:
-  - `wasm + installed js <= 524,288 bytes`.
-- Strict compatibility still holds (`8634/8634`, `0` mismatches) while shrinking wasm footprint below `500 KiB`.
+- Validation-focused wasm now builds from `src/wasm_validation_api.zig`, so the wasm-demo target no longer roots at `src/root.zig`.
+- `even` exact assets now use segmented xz payloads instead of segmented gzip, reusing the already-linked xz decoder and removing the extra gzip decode path.
+- Installed wasm-demo bundle now satisfies the stricter decimal guardrail:
+  - `wasm + installed js < 500,000 bytes`.
+- Playwright validation harness now chooses a free localhost port by default, avoiding false negatives when `8000` is already occupied.
+- Strict compatibility still holds (`8634/8634`, `0` mismatches).
 
 Validation bundle footprint (`zig-out/wasm-demo`):
 
-- `libmusictheory.wasm`: `499,854` bytes
+- `libmusictheory.wasm`: `481,724` bytes
 - `.js` total (`validation.js` + output stub `app.js`): `15,714` bytes
-- Combined: `515,568` bytes
+- Combined: `497,438` bytes
 
 ## Baseline (2026-02-19)
 
@@ -36,12 +38,12 @@ The wasm is data-dominated, so size reduction work should prioritize generated d
 
 ## Reachable Generated Payload (from `src/root.zig` import graph)
 
-Current reachable generated files (`10`) total `1,558,179` source bytes.
+Current reachable generated files (`10`) total `1,524,491` source bytes.
 Top contributors:
 
 - `src/generated/harmonious_majmin_scene_pack_xz.zig` (`989,501`)
 - `src/generated/harmonious_majmin_modes_geometry_refs.zig` (`172,026`)
-- `src/generated/harmonious_even_segment_gzip.zig` (`161,003`)
+- `src/generated/harmonious_even_segment_xz.zig` (`127,315`)
 - `src/generated/harmonious_name_pack_xz.zig` (`110,859`)
 - `src/generated/harmonious_oc_templates.zig` (`39,463`)
 - `src/generated/harmonious_chord_compat_assets.zig` (`34,869`)

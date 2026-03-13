@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Generate segmented gzip harmonious even compat assets."""
+"""Generate segmented xz harmonious even compat assets."""
 
 from __future__ import annotations
 
 import argparse
-import gzip
+import lzma
 from pathlib import Path
 
 
@@ -19,7 +19,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--root", default="tmp/harmoniousapp.net", help="harmoniousapp root")
     parser.add_argument(
         "--out",
-        default="src/generated/harmonious_even_segment_gzip.zig",
+        default="src/generated/harmonious_even_segment_xz.zig",
         help="output Zig module path",
     )
     return parser.parse_args()
@@ -86,32 +86,32 @@ def main() -> int:
     if index_prefix + common_body + index_tail != index:
         raise RuntimeError("index reconstruction mismatch")
 
-    gz_parts = {
-        "COMPAT_PREFIX_GZIP": gzip.compress(compat_prefix, compresslevel=9),
-        "INDEX_PREFIX_GZIP": gzip.compress(index_prefix, compresslevel=9),
-        "COMMON_BODY_GZIP": gzip.compress(common_body, compresslevel=9),
-        "GRAD_TAIL_GZIP": gzip.compress(grad_tail, compresslevel=9),
-        "LINE_TAIL_GZIP": gzip.compress(line_tail, compresslevel=9),
-        "INDEX_TAIL_GZIP": gzip.compress(index_tail, compresslevel=9),
+    xz_parts = {
+        "COMPAT_PREFIX_XZ": lzma.compress(compat_prefix, format=lzma.FORMAT_XZ, preset=9),
+        "INDEX_PREFIX_XZ": lzma.compress(index_prefix, format=lzma.FORMAT_XZ, preset=9),
+        "COMMON_BODY_XZ": lzma.compress(common_body, format=lzma.FORMAT_XZ, preset=9),
+        "GRAD_TAIL_XZ": lzma.compress(grad_tail, format=lzma.FORMAT_XZ, preset=9),
+        "LINE_TAIL_XZ": lzma.compress(line_tail, format=lzma.FORMAT_XZ, preset=9),
+        "INDEX_TAIL_XZ": lzma.compress(index_tail, format=lzma.FORMAT_XZ, preset=9),
     }
 
     out = [
-        "// Auto-generated segmented gzip payloads for harmonious even/*.svg exact assets.",
+        "// Auto-generated segmented xz payloads for harmonious even/*.svg exact assets.",
         "// DO NOT EDIT MANUALLY.",
         "",
     ]
-    for key, payload in gz_parts.items():
+    for key, payload in xz_parts.items():
         out.append(zig_byte_array(key, payload))
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text("\n".join(out), encoding="utf-8")
 
-    total = sum(len(payload) for payload in gz_parts.values())
+    total = sum(len(payload) for payload in xz_parts.values())
     print(
-        f"wrote {out_path} (segmented gzip bytes={total}, "
-        f"compat={len(gz_parts['COMPAT_PREFIX_GZIP'])}, index_prefix={len(gz_parts['INDEX_PREFIX_GZIP'])}, "
-        f"common={len(gz_parts['COMMON_BODY_GZIP'])}, grad={len(gz_parts['GRAD_TAIL_GZIP'])}, "
-        f"line={len(gz_parts['LINE_TAIL_GZIP'])}, index_tail={len(gz_parts['INDEX_TAIL_GZIP'])})"
+        f"wrote {out_path} (segmented xz bytes={total}, "
+        f"compat={len(xz_parts['COMPAT_PREFIX_XZ'])}, index_prefix={len(xz_parts['INDEX_PREFIX_XZ'])}, "
+        f"common={len(xz_parts['COMMON_BODY_XZ'])}, grad={len(xz_parts['GRAD_TAIL_XZ'])}, "
+        f"line={len(xz_parts['LINE_TAIL_XZ'])}, index_tail={len(xz_parts['INDEX_TAIL_XZ'])})"
     )
     return 0
 

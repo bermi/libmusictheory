@@ -54,7 +54,7 @@ pub fn build(b: *std.Build) void {
     });
 
     const wasm_mod = b.createModule(.{
-        .root_source_file = b.path("src/root.zig"),
+        .root_source_file = b.path("src/wasm_validation_api.zig"),
         .target = wasm_target,
         .optimize = .ReleaseSmall,
     });
@@ -73,9 +73,6 @@ pub fn build(b: *std.Build) void {
         .name = "libmusictheory",
         .root_module = wasm_mod,
     });
-    const wasm_build_options = b.addOptions();
-    wasm_build_options.addOption(bool, "enable_raster_backend", false);
-    wasm_mod.addOptions("build_options", wasm_build_options);
     wasm_exe.rdynamic = false;
     wasm_exe.entry = .disabled;
     wasm_exe.export_memory = true;

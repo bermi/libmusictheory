@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import fs from "node:fs";
+import net from "node:net";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -11,11 +12,11 @@ const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, "..");
 
 const host = process.env.LMT_VALIDATION_HOST || "127.0.0.1";
-const port = Number.parseInt(process.env.LMT_VALIDATION_PORT || "8000", 10);
 const timeoutMs = Number.parseInt(process.env.LMT_VALIDATION_TIMEOUT_MS || "1800000", 10);
 const referenceRoot = process.env.LMT_HARMONIOUS_REF_ROOT || "/tmp/harmoniousapp.net";
 const samplePerKindFromEnv = process.env.LMT_VALIDATION_SAMPLE_PER_KIND || "";
 const kindsFromEnv = process.env.LMT_VALIDATION_KINDS || "";
+const requestedPort = parsePort(process.env.LMT_VALIDATION_PORT || "");
 
 const validationPath = path.join(rootDir, "zig-out", "wasm-demo", "validation.html");
 const referenceDir = path.join(rootDir, "tmp", "harmoniousapp.net");
@@ -25,6 +26,15 @@ function parsePositiveInt(raw, label) {
   const value = Number.parseInt(String(raw), 10);
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`invalid ${label}: ${raw}`);
+  }
+  return value;
+}
+
+function parsePort(raw) {
+  if (raw == null || String(raw).trim() === "") return null;
+  const value = Number.parseInt(String(raw), 10);
+  if (!Number.isFinite(value) || value <= 0 || value > 65535) {
+    throw new Error(`invalid port: ${raw}`);
   }
   return value;
 }
@@ -73,6 +83,31 @@ function parseArgs(argv) {
 
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function resolveValidationPort() {
+  if (requestedPort != null) return Promise.resolve(requestedPort);
+
+  return new Promise((resolve, reject) => {
+    const probe = net.createServer();
+    probe.unref();
+    probe.once("error", reject);
+    probe.listen(0, host, () => {
+      const address = probe.address();
+      if (!address || typeof address === "string") {
+        probe.close(() => reject(new Error("failed to resolve ephemeral validation port")));
+        return;
+      }
+      const resolvedPort = address.port;
+      probe.close((err) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve(resolvedPort);
+      });
+    });
+  });
 }
 
 function resolveBrowserExecutable() {
@@ -133,7 +168,7 @@ async function waitForServer(url, deadlineMs) {
   throw new Error(`timed out waiting for server at ${url}`);
 }
 
-function startServer() {
+function startServer(port) {
   const args = ["-m", "http.server", String(port), "--bind", host, "--directory", rootDir];
   const child = spawn("python3", args, {
     cwd: rootDir,
@@ -186,7 +221,8 @@ async function main() {
     return;
   }
 
-  const { child: server, stderrRef } = startServer();
+  const port = await resolveValidationPort();
+  const { child: server, stderrRef } = startServer(port);
   const baseUrl = `http://${host}:${port}`;
   const validationUrl = new URL(`${baseUrl}/zig-out/wasm-demo/validation.html`);
   if (args.samplePerKind != null) {

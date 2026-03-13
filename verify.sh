@@ -485,7 +485,13 @@ else
     unverified "0032 chord algorithmic layout guardrail (src/generated/harmonious_scale_mod_offset_assets.zig missing)"
 fi
 
-if [ -f "$ROOT_DIR/src/generated/harmonious_even_segment_gzip.zig" ]; then
+if [ -f "$ROOT_DIR/src/generated/harmonious_even_segment_xz.zig" ]; then
+    check_cmd "cd '$ROOT_DIR' && ! rg -n \"harmonious_even_gzip\" src/svg/evenness_chart.zig" "0035 even compat guardrail (no monolithic even gzip replay import when segmented assets exist)"
+    check_cmd "cd '$ROOT_DIR' && rg -n \"harmonious_even_segment_xz\" src/svg/evenness_chart.zig" "0035 even compat guardrail (segmented even xz module wired in)"
+    check_cmd "cd '$ROOT_DIR' && test ! -f src/generated/harmonious_even_segment_gzip.zig" "0035 even compat guardrail (legacy segmented gzip artifact removed after xz cutover)"
+    check_cmd "cd '$ROOT_DIR' && test ! -f src/generated/harmonious_even_gzip.zig" "0035 even compat guardrail (gzip payload artifact removed when segmented assets exist)"
+    check_cmd "cd '$ROOT_DIR' && test ! -f src/generated/harmonious_even_segments.zig" "0035 even compat guardrail (uncompressed segmented payload artifact removed)"
+elif [ -f "$ROOT_DIR/src/generated/harmonious_even_segment_gzip.zig" ]; then
     check_cmd "cd '$ROOT_DIR' && ! rg -n \"harmonious_even_gzip\" src/svg/evenness_chart.zig" "0035 even compat guardrail (no monolithic even gzip replay import when segmented assets exist)"
     check_cmd "cd '$ROOT_DIR' && rg -n \"harmonious_even_segment_gzip\" src/svg/evenness_chart.zig" "0035 even compat guardrail (segmented even gzip module wired in)"
     check_cmd "cd '$ROOT_DIR' && test ! -f src/generated/harmonious_even_gzip.zig" "0035 even compat guardrail (gzip payload artifact removed when segmented assets exist)"
@@ -508,6 +514,12 @@ if [ -f "$ROOT_DIR/examples/wasm-demo/index.html" ]; then
         check_cmd "cd '$ROOT_DIR' && python3 scripts/wasm_size_audit.py --wasm zig-out/wasm-demo/libmusictheory.wasm --max-wasm-bytes 524288 --max-data-bytes 480000 --max-reachable-generated-bytes 1600000 --max-coordinate-generated-bytes 170000" "0046 wasm size audit guardrail (section + generated footprint budgets)"
     else
         unverified "0046 wasm size audit guardrail (scripts/wasm_size_audit.py or python3 missing)"
+    fi
+    if [ -f "$ROOT_DIR/src/wasm_validation_api.zig" ]; then
+        check_cmd "cd '$ROOT_DIR' && rg -n \"root_source_file = b\\.path\\(\\\"src/wasm_validation_api\\.zig\\\"\\)\" build.zig" "0049 wasm validation root guardrail (dedicated validation root wired in build)"
+        check_cmd "cd '$ROOT_DIR' && python3 -c \"import pathlib,sys; root=pathlib.Path('zig-out/wasm-demo'); wasm=root/'libmusictheory.wasm'; js_total=sum(p.stat().st_size for p in root.glob('*.js')); combined=wasm.stat().st_size+js_total; print(f'wasm={wasm.stat().st_size} js_total={js_total} combined={combined}'); sys.exit(0 if combined < 500000 else 1)\"" "0049 wasm validation bundle guardrail (installed wasm+js < 500000)"
+    else
+        unverified "0049 wasm validation root guardrail (src/wasm_validation_api.zig not yet implemented)"
     fi
 else
     unverified "0046 wasm demo size guardrail (<512KiB) (examples/wasm-demo/index.html not yet implemented)"
