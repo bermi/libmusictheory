@@ -38,7 +38,7 @@ Lock the new bitmap-proof lane behind explicit structural constraints so visual 
 
 ## Implementation History (Point-in-Time)
 
-- `TBD` (`2026-03-14`)
+- `4c7ba7a` (`2026-03-14`)
 - Shipped behavior:
 - Added the dedicated bitmap-proof browser bundle target in `/Users/bermi/code/libmusictheory/build.zig` and mirrored harmonious references into `zig-out/wasm-bitmap-proof`.
 - Added proof-lane anti-cheat verification gates in `/Users/bermi/code/libmusictheory/verify.sh` that reject browser-side `drawImage()`/scale shortcuts and require `putImageData()` painting from wasm RGBA.

@@ -23,7 +23,7 @@ Expose direct RGBA rendering from Zig/WASM for proof-mode consumers using caller
 
 ## Implementation History (Point-in-Time)
 
-- `TBD` (`2026-03-14`)
+- `4c7ba7a` (`2026-03-14`)
 - Shipped behavior:
 - Added the proof RGBA ABI to `/Users/bermi/code/libmusictheory/include/libmusictheory.h` and `/Users/bermi/code/libmusictheory/src/c_api.zig`.
 - Added the proof-focused wasm root in `/Users/bermi/code/libmusictheory/src/wasm_bitmap_proof_api.zig`.
