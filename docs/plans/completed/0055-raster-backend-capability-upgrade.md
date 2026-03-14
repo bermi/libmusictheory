@@ -33,7 +33,7 @@ This slice is deliberately scoped to the text-glyph families and the path primit
 
 ## Implementation History (Point-in-Time)
 
-- `TBD` (`2026-03-14`)
+- `4e01095` (`2026-03-14`)
 - Shipped behavior:
 - Added deterministic filled-path rasterization with `translate`/`rotate` transform support in `/Users/bermi/code/libmusictheory/src/bitmap_compat.zig`.
 - Added direct candidate RGBA proof rendering for `/Users/bermi/code/libmusictheory/tmp/harmoniousapp.net/center-square-text/*.svg`, `/Users/bermi/code/libmusictheory/tmp/harmoniousapp.net/vert-text-black/*.svg`, and `/Users/bermi/code/libmusictheory/tmp/harmoniousapp.net/vert-text-b2t-black/*.svg` using reusable glyph primitives from `/Users/bermi/code/libmusictheory/src/svg/text_misc.zig`.
