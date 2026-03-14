@@ -49,7 +49,7 @@ const OPC_CY = [_][]const u8{
     "13.62693304105359",
 };
 
-const OPTC_COMPAT_PC_ORDER = [_]u4{ 3, 4, 5, 6, 7, 8, 9, 10, 11, 0, 1, 2 };
+pub const OPTC_COMPAT_PC_ORDER = [_]u4{ 3, 4, 5, 6, 7, 8, 9, 10, 11, 0, 1, 2 };
 
 const OPTC_COMPAT_CX = [_][]const u8{
     "50.00",
@@ -249,6 +249,32 @@ pub fn renderOPTCHarmoniousCompat(set: pcs.PitchClassSet, label: []const u8, met
     var stream = std.io.fixedBufferStream(buf);
     render_svg_serializer.write(builder.scene(), stream.writer(), .strict) catch return "";
     return buf[0..stream.pos];
+}
+
+pub fn optcCompatVariant(label: []const u8) optc_templates.OptcVariant {
+    return optc_templates.OPTC_VARIANTS[findOptcVariantIndex(label)];
+}
+
+pub fn optcCompatCirclePosition(pc: u4) Point {
+    return switch (pc) {
+        0 => .{ .x = 50.00, .y = 8.00 },
+        1 => .{ .x = 71.00, .y = 13.63 },
+        2 => .{ .x = 86.37, .y = 29.00 },
+        3 => .{ .x = 92.00, .y = 50.00 },
+        4 => .{ .x = 86.37, .y = 71.00 },
+        5 => .{ .x = 71.00, .y = 86.37 },
+        6 => .{ .x = 50.00, .y = 92.00 },
+        7 => .{ .x = 29.00, .y = 86.37 },
+        8 => .{ .x = 13.63, .y = 71.00 },
+        9 => .{ .x = 8.00, .y = 50.00 },
+        10 => .{ .x = 13.63, .y = 29.00 },
+        11 => .{ .x = 29.00, .y = 13.63 },
+        else => unreachable,
+    };
+}
+
+pub fn optcCompatSpokePath(pc: u4) []const u8 {
+    return OPTC_COMPAT_SPOKE_PATHS[pc];
 }
 
 fn appendBlankLines(builder: *render_ir.Builder, count: usize) !void {

@@ -13,18 +13,18 @@ Close the native-RGBA proof lane for the simple compatibility families with stri
 The currently supported native subset is:
 
 - `opc`
+- `optc`
 - `center-square-text`
 - `vert-text-black`
 - `vert-text-b2t-black`
 
-Families such as `optc`, `oc`, and `even` are not considered closed until their candidate source is `native-rgba` and the anti-replay intent remains intact.
+Families such as `oc` and `even` are not considered closed until their candidate source is `native-rgba` and the anti-replay intent remains intact.
 
 ## Remaining Work
 
-- add honest `native-rgba` support for `optc`
 - determine whether `oc` needs a deeper renderer or data reduction cutover before native proof is realistic
 - add deterministic native candidate and reference handling for `even`, including its gradient case
-- expand the native-proof Playwright run beyond the current four supported kinds once support is real
+- expand the native-proof Playwright run beyond the current five supported kinds once additional support is real
 
 ## Exit Criteria
 
@@ -37,4 +37,4 @@ Families such as `optc`, `oc`, and `even` are not considered closed until their 
 ## Verification Commands
 
 - `./verify.sh`
-- `node scripts/validate_harmonious_native_rgba_proof_playwright.mjs --sample-per-kind 5 --kinds opc,center-square-text,vert-text-black,vert-text-b2t-black --scales 55:100,200:100`
+- `node scripts/validate_harmonious_native_rgba_proof_playwright.mjs --sample-per-kind 5 --kinds opc,optc,center-square-text,vert-text-black,vert-text-b2t-black --scales 55:100,200:100`

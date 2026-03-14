@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const svg_compat = @import("harmonious_svg_compat.zig");
+const cluster = @import("cluster.zig");
 const pcs = @import("pitch_class_set.zig");
 const svg_clock = @import("svg/clock.zig");
 const text_misc = @import("svg/text_misc.zig");
@@ -8,6 +9,7 @@ const text_misc = @import("svg/text_misc.zig");
 pub const SCALE_NUMERATOR: u32 = 55;
 pub const SCALE_DENOMINATOR: u32 = 100;
 pub const TARGET_SIZE_OPC: u32 = scaledDimDefault(100);
+pub const TARGET_SIZE_OPTC: u32 = scaledDimDefault(70);
 pub const TARGET_SIZE_CENTER_SQUARE: u32 = scaledDimDefault(36);
 pub const TARGET_WIDTH_VERTICAL_TEXT: u32 = scaledDimDefault(36);
 pub const TARGET_HEIGHT_VERTICAL_TEXT: u32 = scaledDimDefault(90);
@@ -89,6 +91,8 @@ const Paint = struct {
     fill: [4]u8 = .{ 0, 0, 0, 0 },
     stroke: [4]u8 = .{ 0, 0, 0, 0 },
     stroke_width: f64 = 1.0,
+    stroke_dash_on: f64 = 0.0,
+    stroke_dash_off: f64 = 0.0,
 };
 
 const PathBuilder = struct {
@@ -189,7 +193,7 @@ fn scaledDim(source: u32, scale_numerator: u32, scale_denominator: u32) u32 {
 
 pub fn kindSupported(kind_index: usize) bool {
     return switch (svg_compat.kindId(kind_index) orelse return false) {
-        .opc, .center_square_text, .vert_text_black, .vert_text_b2t_black => true,
+        .opc, .optc, .center_square_text, .vert_text_black, .vert_text_b2t_black => true,
         else => false,
     };
 }
@@ -203,6 +207,7 @@ pub fn targetWidthScaled(kind_index: usize, image_index: usize, scale_numerator:
     const kind_id = svg_compat.kindId(kind_index) orelse return 0;
     return switch (kind_id) {
         .opc => scaledDim(100, scale_numerator, scale_denominator),
+        .optc => scaledDim(70, scale_numerator, scale_denominator),
         .center_square_text => scaledDim(36, scale_numerator, scale_denominator),
         .vert_text_black, .vert_text_b2t_black => scaledDim(36, scale_numerator, scale_denominator),
         else => 0,
@@ -218,6 +223,7 @@ pub fn targetHeightScaled(kind_index: usize, image_index: usize, scale_numerator
     const kind_id = svg_compat.kindId(kind_index) orelse return 0;
     return switch (kind_id) {
         .opc => scaledDim(100, scale_numerator, scale_denominator),
+        .optc => scaledDim(70, scale_numerator, scale_denominator),
         .center_square_text => scaledDim(36, scale_numerator, scale_denominator),
         .vert_text_black, .vert_text_b2t_black => scaledDim(90, scale_numerator, scale_denominator),
         else => 0,
@@ -254,6 +260,7 @@ pub fn renderCandidateRgbaScaled(kind_index: usize, image_index: usize, scale_nu
 
     switch (kind_id) {
         .opc => try renderOpcCandidate(&surface, image_name, scale_numerator, scale_denominator),
+        .optc => try renderOptcCandidate(&surface, image_name),
         .center_square_text => try renderCenterSquareCandidate(&surface, image_name, scale_numerator, scale_denominator),
         .vert_text_black => try renderVerticalTextCandidate(&surface, image_name, false, scale_numerator, scale_denominator),
         .vert_text_b2t_black => try renderVerticalTextCandidate(&surface, image_name, true, scale_numerator, scale_denominator),
@@ -277,6 +284,7 @@ pub fn renderReferenceSvgRgbaScaled(kind_index: usize, svg: []const u8, scale_nu
     var surface = try initSurface(kind_id, required, out_rgba, scale_numerator, scale_denominator);
     switch (kind_id) {
         .opc => try renderOpcReference(&surface, svg, scale_numerator, scale_denominator),
+        .optc => try renderOptcReference(&surface, svg),
         .center_square_text, .vert_text_black, .vert_text_b2t_black => try renderTextReference(&surface, svg, scale_numerator, scale_denominator),
         else => return error.UnsupportedKind,
     }
@@ -287,12 +295,14 @@ pub fn renderReferenceSvgRgbaScaled(kind_index: usize, svg: []const u8, scale_nu
 fn initSurface(kind_id: svg_compat.KindId, required: usize, out_rgba: []u8, scale_numerator: u32, scale_denominator: u32) Error!Surface {
     const width = switch (kind_id) {
         .opc => scaledDim(100, scale_numerator, scale_denominator),
+        .optc => scaledDim(70, scale_numerator, scale_denominator),
         .center_square_text => scaledDim(36, scale_numerator, scale_denominator),
         .vert_text_black, .vert_text_b2t_black => scaledDim(36, scale_numerator, scale_denominator),
         else => return error.UnsupportedKind,
     };
     const height = switch (kind_id) {
         .opc => scaledDim(100, scale_numerator, scale_denominator),
+        .optc => scaledDim(70, scale_numerator, scale_denominator),
         .center_square_text => scaledDim(36, scale_numerator, scale_denominator),
         .vert_text_black, .vert_text_b2t_black => scaledDim(90, scale_numerator, scale_denominator),
         else => return error.UnsupportedKind,
@@ -327,6 +337,153 @@ fn renderOpcCandidate(surface: *Surface, image_name: []const u8, scale_numerator
         const fill = if ((set & bit) != 0) OPC_FILL_COLORS[pc] else .{ 255, 255, 255, 255 };
         drawCircle(surface, transformed.x, transformed.y, radius, fill, OPC_STROKE_COLORS[pc], stroke_width);
     }
+}
+
+const OptcImageArgs = struct {
+    label: []const u8,
+    set: pcs.PitchClassSet,
+    cluster_mask: pcs.PitchClassSet,
+    dash_mask: pcs.PitchClassSet,
+    black_mask: pcs.PitchClassSet,
+};
+
+fn renderOptcCandidate(surface: *Surface, image_name: []const u8) Error!void {
+    const args = parseOptcImageArgs(trimSvgSuffix(image_name)) orelse return error.InvalidImage;
+    const variant = svg_clock.optcCompatVariant(args.label);
+    const root = optcViewBoxMatrix(surface);
+    const center = root.apply(50.0, 50.0);
+    const scale = root.approxUniformScale();
+    const include_white_overlay = args.label.len >= 7;
+
+    clear(surface, .{ 0, 0, 0, 0 });
+
+    if (args.dash_mask != 0 and args.black_mask != 0) {
+        try renderOptcSpokes(surface, root, args.dash_mask, hexColor("#777"), 9.0 * scale, .{ .on = 1.6 * scale, .off = 0.8 * scale });
+        try renderOptcSpokes(surface, root, args.black_mask, hexColor("#000"), 9.0 * scale, .{});
+        if (include_white_overlay) {
+            try renderOptcSpokes(surface, root, args.black_mask, hexColor("#fff"), 5.0 * scale, .{});
+        }
+    }
+
+    drawCircle(surface, center.x, center.y, 20.0 * scale, parseColor(variant.center_fill), hexColor("#000"), 2.0 * scale);
+
+    for (svg_clock.OPTC_COMPAT_PC_ORDER) |pc| {
+        const bit = @as(pcs.PitchClassSet, 1) << pc;
+        const present = (args.set & bit) != 0;
+        const in_cluster = (args.cluster_mask & bit) != 0;
+        const fill = if (!present)
+            [4]u8{ 0, 0, 0, 0 }
+        else if (in_cluster)
+            parseColor("gray")
+        else
+            hexColor("#000");
+        const pos = svg_clock.optcCompatCirclePosition(pc);
+        const transformed = root.apply(pos.x, pos.y);
+        drawCircle(surface, transformed.x, transformed.y, 10.0 * scale, fill, hexColor("#000"), 3.0 * scale);
+    }
+
+    const label_transform = root.multiply(parseTransformList(variant.transform) catch return error.InvalidSvg);
+    try renderPathFill(surface, variant.text_path, label_transform, parseColor(variant.text_fill));
+}
+
+fn renderOptcReference(surface: *Surface, svg: []const u8) Error!void {
+    clear(surface, .{ 0, 0, 0, 0 });
+
+    const root = optcViewBoxMatrix(surface);
+    var current_group_transform = Matrix{};
+    var group_depth: usize = 0;
+    var cursor: usize = 0;
+
+    while (nextTag(svg, cursor)) |tag| {
+        cursor = tag.end;
+        const tag_text = svg[tag.start..tag.end];
+
+        if (tag.close) {
+            if (std.mem.eql(u8, tag.name, "g") and group_depth > 0) {
+                group_depth -= 1;
+                if (group_depth == 0) current_group_transform = Matrix{};
+            }
+            continue;
+        }
+
+        if (std.mem.eql(u8, tag.name, "g")) {
+            if (group_depth == 0) {
+                current_group_transform = parseTransformAttr(tag_text) orelse Matrix{};
+            }
+            group_depth += 1;
+            continue;
+        }
+
+        if (std.mem.eql(u8, tag.name, "circle")) {
+            try renderCircleTag(tag_text, root, surface);
+            continue;
+        }
+
+        if (std.mem.eql(u8, tag.name, "path")) {
+            try renderPathTag(tag_text, root.multiply(current_group_transform), surface);
+        }
+    }
+}
+
+const DashSpec = struct {
+    on: f64 = 0.0,
+    off: f64 = 0.0,
+};
+
+fn renderOptcSpokes(surface: *Surface, root: Matrix, mask: pcs.PitchClassSet, color: [4]u8, stroke_width: f64, dash: DashSpec) Error!void {
+    var pc: u4 = 0;
+    while (pc < 12) : (pc += 1) {
+        const bit = @as(pcs.PitchClassSet, 1) << pc;
+        if ((mask & bit) == 0) continue;
+        try renderPathStroke(surface, svg_clock.optcCompatSpokePath(pc), root, color, stroke_width, dash.on, dash.off);
+    }
+}
+
+fn optcViewBoxMatrix(surface: *const Surface) Matrix {
+    const sx = @as(f64, @floatFromInt(surface.width)) / 114.0;
+    const sy = @as(f64, @floatFromInt(surface.height)) / 114.0;
+    return .{
+        .a = sx,
+        .d = sy,
+        .e = 7.0 * sx,
+        .f = 7.0 * sy,
+    };
+}
+
+fn parseOptcImageArgs(stem: []const u8) ?OptcImageArgs {
+    var parts = std.mem.splitScalar(u8, stem, ',');
+    const label = parts.next() orelse return null;
+    const set = parseSetLabel(label) orelse return null;
+
+    var cluster_mask: pcs.PitchClassSet = 0;
+    var dash_mask: pcs.PitchClassSet = 0;
+    var black_mask: pcs.PitchClassSet = 0;
+
+    if (parts.next()) |cluster_mask_token| {
+        cluster_mask = parseSetMaskToken(cluster_mask_token) orelse return null;
+        const dash_mask_token = parts.next() orelse return null;
+        const black_mask_token = parts.next() orelse return null;
+        dash_mask = parseSetMaskToken(dash_mask_token) orelse return null;
+        black_mask = parseSetMaskToken(black_mask_token) orelse return null;
+        if (parts.next() != null) return null;
+    } else {
+        cluster_mask = cluster.getClusters(set).cluster_mask;
+    }
+
+    return .{
+        .label = label,
+        .set = set,
+        .cluster_mask = cluster_mask,
+        .dash_mask = dash_mask,
+        .black_mask = black_mask,
+    };
+}
+
+fn parseSetMaskToken(token: []const u8) ?pcs.PitchClassSet {
+    if (token.len == 0) return null;
+    const raw = std.fmt.parseInt(u16, token, 10) catch return null;
+    if (raw > 0x0fff) return null;
+    return @as(pcs.PitchClassSet, @intCast(raw));
 }
 
 fn renderCenterSquareCandidate(surface: *Surface, image_name: []const u8, scale_numerator: u32, scale_denominator: u32) Error!void {
@@ -406,6 +563,49 @@ fn findTag(svg: []const u8, tag_name: []const u8, from: usize) ?struct { start: 
     return null;
 }
 
+const TagToken = struct {
+    start: usize,
+    end: usize,
+    close: bool,
+    name: []const u8,
+};
+
+fn nextTag(svg: []const u8, from: usize) ?TagToken {
+    var cursor = from;
+    while (cursor < svg.len) {
+        const start = std.mem.indexOfPos(u8, svg, cursor, "<") orelse return null;
+        const end = std.mem.indexOfPos(u8, svg, start, ">") orelse return null;
+
+        var name_start = start + 1;
+        var close = false;
+        if (name_start >= end) return null;
+        if (svg[name_start] == '/' and name_start + 1 < end) {
+            close = true;
+            name_start += 1;
+        }
+
+        if (svg[name_start] == '!' or svg[name_start] == '?') {
+            cursor = end + 1;
+            continue;
+        }
+
+        var name_end = name_start;
+        while (name_end < end and isAttrNameChar(svg[name_end])) : (name_end += 1) {}
+        if (name_end == name_start) {
+            cursor = end + 1;
+            continue;
+        }
+
+        return .{
+            .start = start,
+            .end = end + 1,
+            .close = close,
+            .name = svg[name_start..name_end],
+        };
+    }
+    return null;
+}
+
 fn renderRectTag(tag_text: []const u8, root: Matrix, surface: *Surface) Error!void {
     var paint = Paint{};
     applyPaintAttrs(tag_text, &paint);
@@ -450,19 +650,45 @@ fn renderPathTag(tag_text: []const u8, parent_transform: Matrix, surface: *Surfa
     var paint = Paint{};
     applyPaintAttrs(tag_text, &paint);
     const d = parseAttr(tag_text, "d") orelse return error.InvalidSvg;
-    if (paint.stroke[3] > 0) return error.UnsupportedSvgFeature;
 
     const transform = if (parseTransformAttr(tag_text)) |element_transform|
         parent_transform.multiply(element_transform)
     else
         parent_transform;
-    try renderPathFill(surface, d, transform, paint.fill);
+    if (paint.fill[3] > 0) {
+        try renderPathFill(surface, d, transform, paint.fill);
+    }
+    if (paint.stroke[3] > 0 and paint.stroke_width > 0.0) {
+        const scale = transform.approxUniformScale();
+        try renderPathStroke(
+            surface,
+            d,
+            transform,
+            paint.stroke,
+            paint.stroke_width * scale,
+            paint.stroke_dash_on * scale,
+            paint.stroke_dash_off * scale,
+        );
+    }
 }
 
 fn renderPathFill(surface: *Surface, d: []const u8, transform: Matrix, fill: [4]u8) Error!void {
     if (fill[3] == 0) return;
 
     var builder = PathBuilder{};
+    try buildPathEdges(d, transform, &builder);
+    fillEdges(surface, builder.edges[0..builder.edge_count], fill);
+}
+
+fn renderPathStroke(surface: *Surface, d: []const u8, transform: Matrix, stroke: [4]u8, stroke_width: f64, dash_on: f64, dash_off: f64) Error!void {
+    if (stroke[3] == 0 or stroke_width <= 0.0) return;
+
+    var builder = PathBuilder{};
+    try buildPathEdges(d, transform, &builder);
+    strokeEdges(surface, builder.edges[0..builder.edge_count], stroke, stroke_width, dash_on, dash_off);
+}
+
+fn buildPathEdges(d: []const u8, transform: Matrix, builder: *PathBuilder) Error!void {
     var reader = PathReader{ .text = d };
     var cmd: u8 = 0;
 
@@ -555,8 +781,6 @@ fn renderPathFill(surface: *Surface, d: []const u8, transform: Matrix, fill: [4]
             else => return error.UnsupportedSvgFeature,
         }
     }
-
-    fillEdges(surface, builder.edges[0..builder.edge_count], fill);
 }
 
 fn fillEdges(surface: *Surface, edges: []const Edge, fill: [4]u8) void {
@@ -601,6 +825,91 @@ fn fillEdges(surface: *Surface, edges: []const Edge, fill: [4]u8) void {
     }
 }
 
+fn strokeEdges(surface: *Surface, edges: []const Edge, stroke: [4]u8, stroke_width: f64, dash_on: f64, dash_off: f64) void {
+    if (edges.len == 0 or stroke[3] == 0 or stroke_width <= 0.0) return;
+    for (edges) |edge| {
+        strokeEdge(surface, edge, stroke, stroke_width, dash_on, dash_off);
+    }
+}
+
+fn strokeEdge(surface: *Surface, edge: Edge, stroke: [4]u8, stroke_width: f64, dash_on: f64, dash_off: f64) void {
+    const edge_length = distance(edge.a, edge.b);
+    if (edge_length <= 0.0000001) {
+        drawLineSegment(surface, edge.a, edge.b, stroke, stroke_width);
+        return;
+    }
+
+    if (dash_on <= 0.0 or dash_off <= 0.0) {
+        drawLineSegment(surface, edge.a, edge.b, stroke, stroke_width);
+        return;
+    }
+
+    var cursor: f64 = 0.0;
+    var draw = true;
+    while (cursor < edge_length - 0.0000001) {
+        const span = if (draw) dash_on else dash_off;
+        if (span <= 0.0) break;
+        const next = @min(edge_length, cursor + span);
+        if (draw and next > cursor) {
+            drawLineSegment(
+                surface,
+                lerpPoint(edge.a, edge.b, cursor / edge_length),
+                lerpPoint(edge.a, edge.b, next / edge_length),
+                stroke,
+                stroke_width,
+            );
+        }
+        cursor = next;
+        draw = !draw;
+    }
+}
+
+fn drawLineSegment(surface: *Surface, a: Point, b: Point, stroke: [4]u8, stroke_width: f64) void {
+    if (stroke[3] == 0 or stroke_width <= 0.0) return;
+    const half = stroke_width / 2.0;
+    const min_x: i32 = @intFromFloat(@floor(@min(a.x, b.x) - half - 1.0));
+    const max_x: i32 = @intFromFloat(@ceil(@max(a.x, b.x) + half + 1.0));
+    const min_y: i32 = @intFromFloat(@floor(@min(a.y, b.y) - half - 1.0));
+    const max_y: i32 = @intFromFloat(@ceil(@max(a.y, b.y) + half + 1.0));
+
+    var py = min_y;
+    while (py <= max_y) : (py += 1) {
+        var px = min_x;
+        while (px <= max_x) : (px += 1) {
+            if (pixelPtr(surface, px, py)) |dst| {
+                const p = Point{
+                    .x = @as(f64, @floatFromInt(px)) + 0.5,
+                    .y = @as(f64, @floatFromInt(py)) + 0.5,
+                };
+                if (distancePointToSegment(p, a, b) <= half) {
+                    blend(dst, stroke);
+                }
+            }
+        }
+    }
+}
+
+fn distancePointToSegment(p: Point, a: Point, b: Point) f64 {
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const len_sq = dx * dx + dy * dy;
+    if (len_sq <= 0.0000001) return distance(p, a);
+
+    const t = std.math.clamp(((p.x - a.x) * dx + (p.y - a.y) * dy) / len_sq, 0.0, 1.0);
+    const proj = Point{
+        .x = a.x + dx * t,
+        .y = a.y + dy * t,
+    };
+    return distance(p, proj);
+}
+
+fn lerpPoint(a: Point, b: Point, t: f64) Point {
+    return .{
+        .x = a.x + (b.x - a.x) * t,
+        .y = a.y + (b.y - a.y) * t,
+    };
+}
+
 fn isLeft(a: Point, b: Point, p: Point) f64 {
     return (b.x - a.x) * (p.y - a.y) - (p.x - a.x) * (b.y - a.y);
 }
@@ -643,6 +952,11 @@ fn applyPaintAttrs(tag_text: []const u8, paint: *Paint) void {
     if (parseAttr(tag_text, "fill")) |value| paint.fill = parseColor(value);
     if (parseAttr(tag_text, "stroke")) |value| paint.stroke = parseColor(value);
     if (parseAttrNumber(tag_text, "stroke-width")) |value| paint.stroke_width = value;
+    if (parseAttr(tag_text, "stroke-dasharray")) |value| {
+        const dash = parseDashArray(value);
+        paint.stroke_dash_on = dash.on;
+        paint.stroke_dash_off = dash.off;
+    }
 
     if (parseAttr(tag_text, "style")) |style| {
         var parts = std.mem.splitScalar(u8, style, ';');
@@ -653,8 +967,20 @@ fn applyPaintAttrs(tag_text: []const u8, paint: *Paint) void {
             if (std.mem.eql(u8, key, "fill")) paint.fill = parseColor(value);
             if (std.mem.eql(u8, key, "stroke")) paint.stroke = parseColor(value);
             if (std.mem.eql(u8, key, "stroke-width")) paint.stroke_width = parseNumber(value, paint.stroke_width);
+            if (std.mem.eql(u8, key, "stroke-dasharray")) {
+                const dash = parseDashArray(value);
+                paint.stroke_dash_on = dash.on;
+                paint.stroke_dash_off = dash.off;
+            }
         }
     }
+}
+
+fn parseDashArray(text: []const u8) DashSpec {
+    var numbers = parseNumberList(text);
+    const on = numbers.next() orelse 0.0;
+    const off = numbers.next() orelse on;
+    return .{ .on = on, .off = off };
 }
 
 fn parseTransformAttr(tag_text: []const u8) ?Matrix {
@@ -989,6 +1315,16 @@ fn findKindIndex(kind_id: svg_compat.KindId) usize {
     unreachable;
 }
 
+fn findImageIndexByName(kind_id: svg_compat.KindId, image_name: []const u8) usize {
+    const kind_index = findKindIndex(kind_id);
+    var image_index: usize = 0;
+    while (image_index < svg_compat.imageCount(kind_index)) : (image_index += 1) {
+        const current = svg_compat.imageName(kind_index, image_index) orelse continue;
+        if (std.mem.eql(u8, current, image_name)) return image_index;
+    }
+    unreachable;
+}
+
 fn runScaledBitmapParity(kind_id: svg_compat.KindId, image_index: usize, scale_numerator: u32, scale_denominator: u32, svg_buf: []u8) !void {
     const kind_index = findKindIndex(kind_id);
     const svg = svg_compat.generateByIndex(kind_index, image_index, svg_buf);
@@ -1033,4 +1369,23 @@ test "bottom-to-top vertical text bitmap proof candidate matches generated svg r
     var svg_buf: [16 * 1024]u8 = undefined;
     try runScaledBitmapParity(.vert_text_b2t_black, 0, 55, 100, &svg_buf);
     try runScaledBitmapParity(.vert_text_b2t_black, 0, 200, 100, &svg_buf);
+}
+
+test "optc candidate render is deterministic at 55 and 200 percent" {
+    const kind_index = findKindIndex(.optc);
+    const image_index = findImageIndexByName(.optc, "01245689A,1911,2184,2184.svg");
+    var a: [MAX_TEST_TARGET_WIDTH * MAX_TEST_TARGET_HEIGHT * 4]u8 = undefined;
+    var b: [MAX_TEST_TARGET_WIDTH * MAX_TEST_TARGET_HEIGHT * 4]u8 = undefined;
+
+    const len_a = try renderCandidateRgbaScaled(kind_index, image_index, 200, 100, &a);
+    const len_b = try renderCandidateRgbaScaled(kind_index, image_index, 200, 100, &b);
+    try std.testing.expectEqual(len_a, len_b);
+    try std.testing.expectEqualSlices(u8, a[0..len_a], b[0..len_b]);
+}
+
+test "optc native RGBA candidate matches generated svg raster at 55 and 200 percent" {
+    const image_index = findImageIndexByName(.optc, "01245689A,1911,2184,2184.svg");
+    var svg_buf: [32 * 1024]u8 = undefined;
+    try runScaledBitmapParity(.optc, image_index, 55, 100, &svg_buf);
+    try runScaledBitmapParity(.optc, image_index, 200, 100, &svg_buf);
 }
