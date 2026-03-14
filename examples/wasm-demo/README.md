@@ -24,6 +24,17 @@ python3 -m http.server --directory zig-out/wasm-demo 8000
 
 Compatibility validation page: <http://localhost:8000/validation.html>.
 
+## Bitmap Proof Bundle
+
+```bash
+zig build wasm-bitmap-proof
+python3 -m http.server --directory zig-out/wasm-bitmap-proof 8002
+```
+
+Bitmap proof page: <http://localhost:8002/>.
+
+This bundle is separate from the slim exact-SVG validation bundle. It is allowed to include proof-lane RGBA exports and raster verification code without changing the `wasm-demo` size budget.
+
 ## Full Interactive API Docs
 
 ```bash

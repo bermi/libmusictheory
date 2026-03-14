@@ -551,6 +551,24 @@ else
     unverified "0050 wasm full docs export guardrail (wasm-docs target not yet implemented)"
 fi
 
+if [ -f "$ROOT_DIR/examples/wasm-demo/bitmap-proof.html" ] && rg -Fq 'step("wasm-bitmap-proof"' "$ROOT_DIR/build.zig"; then
+    check_cmd "cd '$ROOT_DIR' && zig build wasm-bitmap-proof 2>&1" "0052 bitmap proof bundle build"
+    check_cmd "cd '$ROOT_DIR' && ! rg -n \"drawImage\\(|\\.scale\\(|transform:\\s*scale|style\\.transform\" examples/wasm-demo/bitmap-proof.js" "0052 bitmap proof anti-cheat guardrail (no browser raster/scale shortcut in proof UI)"
+    check_cmd "cd '$ROOT_DIR' && rg -n \"putImageData\\(\" examples/wasm-demo/bitmap-proof.js" "0052 bitmap proof contract guardrail (proof UI paints wasm RGBA through ImageData)"
+    if [ -f "$ROOT_DIR/scripts/check_wasm_exports.mjs" ] && command -v node >/dev/null 2>&1; then
+        check_cmd "cd '$ROOT_DIR' && test -f zig-out/wasm-bitmap-proof/libmusictheory.wasm && node scripts/check_wasm_exports.mjs --profile bitmap_proof --wasm zig-out/wasm-bitmap-proof/libmusictheory.wasm" "0053 bitmap proof export guardrail (required proof exports are present)"
+    else
+        unverified "0053 bitmap proof export guardrail (scripts/check_wasm_exports.mjs or node missing)"
+    fi
+    if [ -d "$ROOT_DIR/tmp/harmoniousapp.net" ] && rg -Fq 'wasm-bitmap-proof/tmp/harmoniousapp.net' "$ROOT_DIR/build.zig"; then
+        check_cmd "cd '$ROOT_DIR' && test -d zig-out/wasm-bitmap-proof/tmp/harmoniousapp.net && test -f zig-out/wasm-bitmap-proof/tmp/harmoniousapp.net/opc/047,0,0,0.svg" "0054 bitmap proof bundle guardrail (local harmonious refs mirrored into proof output)"
+    else
+        unverified "0054 bitmap proof bundle guardrail (proof ref mirror not yet implemented)"
+    fi
+else
+    unverified "0052 bitmap proof bundle build (bitmap proof target not yet implemented)"
+fi
+
 if [ -d "$ROOT_DIR/tmp/harmoniousapp.net/even" ] && [ -f "$ROOT_DIR/scripts/audit_even_compat.py" ]; then
     if command -v python3 >/dev/null 2>&1; then
         check_cmd "cd '$ROOT_DIR' && python3 scripts/audit_even_compat.py --root tmp/harmoniousapp.net >/dev/null" "0034 even compatibility structural audit (reference invariants)"
@@ -754,6 +772,16 @@ if [ -f "$ROOT_DIR/scripts/validate_wasm_docs_playwright.mjs" ]; then
     fi
 else
     unverified "0050 wasm full docs playwright smoke validation (script not yet implemented)"
+fi
+
+if [ -f "$ROOT_DIR/scripts/validate_harmonious_bitmap_playwright.mjs" ]; then
+    if command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
+        check_cmd "cd '$ROOT_DIR' && node scripts/validate_harmonious_bitmap_playwright.mjs --sample-per-kind 5 --kinds opc 2>&1" "0054 bitmap proof playwright sampled validation (supported kinds, 0 drift failures)"
+    else
+        unverified "0054 bitmap proof playwright sampled validation (node/npm/python3 missing)"
+    fi
+else
+    unverified "0054 bitmap proof playwright sampled validation (script not yet implemented)"
 fi
 
 # ───────────────────────────────────────────

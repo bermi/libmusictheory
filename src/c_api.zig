@@ -18,6 +18,7 @@ const svg_fret = @import("svg/fret.zig");
 const svg_staff = @import("svg/staff.zig");
 const svg_compat = @import("harmonious_svg_compat.zig");
 const raster = @import("render/raster.zig");
+const bitmap_compat = @import("bitmap_compat.zig");
 
 pub const LmtKeyContext = extern struct {
     tonic: u8,
@@ -458,6 +459,51 @@ export fn lmt_raster_demo_rgba(width: u32, height: u32, out_rgba: [*c]u8, out_rg
     };
     raster.renderDemoScene(&surface);
     return @as(u32, @intCast(required));
+}
+
+export fn lmt_bitmap_proof_scale_numerator() callconv(.C) u32 {
+    return bitmap_compat.SCALE_NUMERATOR;
+}
+
+export fn lmt_bitmap_proof_scale_denominator() callconv(.C) u32 {
+    return bitmap_compat.SCALE_DENOMINATOR;
+}
+
+export fn lmt_bitmap_compat_kind_supported(kind_index: u32) callconv(.C) u32 {
+    if (!build_options.enable_raster_backend) return 0;
+    return if (bitmap_compat.kindSupported(@as(usize, kind_index))) 1 else 0;
+}
+
+export fn lmt_bitmap_compat_target_width(kind_index: u32, image_index: u32) callconv(.C) u32 {
+    if (!build_options.enable_raster_backend) return 0;
+    return bitmap_compat.targetWidth(@as(usize, kind_index), @as(usize, image_index));
+}
+
+export fn lmt_bitmap_compat_target_height(kind_index: u32, image_index: u32) callconv(.C) u32 {
+    if (!build_options.enable_raster_backend) return 0;
+    return bitmap_compat.targetHeight(@as(usize, kind_index), @as(usize, image_index));
+}
+
+export fn lmt_bitmap_compat_required_rgba_bytes(kind_index: u32, image_index: u32) callconv(.C) u32 {
+    if (!build_options.enable_raster_backend) return 0;
+    return bitmap_compat.requiredRgbaBytes(@as(usize, kind_index), @as(usize, image_index));
+}
+
+export fn lmt_bitmap_compat_render_candidate_rgba(kind_index: u32, image_index: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.C) u32 {
+    if (!build_options.enable_raster_backend) return 0;
+    if (out_rgba == null) return 0;
+    const out = out_rgba[0..@as(usize, out_rgba_size)];
+    const len = bitmap_compat.renderCandidateRgba(@as(usize, kind_index), @as(usize, image_index), out) catch return 0;
+    return @as(u32, @intCast(len));
+}
+
+export fn lmt_bitmap_compat_render_reference_svg_rgba(kind_index: u32, svg_ptr: [*c]const u8, svg_len: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.C) u32 {
+    if (!build_options.enable_raster_backend) return 0;
+    if (svg_ptr == null or out_rgba == null or svg_len == 0) return 0;
+    const svg = svg_ptr[0..@as(usize, svg_len)];
+    const out = out_rgba[0..@as(usize, out_rgba_size)];
+    const len = bitmap_compat.renderReferenceSvgRgba(@as(usize, kind_index), svg, out) catch return 0;
+    return @as(u32, @intCast(len));
 }
 
 export fn lmt_svg_compat_kind_count() callconv(.C) u32 {

@@ -46,6 +46,25 @@ const full_demo_export_symbols = [_][]const u8{
     "lmt_svg_compat_generate",
 };
 
+const bitmap_proof_export_symbols = [_][]const u8{
+    "lmt_wasm_scratch_ptr",
+    "lmt_wasm_scratch_size",
+    "lmt_svg_compat_kind_count",
+    "lmt_svg_compat_kind_name",
+    "lmt_svg_compat_kind_directory",
+    "lmt_svg_compat_image_count",
+    "lmt_svg_compat_image_name",
+    "lmt_svg_compat_generate",
+    "lmt_bitmap_proof_scale_numerator",
+    "lmt_bitmap_proof_scale_denominator",
+    "lmt_bitmap_compat_kind_supported",
+    "lmt_bitmap_compat_target_width",
+    "lmt_bitmap_compat_target_height",
+    "lmt_bitmap_compat_required_rgba_bytes",
+    "lmt_bitmap_compat_render_candidate_rgba",
+    "lmt_bitmap_compat_render_reference_svg_rgba",
+};
+
 fn localDirExists(rel_path: []const u8) bool {
     std.fs.cwd().access(rel_path, .{}) catch return false;
     return true;
@@ -236,6 +255,48 @@ pub fn build(b: *std.Build) void {
     wasm_docs_step.dependOn(&install_docs_validation_html.step);
     wasm_docs_step.dependOn(&install_docs_validation_js.step);
     maybeInstallDirectory(b, wasm_docs_step, "tmp/harmoniousapp.net", "wasm-docs/tmp/harmoniousapp.net");
+
+    const wasm_bitmap_mod = b.createModule(.{
+        .root_source_file = b.path("src/wasm_bitmap_proof_api.zig"),
+        .target = wasm_target,
+        .optimize = .ReleaseSmall,
+    });
+    wasm_bitmap_mod.export_symbol_names = &bitmap_proof_export_symbols;
+
+    const wasm_bitmap_exe = b.addExecutable(.{
+        .name = "libmusictheory_bitmap_proof",
+        .root_module = wasm_bitmap_mod,
+    });
+    configureWasmExe(wasm_bitmap_exe);
+
+    const install_bitmap_wasm = b.addInstallFileWithDir(
+        wasm_bitmap_exe.getEmittedBin(),
+        .prefix,
+        "wasm-bitmap-proof/libmusictheory.wasm",
+    );
+    const install_bitmap_html = b.addInstallFileWithDir(
+        b.path("examples/wasm-demo/bitmap-proof.html"),
+        .prefix,
+        "wasm-bitmap-proof/index.html",
+    );
+    const install_bitmap_js = b.addInstallFileWithDir(
+        b.path("examples/wasm-demo/bitmap-proof.js"),
+        .prefix,
+        "wasm-bitmap-proof/bitmap-proof.js",
+    );
+    const install_bitmap_css = b.addInstallFileWithDir(
+        b.path("examples/wasm-demo/styles.css"),
+        .prefix,
+        "wasm-bitmap-proof/styles.css",
+    );
+
+    const wasm_bitmap_step = b.step("wasm-bitmap-proof", "Build WebAssembly bitmap proof bundle");
+    wasm_bitmap_step.dependOn(&wasm_bitmap_exe.step);
+    wasm_bitmap_step.dependOn(&install_bitmap_wasm.step);
+    wasm_bitmap_step.dependOn(&install_bitmap_html.step);
+    wasm_bitmap_step.dependOn(&install_bitmap_js.step);
+    wasm_bitmap_step.dependOn(&install_bitmap_css.step);
+    maybeInstallDirectory(b, wasm_bitmap_step, "tmp/harmoniousapp.net", "wasm-bitmap-proof/tmp/harmoniousapp.net");
 
     // ── Unit tests ──────────────────────────────────────────────
     const lib_tests = b.addTest(.{

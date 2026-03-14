@@ -42,6 +42,7 @@ pub const svg_text_misc = @import("svg/text_misc.zig");
 pub const svg_n_tet_chart = @import("svg/n_tet_chart.zig");
 pub const svg_majmin_scene = @import("svg/majmin_scene.zig");
 pub const harmonious_svg_compat = @import("harmonious_svg_compat.zig");
+pub const bitmap_compat = @import("bitmap_compat.zig");
 pub const render_ir = @import("render/ir.zig");
 pub const render_svg_serializer = @import("render/svg_serializer.zig");
 pub const render_raster = @import("render/raster.zig");
@@ -71,6 +72,7 @@ test {
     _ = @import("tests/slider_test.zig");
     _ = @import("tests/render_ir_test.zig");
     _ = @import("tests/raster_test.zig");
+    _ = @import("bitmap_compat.zig");
     _ = @import("tests/c_api_test.zig");
     _ = @import("tests/tables_test.zig");
     _ = @import("tests/integration_test.zig");

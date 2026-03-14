@@ -74,6 +74,11 @@ pub fn kindDirectory(kind_index: usize) ?[]const u8 {
     return info.directory;
 }
 
+pub fn kindId(kind_index: usize) ?KindId {
+    const info = kindInfo(kind_index) orelse return null;
+    return info.id;
+}
+
 pub fn imageCount(kind_index: usize) usize {
     const info = kindInfo(kind_index) orelse return 0;
     if (majminSceneKindFromId(info.id)) |scene_kind| {
