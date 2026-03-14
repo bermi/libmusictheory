@@ -153,8 +153,19 @@ async function main() {
         if (snapshot.summary) {
           const { failures, unsupportedKinds, supportedKinds, compared, passing } = snapshot.summary;
           if (supportedKinds < 1) throw new Error('bitmap proof reported zero supported kinds');
-          if (unsupportedKinds !== 0 && args.kinds.length === 1 && args.kinds[0] === 'opc') {
-            throw new Error(`unexpected unsupported kinds in opc-only proof run: ${unsupportedKinds}`);
+          if (snapshot.summary.rows.length !== args.kinds.length) {
+            throw new Error(`bitmap proof returned ${snapshot.summary.rows.length} rows for ${args.kinds.length} requested kinds`);
+          }
+          const unsupportedRows = snapshot.summary.rows.filter((row) => !row.supported).map((row) => row.kind);
+          if (unsupportedKinds !== 0 || unsupportedRows.length !== 0) {
+            throw new Error(`bitmap proof unsupported kinds: ${unsupportedRows.join(', ') || unsupportedKinds}`);
+          }
+          const missingRequested = args.kinds.filter((kind) => !snapshot.summary.rows.some((row) => row.kind === kind));
+          if (missingRequested.length > 0) {
+            throw new Error(`bitmap proof missing requested kinds: ${missingRequested.join(', ')}`);
+          }
+          if (supportedKinds !== args.kinds.length) {
+            throw new Error(`bitmap proof supported=${supportedKinds} requested=${args.kinds.length}`);
           }
           if (failures !== 0) throw new Error(`bitmap proof failures=${failures}`);
           if (compared !== passing) throw new Error(`bitmap proof compared=${compared} passing=${passing}`);

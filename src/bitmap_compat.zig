@@ -3,10 +3,16 @@ const std = @import("std");
 const svg_compat = @import("harmonious_svg_compat.zig");
 const pcs = @import("pitch_class_set.zig");
 const svg_clock = @import("svg/clock.zig");
+const text_misc = @import("svg/text_misc.zig");
 
 pub const SCALE_NUMERATOR: u32 = 55;
 pub const SCALE_DENOMINATOR: u32 = 100;
-pub const TARGET_SIZE_OPC: u32 = 55;
+pub const TARGET_SIZE_OPC: u32 = scaledDim(100);
+pub const TARGET_SIZE_CENTER_SQUARE: u32 = scaledDim(36);
+pub const TARGET_WIDTH_VERTICAL_TEXT: u32 = scaledDim(36);
+pub const TARGET_HEIGHT_VERTICAL_TEXT: u32 = scaledDim(90);
+
+const PATH_EDGE_LIMIT: usize = 4096;
 
 pub const Error = error{
     UnsupportedKind,
@@ -14,6 +20,7 @@ pub const Error = error{
     InvalidSvg,
     UnsupportedSvgFeature,
     OutputTooSmall,
+    PathOverflow,
 };
 
 const OPC_STROKE_COLORS = [_][4]u8{
@@ -31,6 +38,16 @@ pub const Surface = struct {
     width: u32,
     height: u32,
     stride: u32,
+};
+
+const Point = struct {
+    x: f64,
+    y: f64,
+};
+
+const Edge = struct {
+    a: Point,
+    b: Point,
 };
 
 const Matrix = struct {
@@ -52,7 +69,7 @@ const Matrix = struct {
         };
     }
 
-    fn apply(self: Matrix, x: f64, y: f64) struct { x: f64, y: f64 } {
+    fn apply(self: Matrix, x: f64, y: f64) Point {
         return .{
             .x = self.a * x + self.c * y + self.e,
             .y = self.b * x + self.d * y + self.f,
@@ -72,23 +89,121 @@ const Paint = struct {
     stroke_width: f64 = 1.0,
 };
 
+const PathBuilder = struct {
+    edges: [PATH_EDGE_LIMIT]Edge = undefined,
+    edge_count: usize = 0,
+    current: Point = .{ .x = 0.0, .y = 0.0 },
+    subpath_start: Point = .{ .x = 0.0, .y = 0.0 },
+    has_current: bool = false,
+    last_cubic_ctrl: ?Point = null,
+    prev_cmd: u8 = 0,
+
+    fn moveTo(self: *PathBuilder, point: Point) void {
+        self.current = point;
+        self.subpath_start = point;
+        self.has_current = true;
+        self.last_cubic_ctrl = null;
+    }
+
+    fn lineTo(self: *PathBuilder, transform: Matrix, point: Point) Error!void {
+        if (!self.has_current) {
+            self.moveTo(point);
+            return;
+        }
+        if (self.edge_count >= self.edges.len) return error.PathOverflow;
+        self.edges[self.edge_count] = .{
+            .a = transform.apply(self.current.x, self.current.y),
+            .b = transform.apply(point.x, point.y),
+        };
+        self.edge_count += 1;
+        self.current = point;
+        self.last_cubic_ctrl = null;
+    }
+
+    fn cubicTo(self: *PathBuilder, transform: Matrix, ctrl1: Point, ctrl2: Point, point: Point) Error!void {
+        const start = self.current;
+        const steps = cubicStepCount(start, ctrl1, ctrl2, point);
+
+        var i: u32 = 1;
+        while (i <= steps) : (i += 1) {
+            const t = @as(f64, @floatFromInt(i)) / @as(f64, @floatFromInt(steps));
+            const next = cubicPoint(start, ctrl1, ctrl2, point, t);
+            try self.lineTo(transform, next);
+        }
+        self.current = point;
+        self.last_cubic_ctrl = ctrl2;
+    }
+
+    fn closePath(self: *PathBuilder, transform: Matrix) Error!void {
+        if (!self.has_current) return;
+        if (@abs(self.current.x - self.subpath_start.x) > 0.0000001 or @abs(self.current.y - self.subpath_start.y) > 0.0000001) {
+            try self.lineTo(transform, self.subpath_start);
+        }
+        self.current = self.subpath_start;
+        self.last_cubic_ctrl = null;
+    }
+};
+
+const PathReader = struct {
+    text: []const u8,
+    index: usize = 0,
+
+    fn skipSeparators(self: *PathReader) void {
+        while (self.index < self.text.len) : (self.index += 1) {
+            switch (self.text[self.index]) {
+                ' ', '\t', '\r', '\n', ',' => {},
+                else => break,
+            }
+        }
+    }
+
+    fn hasNumber(self: *PathReader) bool {
+        self.skipSeparators();
+        if (self.index >= self.text.len) return false;
+        return isNumberStart(self.text[self.index]);
+    }
+
+    fn nextNumber(self: *PathReader) ?f64 {
+        self.skipSeparators();
+        if (self.index >= self.text.len or !isNumberStart(self.text[self.index])) return null;
+
+        const start = self.index;
+        self.index = scanNumberEnd(self.text, start);
+        return parseNumber(self.text[start..self.index], 0.0);
+    }
+};
+
+fn scaledDim(comptime source: u32) u32 {
+    return (source * SCALE_NUMERATOR + (SCALE_DENOMINATOR / 2)) / SCALE_DENOMINATOR;
+}
+
 pub fn kindSupported(kind_index: usize) bool {
     return switch (svg_compat.kindId(kind_index) orelse return false) {
-        .opc => true,
+        .opc, .center_square_text, .vert_text_black, .vert_text_b2t_black => true,
         else => false,
     };
 }
 
 pub fn targetWidth(kind_index: usize, image_index: usize) u32 {
     _ = image_index;
-    if (!kindSupported(kind_index)) return 0;
-    return TARGET_SIZE_OPC;
+    const kind_id = svg_compat.kindId(kind_index) orelse return 0;
+    return switch (kind_id) {
+        .opc => TARGET_SIZE_OPC,
+        .center_square_text => TARGET_SIZE_CENTER_SQUARE,
+        .vert_text_black, .vert_text_b2t_black => TARGET_WIDTH_VERTICAL_TEXT,
+        else => 0,
+    };
 }
 
 pub fn targetHeight(kind_index: usize, image_index: usize) u32 {
     _ = image_index;
-    if (!kindSupported(kind_index)) return 0;
-    return TARGET_SIZE_OPC;
+    const kind_id = svg_compat.kindId(kind_index) orelse return 0;
+    return switch (kind_id) {
+        .opc => TARGET_SIZE_OPC,
+        .center_square_text => TARGET_SIZE_CENTER_SQUARE,
+        .vert_text_black, .vert_text_b2t_black => TARGET_HEIGHT_VERTICAL_TEXT,
+        else => 0,
+    };
 }
 
 pub fn requiredRgbaBytes(kind_index: usize, image_index: usize) u32 {
@@ -99,23 +214,71 @@ pub fn requiredRgbaBytes(kind_index: usize, image_index: usize) u32 {
 }
 
 pub fn renderCandidateRgba(kind_index: usize, image_index: usize, out_rgba: []u8) Error!usize {
+    const kind_id = svg_compat.kindId(kind_index) orelse return error.UnsupportedKind;
     if (!kindSupported(kind_index)) return error.UnsupportedKind;
+
     const required = requiredRgbaBytes(kind_index, image_index);
     if (required == 0) return error.UnsupportedKind;
     if (out_rgba.len < required) return error.OutputTooSmall;
 
     const image_name = svg_compat.imageName(kind_index, image_index) orelse return error.InvalidImage;
+    var surface = try initSurface(kind_id, required, out_rgba);
+
+    switch (kind_id) {
+        .opc => try renderOpcCandidate(&surface, image_name),
+        .center_square_text => try renderCenterSquareCandidate(&surface, image_name),
+        .vert_text_black => try renderVerticalTextCandidate(&surface, image_name, false),
+        .vert_text_b2t_black => try renderVerticalTextCandidate(&surface, image_name, true),
+        else => return error.UnsupportedKind,
+    }
+
+    return required;
+}
+
+pub fn renderReferenceSvgRgba(kind_index: usize, svg: []const u8, out_rgba: []u8) Error!usize {
+    const kind_id = svg_compat.kindId(kind_index) orelse return error.UnsupportedKind;
+    if (!kindSupported(kind_index)) return error.UnsupportedKind;
+
+    const required = requiredRgbaBytes(kind_index, 0);
+    if (out_rgba.len < required) return error.OutputTooSmall;
+
+    var surface = try initSurface(kind_id, required, out_rgba);
+    switch (kind_id) {
+        .opc => try renderOpcReference(&surface, svg),
+        .center_square_text, .vert_text_black, .vert_text_b2t_black => try renderTextReference(&surface, svg),
+        else => return error.UnsupportedKind,
+    }
+
+    return required;
+}
+
+fn initSurface(kind_id: svg_compat.KindId, required: usize, out_rgba: []u8) Error!Surface {
+    const width = switch (kind_id) {
+        .opc => TARGET_SIZE_OPC,
+        .center_square_text => TARGET_SIZE_CENTER_SQUARE,
+        .vert_text_black, .vert_text_b2t_black => TARGET_WIDTH_VERTICAL_TEXT,
+        else => return error.UnsupportedKind,
+    };
+    const height = switch (kind_id) {
+        .opc => TARGET_SIZE_OPC,
+        .center_square_text => TARGET_SIZE_CENTER_SQUARE,
+        .vert_text_black, .vert_text_b2t_black => TARGET_HEIGHT_VERTICAL_TEXT,
+        else => return error.UnsupportedKind,
+    };
+    return .{
+        .pixels = out_rgba[0..required],
+        .width = width,
+        .height = height,
+        .stride = width * 4,
+    };
+}
+
+fn renderOpcCandidate(surface: *Surface, image_name: []const u8) Error!void {
     const set_label = firstCsvField(trimSvgSuffix(image_name));
     const set = parseSetLabel(set_label) orelse return error.InvalidImage;
 
-    var surface = Surface{
-        .pixels = out_rgba[0..required],
-        .width = TARGET_SIZE_OPC,
-        .height = TARGET_SIZE_OPC,
-        .stride = TARGET_SIZE_OPC * 4,
-    };
-    clear(&surface, .{ 255, 255, 255, 255 });
-    drawRect(&surface, 0.0, 0.0, @floatFromInt(TARGET_SIZE_OPC), @floatFromInt(TARGET_SIZE_OPC), .{ 255, 255, 255, 255 }, .{ 0, 0, 0, 0 }, 0.0);
+    clear(surface, .{ 255, 255, 255, 255 });
+    drawRect(surface, 0.0, 0.0, @floatFromInt(surface.width), @floatFromInt(surface.height), .{ 255, 255, 255, 255 }, .{ 0, 0, 0, 0 }, 0.0);
 
     const root = rootScaleMatrix();
     const circle_transform = parseTransformList("scale(0.877),translate(7,7)") catch return error.InvalidSvg;
@@ -129,41 +292,65 @@ pub fn renderCandidateRgba(kind_index: usize, image_index: usize, out_rgba: []u8
         const transformed = transform.apply(pos.x, pos.y);
         const bit = @as(pcs.PitchClassSet, 1) << pc;
         const fill = if ((set & bit) != 0) OPC_FILL_COLORS[pc] else .{ 255, 255, 255, 255 };
-        drawCircle(&surface, transformed.x, transformed.y, radius, fill, OPC_STROKE_COLORS[pc], stroke_width);
+        drawCircle(surface, transformed.x, transformed.y, radius, fill, OPC_STROKE_COLORS[pc], stroke_width);
     }
-
-    return required;
 }
 
-pub fn renderReferenceSvgRgba(kind_index: usize, svg: []const u8, out_rgba: []u8) Error!usize {
-    if (!kindSupported(kind_index)) return error.UnsupportedKind;
-    const required = requiredRgbaBytes(kind_index, 0);
-    if (out_rgba.len < required) return error.OutputTooSmall;
-
-    var surface = Surface{
-        .pixels = out_rgba[0..required],
-        .width = TARGET_SIZE_OPC,
-        .height = TARGET_SIZE_OPC,
-        .stride = TARGET_SIZE_OPC * 4,
-    };
-    clear(&surface, .{ 255, 255, 255, 255 });
+fn renderCenterSquareCandidate(surface: *Surface, image_name: []const u8) Error!void {
+    const stem = trimSvgSuffix(image_name);
+    const path_d = text_misc.centerSquarePathData(stem) orelse return error.InvalidImage;
+    clear(surface, .{ 0, 0, 0, 0 });
 
     const root = rootScaleMatrix();
+    const group_transform = parseTransformList("translate(18,0)") catch return error.InvalidSvg;
+    try renderPathFill(surface, path_d, root.multiply(group_transform), .{ 128, 128, 128, 255 });
+}
+
+fn renderVerticalTextCandidate(surface: *Surface, image_name: []const u8, bottom_to_top: bool) Error!void {
+    const stem = trimSvgSuffix(image_name);
+    var path_buf: [16 * 1024]u8 = undefined;
+    const path_d = text_misc.verticalPathData(stem, bottom_to_top, &path_buf) orelse return error.InvalidImage;
+
+    clear(surface, .{ 0, 0, 0, 0 });
+    const root = rootScaleMatrix();
+    const group_transform = parseTransformList(if (bottom_to_top) "rotate(-90),translate(-45,0)" else "rotate(90),translate(45,0)") catch return error.InvalidSvg;
+    try renderPathFill(surface, path_d, root.multiply(group_transform), .{ 0, 0, 0, 255 });
+}
+
+fn renderOpcReference(surface: *Surface, svg: []const u8) Error!void {
+    clear(surface, .{ 255, 255, 255, 255 });
+    const root = rootScaleMatrix();
+
     var cursor: usize = 0;
     while (findTag(svg, "rect", cursor)) |match| {
         cursor = match.end;
         const attrs = svg[match.start..match.end];
-        try renderRectTag(attrs, root, &surface);
+        try renderRectTag(attrs, root, surface);
     }
 
     cursor = 0;
     while (findTag(svg, "circle", cursor)) |match| {
         cursor = match.end;
         const attrs = svg[match.start..match.end];
-        try renderCircleTag(attrs, root, &surface);
+        try renderCircleTag(attrs, root, surface);
     }
+}
 
-    return required;
+fn renderTextReference(surface: *Surface, svg: []const u8) Error!void {
+    clear(surface, .{ 0, 0, 0, 0 });
+    const root = rootScaleMatrix();
+    const group_transform = blk: {
+        const tag = findTag(svg, "g", 0) orelse break :blk Matrix{};
+        break :blk parseTransformAttr(svg[tag.start..tag.end]) orelse Matrix{};
+    };
+    const base_transform = root.multiply(group_transform);
+
+    var cursor: usize = 0;
+    while (findTag(svg, "path", cursor)) |match| {
+        cursor = match.end;
+        const attrs = svg[match.start..match.end];
+        try renderPathTag(attrs, base_transform, surface);
+    }
 }
 
 fn findTag(svg: []const u8, tag_name: []const u8, from: usize) ?struct { start: usize, end: usize } {
@@ -226,6 +413,189 @@ fn renderCircleTag(tag_text: []const u8, root: Matrix, surface: *Surface) Error!
     drawCircle(surface, center.x, center.y, radius, paint.fill, paint.stroke, stroke_width);
 }
 
+fn renderPathTag(tag_text: []const u8, parent_transform: Matrix, surface: *Surface) Error!void {
+    var paint = Paint{};
+    applyPaintAttrs(tag_text, &paint);
+    const d = parseAttr(tag_text, "d") orelse return error.InvalidSvg;
+    if (paint.stroke[3] > 0) return error.UnsupportedSvgFeature;
+
+    const transform = if (parseTransformAttr(tag_text)) |element_transform|
+        parent_transform.multiply(element_transform)
+    else
+        parent_transform;
+    try renderPathFill(surface, d, transform, paint.fill);
+}
+
+fn renderPathFill(surface: *Surface, d: []const u8, transform: Matrix, fill: [4]u8) Error!void {
+    if (fill[3] == 0) return;
+
+    var builder = PathBuilder{};
+    var reader = PathReader{ .text = d };
+    var cmd: u8 = 0;
+
+    while (true) {
+        reader.skipSeparators();
+        if (reader.index >= reader.text.len) break;
+
+        if (isPathCommand(reader.text[reader.index])) {
+            cmd = reader.text[reader.index];
+            reader.index += 1;
+        } else if (cmd == 0) {
+            return error.InvalidSvg;
+        }
+
+        switch (cmd) {
+            'M', 'm' => {
+                const is_relative = cmd == 'm';
+                const x = reader.nextNumber() orelse return error.InvalidSvg;
+                const y = reader.nextNumber() orelse return error.InvalidSvg;
+                const base = if (is_relative and builder.has_current) builder.current else Point{ .x = 0.0, .y = 0.0 };
+                builder.moveTo(.{ .x = base.x + x, .y = base.y + y });
+                cmd = if (is_relative) 'l' else 'L';
+                while (reader.hasNumber()) {
+                    const line_x = reader.nextNumber() orelse return error.InvalidSvg;
+                    const line_y = reader.nextNumber() orelse return error.InvalidSvg;
+                    const line_base = if (cmd == 'l') builder.current else Point{ .x = 0.0, .y = 0.0 };
+                    try builder.lineTo(transform, .{ .x = line_base.x + line_x, .y = line_base.y + line_y });
+                    builder.prev_cmd = cmd;
+                }
+                builder.prev_cmd = cmd;
+            },
+            'L', 'l' => {
+                const is_relative = cmd == 'l';
+                while (reader.hasNumber()) {
+                    const x = reader.nextNumber() orelse return error.InvalidSvg;
+                    const y = reader.nextNumber() orelse return error.InvalidSvg;
+                    const base = if (is_relative) builder.current else Point{ .x = 0.0, .y = 0.0 };
+                    try builder.lineTo(transform, .{ .x = base.x + x, .y = base.y + y });
+                }
+                builder.prev_cmd = cmd;
+            },
+            'C', 'c' => {
+                const is_relative = cmd == 'c';
+                while (reader.hasNumber()) {
+                    const x1 = reader.nextNumber() orelse return error.InvalidSvg;
+                    const y1 = reader.nextNumber() orelse return error.InvalidSvg;
+                    const x2 = reader.nextNumber() orelse return error.InvalidSvg;
+                    const y2 = reader.nextNumber() orelse return error.InvalidSvg;
+                    const x = reader.nextNumber() orelse return error.InvalidSvg;
+                    const y = reader.nextNumber() orelse return error.InvalidSvg;
+                    const base = if (is_relative) builder.current else Point{ .x = 0.0, .y = 0.0 };
+                    try builder.cubicTo(
+                        transform,
+                        .{ .x = base.x + x1, .y = base.y + y1 },
+                        .{ .x = base.x + x2, .y = base.y + y2 },
+                        .{ .x = base.x + x, .y = base.y + y },
+                    );
+                }
+                builder.prev_cmd = cmd;
+            },
+            'S', 's' => {
+                const is_relative = cmd == 's';
+                while (reader.hasNumber()) {
+                    const reflected = if (builder.prev_cmd == 'C' or builder.prev_cmd == 'c' or builder.prev_cmd == 'S' or builder.prev_cmd == 's') blk: {
+                        const ctrl = builder.last_cubic_ctrl orelse builder.current;
+                        break :blk Point{
+                            .x = builder.current.x * 2.0 - ctrl.x,
+                            .y = builder.current.y * 2.0 - ctrl.y,
+                        };
+                    } else builder.current;
+
+                    const x2 = reader.nextNumber() orelse return error.InvalidSvg;
+                    const y2 = reader.nextNumber() orelse return error.InvalidSvg;
+                    const x = reader.nextNumber() orelse return error.InvalidSvg;
+                    const y = reader.nextNumber() orelse return error.InvalidSvg;
+                    const base = if (is_relative) builder.current else Point{ .x = 0.0, .y = 0.0 };
+                    try builder.cubicTo(
+                        transform,
+                        reflected,
+                        .{ .x = base.x + x2, .y = base.y + y2 },
+                        .{ .x = base.x + x, .y = base.y + y },
+                    );
+                }
+                builder.prev_cmd = cmd;
+            },
+            'Z', 'z' => {
+                try builder.closePath(transform);
+                builder.prev_cmd = cmd;
+            },
+            else => return error.UnsupportedSvgFeature,
+        }
+    }
+
+    fillEdges(surface, builder.edges[0..builder.edge_count], fill);
+}
+
+fn fillEdges(surface: *Surface, edges: []const Edge, fill: [4]u8) void {
+    if (edges.len == 0 or fill[3] == 0) return;
+
+    var min_x = edges[0].a.x;
+    var max_x = edges[0].a.x;
+    var min_y = edges[0].a.y;
+    var max_y = edges[0].a.y;
+    for (edges) |edge| {
+        min_x = @min(min_x, @min(edge.a.x, edge.b.x));
+        max_x = @max(max_x, @max(edge.a.x, edge.b.x));
+        min_y = @min(min_y, @min(edge.a.y, edge.b.y));
+        max_y = @max(max_y, @max(edge.a.y, edge.b.y));
+    }
+
+    const x0: i32 = @as(i32, @intFromFloat(@floor(min_x))) - 1;
+    const x1: i32 = @as(i32, @intFromFloat(@ceil(max_x))) + 1;
+    const y0: i32 = @as(i32, @intFromFloat(@floor(min_y))) - 1;
+    const y1: i32 = @as(i32, @intFromFloat(@ceil(max_y))) + 1;
+
+    var py = y0;
+    while (py <= y1) : (py += 1) {
+        const y = @as(f64, @floatFromInt(py)) + 0.5;
+        var px = x0;
+        while (px <= x1) : (px += 1) {
+            const x = @as(f64, @floatFromInt(px)) + 0.5;
+            var winding: i32 = 0;
+
+            for (edges) |edge| {
+                if (edge.a.y <= y) {
+                    if (edge.b.y > y and isLeft(edge.a, edge.b, .{ .x = x, .y = y }) > 0.0) winding += 1;
+                } else {
+                    if (edge.b.y <= y and isLeft(edge.a, edge.b, .{ .x = x, .y = y }) < 0.0) winding -= 1;
+                }
+            }
+
+            if (winding != 0) {
+                if (pixelPtr(surface, px, py)) |dst| blend(dst, fill);
+            }
+        }
+    }
+}
+
+fn isLeft(a: Point, b: Point, p: Point) f64 {
+    return (b.x - a.x) * (p.y - a.y) - (p.x - a.x) * (b.y - a.y);
+}
+
+fn cubicPoint(p0: Point, p1: Point, p2: Point, p3: Point, t: f64) Point {
+    const u = 1.0 - t;
+    const tt = t * t;
+    const uu = u * u;
+    const uuu = uu * u;
+    const ttt = tt * t;
+    return .{
+        .x = uuu * p0.x + 3.0 * uu * t * p1.x + 3.0 * u * tt * p2.x + ttt * p3.x,
+        .y = uuu * p0.y + 3.0 * uu * t * p1.y + 3.0 * u * tt * p2.y + ttt * p3.y,
+    };
+}
+
+fn cubicStepCount(p0: Point, p1: Point, p2: Point, p3: Point) u32 {
+    const approx_len = distance(p0, p1) + distance(p1, p2) + distance(p2, p3);
+    const steps = @as(u32, @intFromFloat(@ceil(approx_len / 3.0)));
+    return @max(@as(u32, 8), @min(@as(u32, 48), steps));
+}
+
+fn distance(a: Point, b: Point) f64 {
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    return @sqrt(dx * dx + dy * dy);
+}
+
 fn rootScaleMatrix() Matrix {
     const scale = @as(f64, @floatFromInt(SCALE_NUMERATOR)) / @as(f64, @floatFromInt(SCALE_DENOMINATOR));
     return .{ .a = scale, .d = scale };
@@ -273,6 +643,8 @@ fn parseTransformList(text: []const u8) !Matrix {
             parseScaleTransform(args)
         else if (std.mem.eql(u8, name, "translate"))
             parseTranslateTransform(args)
+        else if (std.mem.eql(u8, name, "rotate"))
+            parseRotateTransform(args)
         else if (std.mem.eql(u8, name, "matrix"))
             try parseMatrixTransform(args)
         else
@@ -294,6 +666,31 @@ fn parseTranslateTransform(args: []const u8) Matrix {
     var numbers = parseNumberList(args);
     const tx = numbers.next() orelse 0.0;
     const ty = numbers.next() orelse 0.0;
+    return .{ .e = tx, .f = ty };
+}
+
+fn parseRotateTransform(args: []const u8) Matrix {
+    var numbers = parseNumberList(args);
+    const angle_degrees = numbers.next() orelse 0.0;
+    const radians = angle_degrees * std.math.pi / 180.0;
+    const cos_v = std.math.cos(radians);
+    const sin_v = std.math.sin(radians);
+    const rotate = Matrix{
+        .a = cos_v,
+        .b = sin_v,
+        .c = -sin_v,
+        .d = cos_v,
+    };
+
+    if (numbers.next()) |cx| {
+        const cy = numbers.next() orelse 0.0;
+        return parseTranslateTransformArgs(cx, cy).multiply(rotate).multiply(parseTranslateTransformArgs(-cx, -cy));
+    }
+
+    return rotate;
+}
+
+fn parseTranslateTransformArgs(tx: f64, ty: f64) Matrix {
     return .{ .e = tx, .f = ty };
 }
 
@@ -322,15 +719,32 @@ const NumberIterator = struct {
         if (self.index >= self.text.len) return null;
 
         const start = self.index;
-        self.index += 1;
-        while (self.index < self.text.len) : (self.index += 1) {
-            const ch = self.text[self.index];
-            if ((ch >= '0' and ch <= '9') or ch == '.' or ch == '-' or ch == '+' or ch == 'e' or ch == 'E') continue;
-            break;
-        }
+        self.index = scanNumberEnd(self.text, start);
         return parseNumber(self.text[start..self.index], 0.0);
     }
 };
+
+fn scanNumberEnd(text: []const u8, start: usize) usize {
+    var index = start;
+    if (index < text.len and (text[index] == '-' or text[index] == '+')) index += 1;
+
+    var seen_exp = false;
+    while (index < text.len) {
+        const ch = text[index];
+        if ((ch >= '0' and ch <= '9') or ch == '.') {
+            index += 1;
+            continue;
+        }
+        if ((ch == 'e' or ch == 'E') and !seen_exp) {
+            seen_exp = true;
+            index += 1;
+            if (index < text.len and (text[index] == '-' or text[index] == '+')) index += 1;
+            continue;
+        }
+        break;
+    }
+    return index;
+}
 
 fn parseAttr(tag_text: []const u8, name: []const u8) ?[]const u8 {
     var cursor: usize = 0;
@@ -365,6 +779,17 @@ fn parseAttrNumber(tag_text: []const u8, name: []const u8) ?f64 {
 
 fn isAttrNameChar(ch: u8) bool {
     return (ch >= 'a' and ch <= 'z') or (ch >= 'A' and ch <= 'Z') or (ch >= '0' and ch <= '9') or ch == '-' or ch == '_';
+}
+
+fn isPathCommand(ch: u8) bool {
+    return switch (ch) {
+        'M', 'm', 'L', 'l', 'C', 'c', 'S', 's', 'Z', 'z' => true,
+        else => false,
+    };
+}
+
+fn isNumberStart(ch: u8) bool {
+    return (ch >= '0' and ch <= '9') or ch == '-' or ch == '+' or ch == '.';
 }
 
 fn parseSetLabel(label: []const u8) ?pcs.PitchClassSet {
@@ -414,6 +839,7 @@ fn parseColor(text: []const u8) [4]u8 {
     if (std.mem.eql(u8, text, "transparent") or std.mem.eql(u8, text, "none")) return .{ 0, 0, 0, 0 };
     if (std.mem.eql(u8, text, "black")) return .{ 0, 0, 0, 255 };
     if (std.mem.eql(u8, text, "white")) return .{ 255, 255, 255, 255 };
+    if (std.mem.eql(u8, text, "gray")) return .{ 128, 128, 128, 255 };
     if (text.len == 4 and text[0] == '#') {
         return .{
             hexNibble(text[1]) * 17,
@@ -522,15 +948,16 @@ fn blend(dst: *[4]u8, src: [4]u8) void {
     dst[3] = @intCast(out_a);
 }
 
-test "opc candidate render is deterministic" {
-    const kind_index = blk: {
-        var i: usize = 0;
-        while (i < svg_compat.kindCount()) : (i += 1) {
-            if (svg_compat.kindId(i) == .opc) break :blk i;
-        }
-        unreachable;
-    };
+fn findKindIndex(kind_id: svg_compat.KindId) usize {
+    var i: usize = 0;
+    while (i < svg_compat.kindCount()) : (i += 1) {
+        if (svg_compat.kindId(i) == kind_id) return i;
+    }
+    unreachable;
+}
 
+test "opc candidate render is deterministic" {
+    const kind_index = findKindIndex(.opc);
     const image_index: usize = 3;
     var a: [TARGET_SIZE_OPC * TARGET_SIZE_OPC * 4]u8 = [_]u8{0} ** (TARGET_SIZE_OPC * TARGET_SIZE_OPC * 4);
     var b: [TARGET_SIZE_OPC * TARGET_SIZE_OPC * 4]u8 = [_]u8{0} ** (TARGET_SIZE_OPC * TARGET_SIZE_OPC * 4);
@@ -541,19 +968,54 @@ test "opc candidate render is deterministic" {
 }
 
 test "opc reference parser matches candidate bitmap for generated svg" {
-    const kind_index = blk: {
-        var i: usize = 0;
-        while (i < svg_compat.kindCount()) : (i += 1) {
-            if (svg_compat.kindId(i) == .opc) break :blk i;
-        }
-        unreachable;
-    };
-
+    const kind_index = findKindIndex(.opc);
     const image_index: usize = 3;
     var svg_buf: [4096]u8 = undefined;
     const svg = svg_compat.generateByIndex(kind_index, image_index, &svg_buf);
     var candidate: [TARGET_SIZE_OPC * TARGET_SIZE_OPC * 4]u8 = [_]u8{0} ** (TARGET_SIZE_OPC * TARGET_SIZE_OPC * 4);
     var reference: [TARGET_SIZE_OPC * TARGET_SIZE_OPC * 4]u8 = [_]u8{0} ** (TARGET_SIZE_OPC * TARGET_SIZE_OPC * 4);
+
+    const candidate_len = try renderCandidateRgba(kind_index, image_index, &candidate);
+    const reference_len = try renderReferenceSvgRgba(kind_index, svg, &reference);
+    try std.testing.expectEqual(candidate_len, reference_len);
+    try std.testing.expectEqualSlices(u8, candidate[0..candidate_len], reference[0..reference_len]);
+}
+
+test "center-square bitmap proof candidate matches generated svg raster" {
+    const kind_index = findKindIndex(.center_square_text);
+    const image_index: usize = 0;
+    var svg_buf: [4096]u8 = undefined;
+    const svg = svg_compat.generateByIndex(kind_index, image_index, &svg_buf);
+    var candidate: [TARGET_SIZE_CENTER_SQUARE * TARGET_SIZE_CENTER_SQUARE * 4]u8 = [_]u8{0} ** (TARGET_SIZE_CENTER_SQUARE * TARGET_SIZE_CENTER_SQUARE * 4);
+    var reference: [TARGET_SIZE_CENTER_SQUARE * TARGET_SIZE_CENTER_SQUARE * 4]u8 = [_]u8{0} ** (TARGET_SIZE_CENTER_SQUARE * TARGET_SIZE_CENTER_SQUARE * 4);
+
+    const candidate_len = try renderCandidateRgba(kind_index, image_index, &candidate);
+    const reference_len = try renderReferenceSvgRgba(kind_index, svg, &reference);
+    try std.testing.expectEqual(candidate_len, reference_len);
+    try std.testing.expectEqualSlices(u8, candidate[0..candidate_len], reference[0..reference_len]);
+}
+
+test "vertical text bitmap proof candidate matches generated svg raster" {
+    const kind_index = findKindIndex(.vert_text_black);
+    const image_index: usize = 0;
+    var svg_buf: [16 * 1024]u8 = undefined;
+    const svg = svg_compat.generateByIndex(kind_index, image_index, &svg_buf);
+    var candidate: [TARGET_WIDTH_VERTICAL_TEXT * TARGET_HEIGHT_VERTICAL_TEXT * 4]u8 = [_]u8{0} ** (TARGET_WIDTH_VERTICAL_TEXT * TARGET_HEIGHT_VERTICAL_TEXT * 4);
+    var reference: [TARGET_WIDTH_VERTICAL_TEXT * TARGET_HEIGHT_VERTICAL_TEXT * 4]u8 = [_]u8{0} ** (TARGET_WIDTH_VERTICAL_TEXT * TARGET_HEIGHT_VERTICAL_TEXT * 4);
+
+    const candidate_len = try renderCandidateRgba(kind_index, image_index, &candidate);
+    const reference_len = try renderReferenceSvgRgba(kind_index, svg, &reference);
+    try std.testing.expectEqual(candidate_len, reference_len);
+    try std.testing.expectEqualSlices(u8, candidate[0..candidate_len], reference[0..reference_len]);
+}
+
+test "bottom-to-top vertical text bitmap proof candidate matches generated svg raster" {
+    const kind_index = findKindIndex(.vert_text_b2t_black);
+    const image_index: usize = 0;
+    var svg_buf: [16 * 1024]u8 = undefined;
+    const svg = svg_compat.generateByIndex(kind_index, image_index, &svg_buf);
+    var candidate: [TARGET_WIDTH_VERTICAL_TEXT * TARGET_HEIGHT_VERTICAL_TEXT * 4]u8 = [_]u8{0} ** (TARGET_WIDTH_VERTICAL_TEXT * TARGET_HEIGHT_VERTICAL_TEXT * 4);
+    var reference: [TARGET_WIDTH_VERTICAL_TEXT * TARGET_HEIGHT_VERTICAL_TEXT * 4]u8 = [_]u8{0} ** (TARGET_WIDTH_VERTICAL_TEXT * TARGET_HEIGHT_VERTICAL_TEXT * 4);
 
     const candidate_len = try renderCandidateRgba(kind_index, image_index, &candidate);
     const reference_len = try renderReferenceSvgRgba(kind_index, svg, &reference);

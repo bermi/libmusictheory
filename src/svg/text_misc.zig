@@ -132,6 +132,14 @@ fn findCenterTemplate(stem: []const u8) ?[]const u8 {
     return null;
 }
 
+pub fn verticalPathData(text: []const u8, bottom_to_top: bool, buf: []u8) ?[]const u8 {
+    return buildVerticalPath(text, bottom_to_top, buf);
+}
+
+pub fn centerSquarePathData(glyph: []const u8) ?[]const u8 {
+    return findCenterTemplate(glyph);
+}
+
 pub fn renderVerticalLabel(text: []const u8, bottom_to_top: bool, buf: []u8) []u8 {
     var path_buf: [16 * 1024]u8 = undefined;
     const path_d = buildVerticalPath(text, bottom_to_top, &path_buf);

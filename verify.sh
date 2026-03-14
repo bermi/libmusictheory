@@ -561,7 +561,7 @@ if [ -f "$ROOT_DIR/examples/wasm-demo/bitmap-proof.html" ] && rg -Fq 'step("wasm
         unverified "0053 bitmap proof export guardrail (scripts/check_wasm_exports.mjs or node missing)"
     fi
     if [ -d "$ROOT_DIR/tmp/harmoniousapp.net" ] && rg -Fq 'wasm-bitmap-proof/tmp/harmoniousapp.net' "$ROOT_DIR/build.zig"; then
-        check_cmd "cd '$ROOT_DIR' && test -d zig-out/wasm-bitmap-proof/tmp/harmoniousapp.net && test -f zig-out/wasm-bitmap-proof/tmp/harmoniousapp.net/opc/047,0,0,0.svg" "0054 bitmap proof bundle guardrail (local harmonious refs mirrored into proof output)"
+        check_cmd "cd '$ROOT_DIR' && test -d zig-out/wasm-bitmap-proof/tmp/harmoniousapp.net && test -f zig-out/wasm-bitmap-proof/tmp/harmoniousapp.net/opc/047,0,0,0.svg && test -f zig-out/wasm-bitmap-proof/tmp/harmoniousapp.net/center-square-text/A.svg && test -f zig-out/wasm-bitmap-proof/tmp/harmoniousapp.net/vert-text-black/6-9.svg && test -f zig-out/wasm-bitmap-proof/tmp/harmoniousapp.net/vert-text-b2t-black/6-9.svg" "0054 bitmap proof bundle guardrail (local harmonious refs mirrored into proof output)"
     else
         unverified "0054 bitmap proof bundle guardrail (proof ref mirror not yet implemented)"
     fi
@@ -776,12 +776,12 @@ fi
 
 if [ -f "$ROOT_DIR/scripts/validate_harmonious_bitmap_playwright.mjs" ]; then
     if command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
-        check_cmd "cd '$ROOT_DIR' && node scripts/validate_harmonious_bitmap_playwright.mjs --sample-per-kind 5 --kinds opc 2>&1" "0054 bitmap proof playwright sampled validation (supported kinds, 0 drift failures)"
+        check_cmd "cd '$ROOT_DIR' && node scripts/validate_harmonious_bitmap_playwright.mjs --sample-per-kind 5 --kinds opc,center-square-text,vert-text-black,vert-text-b2t-black 2>&1" "0056 bitmap proof playwright sampled validation (supported text families + opc, 0 drift failures)"
     else
-        unverified "0054 bitmap proof playwright sampled validation (node/npm/python3 missing)"
+        unverified "0056 bitmap proof playwright sampled validation (node/npm/python3 missing)"
     fi
 else
-    unverified "0054 bitmap proof playwright sampled validation (script not yet implemented)"
+    unverified "0056 bitmap proof playwright sampled validation (script not yet implemented)"
 fi
 
 # ───────────────────────────────────────────
