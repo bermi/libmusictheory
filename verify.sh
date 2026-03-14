@@ -551,22 +551,54 @@ else
     unverified "0050 wasm full docs export guardrail (wasm-docs target not yet implemented)"
 fi
 
-if [ -f "$ROOT_DIR/examples/wasm-demo/bitmap-proof.html" ] && rg -Fq 'step("wasm-bitmap-proof"' "$ROOT_DIR/build.zig"; then
-    check_cmd "cd '$ROOT_DIR' && zig build wasm-bitmap-proof 2>&1" "0052 bitmap proof bundle build"
-    check_cmd "cd '$ROOT_DIR' && ! rg -n \"drawImage\\(|\\.scale\\(|transform:\\s*scale|style\\.transform\" examples/wasm-demo/bitmap-proof.js" "0052 bitmap proof anti-cheat guardrail (no browser raster/scale shortcut in proof UI)"
-    check_cmd "cd '$ROOT_DIR' && rg -n \"putImageData\\(\" examples/wasm-demo/bitmap-proof.js" "0052 bitmap proof contract guardrail (proof UI paints wasm RGBA through ImageData)"
+if [ -f "$ROOT_DIR/examples/wasm-demo/scaled-render-parity.html" ] && rg -Fq 'step("wasm-scaled-render-parity"' "$ROOT_DIR/build.zig"; then
+    check_cmd "cd '$ROOT_DIR' && zig build wasm-scaled-render-parity 2>&1" "0059 scaled render parity bundle build"
+    check_cmd "cd '$ROOT_DIR' && ! rg -n \"\\.scale\\(|transform:\\s*scale|style\\.transform\" examples/wasm-demo/scaled-render-parity.js" "0059 scaled render parity anti-cheat guardrail (no css/post-bitmap scaling shortcut)"
+    check_cmd "cd '$ROOT_DIR' && rg -n \"lmt_svg_compat_generate|rasterizeSvgAtSize|drawImage\\(img, 0, 0, width, height\\)\" examples/wasm-demo/scaled-render-parity.js" "0059 scaled render parity guardrail (generated SVG candidate rasterized directly at target size)"
     if [ -f "$ROOT_DIR/scripts/check_wasm_exports.mjs" ] && command -v node >/dev/null 2>&1; then
-        check_cmd "cd '$ROOT_DIR' && test -f zig-out/wasm-bitmap-proof/libmusictheory.wasm && node scripts/check_wasm_exports.mjs --profile bitmap_proof --wasm zig-out/wasm-bitmap-proof/libmusictheory.wasm" "0053 bitmap proof export guardrail (required proof exports are present)"
+        check_cmd "cd '$ROOT_DIR' && test -f zig-out/wasm-scaled-render-parity/libmusictheory.wasm && node scripts/check_wasm_exports.mjs --profile scaled_render_parity --wasm zig-out/wasm-scaled-render-parity/libmusictheory.wasm" "0059 scaled render parity export guardrail (required exports are present)"
     else
-        unverified "0053 bitmap proof export guardrail (scripts/check_wasm_exports.mjs or node missing)"
+        unverified "0059 scaled render parity export guardrail (scripts/check_wasm_exports.mjs or node missing)"
     fi
-    if [ -d "$ROOT_DIR/tmp/harmoniousapp.net" ] && rg -Fq 'wasm-bitmap-proof/tmp/harmoniousapp.net' "$ROOT_DIR/build.zig"; then
-        check_cmd "cd '$ROOT_DIR' && test -d zig-out/wasm-bitmap-proof/tmp/harmoniousapp.net && test -f zig-out/wasm-bitmap-proof/tmp/harmoniousapp.net/opc/047,0,0,0.svg && test -f zig-out/wasm-bitmap-proof/tmp/harmoniousapp.net/center-square-text/A.svg && test -f zig-out/wasm-bitmap-proof/tmp/harmoniousapp.net/vert-text-black/6-9.svg && test -f zig-out/wasm-bitmap-proof/tmp/harmoniousapp.net/vert-text-b2t-black/6-9.svg" "0054 bitmap proof bundle guardrail (local harmonious refs mirrored into proof output)"
+    if [ -d "$ROOT_DIR/tmp/harmoniousapp.net" ] && rg -Fq 'wasm-scaled-render-parity/tmp/harmoniousapp.net' "$ROOT_DIR/build.zig"; then
+        check_cmd "cd '$ROOT_DIR' && test -d zig-out/wasm-scaled-render-parity/tmp/harmoniousapp.net && test -f zig-out/wasm-scaled-render-parity/tmp/harmoniousapp.net/opc/047,0,0,0.svg && test -f zig-out/wasm-scaled-render-parity/tmp/harmoniousapp.net/center-square-text/A.svg && test -f zig-out/wasm-scaled-render-parity/tmp/harmoniousapp.net/vert-text-black/6-9.svg && test -f zig-out/wasm-scaled-render-parity/tmp/harmoniousapp.net/vert-text-b2t-black/6-9.svg" "0059 scaled render parity bundle guardrail (local harmonious refs mirrored into parity output)"
     else
-        unverified "0054 bitmap proof bundle guardrail (proof ref mirror not yet implemented)"
+        unverified "0059 scaled render parity bundle guardrail (parity ref mirror not yet implemented)"
     fi
 else
-    unverified "0052 bitmap proof bundle build (bitmap proof target not yet implemented)"
+    unverified "0059 scaled render parity bundle build (target not yet implemented)"
+fi
+
+if [ -f "$ROOT_DIR/examples/wasm-demo/native-rgba-proof.html" ] && rg -Fq 'step("wasm-native-rgba-proof"' "$ROOT_DIR/build.zig"; then
+    check_cmd "cd '$ROOT_DIR' && zig build wasm-native-rgba-proof 2>&1" "0060 native RGBA proof bundle build"
+    check_cmd "cd '$ROOT_DIR' && ! rg -n \"\\.scale\\(|transform:\\s*scale|style\\.transform|drawImage\\(|lmt_svg_compat_generate|generated-svg\" examples/wasm-demo/native-rgba-proof.js" "0060 native RGBA proof anti-cheat guardrail (no generated SVG candidate path or scaling shortcut)"
+    check_cmd "cd '$ROOT_DIR' && rg -n \"putImageData\\(\" examples/wasm-demo/render-compare-common.js" "0060 native RGBA proof contract guardrail (candidate RGBA painted through ImageData)"
+    if [ -f "$ROOT_DIR/scripts/check_wasm_exports.mjs" ] && command -v node >/dev/null 2>&1; then
+        check_cmd "cd '$ROOT_DIR' && test -f zig-out/wasm-native-rgba-proof/libmusictheory.wasm && node scripts/check_wasm_exports.mjs --profile native_rgba_proof --wasm zig-out/wasm-native-rgba-proof/libmusictheory.wasm" "0060 native RGBA proof export guardrail (required exports are present)"
+    else
+        unverified "0060 native RGBA proof export guardrail (scripts/check_wasm_exports.mjs or node missing)"
+    fi
+    if [ -d "$ROOT_DIR/tmp/harmoniousapp.net" ] && rg -Fq 'wasm-native-rgba-proof/tmp/harmoniousapp.net' "$ROOT_DIR/build.zig"; then
+        check_cmd "cd '$ROOT_DIR' && test -d zig-out/wasm-native-rgba-proof/tmp/harmoniousapp.net && test -f zig-out/wasm-native-rgba-proof/tmp/harmoniousapp.net/opc/047,0,0,0.svg && test -f zig-out/wasm-native-rgba-proof/tmp/harmoniousapp.net/center-square-text/A.svg && test -f zig-out/wasm-native-rgba-proof/tmp/harmoniousapp.net/vert-text-black/6-9.svg && test -f zig-out/wasm-native-rgba-proof/tmp/harmoniousapp.net/vert-text-b2t-black/6-9.svg" "0060 native RGBA proof bundle guardrail (local harmonious refs mirrored into proof output)"
+    else
+        unverified "0060 native RGBA proof bundle guardrail (proof ref mirror not yet implemented)"
+    fi
+else
+    unverified "0060 native RGBA proof bundle build (target not yet implemented)"
+fi
+
+if [ -f "$ROOT_DIR/examples/wasm-demo/scaled-render-parity.html" ] && [ -f "$ROOT_DIR/examples/wasm-demo/native-rgba-proof.html" ]; then
+    check_cmd "cd '$ROOT_DIR' && ! rg -n \"svg-raster|SVG raster\" examples/wasm-demo/README.md examples/wasm-demo/scaled-render-parity.html examples/wasm-demo/scaled-render-parity.js examples/wasm-demo/native-rgba-proof.html examples/wasm-demo/native-rgba-proof.js scripts/validate_harmonious_scaled_render_parity_playwright.mjs scripts/validate_harmonious_native_rgba_proof_playwright.mjs docs/plans/drafts docs/plans/in_progress -g '!*/completed/*'" "0060 terminology guardrail (no svg-raster term in active surfaces)"
+    check_cmd "cd '$ROOT_DIR' && ! rg -n \"bitmap-proof|Bitmap proof|bitmap proof|wasm-bitmap-proof|__lmtLastBitmapProof|validate_harmonious_bitmap_playwright\" build.zig examples/wasm-demo/README.md examples/wasm-demo scripts docs/plans/drafts docs/plans/in_progress -g '!*/completed/*'" "0060 terminology guardrail (no active bitmap-proof naming remains)"
+    check_cmd "cd '$ROOT_DIR' && ! rg -n \"\\bproof\\b|Proof\" examples/wasm-demo/scaled-render-parity.html examples/wasm-demo/scaled-render-parity.js" "0060 terminology guardrail (scaled render parity surface does not claim proof)"
+    check_cmd "cd '$ROOT_DIR' && ! rg -n \"generated-svg\" examples/wasm-demo/native-rgba-proof.html examples/wasm-demo/native-rgba-proof.js" "0060 terminology guardrail (native RGBA proof surface does not advertise generated SVG)"
+    if command -v python3 >/dev/null 2>&1; then
+        check_cmd "cd '$ROOT_DIR' && python3 -c \"from pathlib import Path; import sys; roots=[Path('examples/wasm-demo/README.md'), Path('docs/plans/drafts'), Path('docs/plans/in_progress')]; violations=[f'{path}:{lineno}:{line}' for root in roots for path in ([root] if root.is_file() else sorted(root.rglob('*.md'))) for lineno, line in enumerate(path.read_text(encoding='utf-8').splitlines(), 1) if 'all 15' in line.lower() and 'proof' in line.lower() and 'native-rgba' not in line.lower() and 'native rgba' not in line.lower()]; sys.exit('\\n'.join(violations[:20])) if violations else None\"" "0060 terminology guardrail (all-15 proof claims must be native-rgba)"
+    else
+        unverified "0060 terminology guardrail (all-15 proof claims must be native-rgba) (python3 missing)"
+    fi
+else
+    unverified "0060 terminology guardrail (new parity/proof surfaces not yet implemented)"
 fi
 
 if [ -d "$ROOT_DIR/tmp/harmoniousapp.net/even" ] && [ -f "$ROOT_DIR/scripts/audit_even_compat.py" ]; then
@@ -774,20 +806,40 @@ else
     unverified "0050 wasm full docs playwright smoke validation (script not yet implemented)"
 fi
 
-if [ -f "$ROOT_DIR/scripts/validate_harmonious_bitmap_playwright.mjs" ]; then
+if [ -f "$ROOT_DIR/scripts/validate_harmonious_scaled_render_parity_playwright.mjs" ]; then
     if command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
-        check_cmd "cd '$ROOT_DIR' && node scripts/validate_harmonious_bitmap_playwright.mjs --sample-per-kind 5 --kinds opc,center-square-text,vert-text-black,vert-text-b2t-black --scales 55:100,200:100 2>&1" "0056 bitmap proof playwright sampled validation (supported text families + opc at 55% and 200%, 0 drift failures)"
+        check_cmd "cd '$ROOT_DIR' && node scripts/validate_harmonious_scaled_render_parity_playwright.mjs --sample-per-kind 5 --kinds vert-text-black,even,scale,opc,oc,optc,eadgbe,center-square-text,wide-chord,chord-clipped,grand-chord,majmin/modes,majmin/scales,chord,vert-text-b2t-black --scales 55:100,200:100 2>&1" "0059 scaled render parity playwright sampled validation (all kinds at 55% and 200%, 0 drift failures)"
     else
-        unverified "0056 bitmap proof playwright sampled validation (node/npm/python3 missing)"
+        unverified "0059 scaled render parity playwright sampled validation (node/npm/python3 missing)"
     fi
 else
-    unverified "0056 bitmap proof playwright sampled validation (script not yet implemented)"
+    unverified "0059 scaled render parity playwright sampled validation (script not yet implemented)"
+fi
+
+if [ -f "$ROOT_DIR/scripts/validate_harmonious_native_rgba_proof_playwright.mjs" ]; then
+    if command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
+        check_cmd "cd '$ROOT_DIR' && node scripts/validate_harmonious_native_rgba_proof_playwright.mjs --sample-per-kind 5 --kinds opc,center-square-text,vert-text-black,vert-text-b2t-black --scales 55:100,200:100 2>&1" "0056 native RGBA proof playwright sampled validation (supported text families + opc at 55% and 200%, 0 drift failures)"
+    else
+        unverified "0056 native RGBA proof playwright sampled validation (node/npm/python3 missing)"
+    fi
+else
+    unverified "0056 native RGBA proof playwright sampled validation (script not yet implemented)"
 fi
 
 # ───────────────────────────────────────────
 # Summary
 # ───────────────────────────────────────────
 section "Summary"
+
+if [ -f "$ROOT_DIR/scripts/validate_harmonious_native_rgba_proof_playwright.mjs" ] && command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
+    if bash -lc "cd '$ROOT_DIR' && node scripts/validate_harmonious_native_rgba_proof_playwright.mjs --sample-per-kind 5 --kinds vert-text-black,even,scale,opc,oc,optc,eadgbe,center-square-text,wide-chord,chord-clipped,grand-chord,majmin/modes,majmin/scales,chord,vert-text-b2t-black --scales 55:100,200:100 >/dev/null 2>&1"; then
+        echo "  NATIVE_RGBA_PROOF_COMPLETE=yes"
+    else
+        echo "  NATIVE_RGBA_PROOF_COMPLETE=no"
+    fi
+else
+    echo "  NATIVE_RGBA_PROOF_COMPLETE=unknown"
+fi
 
 if [ "$FAIL" -eq 0 ]; then
     echo "  All checks passed."

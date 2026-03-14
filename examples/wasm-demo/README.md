@@ -1,12 +1,13 @@
 # WASM Browser Bundles
 
-## Validation Bundle
+## Exact SVG Parity
 
 ```bash
 zig build wasm-demo
+python3 -m http.server --directory zig-out/wasm-demo 8000
 ```
 
-This emits a validation-focused browser bundle to `zig-out/wasm-demo/`.
+Validation page: <http://localhost:8000/validation.html>.
 
 If `tmp/harmoniousapp.net/` exists locally, the reference SVG tree is mirrored into:
 
@@ -16,32 +17,32 @@ zig-out/wasm-demo/tmp/harmoniousapp.net/
 
 That makes the default validation reference root `/tmp/harmoniousapp.net` work when serving `zig-out/wasm-demo` directly.
 
-## Run locally
+## Scaled Render Parity
 
 ```bash
-python3 -m http.server --directory zig-out/wasm-demo 8000
+zig build wasm-scaled-render-parity
+python3 -m http.server --directory zig-out/wasm-scaled-render-parity 8002
 ```
 
-Compatibility validation page: <http://localhost:8000/validation.html>.
+Page: <http://localhost:8002/>.
 
-## Bitmap Proof Bundle
+This lane validates all 15 compatibility kinds at both `55%` and `200%` with target-size bitmap diffs. Each kind/scale row reports whether the candidate source was:
+
+- `native-rgba`
+- `generated-svg`
+
+This lane is useful and required, but it is not sufficient to call the project visually complete.
+
+## Native RGBA Proof
 
 ```bash
-zig build wasm-bitmap-proof
-python3 -m http.server --directory zig-out/wasm-bitmap-proof 8002
+zig build wasm-native-rgba-proof
+python3 -m http.server --directory zig-out/wasm-native-rgba-proof 8003
 ```
 
-Bitmap proof page: <http://localhost:8002/>.
+Page: <http://localhost:8003/>.
 
-The bitmap proof page accepts a scale list. The current verification baseline is:
-
-```text
-55/100,200/100
-```
-
-That means the proof lane validates native RGBA rendering at both `55%` and `200%` without browser-side rescaling.
-
-This bundle is separate from the slim exact-SVG validation bundle. It is allowed to include proof-lane RGBA exports and raster verification code without changing the `wasm-demo` size budget.
+This lane only accepts `native-rgba` candidate pixels generated directly by Zig/WASM. Unsupported kinds remain visible as unsupported rows and fail automated validation.
 
 ## Full Interactive API Docs
 
@@ -52,4 +53,6 @@ python3 -m http.server --directory zig-out/wasm-docs 8001
 
 Open <http://localhost:8001/index.html>.
 
-This bundle ships the full interactive examples UI plus the validation page, backed by a wasm binary with the full demo export surface.
+## Project Completion Criteria
+
+The project is not visually complete until all 15 compatibility kinds pass Native RGBA Proof at `55%` and `200%`.

@@ -11,13 +11,14 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 const host = process.env.LMT_VALIDATION_HOST || '127.0.0.1';
-const timeoutMs = Number.parseInt(process.env.LMT_BITMAP_PROOF_TIMEOUT_MS || '600000', 10);
+const timeoutMs = Number.parseInt(process.env.LMT_NATIVE_RGBA_PROOF_TIMEOUT_MS || '600000', 10);
 const referenceRoot = process.env.LMT_HARMONIOUS_REF_ROOT || '/tmp/harmoniousapp.net';
-const installDir = path.join(rootDir, 'zig-out', 'wasm-bitmap-proof');
+const installDir = path.join(rootDir, 'zig-out', 'wasm-native-rgba-proof');
 const requestedPort = process.env.LMT_VALIDATION_PORT ? Number.parseInt(process.env.LMT_VALIDATION_PORT, 10) : null;
+const defaultKinds = ['opc', 'center-square-text', 'vert-text-black', 'vert-text-b2t-black'];
 
 function parseArgs(argv) {
-  const out = { samplePerKind: 5, kinds: ['opc'], scales: ['55:100', '200:100'] };
+  const out = { samplePerKind: 5, kinds: [...defaultKinds], scales: ['55:100', '200:100'] };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === '--sample-per-kind') {
@@ -52,7 +53,7 @@ function resolvePort() {
     server.listen(0, host, () => {
       const address = server.address();
       if (!address || typeof address === 'string') {
-        server.close(() => reject(new Error('failed to resolve proof port')));
+        server.close(() => reject(new Error('failed to resolve native proof port')));
         return;
       }
       const port = address.port;
@@ -116,7 +117,7 @@ async function waitForServer(url, deadlineMs) {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const pagePath = path.join(installDir, 'index.html');
-  if (!fs.existsSync(pagePath)) throw new Error(`missing bitmap proof page: ${pagePath}`);
+  if (!fs.existsSync(pagePath)) throw new Error(`missing native RGBA proof page: ${pagePath}`);
 
   const playwrightPath = ensurePlaywrightModule();
   const { chromium } = await import(pathToFileURL(playwrightPath).href);
@@ -154,19 +155,18 @@ async function main() {
         const snapshot = await page.evaluate(() => ({
           status: document.getElementById('status')?.textContent || '',
           progress: document.getElementById('progress')?.textContent || '',
-          summary: window.__lmtLastBitmapProof || null,
+          summary: window.__lmtLastNativeRgbaProof || null,
         }));
-        if (snapshot.status.includes('Bitmap proof failed:')) throw new Error(snapshot.status);
+        if (snapshot.status.includes('Native RGBA proof failed:')) throw new Error(snapshot.status);
         if (snapshot.summary) {
           const { failures, unsupportedRows, supportedRows, compared, passing, rows } = snapshot.summary;
           const expectedRows = args.kinds.length * args.scales.length;
-          if (supportedRows < 1) throw new Error('bitmap proof reported zero supported rows');
           if (rows.length !== expectedRows) {
-            throw new Error(`bitmap proof returned ${rows.length} rows for ${expectedRows} requested kind/scale pairs`);
+            throw new Error(`native RGBA proof returned ${rows.length} rows for ${expectedRows} requested kind/scale pairs`);
           }
-          const unsupportedPairs = rows.filter((row) => !row.supported).map((row) => `${row.kind}@${row.scaleKey}`);
-          if (unsupportedRows !== 0 || unsupportedPairs.length !== 0) {
-            throw new Error(`bitmap proof unsupported kind/scale pairs: ${unsupportedPairs.join(', ') || unsupportedRows}`);
+          const invalidSources = rows.filter((row) => row.candidateSource !== 'native-rgba');
+          if (invalidSources.length > 0) {
+            throw new Error(`native RGBA proof reported invalid candidate sources: ${invalidSources.map((row) => `${row.kind}@${row.scaleKey}:${row.candidateSource}`).join(', ')}`);
           }
           const missingPairs = [];
           for (const kind of args.kinds) {
@@ -177,17 +177,21 @@ async function main() {
             }
           }
           if (missingPairs.length > 0) {
-            throw new Error(`bitmap proof missing requested pairs: ${missingPairs.join(', ')}`);
+            throw new Error(`native RGBA proof missing requested pairs: ${missingPairs.join(', ')}`);
+          }
+          if (unsupportedRows !== 0) {
+            const unsupportedPairs = rows.filter((row) => !row.supported).map((row) => `${row.kind}@${row.scaleKey}`);
+            throw new Error(`native RGBA proof unsupported kind/scale pairs: ${unsupportedPairs.join(', ') || unsupportedRows}`);
           }
           if (supportedRows !== expectedRows) {
-            throw new Error(`bitmap proof supportedRows=${supportedRows} expectedRows=${expectedRows}`);
+            throw new Error(`native RGBA proof supportedRows=${supportedRows} expectedRows=${expectedRows}`);
           }
-          if (failures !== 0) throw new Error(`bitmap proof failures=${failures}`);
-          if (compared !== passing) throw new Error(`bitmap proof compared=${compared} passing=${passing}`);
-          console.log(`bitmap proof passed: supported_rows=${supportedRows} compared=${compared} passing=${passing} scales=${args.scales.join(',')}`);
+          if (failures !== 0) throw new Error(`native RGBA proof failures=${failures}`);
+          if (compared !== passing) throw new Error(`native RGBA proof compared=${compared} passing=${passing}`);
+          console.log(`native RGBA proof passed: supported_rows=${supportedRows} compared=${compared} passing=${passing} scales=${args.scales.join(',')}`);
           return;
         }
-        if (Date.now() > deadline) throw new Error(`timed out waiting for bitmap proof completion; status=${snapshot.status}; progress=${snapshot.progress}`);
+        if (Date.now() > deadline) throw new Error(`timed out waiting for native RGBA proof completion; status=${snapshot.status}; progress=${snapshot.progress}`);
         await delay(1000);
       }
     } finally {

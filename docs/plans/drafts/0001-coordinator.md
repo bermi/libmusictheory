@@ -9,8 +9,8 @@ Build `libmusictheory`, a Zig library exposing a C ABI that implements the compl
 
 ## Lifecycle Status
 
-- Draft: 0001, 0051, 0057, 0058, 0059
-- In progress: 0054, 0056
+- Draft: 0001, 0051, 0057, 0058
+- In progress: 0054, 0056, 0059
 - Completed: 0002, 0003, 0004, 0005, 0006, 0007, 0008, 0009, 0010, 0011, 0012, 0013, 0014, 0015, 0016, 0017, 0018, 0019, 0020, 0021, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0032, 0033, 0034, 0035, 0036, 0037, 0038, 0039, 0040, 0041, 0042, 0043, 0044, 0045, 0046, 0047, 0048, 0049, 0050, 0052, 0053, 0055
 
 ## Plan Dependencies (Execute in Order)
@@ -113,24 +113,26 @@ Build `libmusictheory`, a Zig library exposing a C ABI that implements the compl
      ↓ depends on 0048
 0050-wasm-docs-bundle-and-installed-validation → make installed validation/docs browser workflows actually work and verify both via Playwright
      ↓ depends on 0049
-0051-bitmap-proof-and-55pct-rgba-master → coordinate the additive 55% bitmap proof lane with direct RGBA rendering, anti-cheat guardrails, and drift-based verification
+0051-scaled-render-parity-and-native-rgba-proof-master → coordinate the split between all-kind scaled render parity and strict native-RGBA proof, with anti-cheat guardrails and completion discipline
      ↓ depends on 0030, 0031, 0050
 0052-bitmap-contract-and-anti-cheat-guardrails → enforce proof-lane anti-cheat rules, explicit support reporting, and bundle verification gates
      ↓ depends on 0051
-0053-rgba-abi-and-wasm-export-surface → expose caller-owned RGBA bitmap proof ABI and explicit wasm export roots
+0053-rgba-abi-and-wasm-export-surface → expose caller-owned RGBA native-proof ABI and explicit wasm export roots
      ↓ depends on 0052
 0054-deterministic-reference-raster-pipeline → rasterize harmonious references at 55% size inside the proof lane with measurable drift outputs
      ↓ depends on 0052, 0053
 0055-raster-backend-capability-upgrade → broaden the proof renderer primitive coverage family by family
      ↓ depends on 0053, 0054
-0056-simple-families-55pct-proof-lane → close bitmap proof for simple compatibility families
+0056-simple-families-55pct-proof-lane → close native-RGBA proof for simple compatibility families
      ↓ depends on 0055
-0057-staff-and-fret-55pct-proof-lane → close bitmap proof for staff/fret families
+0057-staff-and-fret-55pct-proof-lane → close native-RGBA proof for staff/fret families
      ↓ depends on 0055, 0056
-0058-majmin-55pct-proof-lane → close bitmap proof for majmin families
+0058-majmin-55pct-proof-lane → close native-RGBA proof for majmin families
      ↓ depends on 0055, 0056, 0057
-0059-project-level-bitmap-proof-closure → unify reporting and closure rules across the full compat corpus
+0059-project-level-scaled-render-parity-closure → unify reporting and closure rules across the full compat corpus for scaled render parity, with explicit native-RGBA vs generated-SVG candidate reporting
      ↓ depends on 0056, 0057, 0058
+0060-project-level-native-rgba-proof-closure → define the only acceptable visual completion gate: all 15 kinds proven through native-RGBA at both canonical scales
+     ↓ depends on 0056, 0057, 0058, 0059
 ```
 
 ## Dependency Graph (Visual)
@@ -277,15 +279,15 @@ Add optional rendering infrastructure and diagnostics for native/mobile/plugin c
 
 **Deliverable**: backend-agnostic rendering pipeline and optional raster/visual-debug tooling that does not relax exact SVG verification.
 
-### Phase 7.5 (Planned Additive): 55% Bitmap Proof Track (Plan 0051)
-Add a second proof lane that validates direct algorithmic RGBA rendering at canonical `55%` target size against scaled harmonious references, without allowing candidate SVG raster shortcuts or replacing exact SVG parity.
+### Phase 7.5 (Planned Additive): Scaled Render Parity + Native-RGBA Proof Master (Plan 0051)
+Split the additive bitmap lane into two honest claims: all-kind scaled render parity and strict native-RGBA proof, without allowing generated-SVG parity coverage to count as proof.
 
-**Deliverable**: a staged master plan for bitmap proof with explicit anti-cheat rules, RGBA ABI requirements, deterministic diff metrics, and per-family closure gates.
+**Deliverable**: a staged master plan with explicit anti-cheat rules, RGBA ABI requirements, deterministic diff metrics, parity/proof naming discipline, and per-family closure gates.
 
-### Phase 7.6 (In Progress Additive): Bitmap Proof Execution Track (Plans 0052-0059)
-Execute the bitmap proof lane in dependency order: anti-cheat guardrails first, then RGBA exports, then reference rasterization, then per-family closure. Families that are not natively supported must remain explicitly unsupported and may not count as proven.
+### Phase 7.6 (In Progress Additive): Native-RGBA Proof Execution Track (Plans 0052-0060)
+Execute the native-proof lane in dependency order: anti-cheat guardrails first, then RGBA exports, then reference rasterization, then per-family closure. Scaled render parity remains a separate all-kind lane; families that are not natively supported must remain explicitly unsupported and may not count as proven.
 
-**Deliverable**: a proof bundle and verification path that only credits families rendered through the wasm RGBA contract, with per-kind support state and measurable bitmap drift outputs.
+**Deliverable**: separate scaled-render-parity and native-proof bundles, with project completion blocked until `0060` closes. `0059` is not a completion marker; `0060` is the only visual completion marker.
 
 ## Research Documents Index
 

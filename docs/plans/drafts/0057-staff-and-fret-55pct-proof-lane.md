@@ -1,4 +1,4 @@
-# 0057 — Staff And Fret Scalable Proof Lane
+# 0057 — Staff And Fret Native-RGBA Proof Lane
 
 > Dependencies: 0055, 0056
 
@@ -6,4 +6,20 @@ Status: Draft
 
 ## Objective
 
-Close the bitmap-proof lane for staff and fret compatibility families while preserving the exact-SVG lane and proving native rendering at both `55%` and `200%`.
+Close native-RGBA proof for the staff and fret compatibility families while preserving exact SVG parity and scaled-render-parity at both `55%` and `200%`.
+
+## Target Families
+
+- `scale`
+- `eadgbe`
+- `chord`
+- `wide-chord`
+- `chord-clipped`
+- `grand-chord`
+
+## Exit Criteria
+
+- candidate source = `native-rgba`
+- scaled-render-parity still green
+- exact SVG parity still green
+- anti-cheat rules still green

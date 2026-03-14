@@ -3,14 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Harmoniousapp.net Scalable Bitmap Proof Validation</title>
+  <title>Harmoniousapp.net Native RGBA Proof Validation</title>
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
   <main class="page-shell">
     <section class="hero-card">
-      <h1>Harmoniousapp.net Scalable Bitmap Proof Validation</h1>
-      <p>Reference SVGs are rasterized in WASM at the requested target scales. Candidate images are painted from WASM RGBA buffers with no browser rescaling shortcuts.</p>
+      <h1>Harmoniousapp.net Native RGBA Proof Validation</h1>
+      <p>This surface only accepts `native-rgba` candidate pixels generated directly by Zig/WASM at the requested target size. Unsupported kinds remain visible as unsupported rows and fail automated validation.</p>
       <p id="status" class="small">Initializing WASM…</p>
     </section>
 
@@ -30,13 +30,13 @@
           <input id="visual-sample-size" type="number" min="5" step="1" value="5">
         </label>
       </div>
-      <button id="run-proof">Generate Scaled Proof Samples</button>
+      <button id="run-proof">Generate Native RGBA Samples</button>
       <pre id="progress" class="mono panel"></pre>
     </section>
 
     <section class="card">
       <h2>Per-Kind Summary</h2>
-      <div id="summary-host" class="small">No proof run yet.</div>
+      <div id="summary-host" class="small">No native RGBA proof run yet.</div>
     </section>
 
     <section class="card">
@@ -59,11 +59,11 @@
     </section>
 
     <section class="card">
-      <h2>Random Supported Samples</h2>
+      <h2>Random Native Samples</h2>
       <div id="samples-host" class="small">No samples yet.</div>
     </section>
   </main>
 
-  <script type="module" src="./bitmap-proof.js"></script>
+  <script type="module" src="./native-rgba-proof.js"></script>
 </body>
 </html>

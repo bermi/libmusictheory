@@ -46,7 +46,7 @@ const full_demo_export_symbols = [_][]const u8{
     "lmt_svg_compat_generate",
 };
 
-const bitmap_proof_export_symbols = [_][]const u8{
+const render_compare_export_symbols = [_][]const u8{
     "lmt_wasm_scratch_ptr",
     "lmt_wasm_scratch_size",
     "lmt_svg_compat_kind_count",
@@ -261,47 +261,88 @@ pub fn build(b: *std.Build) void {
     wasm_docs_step.dependOn(&install_docs_validation_js.step);
     maybeInstallDirectory(b, wasm_docs_step, "tmp/harmoniousapp.net", "wasm-docs/tmp/harmoniousapp.net");
 
-    const wasm_bitmap_mod = b.createModule(.{
-        .root_source_file = b.path("src/wasm_bitmap_proof_api.zig"),
+    const wasm_render_compare_mod = b.createModule(.{
+        .root_source_file = b.path("src/wasm_scaled_render_api.zig"),
         .target = wasm_target,
         .optimize = .ReleaseSmall,
     });
-    wasm_bitmap_mod.export_symbol_names = &bitmap_proof_export_symbols;
+    wasm_render_compare_mod.export_symbol_names = &render_compare_export_symbols;
 
-    const wasm_bitmap_exe = b.addExecutable(.{
-        .name = "libmusictheory_bitmap_proof",
-        .root_module = wasm_bitmap_mod,
+    const wasm_render_compare_exe = b.addExecutable(.{
+        .name = "libmusictheory_render_compare",
+        .root_module = wasm_render_compare_mod,
     });
-    configureWasmExe(wasm_bitmap_exe);
+    configureWasmExe(wasm_render_compare_exe);
 
-    const install_bitmap_wasm = b.addInstallFileWithDir(
-        wasm_bitmap_exe.getEmittedBin(),
+    const install_scaled_render_parity_wasm = b.addInstallFileWithDir(
+        wasm_render_compare_exe.getEmittedBin(),
         .prefix,
-        "wasm-bitmap-proof/libmusictheory.wasm",
+        "wasm-scaled-render-parity/libmusictheory.wasm",
     );
-    const install_bitmap_html = b.addInstallFileWithDir(
-        b.path("examples/wasm-demo/bitmap-proof.html"),
+    const install_scaled_render_parity_html = b.addInstallFileWithDir(
+        b.path("examples/wasm-demo/scaled-render-parity.html"),
         .prefix,
-        "wasm-bitmap-proof/index.html",
+        "wasm-scaled-render-parity/index.html",
     );
-    const install_bitmap_js = b.addInstallFileWithDir(
-        b.path("examples/wasm-demo/bitmap-proof.js"),
+    const install_scaled_render_parity_js = b.addInstallFileWithDir(
+        b.path("examples/wasm-demo/scaled-render-parity.js"),
         .prefix,
-        "wasm-bitmap-proof/bitmap-proof.js",
+        "wasm-scaled-render-parity/scaled-render-parity.js",
     );
-    const install_bitmap_css = b.addInstallFileWithDir(
+    const install_scaled_render_parity_common_js = b.addInstallFileWithDir(
+        b.path("examples/wasm-demo/render-compare-common.js"),
+        .prefix,
+        "wasm-scaled-render-parity/render-compare-common.js",
+    );
+    const install_scaled_render_parity_css = b.addInstallFileWithDir(
         b.path("examples/wasm-demo/styles.css"),
         .prefix,
-        "wasm-bitmap-proof/styles.css",
+        "wasm-scaled-render-parity/styles.css",
     );
 
-    const wasm_bitmap_step = b.step("wasm-bitmap-proof", "Build WebAssembly bitmap proof bundle");
-    wasm_bitmap_step.dependOn(&wasm_bitmap_exe.step);
-    wasm_bitmap_step.dependOn(&install_bitmap_wasm.step);
-    wasm_bitmap_step.dependOn(&install_bitmap_html.step);
-    wasm_bitmap_step.dependOn(&install_bitmap_js.step);
-    wasm_bitmap_step.dependOn(&install_bitmap_css.step);
-    maybeInstallDirectory(b, wasm_bitmap_step, "tmp/harmoniousapp.net", "wasm-bitmap-proof/tmp/harmoniousapp.net");
+    const wasm_scaled_render_parity_step = b.step("wasm-scaled-render-parity", "Build WebAssembly scaled render parity bundle");
+    wasm_scaled_render_parity_step.dependOn(&wasm_render_compare_exe.step);
+    wasm_scaled_render_parity_step.dependOn(&install_scaled_render_parity_wasm.step);
+    wasm_scaled_render_parity_step.dependOn(&install_scaled_render_parity_html.step);
+    wasm_scaled_render_parity_step.dependOn(&install_scaled_render_parity_js.step);
+    wasm_scaled_render_parity_step.dependOn(&install_scaled_render_parity_common_js.step);
+    wasm_scaled_render_parity_step.dependOn(&install_scaled_render_parity_css.step);
+    maybeInstallDirectory(b, wasm_scaled_render_parity_step, "tmp/harmoniousapp.net", "wasm-scaled-render-parity/tmp/harmoniousapp.net");
+
+    const install_native_rgba_proof_wasm = b.addInstallFileWithDir(
+        wasm_render_compare_exe.getEmittedBin(),
+        .prefix,
+        "wasm-native-rgba-proof/libmusictheory.wasm",
+    );
+    const install_native_rgba_proof_html = b.addInstallFileWithDir(
+        b.path("examples/wasm-demo/native-rgba-proof.html"),
+        .prefix,
+        "wasm-native-rgba-proof/index.html",
+    );
+    const install_native_rgba_proof_js = b.addInstallFileWithDir(
+        b.path("examples/wasm-demo/native-rgba-proof.js"),
+        .prefix,
+        "wasm-native-rgba-proof/native-rgba-proof.js",
+    );
+    const install_native_rgba_proof_common_js = b.addInstallFileWithDir(
+        b.path("examples/wasm-demo/render-compare-common.js"),
+        .prefix,
+        "wasm-native-rgba-proof/render-compare-common.js",
+    );
+    const install_native_rgba_proof_css = b.addInstallFileWithDir(
+        b.path("examples/wasm-demo/styles.css"),
+        .prefix,
+        "wasm-native-rgba-proof/styles.css",
+    );
+
+    const wasm_native_rgba_proof_step = b.step("wasm-native-rgba-proof", "Build WebAssembly native RGBA proof bundle");
+    wasm_native_rgba_proof_step.dependOn(&wasm_render_compare_exe.step);
+    wasm_native_rgba_proof_step.dependOn(&install_native_rgba_proof_wasm.step);
+    wasm_native_rgba_proof_step.dependOn(&install_native_rgba_proof_html.step);
+    wasm_native_rgba_proof_step.dependOn(&install_native_rgba_proof_js.step);
+    wasm_native_rgba_proof_step.dependOn(&install_native_rgba_proof_common_js.step);
+    wasm_native_rgba_proof_step.dependOn(&install_native_rgba_proof_css.step);
+    maybeInstallDirectory(b, wasm_native_rgba_proof_step, "tmp/harmoniousapp.net", "wasm-native-rgba-proof/tmp/harmoniousapp.net");
 
     // ── Unit tests ──────────────────────────────────────────────
     const lib_tests = b.addTest(.{
