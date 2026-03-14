@@ -1,4 +1,4 @@
-# 0056 — Simple Families 55% Proof Lane
+# 0056 — Simple Families Scalable Proof Lane
 
 > Dependencies: 0055
 
@@ -6,7 +6,7 @@ Status: In Progress
 
 ## Objective
 
-Close the bitmap-proof lane for the simple compatibility families with strict drift gates and explicit support reporting.
+Close the bitmap-proof lane for the simple compatibility families with strict drift gates and explicit support reporting at both `55%` and `200%`.
 
 ## Current Scope
 
@@ -16,6 +16,8 @@ This plan is being executed in honest sub-slices. The first supported set beyond
 - `vert-text-black`
 - `vert-text-b2t-black`
 - `opc` remains covered
+
+Those currently-supported families now pass the proof lane at both `55%` and `200%`.
 
 Families such as `optc`, `oc`, and `even` are not considered closed until their candidate path is proven algorithmic enough to satisfy the anti-replay intent of the bitmap-proof track.
 
@@ -28,11 +30,11 @@ Families such as `optc`, `oc`, and `even` are not considered closed until their 
 
 ## Exit Criteria For The Current Slice
 
-- The proof lane reports support for `opc`, `center-square-text`, `vert-text-black`, and `vert-text-b2t-black`.
-- Playwright sampled proof passes for those families with `0` failures and no unsupported rows.
+- The proof lane reports support for `opc`, `center-square-text`, `vert-text-black`, and `vert-text-b2t-black` at both `55%` and `200%`.
+- Playwright sampled proof passes for those family/scale pairs with `0` failures and no unsupported rows.
 - Existing exact SVG parity remains green.
 
 ## Verification Commands
 
 - `./verify.sh`
-- `node scripts/validate_harmonious_bitmap_playwright.mjs --sample-per-kind 5 --kinds opc,center-square-text,vert-text-black,vert-text-b2t-black`
+- `node scripts/validate_harmonious_bitmap_playwright.mjs --sample-per-kind 5 --kinds opc,center-square-text,vert-text-black,vert-text-b2t-black --scales 55:100,200:100`

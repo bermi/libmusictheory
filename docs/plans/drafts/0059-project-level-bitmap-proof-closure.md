@@ -6,4 +6,4 @@ Status: Draft
 
 ## Objective
 
-Unify proof reporting and completion policy across all compatibility families, combining exact-SVG parity with the new bitmap-proof lane.
+Unify proof reporting and completion policy across all compatibility families, combining exact-SVG parity with the new scalable bitmap-proof lane across required proof scales (`55%` and `200%` at minimum).

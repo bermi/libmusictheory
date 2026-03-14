@@ -7,10 +7,12 @@ const text_misc = @import("svg/text_misc.zig");
 
 pub const SCALE_NUMERATOR: u32 = 55;
 pub const SCALE_DENOMINATOR: u32 = 100;
-pub const TARGET_SIZE_OPC: u32 = scaledDim(100);
-pub const TARGET_SIZE_CENTER_SQUARE: u32 = scaledDim(36);
-pub const TARGET_WIDTH_VERTICAL_TEXT: u32 = scaledDim(36);
-pub const TARGET_HEIGHT_VERTICAL_TEXT: u32 = scaledDim(90);
+pub const TARGET_SIZE_OPC: u32 = scaledDimDefault(100);
+pub const TARGET_SIZE_CENTER_SQUARE: u32 = scaledDimDefault(36);
+pub const TARGET_WIDTH_VERTICAL_TEXT: u32 = scaledDimDefault(36);
+pub const TARGET_HEIGHT_VERTICAL_TEXT: u32 = scaledDimDefault(90);
+pub const MAX_TEST_TARGET_WIDTH: usize = 200;
+pub const MAX_TEST_TARGET_HEIGHT: usize = 200;
 
 const PATH_EDGE_LIMIT: usize = 4096;
 
@@ -173,8 +175,16 @@ const PathReader = struct {
     }
 };
 
-fn scaledDim(comptime source: u32) u32 {
+fn scaledDimDefault(comptime source: u32) u32 {
     return (source * SCALE_NUMERATOR + (SCALE_DENOMINATOR / 2)) / SCALE_DENOMINATOR;
+}
+
+fn scaledDim(source: u32, scale_numerator: u32, scale_denominator: u32) u32 {
+    if (source == 0 or scale_numerator == 0 or scale_denominator == 0) return 0;
+    const numerator = @as(u64, source) * @as(u64, scale_numerator) + @as(u64, scale_denominator / 2);
+    const value = numerator / @as(u64, scale_denominator);
+    if (value == 0 or value > std.math.maxInt(u32)) return 0;
+    return @as(u32, @intCast(value));
 }
 
 pub fn kindSupported(kind_index: usize) bool {
@@ -185,50 +195,68 @@ pub fn kindSupported(kind_index: usize) bool {
 }
 
 pub fn targetWidth(kind_index: usize, image_index: usize) u32 {
+    return targetWidthScaled(kind_index, image_index, SCALE_NUMERATOR, SCALE_DENOMINATOR);
+}
+
+pub fn targetWidthScaled(kind_index: usize, image_index: usize, scale_numerator: u32, scale_denominator: u32) u32 {
     _ = image_index;
     const kind_id = svg_compat.kindId(kind_index) orelse return 0;
     return switch (kind_id) {
-        .opc => TARGET_SIZE_OPC,
-        .center_square_text => TARGET_SIZE_CENTER_SQUARE,
-        .vert_text_black, .vert_text_b2t_black => TARGET_WIDTH_VERTICAL_TEXT,
+        .opc => scaledDim(100, scale_numerator, scale_denominator),
+        .center_square_text => scaledDim(36, scale_numerator, scale_denominator),
+        .vert_text_black, .vert_text_b2t_black => scaledDim(36, scale_numerator, scale_denominator),
         else => 0,
     };
 }
 
 pub fn targetHeight(kind_index: usize, image_index: usize) u32 {
+    return targetHeightScaled(kind_index, image_index, SCALE_NUMERATOR, SCALE_DENOMINATOR);
+}
+
+pub fn targetHeightScaled(kind_index: usize, image_index: usize, scale_numerator: u32, scale_denominator: u32) u32 {
     _ = image_index;
     const kind_id = svg_compat.kindId(kind_index) orelse return 0;
     return switch (kind_id) {
-        .opc => TARGET_SIZE_OPC,
-        .center_square_text => TARGET_SIZE_CENTER_SQUARE,
-        .vert_text_black, .vert_text_b2t_black => TARGET_HEIGHT_VERTICAL_TEXT,
+        .opc => scaledDim(100, scale_numerator, scale_denominator),
+        .center_square_text => scaledDim(36, scale_numerator, scale_denominator),
+        .vert_text_black, .vert_text_b2t_black => scaledDim(90, scale_numerator, scale_denominator),
         else => 0,
     };
 }
 
 pub fn requiredRgbaBytes(kind_index: usize, image_index: usize) u32 {
-    const width = targetWidth(kind_index, image_index);
-    const height = targetHeight(kind_index, image_index);
+    return requiredRgbaBytesScaled(kind_index, image_index, SCALE_NUMERATOR, SCALE_DENOMINATOR);
+}
+
+pub fn requiredRgbaBytesScaled(kind_index: usize, image_index: usize, scale_numerator: u32, scale_denominator: u32) u32 {
+    const width = targetWidthScaled(kind_index, image_index, scale_numerator, scale_denominator);
+    const height = targetHeightScaled(kind_index, image_index, scale_numerator, scale_denominator);
     if (width == 0 or height == 0) return 0;
-    return width * height * 4;
+    const required = @as(u64, width) * @as(u64, height) * 4;
+    if (required == 0 or required > std.math.maxInt(u32)) return 0;
+    return @as(u32, @intCast(required));
 }
 
 pub fn renderCandidateRgba(kind_index: usize, image_index: usize, out_rgba: []u8) Error!usize {
+    return renderCandidateRgbaScaled(kind_index, image_index, SCALE_NUMERATOR, SCALE_DENOMINATOR, out_rgba);
+}
+
+pub fn renderCandidateRgbaScaled(kind_index: usize, image_index: usize, scale_numerator: u32, scale_denominator: u32, out_rgba: []u8) Error!usize {
     const kind_id = svg_compat.kindId(kind_index) orelse return error.UnsupportedKind;
     if (!kindSupported(kind_index)) return error.UnsupportedKind;
 
-    const required = requiredRgbaBytes(kind_index, image_index);
+    const required = requiredRgbaBytesScaled(kind_index, image_index, scale_numerator, scale_denominator);
     if (required == 0) return error.UnsupportedKind;
     if (out_rgba.len < required) return error.OutputTooSmall;
 
     const image_name = svg_compat.imageName(kind_index, image_index) orelse return error.InvalidImage;
-    var surface = try initSurface(kind_id, required, out_rgba);
+    var surface = try initSurface(kind_id, required, out_rgba, scale_numerator, scale_denominator);
 
     switch (kind_id) {
-        .opc => try renderOpcCandidate(&surface, image_name),
-        .center_square_text => try renderCenterSquareCandidate(&surface, image_name),
-        .vert_text_black => try renderVerticalTextCandidate(&surface, image_name, false),
-        .vert_text_b2t_black => try renderVerticalTextCandidate(&surface, image_name, true),
+        .opc => try renderOpcCandidate(&surface, image_name, scale_numerator, scale_denominator),
+        .center_square_text => try renderCenterSquareCandidate(&surface, image_name, scale_numerator, scale_denominator),
+        .vert_text_black => try renderVerticalTextCandidate(&surface, image_name, false, scale_numerator, scale_denominator),
+        .vert_text_b2t_black => try renderVerticalTextCandidate(&surface, image_name, true, scale_numerator, scale_denominator),
         else => return error.UnsupportedKind,
     }
 
@@ -236,35 +264,40 @@ pub fn renderCandidateRgba(kind_index: usize, image_index: usize, out_rgba: []u8
 }
 
 pub fn renderReferenceSvgRgba(kind_index: usize, svg: []const u8, out_rgba: []u8) Error!usize {
+    return renderReferenceSvgRgbaScaled(kind_index, svg, SCALE_NUMERATOR, SCALE_DENOMINATOR, out_rgba);
+}
+
+pub fn renderReferenceSvgRgbaScaled(kind_index: usize, svg: []const u8, scale_numerator: u32, scale_denominator: u32, out_rgba: []u8) Error!usize {
     const kind_id = svg_compat.kindId(kind_index) orelse return error.UnsupportedKind;
     if (!kindSupported(kind_index)) return error.UnsupportedKind;
 
-    const required = requiredRgbaBytes(kind_index, 0);
+    const required = requiredRgbaBytesScaled(kind_index, 0, scale_numerator, scale_denominator);
     if (out_rgba.len < required) return error.OutputTooSmall;
 
-    var surface = try initSurface(kind_id, required, out_rgba);
+    var surface = try initSurface(kind_id, required, out_rgba, scale_numerator, scale_denominator);
     switch (kind_id) {
-        .opc => try renderOpcReference(&surface, svg),
-        .center_square_text, .vert_text_black, .vert_text_b2t_black => try renderTextReference(&surface, svg),
+        .opc => try renderOpcReference(&surface, svg, scale_numerator, scale_denominator),
+        .center_square_text, .vert_text_black, .vert_text_b2t_black => try renderTextReference(&surface, svg, scale_numerator, scale_denominator),
         else => return error.UnsupportedKind,
     }
 
     return required;
 }
 
-fn initSurface(kind_id: svg_compat.KindId, required: usize, out_rgba: []u8) Error!Surface {
+fn initSurface(kind_id: svg_compat.KindId, required: usize, out_rgba: []u8, scale_numerator: u32, scale_denominator: u32) Error!Surface {
     const width = switch (kind_id) {
-        .opc => TARGET_SIZE_OPC,
-        .center_square_text => TARGET_SIZE_CENTER_SQUARE,
-        .vert_text_black, .vert_text_b2t_black => TARGET_WIDTH_VERTICAL_TEXT,
+        .opc => scaledDim(100, scale_numerator, scale_denominator),
+        .center_square_text => scaledDim(36, scale_numerator, scale_denominator),
+        .vert_text_black, .vert_text_b2t_black => scaledDim(36, scale_numerator, scale_denominator),
         else => return error.UnsupportedKind,
     };
     const height = switch (kind_id) {
-        .opc => TARGET_SIZE_OPC,
-        .center_square_text => TARGET_SIZE_CENTER_SQUARE,
-        .vert_text_black, .vert_text_b2t_black => TARGET_HEIGHT_VERTICAL_TEXT,
+        .opc => scaledDim(100, scale_numerator, scale_denominator),
+        .center_square_text => scaledDim(36, scale_numerator, scale_denominator),
+        .vert_text_black, .vert_text_b2t_black => scaledDim(90, scale_numerator, scale_denominator),
         else => return error.UnsupportedKind,
     };
+    if (width == 0 or height == 0) return error.UnsupportedKind;
     return .{
         .pixels = out_rgba[0..required],
         .width = width,
@@ -273,14 +306,14 @@ fn initSurface(kind_id: svg_compat.KindId, required: usize, out_rgba: []u8) Erro
     };
 }
 
-fn renderOpcCandidate(surface: *Surface, image_name: []const u8) Error!void {
+fn renderOpcCandidate(surface: *Surface, image_name: []const u8, scale_numerator: u32, scale_denominator: u32) Error!void {
     const set_label = firstCsvField(trimSvgSuffix(image_name));
     const set = parseSetLabel(set_label) orelse return error.InvalidImage;
 
     clear(surface, .{ 255, 255, 255, 255 });
     drawRect(surface, 0.0, 0.0, @floatFromInt(surface.width), @floatFromInt(surface.height), .{ 255, 255, 255, 255 }, .{ 0, 0, 0, 0 }, 0.0);
 
-    const root = rootScaleMatrix();
+    const root = rootScaleMatrix(scale_numerator, scale_denominator);
     const circle_transform = parseTransformList("scale(0.877),translate(7,7)") catch return error.InvalidSvg;
     const transform = root.multiply(circle_transform);
     const radius = 9.5 * transform.approxUniformScale();
@@ -296,30 +329,30 @@ fn renderOpcCandidate(surface: *Surface, image_name: []const u8) Error!void {
     }
 }
 
-fn renderCenterSquareCandidate(surface: *Surface, image_name: []const u8) Error!void {
+fn renderCenterSquareCandidate(surface: *Surface, image_name: []const u8, scale_numerator: u32, scale_denominator: u32) Error!void {
     const stem = trimSvgSuffix(image_name);
     const path_d = text_misc.centerSquarePathData(stem) orelse return error.InvalidImage;
     clear(surface, .{ 0, 0, 0, 0 });
 
-    const root = rootScaleMatrix();
+    const root = rootScaleMatrix(scale_numerator, scale_denominator);
     const group_transform = parseTransformList("translate(18,0)") catch return error.InvalidSvg;
     try renderPathFill(surface, path_d, root.multiply(group_transform), .{ 128, 128, 128, 255 });
 }
 
-fn renderVerticalTextCandidate(surface: *Surface, image_name: []const u8, bottom_to_top: bool) Error!void {
+fn renderVerticalTextCandidate(surface: *Surface, image_name: []const u8, bottom_to_top: bool, scale_numerator: u32, scale_denominator: u32) Error!void {
     const stem = trimSvgSuffix(image_name);
     var path_buf: [16 * 1024]u8 = undefined;
     const path_d = text_misc.verticalPathData(stem, bottom_to_top, &path_buf) orelse return error.InvalidImage;
 
     clear(surface, .{ 0, 0, 0, 0 });
-    const root = rootScaleMatrix();
+    const root = rootScaleMatrix(scale_numerator, scale_denominator);
     const group_transform = parseTransformList(if (bottom_to_top) "rotate(-90),translate(-45,0)" else "rotate(90),translate(45,0)") catch return error.InvalidSvg;
     try renderPathFill(surface, path_d, root.multiply(group_transform), .{ 0, 0, 0, 255 });
 }
 
-fn renderOpcReference(surface: *Surface, svg: []const u8) Error!void {
+fn renderOpcReference(surface: *Surface, svg: []const u8, scale_numerator: u32, scale_denominator: u32) Error!void {
     clear(surface, .{ 255, 255, 255, 255 });
-    const root = rootScaleMatrix();
+    const root = rootScaleMatrix(scale_numerator, scale_denominator);
 
     var cursor: usize = 0;
     while (findTag(svg, "rect", cursor)) |match| {
@@ -336,9 +369,9 @@ fn renderOpcReference(surface: *Surface, svg: []const u8) Error!void {
     }
 }
 
-fn renderTextReference(surface: *Surface, svg: []const u8) Error!void {
+fn renderTextReference(surface: *Surface, svg: []const u8, scale_numerator: u32, scale_denominator: u32) Error!void {
     clear(surface, .{ 0, 0, 0, 0 });
-    const root = rootScaleMatrix();
+    const root = rootScaleMatrix(scale_numerator, scale_denominator);
     const group_transform = blk: {
         const tag = findTag(svg, "g", 0) orelse break :blk Matrix{};
         break :blk parseTransformAttr(svg[tag.start..tag.end]) orelse Matrix{};
@@ -596,8 +629,8 @@ fn distance(a: Point, b: Point) f64 {
     return @sqrt(dx * dx + dy * dy);
 }
 
-fn rootScaleMatrix() Matrix {
-    const scale = @as(f64, @floatFromInt(SCALE_NUMERATOR)) / @as(f64, @floatFromInt(SCALE_DENOMINATOR));
+fn rootScaleMatrix(scale_numerator: u32, scale_denominator: u32) Matrix {
+    const scale = @as(f64, @floatFromInt(scale_numerator)) / @as(f64, @floatFromInt(scale_denominator));
     return .{ .a = scale, .d = scale };
 }
 
@@ -956,69 +989,48 @@ fn findKindIndex(kind_id: svg_compat.KindId) usize {
     unreachable;
 }
 
-test "opc candidate render is deterministic" {
+fn runScaledBitmapParity(kind_id: svg_compat.KindId, image_index: usize, scale_numerator: u32, scale_denominator: u32, svg_buf: []u8) !void {
+    const kind_index = findKindIndex(kind_id);
+    const svg = svg_compat.generateByIndex(kind_index, image_index, svg_buf);
+    var candidate: [MAX_TEST_TARGET_WIDTH * MAX_TEST_TARGET_HEIGHT * 4]u8 = undefined;
+    var reference: [MAX_TEST_TARGET_WIDTH * MAX_TEST_TARGET_HEIGHT * 4]u8 = undefined;
+    const candidate_len = try renderCandidateRgbaScaled(kind_index, image_index, scale_numerator, scale_denominator, &candidate);
+    const reference_len = try renderReferenceSvgRgbaScaled(kind_index, svg, scale_numerator, scale_denominator, &reference);
+    try std.testing.expectEqual(candidate_len, reference_len);
+    try std.testing.expectEqualSlices(u8, candidate[0..candidate_len], reference[0..reference_len]);
+}
+
+test "opc candidate render is deterministic at 55 and 200 percent" {
     const kind_index = findKindIndex(.opc);
     const image_index: usize = 3;
-    var a: [TARGET_SIZE_OPC * TARGET_SIZE_OPC * 4]u8 = [_]u8{0} ** (TARGET_SIZE_OPC * TARGET_SIZE_OPC * 4);
-    var b: [TARGET_SIZE_OPC * TARGET_SIZE_OPC * 4]u8 = [_]u8{0} ** (TARGET_SIZE_OPC * TARGET_SIZE_OPC * 4);
-    const len_a = try renderCandidateRgba(kind_index, image_index, &a);
-    const len_b = try renderCandidateRgba(kind_index, image_index, &b);
+    var a: [MAX_TEST_TARGET_WIDTH * MAX_TEST_TARGET_HEIGHT * 4]u8 = undefined;
+    var b: [MAX_TEST_TARGET_WIDTH * MAX_TEST_TARGET_HEIGHT * 4]u8 = undefined;
+    const len_a = try renderCandidateRgbaScaled(kind_index, image_index, 200, 100, &a);
+    const len_b = try renderCandidateRgbaScaled(kind_index, image_index, 200, 100, &b);
     try std.testing.expectEqual(len_a, len_b);
     try std.testing.expectEqualSlices(u8, a[0..len_a], b[0..len_b]);
 }
 
-test "opc reference parser matches candidate bitmap for generated svg" {
-    const kind_index = findKindIndex(.opc);
-    const image_index: usize = 3;
+test "opc reference parser matches candidate bitmap for generated svg at 55 and 200 percent" {
     var svg_buf: [4096]u8 = undefined;
-    const svg = svg_compat.generateByIndex(kind_index, image_index, &svg_buf);
-    var candidate: [TARGET_SIZE_OPC * TARGET_SIZE_OPC * 4]u8 = [_]u8{0} ** (TARGET_SIZE_OPC * TARGET_SIZE_OPC * 4);
-    var reference: [TARGET_SIZE_OPC * TARGET_SIZE_OPC * 4]u8 = [_]u8{0} ** (TARGET_SIZE_OPC * TARGET_SIZE_OPC * 4);
-
-    const candidate_len = try renderCandidateRgba(kind_index, image_index, &candidate);
-    const reference_len = try renderReferenceSvgRgba(kind_index, svg, &reference);
-    try std.testing.expectEqual(candidate_len, reference_len);
-    try std.testing.expectEqualSlices(u8, candidate[0..candidate_len], reference[0..reference_len]);
+    try runScaledBitmapParity(.opc, 3, 55, 100, &svg_buf);
+    try runScaledBitmapParity(.opc, 3, 200, 100, &svg_buf);
 }
 
-test "center-square bitmap proof candidate matches generated svg raster" {
-    const kind_index = findKindIndex(.center_square_text);
-    const image_index: usize = 0;
+test "center-square bitmap proof candidate matches generated svg raster at 55 and 200 percent" {
     var svg_buf: [4096]u8 = undefined;
-    const svg = svg_compat.generateByIndex(kind_index, image_index, &svg_buf);
-    var candidate: [TARGET_SIZE_CENTER_SQUARE * TARGET_SIZE_CENTER_SQUARE * 4]u8 = [_]u8{0} ** (TARGET_SIZE_CENTER_SQUARE * TARGET_SIZE_CENTER_SQUARE * 4);
-    var reference: [TARGET_SIZE_CENTER_SQUARE * TARGET_SIZE_CENTER_SQUARE * 4]u8 = [_]u8{0} ** (TARGET_SIZE_CENTER_SQUARE * TARGET_SIZE_CENTER_SQUARE * 4);
-
-    const candidate_len = try renderCandidateRgba(kind_index, image_index, &candidate);
-    const reference_len = try renderReferenceSvgRgba(kind_index, svg, &reference);
-    try std.testing.expectEqual(candidate_len, reference_len);
-    try std.testing.expectEqualSlices(u8, candidate[0..candidate_len], reference[0..reference_len]);
+    try runScaledBitmapParity(.center_square_text, 0, 55, 100, &svg_buf);
+    try runScaledBitmapParity(.center_square_text, 0, 200, 100, &svg_buf);
 }
 
-test "vertical text bitmap proof candidate matches generated svg raster" {
-    const kind_index = findKindIndex(.vert_text_black);
-    const image_index: usize = 0;
+test "vertical text bitmap proof candidate matches generated svg raster at 55 and 200 percent" {
     var svg_buf: [16 * 1024]u8 = undefined;
-    const svg = svg_compat.generateByIndex(kind_index, image_index, &svg_buf);
-    var candidate: [TARGET_WIDTH_VERTICAL_TEXT * TARGET_HEIGHT_VERTICAL_TEXT * 4]u8 = [_]u8{0} ** (TARGET_WIDTH_VERTICAL_TEXT * TARGET_HEIGHT_VERTICAL_TEXT * 4);
-    var reference: [TARGET_WIDTH_VERTICAL_TEXT * TARGET_HEIGHT_VERTICAL_TEXT * 4]u8 = [_]u8{0} ** (TARGET_WIDTH_VERTICAL_TEXT * TARGET_HEIGHT_VERTICAL_TEXT * 4);
-
-    const candidate_len = try renderCandidateRgba(kind_index, image_index, &candidate);
-    const reference_len = try renderReferenceSvgRgba(kind_index, svg, &reference);
-    try std.testing.expectEqual(candidate_len, reference_len);
-    try std.testing.expectEqualSlices(u8, candidate[0..candidate_len], reference[0..reference_len]);
+    try runScaledBitmapParity(.vert_text_black, 0, 55, 100, &svg_buf);
+    try runScaledBitmapParity(.vert_text_black, 0, 200, 100, &svg_buf);
 }
 
-test "bottom-to-top vertical text bitmap proof candidate matches generated svg raster" {
-    const kind_index = findKindIndex(.vert_text_b2t_black);
-    const image_index: usize = 0;
+test "bottom-to-top vertical text bitmap proof candidate matches generated svg raster at 55 and 200 percent" {
     var svg_buf: [16 * 1024]u8 = undefined;
-    const svg = svg_compat.generateByIndex(kind_index, image_index, &svg_buf);
-    var candidate: [TARGET_WIDTH_VERTICAL_TEXT * TARGET_HEIGHT_VERTICAL_TEXT * 4]u8 = [_]u8{0} ** (TARGET_WIDTH_VERTICAL_TEXT * TARGET_HEIGHT_VERTICAL_TEXT * 4);
-    var reference: [TARGET_WIDTH_VERTICAL_TEXT * TARGET_HEIGHT_VERTICAL_TEXT * 4]u8 = [_]u8{0} ** (TARGET_WIDTH_VERTICAL_TEXT * TARGET_HEIGHT_VERTICAL_TEXT * 4);
-
-    const candidate_len = try renderCandidateRgba(kind_index, image_index, &candidate);
-    const reference_len = try renderReferenceSvgRgba(kind_index, svg, &reference);
-    try std.testing.expectEqual(candidate_len, reference_len);
-    try std.testing.expectEqualSlices(u8, candidate[0..candidate_len], reference[0..reference_len]);
+    try runScaledBitmapParity(.vert_text_b2t_black, 0, 55, 100, &svg_buf);
+    try runScaledBitmapParity(.vert_text_b2t_black, 0, 200, 100, &svg_buf);
 }

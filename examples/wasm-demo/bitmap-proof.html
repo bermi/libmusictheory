@@ -3,14 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Harmoniousapp.net Bitmap Proof Validation</title>
+  <title>Harmoniousapp.net Scalable Bitmap Proof Validation</title>
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
   <main class="page-shell">
     <section class="hero-card">
-      <h1>Harmoniousapp.net 55% Bitmap Proof Validation</h1>
-      <p>Reference SVGs are rasterized at canonical 55% size in WASM. Candidate images are painted from WASM RGBA buffers with no canvas rescaling shortcuts.</p>
+      <h1>Harmoniousapp.net Scalable Bitmap Proof Validation</h1>
+      <p>Reference SVGs are rasterized in WASM at the requested target scales. Candidate images are painted from WASM RGBA buffers with no browser rescaling shortcuts.</p>
       <p id="status" class="small">Initializing WASM…</p>
     </section>
 
@@ -22,11 +22,15 @@
           <input id="ref-root" type="text" value="/tmp/harmoniousapp.net">
         </label>
         <label>
+          <span>Proof scales</span>
+          <input id="scale-list" type="text" value="55/100,200/100">
+        </label>
+        <label>
           <span>Visual samples per kind</span>
           <input id="visual-sample-size" type="number" min="5" step="1" value="5">
         </label>
       </div>
-      <button id="run-proof">Generate 55% Proof Samples</button>
+      <button id="run-proof">Generate Scaled Proof Samples</button>
       <pre id="progress" class="mono panel"></pre>
     </section>
 

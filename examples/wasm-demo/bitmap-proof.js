@@ -19,11 +19,11 @@ const REQUIRED_EXPORTS = [
   "lmt_bitmap_proof_scale_numerator",
   "lmt_bitmap_proof_scale_denominator",
   "lmt_bitmap_compat_kind_supported",
-  "lmt_bitmap_compat_target_width",
-  "lmt_bitmap_compat_target_height",
-  "lmt_bitmap_compat_required_rgba_bytes",
-  "lmt_bitmap_compat_render_candidate_rgba",
-  "lmt_bitmap_compat_render_reference_svg_rgba",
+  "lmt_bitmap_compat_target_width_scaled",
+  "lmt_bitmap_compat_target_height_scaled",
+  "lmt_bitmap_compat_required_rgba_bytes_scaled",
+  "lmt_bitmap_compat_render_candidate_rgba_scaled",
+  "lmt_bitmap_compat_render_reference_svg_rgba_scaled",
 ];
 
 const NAME_CAPACITY = 2048;
@@ -186,6 +186,52 @@ function readCopyString(fn, outPtr, outCap, ...args) {
   return readCString(outPtr, outCap);
 }
 
+function parseScaleSpecs(raw) {
+  const specs = String(raw ?? "")
+    .split(",")
+    .map((token) => token.trim())
+    .filter(Boolean)
+    .map((token) => {
+      const normalized = token.replace(/%/g, "");
+      let numerator = 0;
+      let denominator = 0;
+      if (normalized.includes("/")) {
+        const [numRaw, denRaw] = normalized.split("/");
+        numerator = Number.parseInt(numRaw, 10);
+        denominator = Number.parseInt(denRaw, 10);
+      } else if (normalized.includes(":")) {
+        const [numRaw, denRaw] = normalized.split(":");
+        numerator = Number.parseInt(numRaw, 10);
+        denominator = Number.parseInt(denRaw, 10);
+      } else {
+        numerator = Number.parseInt(normalized, 10);
+        denominator = 100;
+      }
+      if (!Number.isFinite(numerator) || !Number.isFinite(denominator) || numerator <= 0 || denominator <= 0) {
+        throw new Error(`invalid scale token '${token}'`);
+      }
+      return {
+        numerator,
+        denominator,
+        key: `${numerator}:${denominator}`,
+        label: `${numerator}/${denominator}`,
+        percentLabel: `${((numerator / denominator) * 100).toFixed(0)}%`,
+      };
+    });
+
+  if (specs.length === 0) throw new Error("at least one proof scale is required");
+  const seen = new Set();
+  for (const spec of specs) {
+    if (seen.has(spec.key)) throw new Error(`duplicate scale '${spec.label}'`);
+    seen.add(spec.key);
+  }
+  return specs;
+}
+
+function defaultScaleInputValue() {
+  return `${wasm.lmt_bitmap_proof_scale_numerator()}/${wasm.lmt_bitmap_proof_scale_denominator()},200/100`;
+}
+
 function setFailurePreview(sample) {
   failureMeta.textContent = sample.meta;
   candidateHost.innerHTML = "";
@@ -196,22 +242,22 @@ function setFailurePreview(sample) {
   diffHost.appendChild(makeCanvas(sample.width, sample.height, sample.diff));
 }
 
-function renderSamples(kinds) {
-  if (kinds.length === 0) {
+function renderSamples(groups) {
+  if (groups.length === 0) {
     samplesHost.textContent = "No supported bitmap proof samples were collected.";
     return;
   }
-  samplesHost.innerHTML = kinds.map((entry) => `
+  samplesHost.innerHTML = groups.map((entry) => `
     <section class="sample-kind">
-      <h3 class="mono">${entry.kind}</h3>
+      <h3 class="mono">${entry.kind} @ ${entry.scalePercent}</h3>
       <div class="sample-items">
         ${entry.samples.map((sample) => `
           <article class="sample-item">
-            <p class="sample-meta mono">image=${sample.imageName} | drift=${sample.drift.toFixed(8)} | changed=${sample.changedPixels}</p>
+            <p class="sample-meta mono">image=${sample.imageName} | scale=${sample.scalePercent} | drift=${sample.drift.toFixed(8)} | changed=${sample.changedPixels}</p>
             <div class="sample-compare">
-              <div><h4>Candidate</h4><div class="canvas-host" data-sample-candidate="${sample.imageName}"></div></div>
-              <div><h4>Reference</h4><div class="canvas-host" data-sample-reference="${sample.imageName}"></div></div>
-              <div><h4>Diff</h4><div class="canvas-host" data-sample-diff="${sample.imageName}"></div></div>
+              <div><h4>Candidate</h4><div class="canvas-host" data-sample-candidate="${entry.key}:${sample.imageName}"></div></div>
+              <div><h4>Reference</h4><div class="canvas-host" data-sample-reference="${entry.key}:${sample.imageName}"></div></div>
+              <div><h4>Diff</h4><div class="canvas-host" data-sample-diff="${entry.key}:${sample.imageName}"></div></div>
             </div>
           </article>
         `).join("")}
@@ -219,13 +265,12 @@ function renderSamples(kinds) {
     </section>
   `).join("");
 
-  for (const entry of kinds) {
+  for (const entry of groups) {
     for (const sample of entry.samples) {
-      const section = [...samplesHost.querySelectorAll(".sample-kind")].find((node) => node.querySelector("h3")?.textContent === entry.kind);
-      if (!section) continue;
-      section.querySelector(`[data-sample-candidate="${CSS.escape(sample.imageName)}"]`)?.appendChild(makeCanvas(sample.width, sample.height, sample.candidate));
-      section.querySelector(`[data-sample-reference="${CSS.escape(sample.imageName)}"]`)?.appendChild(makeCanvas(sample.width, sample.height, sample.reference));
-      section.querySelector(`[data-sample-diff="${CSS.escape(sample.imageName)}"]`)?.appendChild(makeCanvas(sample.width, sample.height, sample.diff));
+      const key = `${entry.key}:${sample.imageName}`;
+      samplesHost.querySelector(`[data-sample-candidate="${CSS.escape(key)}"]`)?.appendChild(makeCanvas(sample.width, sample.height, sample.candidate));
+      samplesHost.querySelector(`[data-sample-reference="${CSS.escape(key)}"]`)?.appendChild(makeCanvas(sample.width, sample.height, sample.reference));
+      samplesHost.querySelector(`[data-sample-diff="${CSS.escape(key)}"]`)?.appendChild(makeCanvas(sample.width, sample.height, sample.diff));
     }
   }
 }
@@ -243,6 +288,7 @@ async function runProof() {
     const kindFilter = params.get("kinds")
       ? new Set(params.get("kinds").split(",").map((name) => name.trim()).filter(Boolean))
       : null;
+    const scales = parseScaleSpecs(params.get("scales") || document.getElementById("scale-list").value);
 
     const arena = scratchArena();
     const namePtr = arena.alloc(NAME_CAPACITY, 1);
@@ -251,115 +297,120 @@ async function runProof() {
     const rows = [];
     const sampleGroups = [];
     let firstFailure = null;
-    let supportedKinds = 0;
-    let unsupportedKinds = 0;
+    let supportedRows = 0;
+    let unsupportedRows = 0;
     let compared = 0;
     let passing = 0;
 
     const threshold = 0.0001;
     const kindCount = wasm.lmt_svg_compat_kind_count();
-    for (let kindIndex = 0; kindIndex < kindCount; kindIndex += 1) {
-      const kindName = readCString(wasm.lmt_svg_compat_kind_name(kindIndex));
-      if (kindFilter && !kindFilter.has(kindName)) continue;
-      const directory = readCString(wasm.lmt_svg_compat_kind_directory(kindIndex));
-      const total = wasm.lmt_svg_compat_image_count(kindIndex);
-      const supported = wasm.lmt_bitmap_compat_kind_supported(kindIndex) === 1;
-      if (!supported) {
-        unsupportedKinds += 1;
-        rows.push({ kind: kindName, directory, total, supported: false, compared: 0, passing: 0, failures: 0, unsupported: total });
-        continue;
+    for (const scale of scales) {
+      for (let kindIndex = 0; kindIndex < kindCount; kindIndex += 1) {
+        const kindName = readCString(wasm.lmt_svg_compat_kind_name(kindIndex));
+        if (kindFilter && !kindFilter.has(kindName)) continue;
+        const directory = readCString(wasm.lmt_svg_compat_kind_directory(kindIndex));
+        const total = wasm.lmt_svg_compat_image_count(kindIndex);
+        const supported = wasm.lmt_bitmap_compat_kind_supported(kindIndex) === 1;
+        if (!supported) {
+          unsupportedRows += 1;
+          rows.push({ kind: kindName, directory, total, scaleKey: scale.key, scaleLabel: scale.label, scalePercent: scale.percentLabel, supported: false, compared: 0, passing: 0, failures: 0, unsupported: total });
+          continue;
+        }
+        supportedRows += 1;
+
+        const indexes = sampleIndexes(total, samplePerKind);
+        const width = wasm.lmt_bitmap_compat_target_width_scaled(kindIndex, indexes[0] ?? 0, scale.numerator, scale.denominator);
+        const height = wasm.lmt_bitmap_compat_target_height_scaled(kindIndex, indexes[0] ?? 0, scale.numerator, scale.denominator);
+        const rgbaBytes = wasm.lmt_bitmap_compat_required_rgba_bytes_scaled(kindIndex, indexes[0] ?? 0, scale.numerator, scale.denominator);
+        if (!width || !height || !rgbaBytes) throw new Error(`bitmap proof target unavailable for supported kind ${kindName} at ${scale.label}`);
+
+        const candidatePtr = arena.alloc(rgbaBytes, 4);
+        const referencePtr = arena.alloc(rgbaBytes, 4);
+        const samples = [];
+        let kindPassing = 0;
+        let kindFailures = 0;
+
+        progressEl.textContent = `Generating bitmap proof for ${kindName} @ ${scale.percentLabel} (${indexes.length}/${total})`;
+        for (const imageIndex of indexes) {
+          const imageName = readCopyString(wasm.lmt_svg_compat_image_name, namePtr, NAME_CAPACITY, kindIndex, imageIndex);
+          const candidateWritten = wasm.lmt_bitmap_compat_render_candidate_rgba_scaled(kindIndex, imageIndex, scale.numerator, scale.denominator, candidatePtr, rgbaBytes);
+          if (candidateWritten !== rgbaBytes) {
+            kindFailures += 1;
+            if (!firstFailure) {
+              firstFailure = { meta: `kind=${kindName} | scale=${scale.label} | image=${imageName} | error=candidate render failed`, width, height, candidate: new Uint8ClampedArray(rgbaBytes), reference: new Uint8ClampedArray(rgbaBytes), diff: new Uint8ClampedArray(rgbaBytes) };
+            }
+            continue;
+          }
+
+          const referenceSvg = await fetchReferenceSvg(refRoot, directory, imageName);
+          if (!referenceSvg.ok) {
+            kindFailures += 1;
+            if (!firstFailure) {
+              firstFailure = { meta: `kind=${kindName} | scale=${scale.label} | image=${imageName} | error=missing reference | url=${referenceSvg.url}`, width, height, candidate: cloneBytes(candidatePtr, rgbaBytes), reference: new Uint8ClampedArray(rgbaBytes), diff: new Uint8ClampedArray(rgbaBytes) };
+            }
+            continue;
+          }
+
+          const svgLen = writeUtf8(svgPtr, referenceSvg.svg);
+          const referenceWritten = wasm.lmt_bitmap_compat_render_reference_svg_rgba_scaled(kindIndex, scale.numerator, scale.denominator, svgPtr, svgLen, referencePtr, rgbaBytes);
+          if (referenceWritten !== rgbaBytes) {
+            kindFailures += 1;
+            if (!firstFailure) {
+              firstFailure = { meta: `kind=${kindName} | scale=${scale.label} | image=${imageName} | error=reference raster failed | url=${referenceSvg.url}`, width, height, candidate: cloneBytes(candidatePtr, rgbaBytes), reference: new Uint8ClampedArray(rgbaBytes), diff: new Uint8ClampedArray(rgbaBytes) };
+            }
+            continue;
+          }
+
+          const candidateBytes = cloneBytes(candidatePtr, rgbaBytes);
+          const referenceBytes = cloneBytes(referencePtr, rgbaBytes);
+          const diff = makeDiff(candidateBytes, referenceBytes, width, height);
+          compared += 1;
+          if (diff.drift <= threshold) {
+            passing += 1;
+            kindPassing += 1;
+          } else {
+            kindFailures += 1;
+            if (!firstFailure) {
+              firstFailure = {
+                meta: `kind=${kindName} | scale=${scale.label} | image=${imageName} | drift=${diff.drift} | changed=${diff.changedPixels} | url=${referenceSvg.url}`,
+                width,
+                height,
+                candidate: candidateBytes,
+                reference: referenceBytes,
+                diff: diff.pixels,
+              };
+            }
+          }
+
+          samples.push({
+            imageName,
+            width,
+            height,
+            scaleKey: scale.key,
+            scalePercent: scale.percentLabel,
+            drift: diff.drift,
+            changedPixels: diff.changedPixels,
+            candidate: candidateBytes,
+            reference: referenceBytes,
+            diff: diff.pixels,
+          });
+        }
+
+        rows.push({ kind: kindName, directory, total, scaleKey: scale.key, scaleLabel: scale.label, scalePercent: scale.percentLabel, supported: true, compared: indexes.length, passing: kindPassing, failures: kindFailures, unsupported: 0 });
+        sampleGroups.push({ key: `${kindName}@${scale.key}`, kind: kindName, scaleKey: scale.key, scalePercent: scale.percentLabel, samples });
       }
-      supportedKinds += 1;
-
-      const indexes = sampleIndexes(total, samplePerKind);
-      const width = wasm.lmt_bitmap_compat_target_width(kindIndex, indexes[0] ?? 0);
-      const height = wasm.lmt_bitmap_compat_target_height(kindIndex, indexes[0] ?? 0);
-      const rgbaBytes = wasm.lmt_bitmap_compat_required_rgba_bytes(kindIndex, indexes[0] ?? 0);
-      if (!width || !height || !rgbaBytes) throw new Error(`bitmap proof target unavailable for supported kind ${kindName}`);
-
-      const candidatePtr = arena.alloc(rgbaBytes, 4);
-      const referencePtr = arena.alloc(rgbaBytes, 4);
-      const samples = [];
-      let kindPassing = 0;
-      let kindFailures = 0;
-
-      progressEl.textContent = `Generating bitmap proof for ${kindName} (${indexes.length}/${total})`;
-      for (const imageIndex of indexes) {
-        const imageName = readCopyString(wasm.lmt_svg_compat_image_name, namePtr, NAME_CAPACITY, kindIndex, imageIndex);
-        const candidateWritten = wasm.lmt_bitmap_compat_render_candidate_rgba(kindIndex, imageIndex, candidatePtr, rgbaBytes);
-        if (candidateWritten !== rgbaBytes) {
-          kindFailures += 1;
-          if (!firstFailure) {
-            firstFailure = { meta: `kind=${kindName} | image=${imageName} | error=candidate render failed`, width, height, candidate: new Uint8ClampedArray(rgbaBytes), reference: new Uint8ClampedArray(rgbaBytes), diff: new Uint8ClampedArray(rgbaBytes) };
-          }
-          continue;
-        }
-
-        const referenceSvg = await fetchReferenceSvg(refRoot, directory, imageName);
-        if (!referenceSvg.ok) {
-          kindFailures += 1;
-          if (!firstFailure) {
-            firstFailure = { meta: `kind=${kindName} | image=${imageName} | error=missing reference | url=${referenceSvg.url}`, width, height, candidate: cloneBytes(candidatePtr, rgbaBytes), reference: new Uint8ClampedArray(rgbaBytes), diff: new Uint8ClampedArray(rgbaBytes) };
-          }
-          continue;
-        }
-
-        const svgLen = writeUtf8(svgPtr, referenceSvg.svg);
-        const referenceWritten = wasm.lmt_bitmap_compat_render_reference_svg_rgba(kindIndex, svgPtr, svgLen, referencePtr, rgbaBytes);
-        if (referenceWritten !== rgbaBytes) {
-          kindFailures += 1;
-          if (!firstFailure) {
-            firstFailure = { meta: `kind=${kindName} | image=${imageName} | error=reference raster failed | url=${referenceSvg.url}`, width, height, candidate: cloneBytes(candidatePtr, rgbaBytes), reference: new Uint8ClampedArray(rgbaBytes), diff: new Uint8ClampedArray(rgbaBytes) };
-          }
-          continue;
-        }
-
-        const candidateBytes = cloneBytes(candidatePtr, rgbaBytes);
-        const referenceBytes = cloneBytes(referencePtr, rgbaBytes);
-        const diff = makeDiff(candidateBytes, referenceBytes, width, height);
-        compared += 1;
-        if (diff.drift <= threshold) {
-          passing += 1;
-          kindPassing += 1;
-        } else {
-          kindFailures += 1;
-          if (!firstFailure) {
-            firstFailure = {
-              meta: `kind=${kindName} | image=${imageName} | drift=${diff.drift} | changed=${diff.changedPixels} | url=${referenceSvg.url}`,
-              width,
-              height,
-              candidate: candidateBytes,
-              reference: referenceBytes,
-              diff: diff.pixels,
-            };
-          }
-        }
-
-        samples.push({
-          imageName,
-          width,
-          height,
-          drift: diff.drift,
-          changedPixels: diff.changedPixels,
-          candidate: candidateBytes,
-          reference: referenceBytes,
-          diff: diff.pixels,
-        });
-      }
-
-      rows.push({ kind: kindName, directory, total, supported: true, compared: indexes.length, passing: kindPassing, failures: kindFailures, unsupported: 0 });
-      sampleGroups.push({ kind: kindName, samples });
     }
 
     summaryHost.innerHTML = `
       <table>
         <thead>
-          <tr><th>Kind</th><th>Directory</th><th>Images</th><th>Support</th><th>Compared</th><th>Passing</th><th>Failures</th><th>Unsupported</th></tr>
+          <tr><th>Kind</th><th>Scale</th><th>Directory</th><th>Images</th><th>Support</th><th>Compared</th><th>Passing</th><th>Failures</th><th>Unsupported</th></tr>
         </thead>
         <tbody>
           ${rows.map((row) => `
             <tr>
               <td class="mono">${row.kind}</td>
+              <td class="mono">${row.scalePercent}</td>
               <td class="mono">${row.directory}</td>
               <td>${row.total}</td>
               <td class="${row.supported ? "good" : "bad"}">${row.supported ? "supported" : "unsupported"}</td>
@@ -385,15 +436,25 @@ async function runProof() {
 
     const summaryLines = [
       `Kinds: ${rows.length}`,
-      `Supported kinds: ${supportedKinds}`,
-      `Unsupported kinds: ${unsupportedKinds}`,
+      `Proof scales: ${scales.map((scale) => `${scale.label} (${scale.percentLabel})`).join(", ")}`,
+      `Supported rows: ${supportedRows}`,
+      `Unsupported rows: ${unsupportedRows}`,
       `Compared samples: ${compared}`,
       `Passing samples: ${passing}`,
       `Failures: ${compared - passing}`,
       `Drift threshold: 0.0001`,
     ];
     progressEl.textContent = summaryLines.join("\n");
-    window.__lmtLastBitmapProof = { rows, supportedKinds, unsupportedKinds, compared, passing, failures: compared - passing, threshold };
+    window.__lmtLastBitmapProof = {
+      rows,
+      scales: scales.map((scale) => ({ key: scale.key, label: scale.label, percentLabel: scale.percentLabel })),
+      supportedRows,
+      unsupportedRows,
+      compared,
+      passing,
+      failures: compared - passing,
+      threshold,
+    };
     statusEl.textContent = "Bitmap proof run completed.";
     statusEl.style.color = "#1f6c72";
   } finally {
@@ -408,7 +469,8 @@ async function main() {
     wasm = instance.exports;
     verifyExports(wasm);
     memory = wasm.memory;
-    statusEl.textContent = "WASM loaded. Bitmap proof validation is ready.";
+    document.getElementById("scale-list").value = defaultScaleInputValue();
+    statusEl.textContent = "WASM loaded. Scalable bitmap proof validation is ready.";
     statusEl.style.color = "#1f6c72";
     document.getElementById("run-proof").addEventListener("click", () => {
       runProof().catch((err) => {

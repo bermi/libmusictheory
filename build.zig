@@ -58,10 +58,15 @@ const bitmap_proof_export_symbols = [_][]const u8{
     "lmt_bitmap_proof_scale_numerator",
     "lmt_bitmap_proof_scale_denominator",
     "lmt_bitmap_compat_kind_supported",
+    "lmt_bitmap_compat_target_width_scaled",
     "lmt_bitmap_compat_target_width",
+    "lmt_bitmap_compat_target_height_scaled",
     "lmt_bitmap_compat_target_height",
+    "lmt_bitmap_compat_required_rgba_bytes_scaled",
     "lmt_bitmap_compat_required_rgba_bytes",
+    "lmt_bitmap_compat_render_candidate_rgba_scaled",
     "lmt_bitmap_compat_render_candidate_rgba",
+    "lmt_bitmap_compat_render_reference_svg_rgba_scaled",
     "lmt_bitmap_compat_render_reference_svg_rgba",
 };
 

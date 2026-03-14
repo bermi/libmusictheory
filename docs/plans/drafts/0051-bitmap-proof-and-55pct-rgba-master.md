@@ -1,4 +1,4 @@
-# 0051 — Bitmap Proof And 55% RGBA Validation Master
+# 0051 — Bitmap Proof And Scalable RGBA Validation Master
 
 > Dependencies: 0030, 0031, 0050
 > Follow-up: 0052-0059 staged slice plans
@@ -9,8 +9,8 @@ Status: Draft
 
 Add a second, stricter proof track for harmonious compatibility:
 
-- render harmonious reference SVGs at a canonical `55%` target size into bitmaps,
-- render our candidate diagrams algorithmically at that same `55%` size directly to RGBA without first generating a full-size SVG and scaling it down,
+- render harmonious reference SVGs at required target scales into bitmaps,
+- render our candidate diagrams algorithmically at those same target scales directly to RGBA without first generating a full-size SVG and scaling it down,
 - compare bitmap-to-bitmap with deterministic diff metrics,
 - expose the candidate RGBA buffers from Zig/WASM so the browser paints them to `<canvas>` directly.
 
@@ -23,7 +23,7 @@ Exact SVG parity remains the authoritative compatibility target for the existing
 This new bitmap lane is not a replacement for exact SVG parity. It is a separate proof obligation:
 
 - exact SVG parity proves site reproduction,
-- direct `55%` RGBA generation proves scalable algorithmic rendering rules.
+- direct multi-scale RGBA generation proves scalable algorithmic rendering rules.
 
 Both must stay true for the project to claim full-quality rendering.
 
@@ -39,7 +39,7 @@ Both must stay true for the project to claim full-quality rendering.
 Bitmap similarity alone is not sufficient evidence of algorithmic rendering. This master plan treats a family as proven only when all of the following are true:
 
 1. The candidate bitmap is produced from Zig layout/raster code, not from rasterizing our own SVG output.
-2. The candidate bitmap is generated at native `55%` target dimensions, not by drawing a `100%` scene and scaling it down afterward.
+2. The candidate bitmap is generated at native target dimensions, not by drawing a `100%` scene and scaling it down afterward.
 3. The family has anti-replay guardrails that ban embedded harmonious SVG/PNG payloads and block new replay tables in the candidate path.
 4. The family passes the deterministic bitmap diff threshold against the scaled harmonious reference.
 5. The existing exact-SVG compatibility lane remains green unless and until a family-specific completion policy explicitly supersedes it.
@@ -52,7 +52,8 @@ This plan introduces a precise bitmap contract that every proof run must obey.
 
 ### Target Size
 
-- Reference target size = canonical `55%` downscaled size derived from the harmonious source SVG.
+- Required proof scales start with `55%` and `200%`, with room for more scales later.
+- Reference target size = the scale-adjusted size derived from the harmonious source SVG at the requested proof scale.
 - Candidate target size = the exact same pixel width/height, computed before rendering begins.
 - No CSS scaling.
 - No browser zoom assumptions.
@@ -60,7 +61,7 @@ This plan introduces a precise bitmap contract that every proof run must obey.
 
 ### Reference Rendering Rules
 
-- The harmonious reference may start from SVG, but it must be rasterized directly at the target `55%` dimensions.
+- The harmonious reference may start from SVG, but it must be rasterized directly at the requested target dimensions.
 - The reference path must use a deterministic rasterization setup:
   - fixed browser,
   - fixed DPR,
@@ -123,7 +124,7 @@ Proposed bundle split:
 - `zig-out/wasm-docs`
   - keep current full interactive docs lane.
 - `zig-out/wasm-bitmap-proof` or equivalent
-  - new bundle for `55%` bitmap proof mode,
+- new bundle for scalable bitmap proof mode,
   - may include raster backend + RGBA exports,
   - must have its own explicit wasm export check and Playwright verification.
 
@@ -157,7 +158,7 @@ Exit gate:
 
 ### 0054 — Deterministic Reference Raster Pipeline
 
-- Implement canonical rasterization of harmonious SVG references at `55%`.
+- Implement canonical rasterization of harmonious SVG references at required proof scales.
 - Lock DPR, smoothing, browser, and asset-loading behavior.
 - Add bitmap diff helper and lossless artifact emission.
 
@@ -181,7 +182,7 @@ Exit gate:
 
 - raster backend can faithfully paint the primitive set required by the first proof families.
 
-### 0056 — Simple Families 55% Proof Lane
+### 0056 — Simple Families Scalable Proof Lane
 
 Target families:
 
@@ -195,7 +196,7 @@ Target families:
 
 Goals:
 
-- direct algorithmic `55%` RGBA output,
+- direct algorithmic scale-aware RGBA output,
 - no post-render scaling,
 - proof UI shows candidate/reference/diff canvases,
 - per-family drift under threshold.
@@ -204,7 +205,7 @@ Exit gate:
 
 - sampled + full proof runs pass for all simple families.
 
-### 0057 — Staff And Fret Family 55% Proof Lane
+### 0057 — Staff And Fret Family Scalable Proof Lane
 
 Target families:
 
@@ -223,9 +224,9 @@ Goals:
 
 Exit gate:
 
-- staff/fret families pass bitmap proof at `55%` with thresholded drift and anti-replay guardrails.
+- staff/fret families pass bitmap proof at `55%` and `200%` with thresholded drift and anti-replay guardrails.
 
-### 0058 — Majmin 55% Proof Lane
+### 0058 — Majmin Scalable Proof Lane
 
 Target families:
 

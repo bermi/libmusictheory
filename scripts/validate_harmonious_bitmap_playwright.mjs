@@ -17,7 +17,7 @@ const installDir = path.join(rootDir, 'zig-out', 'wasm-bitmap-proof');
 const requestedPort = process.env.LMT_VALIDATION_PORT ? Number.parseInt(process.env.LMT_VALIDATION_PORT, 10) : null;
 
 function parseArgs(argv) {
-  const out = { samplePerKind: 5, kinds: ['opc'] };
+  const out = { samplePerKind: 5, kinds: ['opc'], scales: ['55:100', '200:100'] };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === '--sample-per-kind') {
@@ -28,9 +28,14 @@ function parseArgs(argv) {
       out.kinds = argv[++i].split(',').map((name) => name.trim()).filter(Boolean);
       continue;
     }
+    if (arg === '--scales') {
+      out.scales = argv[++i].split(',').map((name) => name.trim()).filter(Boolean);
+      continue;
+    }
     throw new Error(`unknown argument: ${arg}`);
   }
   if (!Number.isFinite(out.samplePerKind) || out.samplePerKind < 5) throw new Error('--sample-per-kind must be >= 5');
+  if (out.scales.length === 0) throw new Error('--scales must provide at least one scale');
   return out;
 }
 
@@ -123,6 +128,7 @@ async function main() {
   try {
     const url = new URL(`http://${host}:${port}/index.html`);
     url.searchParams.set('kinds', args.kinds.join(','));
+    url.searchParams.set('scales', args.scales.join(','));
     await waitForServer(url.toString(), 15000);
 
     const browser = await chromium.launch({ headless: true, ...(resolveBrowserExecutable() ? { executablePath: resolveBrowserExecutable() } : {}) });
@@ -140,6 +146,7 @@ async function main() {
       await page.waitForSelector('#run-proof', { timeout: 30000 });
       await page.fill('#ref-root', referenceRoot);
       await page.fill('#visual-sample-size', String(args.samplePerKind));
+      await page.fill('#scale-list', args.scales.map((scale) => scale.replace(':', '/')).join(','));
       await page.click('#run-proof');
 
       const deadline = Date.now() + timeoutMs;
@@ -151,25 +158,33 @@ async function main() {
         }));
         if (snapshot.status.includes('Bitmap proof failed:')) throw new Error(snapshot.status);
         if (snapshot.summary) {
-          const { failures, unsupportedKinds, supportedKinds, compared, passing } = snapshot.summary;
-          if (supportedKinds < 1) throw new Error('bitmap proof reported zero supported kinds');
-          if (snapshot.summary.rows.length !== args.kinds.length) {
-            throw new Error(`bitmap proof returned ${snapshot.summary.rows.length} rows for ${args.kinds.length} requested kinds`);
+          const { failures, unsupportedRows, supportedRows, compared, passing, rows } = snapshot.summary;
+          const expectedRows = args.kinds.length * args.scales.length;
+          if (supportedRows < 1) throw new Error('bitmap proof reported zero supported rows');
+          if (rows.length !== expectedRows) {
+            throw new Error(`bitmap proof returned ${rows.length} rows for ${expectedRows} requested kind/scale pairs`);
           }
-          const unsupportedRows = snapshot.summary.rows.filter((row) => !row.supported).map((row) => row.kind);
-          if (unsupportedKinds !== 0 || unsupportedRows.length !== 0) {
-            throw new Error(`bitmap proof unsupported kinds: ${unsupportedRows.join(', ') || unsupportedKinds}`);
+          const unsupportedPairs = rows.filter((row) => !row.supported).map((row) => `${row.kind}@${row.scaleKey}`);
+          if (unsupportedRows !== 0 || unsupportedPairs.length !== 0) {
+            throw new Error(`bitmap proof unsupported kind/scale pairs: ${unsupportedPairs.join(', ') || unsupportedRows}`);
           }
-          const missingRequested = args.kinds.filter((kind) => !snapshot.summary.rows.some((row) => row.kind === kind));
-          if (missingRequested.length > 0) {
-            throw new Error(`bitmap proof missing requested kinds: ${missingRequested.join(', ')}`);
+          const missingPairs = [];
+          for (const kind of args.kinds) {
+            for (const scale of args.scales) {
+              if (!rows.some((row) => row.kind === kind && row.scaleKey === scale)) {
+                missingPairs.push(`${kind}@${scale}`);
+              }
+            }
           }
-          if (supportedKinds !== args.kinds.length) {
-            throw new Error(`bitmap proof supported=${supportedKinds} requested=${args.kinds.length}`);
+          if (missingPairs.length > 0) {
+            throw new Error(`bitmap proof missing requested pairs: ${missingPairs.join(', ')}`);
+          }
+          if (supportedRows !== expectedRows) {
+            throw new Error(`bitmap proof supportedRows=${supportedRows} expectedRows=${expectedRows}`);
           }
           if (failures !== 0) throw new Error(`bitmap proof failures=${failures}`);
           if (compared !== passing) throw new Error(`bitmap proof compared=${compared} passing=${passing}`);
-          console.log(`bitmap proof passed: supported=${supportedKinds} compared=${compared} passing=${passing}`);
+          console.log(`bitmap proof passed: supported_rows=${supportedRows} compared=${compared} passing=${passing} scales=${args.scales.join(',')}`);
           return;
         }
         if (Date.now() > deadline) throw new Error(`timed out waiting for bitmap proof completion; status=${snapshot.status}; progress=${snapshot.progress}`);
