@@ -13,6 +13,7 @@
 - The public API now has two layers:
   - a parametric fretboard surface for arbitrary string counts and custom visible fret windows
   - a six-string compatibility wrapper that preserves harmonious `eadgbe` behavior
+- CAGED remains a six-string standard-guitar concept and is not used as the generic fretboard abstraction.
 - Compatibility output uses a large structured SVG scaffold with deterministic node insertion to match legacy output formatting and metadata shape.
 
 ## Alternative Programmatic Approaches Studied

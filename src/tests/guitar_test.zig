@@ -46,6 +46,55 @@ test "generic tuning fret helpers support non-six-string instruments" {
     try testing.expectEqual(@as(u8, 0), positions[3].fret);
 }
 
+test "generic voicing generation includes open major voicing on four strings" {
+    const tuning = [_]pitch.MidiNote{ 48, 52, 55, 60 };
+    var voicings: [64]guitar.GenericVoicing = undefined;
+    var fret_storage: [64 * 4]i8 = undefined;
+
+    const generated = guitar.generateVoicingsGeneric(pcs.C_MAJOR_TRIAD, tuning[0..], 12, 4, &voicings, &fret_storage);
+    try testing.expect(generated.len > 0);
+
+    var found_open = false;
+    for (generated) |one| {
+        if (std.mem.eql(i8, one.frets, &[_]i8{ 0, 0, 0, 0 })) {
+            found_open = true;
+            try testing.expectEqual(pcs.C_MAJOR_TRIAD, one.toPitchClassSet());
+            break;
+        }
+    }
+    try testing.expect(found_open);
+}
+
+test "generic pitch-class guide and url helpers support four strings" {
+    const tuning = [_]pitch.MidiNote{ 55, 60, 64, 67 };
+    const selected = [_]guitar.GenericFretPosition{
+        .{ .string = 0, .fret = 0 },
+    };
+
+    var guide_out: [32]guitar.GenericGuideDot = undefined;
+    const guide = guitar.pitchClassGuideGeneric(&selected, 0, 12, tuning[0..], &guide_out);
+    try testing.expect(guide.len > 0);
+
+    var has_open_g = false;
+    var has_c_string_g = false;
+    for (guide) |dot| {
+        if (dot.position.string == 3 and dot.position.fret == 0) has_open_g = true;
+        if (dot.position.string == 1 and dot.position.fret == 7) has_c_string_g = true;
+    }
+    try testing.expect(has_open_g);
+    try testing.expect(has_c_string_g);
+
+    const frets = [_]i8{ 0, 2, 3, 2 };
+    var url_buf: [64]u8 = undefined;
+    const url = guitar.fretsToUrlGeneric(frets[0..], &url_buf);
+    try testing.expectEqualStrings("0,2,3,2", url);
+
+    var parsed_out: [8]i8 = undefined;
+    const parsed = guitar.urlToFretsGeneric(url, &parsed_out).?;
+    try testing.expectEqual(@as(usize, 4), parsed.len);
+    try testing.expectEqualSlices(i8, frets[0..], parsed);
+}
+
 test "pitch class positions and caged positions" {
     const tuning = guitar.tunings.STANDARD;
 

@@ -558,6 +558,13 @@ else
     unverified "0061 parametric fret ABI guardrail (header or docs app missing)"
 fi
 
+if [ -f "$ROOT_DIR/src/guitar.zig" ] && [ -f "$ROOT_DIR/docs/research/algorithms/guitar-voicing.md" ]; then
+    check_cmd "cd '$ROOT_DIR' && rg -n \"GenericVoicing|generateVoicingsGeneric|pitchClassGuideGeneric|fretsToUrlGeneric|urlToFretsGeneric\" src/guitar.zig" "0062 generic fret semantics guardrail (voicing/guide/url generic APIs present)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'CAGED.*six-string|six-string.*CAGED|standard-guitar.*CAGED|CAGED remains' docs/research/algorithms/guitar-voicing.md docs/research/data-structures/guitar-and-keyboard.md docs/architecture/graphs/fretboard.md" "0062 generic fret semantics guardrail (docs explicitly scope CAGED as six-string guitar-specific)"
+else
+    unverified "0062 generic fret semantics guardrail (guitar core or research docs missing)"
+fi
+
 if [ -f "$ROOT_DIR/examples/wasm-demo/scaled-render-parity.html" ] && rg -Fq 'step("wasm-scaled-render-parity"' "$ROOT_DIR/build.zig"; then
     check_cmd "cd '$ROOT_DIR' && zig build wasm-scaled-render-parity 2>&1" "0059 scaled render parity bundle build"
     check_cmd "cd '$ROOT_DIR' && ! rg -n \"\\.scale\\(|transform:\\s*scale|style\\.transform\" examples/wasm-demo/scaled-render-parity.js" "0059 scaled render parity anti-cheat guardrail (no css/post-bitmap scaling shortcut)"

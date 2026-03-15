@@ -122,6 +122,8 @@ pub const GuitarVoicing = struct {
 
 One of the 5 CAGED system positions for a chord.
 
+This type is intentionally six-string standard-guitar specific. It is not the generic fretted-instrument abstraction.
+
 ```zig
 pub const CAGEDShape = enum(u3) {
     C = 0, A = 1, G = 2, E = 3, D = 4,

@@ -6,7 +6,9 @@
 
 ## Overview
 
-Algorithms for mapping between MIDI notes and guitar fret positions, generating playable voicings, and implementing the CAGED fretboard system.
+Algorithms for mapping between MIDI notes and fret positions, generating playable voicings, and implementing the standard-guitar CAGED fretboard system.
+
+Generic fret semantics such as tuning-aware note lookup, voicing generation, and guide overlays apply to arbitrary string counts. CAGED remains a six-string standard-guitar concept in this library.
 
 ## Static Data
 
@@ -147,6 +149,8 @@ Note: Exhaustive generation is expensive. Practical implementations use CAGED sh
 **Complexity**: O(MAX_FRET * 6^MAX_SPAN) — bounded but large; pruning essential
 
 ### 5. CAGED System Position Computation
+
+This section is intentionally six-string and standard-guitar specific.
 
 **Input**: Root pitch class, chord quality (major/minor/7th etc.)
 **Output**: 5 CAGED positions (each a 6-element fret array)
