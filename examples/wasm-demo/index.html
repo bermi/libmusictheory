@@ -128,14 +128,14 @@
     <section>
       <h2>Guitar APIs</h2>
       <div class="grid">
-        <label>Tuning (6 midi notes)
+        <label>Tuning (comma-separated MIDI notes)
           <input id="guitar-tuning" value="40,45,50,55,59,64" />
         </label>
-        <label>String
-          <input id="guitar-string" type="number" min="0" max="5" value="0" />
+        <label>String index
+          <input id="guitar-string" type="number" min="0" max="63" value="0" />
         </label>
         <label>Fret
-          <input id="guitar-fret" type="number" min="0" max="24" value="0" />
+          <input id="guitar-fret" type="number" min="0" max="127" value="0" />
         </label>
         <label>MIDI note
           <input id="guitar-midi" type="number" min="0" max="127" value="60" />
@@ -148,8 +148,14 @@
     <section>
       <h2>SVG Diagram APIs</h2>
       <div class="grid">
-        <label>Fret diagram frets (6 values)
+        <label>Fret diagram frets (comma-separated)
           <input id="svg-frets" value="-1,-1,10,9,8,-1" />
+        </label>
+        <label>Window start (0 = open/nut or auto)
+          <input id="svg-window-start" type="number" min="0" max="127" value="0" />
+        </label>
+        <label>Visible frets (0 = auto)
+          <input id="svg-visible-frets" type="number" min="0" max="24" value="4" />
         </label>
       </div>
       <button id="run-svg">Run SVG APIs</button>
@@ -160,7 +166,7 @@
           <div id="svg-clock" class="svg-host"></div>
         </article>
         <article>
-          <h3>lmt_svg_fret</h3>
+          <h3>lmt_svg_fret_n</h3>
           <div id="svg-fret" class="svg-host"></div>
         </article>
         <article>

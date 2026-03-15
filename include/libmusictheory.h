@@ -95,9 +95,12 @@ const char *lmt_roman_numeral_parts(lmt_pitch_class_set chord, lmt_pitch_class t
 
 lmt_midi_note lmt_fret_to_midi(uint8_t string, uint8_t fret, const uint8_t *tuning);
 uint8_t lmt_midi_to_fret_positions(lmt_midi_note note, const uint8_t *tuning, lmt_fret_pos *out);
+lmt_midi_note lmt_fret_to_midi_n(uint32_t string, uint8_t fret, const uint8_t *tuning, uint32_t tuning_count);
+uint32_t lmt_midi_to_fret_positions_n(lmt_midi_note note, const uint8_t *tuning, uint32_t tuning_count, lmt_fret_pos *out, uint32_t out_cap);
 
 uint32_t lmt_svg_clock_optc(lmt_pitch_class_set set, char *buf, uint32_t buf_size);
 uint32_t lmt_svg_fret(const int8_t *frets, char *buf, uint32_t buf_size);
+uint32_t lmt_svg_fret_n(const int8_t *frets, uint32_t string_count, uint32_t window_start, uint32_t visible_frets, char *buf, uint32_t buf_size);
 uint32_t lmt_svg_chord_staff(lmt_chord_type type, lmt_pitch_class root, char *buf, uint32_t buf_size);
 uint32_t lmt_raster_is_enabled(void);
 uint32_t lmt_raster_demo_rgba(uint32_t width, uint32_t height, uint8_t *out_rgba, uint32_t out_rgba_size);

@@ -40,3 +40,35 @@ test "barre detection" {
     const svg = fret.renderFretDiagram(f_major_barre, &buf);
     try testing.expect(std.mem.indexOf(u8, svg, "class=\"barre\"") != null);
 }
+
+test "generic fret diagram supports four strings" {
+    const frets = [_]i8{ 0, 0, 0, 3 };
+
+    var buf: [8192]u8 = undefined;
+    const svg = fret.renderDiagram(.{ .frets = frets[0..] }, &buf);
+
+    try testing.expect(std.mem.indexOf(u8, svg, "class=\"position\"") != null);
+    try testing.expect(std.mem.indexOf(u8, svg, ">3</text>") != null);
+    try testing.expect(std.mem.indexOf(u8, svg, "cx=\"80.00\" cy=\"27.50\"") != null);
+    try testing.expect(std.mem.indexOf(u8, svg, "class=\"open\"") != null);
+}
+
+test "generic fret diagram supports explicit fret windows" {
+    const frets = [_]i8{ 7, 9, 9, 8, 7, 7, 7 };
+
+    var buf: [8192]u8 = undefined;
+    const svg = fret.renderDiagram(.{ .frets = frets[0..], .window_start = 5, .visible_frets = 5 }, &buf);
+
+    try testing.expect(std.mem.indexOf(u8, svg, "class=\"position\"") != null);
+    try testing.expect(std.mem.indexOf(u8, svg, ">6</text>") != null);
+    try testing.expect(std.mem.indexOf(u8, svg, "y2=\"95.00\"") != null);
+}
+
+test "generic fret diagram detects barres on wider instruments" {
+    const frets = [_]i8{ 1, 3, 3, 2, 1, 1, 1 };
+
+    const barre = fret.detectBarreForFrets(frets[0..]).?;
+    try testing.expectEqual(@as(u32, 1), barre.fret);
+    try testing.expectEqual(@as(usize, 0), barre.low_string);
+    try testing.expectEqual(@as(usize, 6), barre.high_string);
+}

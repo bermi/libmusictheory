@@ -78,6 +78,7 @@ var c_string_slots: [8][32]u8 = [_][32]u8{[_]u8{0} ** 32} ** 8;
 var c_string_slot_index: usize = 0;
 var compat_svg_buf: [4 * 1024 * 1024]u8 = undefined;
 var wasm_client_scratch: [8 * 1024 * 1024]u8 = undefined;
+const MAX_PARAMETRIC_FRET_STRINGS: usize = 64;
 
 fn maskPitchClassSet(raw: u16) pcs.PitchClassSet {
     return @as(pcs.PitchClassSet, @intCast(raw & 0x0fff));
@@ -182,6 +183,18 @@ fn decodeTuning(ptr: [*c]const u8) guitar.Tuning {
         out[i] = @as(pitch.MidiNote, @intCast(@min(raw, @as(u8, 127))));
     }
     return out;
+}
+
+fn decodeTuningGeneric(ptr: [*c]const u8, tuning_count: u32, out: *[MAX_PARAMETRIC_FRET_STRINGS]pitch.MidiNote) []const pitch.MidiNote {
+    const len = @min(@as(usize, @intCast(tuning_count)), out.len);
+    if (ptr == null or len == 0) return out[0..0];
+
+    var i: usize = 0;
+    while (i < len) : (i += 1) {
+        const raw = ptr[i];
+        out[i] = @as(pitch.MidiNote, @intCast(@min(raw, @as(u8, 127))));
+    }
+    return out[0..len];
 }
 
 fn writeCString(text: []const u8) [*c]const u8 {
@@ -348,6 +361,13 @@ export fn lmt_fret_to_midi(string: u8, fret: u8, tuning_ptr: [*c]const u8) callc
     return @as(u8, midi);
 }
 
+export fn lmt_fret_to_midi_n(string: u32, fret: u8, tuning_ptr: [*c]const u8, tuning_count: u32) callconv(.C) u8 {
+    var tuning_buf: [MAX_PARAMETRIC_FRET_STRINGS]pitch.MidiNote = undefined;
+    const tuning = decodeTuningGeneric(tuning_ptr, tuning_count, &tuning_buf);
+    const midi = guitar.fretToMidiGeneric(@as(usize, @intCast(string)), fret, tuning) orelse return 0;
+    return @as(u8, midi);
+}
+
 export fn lmt_midi_to_fret_positions(note: u8, tuning_ptr: [*c]const u8, out: [*c]LmtFretPos) callconv(.C) u8 {
     var tmp: [guitar.NUM_STRINGS]guitar.FretPosition = undefined;
     const tuning = decodeTuning(tuning_ptr);
@@ -367,8 +387,29 @@ export fn lmt_midi_to_fret_positions(note: u8, tuning_ptr: [*c]const u8, out: [*
     return @as(u8, @intCast(positions.len));
 }
 
+export fn lmt_midi_to_fret_positions_n(note: u8, tuning_ptr: [*c]const u8, tuning_count: u32, out: [*c]LmtFretPos, out_cap: u32) callconv(.C) u32 {
+    var tuning_buf: [MAX_PARAMETRIC_FRET_STRINGS]pitch.MidiNote = undefined;
+    var tmp: [MAX_PARAMETRIC_FRET_STRINGS]guitar.GenericFretPosition = undefined;
+    const tuning = decodeTuningGeneric(tuning_ptr, tuning_count, &tuning_buf);
+
+    const midi = @as(pitch.MidiNote, @intCast(@min(note, @as(u8, 127))));
+    const positions = guitar.midiToFretPositionsGeneric(midi, tuning, tmp[0..tuning.len]);
+
+    if (out != null) {
+        const write_len = @min(positions.len, @as(usize, @intCast(out_cap)));
+        for (positions[0..write_len], 0..) |pos, i| {
+            out[i] = .{
+                .string = @as(u8, @intCast(@min(pos.string, @as(usize, 255)))),
+                .fret = pos.fret,
+            };
+        }
+    }
+
+    return @as(u32, @intCast(positions.len));
+}
+
 export fn lmt_svg_clock_optc(set: u16, buf: [*c]u8, buf_size: u32) callconv(.C) u32 {
-    var svg_buf: [8192]u8 = undefined;
+    var svg_buf: [16384]u8 = undefined;
     var label_buf: [12]u8 = undefined;
 
     const safe_set = maskPitchClassSet(set);
@@ -395,6 +436,25 @@ export fn lmt_svg_fret(frets_ptr: [*c]const i8, buf: [*c]u8, buf_size: u32) call
 
     var svg_buf: [4096]u8 = undefined;
     const svg = svg_fret.renderFretDiagram(voicing, &svg_buf);
+    return copySvgOut(svg, buf, buf_size);
+}
+
+export fn lmt_svg_fret_n(frets_ptr: [*c]const i8, string_count: u32, window_start: u32, visible_frets: u32, buf: [*c]u8, buf_size: u32) callconv(.C) u32 {
+    if (frets_ptr == null or string_count == 0) {
+        var empty_svg_buf: [256]u8 = undefined;
+        const svg = svg_fret.renderDiagram(.{ .frets = &[_]i8{} }, &empty_svg_buf);
+        return copySvgOut(svg, buf, buf_size);
+    }
+
+    const count = @as(usize, @intCast(string_count));
+    const raw_frets = frets_ptr[0..count];
+
+    var svg_buf: [8192]u8 = undefined;
+    const svg = svg_fret.renderDiagram(.{
+        .frets = raw_frets,
+        .window_start = if (window_start == 0 and visible_frets == 0) null else window_start,
+        .visible_frets = visible_frets,
+    }, &svg_buf);
     return copySvgOut(svg, buf, buf_size);
 }
 

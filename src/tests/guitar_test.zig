@@ -26,6 +26,26 @@ test "standard tuning fret-to-midi and inverse midi map" {
     try testing.expectEqual(@as(u5, 1), positions[4].fret);
 }
 
+test "generic tuning fret helpers support non-six-string instruments" {
+    const tuning = [_]pitch.MidiNote{ 55, 60, 64, 69 };
+
+    try testing.expectEqual(@as(?pitch.MidiNote, 69), guitar.fretToMidiGeneric(3, 0, tuning[0..]));
+    try testing.expectEqual(@as(?pitch.MidiNote, 69), guitar.fretToMidiGeneric(2, 5, tuning[0..]));
+
+    var out: [4]guitar.GenericFretPosition = undefined;
+    const positions = guitar.midiToFretPositionsGeneric(69, tuning[0..], &out);
+
+    try testing.expectEqual(@as(usize, 4), positions.len);
+    try testing.expectEqual(@as(usize, 0), positions[0].string);
+    try testing.expectEqual(@as(u8, 14), positions[0].fret);
+    try testing.expectEqual(@as(usize, 1), positions[1].string);
+    try testing.expectEqual(@as(u8, 9), positions[1].fret);
+    try testing.expectEqual(@as(usize, 2), positions[2].string);
+    try testing.expectEqual(@as(u8, 5), positions[2].fret);
+    try testing.expectEqual(@as(usize, 3), positions[3].string);
+    try testing.expectEqual(@as(u8, 0), positions[3].fret);
+}
+
 test "pitch class positions and caged positions" {
     const tuning = guitar.tunings.STANDARD;
 

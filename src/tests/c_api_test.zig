@@ -39,10 +39,13 @@ extern fn lmt_chord_name(set: u16) callconv(.c) [*c]const u8;
 extern fn lmt_roman_numeral(chord_set: u16, key_ctx: LmtKeyContext) callconv(.c) [*c]const u8;
 
 extern fn lmt_fret_to_midi(string: u8, fret: u8, tuning_ptr: [*c]const u8) callconv(.c) u8;
+extern fn lmt_fret_to_midi_n(string: u32, fret: u8, tuning_ptr: [*c]const u8, tuning_count: u32) callconv(.c) u8;
 extern fn lmt_midi_to_fret_positions(note: u8, tuning_ptr: [*c]const u8, out: [*c]LmtFretPos) callconv(.c) u8;
+extern fn lmt_midi_to_fret_positions_n(note: u8, tuning_ptr: [*c]const u8, tuning_count: u32, out: [*c]LmtFretPos, out_cap: u32) callconv(.c) u32;
 
 extern fn lmt_svg_clock_optc(set: u16, buf: [*c]u8, buf_size: u32) callconv(.c) u32;
 extern fn lmt_svg_fret(frets_ptr: [*c]const i8, buf: [*c]u8, buf_size: u32) callconv(.c) u32;
+extern fn lmt_svg_fret_n(frets_ptr: [*c]const i8, string_count: u32, window_start: u32, visible_frets: u32, buf: [*c]u8, buf_size: u32) callconv(.c) u32;
 extern fn lmt_svg_chord_staff(chord_kind: u8, root: u8, buf: [*c]u8, buf_size: u32) callconv(.c) u32;
 extern fn lmt_raster_is_enabled() callconv(.c) u32;
 extern fn lmt_raster_demo_rgba(width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32;
@@ -134,6 +137,15 @@ test "c abi guitar functions" {
     const count = lmt_midi_to_fret_positions(60, @ptrCast(&tuning), @ptrCast(&out));
     try testing.expect(count > 0);
     try testing.expectEqual(@as(u8, 0), out[0].string);
+
+    const alt_tuning = [_]u8{ 55, 60, 64, 69 };
+    try testing.expectEqual(@as(u8, 69), lmt_fret_to_midi_n(3, 0, @ptrCast(&alt_tuning), alt_tuning.len));
+
+    var out_n: [8]LmtFretPos = undefined;
+    const count_n = lmt_midi_to_fret_positions_n(69, @ptrCast(&alt_tuning), alt_tuning.len, @ptrCast(&out_n), out_n.len);
+    try testing.expectEqual(@as(u32, 4), count_n);
+    try testing.expectEqual(@as(u8, 0), out_n[3].fret);
+    try testing.expectEqual(@as(u8, 3), out_n[3].string);
 }
 
 test "c abi svg generators" {
@@ -148,6 +160,11 @@ test "c abi svg generators" {
     const len2 = lmt_svg_fret(@ptrCast(&frets), @ptrCast(&svg_buf), @intCast(svg_buf.len));
     try testing.expect(len2 > 0);
     try testing.expect(std.mem.startsWith(u8, svg_buf[0..4], "<svg"));
+
+    const four_string = [_]i8{ 0, 0, 0, 3 };
+    const len2n = lmt_svg_fret_n(@ptrCast(&four_string), four_string.len, 0, 4, @ptrCast(&svg_buf), @intCast(svg_buf.len));
+    try testing.expect(len2n > 0);
+    try testing.expect(std.mem.indexOf(u8, svg_buf[0..len2n], "cx=\"80.00\" cy=\"57.50\"") != null);
 
     const len3 = lmt_svg_chord_staff(c.LMT_CHORD_MAJOR, 0, @ptrCast(&svg_buf), @intCast(svg_buf.len));
     try testing.expect(len3 > 0);

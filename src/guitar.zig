@@ -29,6 +29,20 @@ pub const FretPosition = struct {
     }
 };
 
+pub const GenericFretPosition = struct {
+    string: usize,
+    fret: u8,
+
+    pub fn toMidi(self: GenericFretPosition, tuning: []const pitch.MidiNote) ?pitch.MidiNote {
+        return fretToMidiGeneric(self.string, self.fret, tuning);
+    }
+
+    pub fn toPitchClass(self: GenericFretPosition, tuning: []const pitch.MidiNote) ?pitch.PitchClass {
+        const midi = self.toMidi(tuning) orelse return null;
+        return @as(pitch.PitchClass, @intCast(midi % 12));
+    }
+};
+
 pub const GuitarVoicing = struct {
     frets: [NUM_STRINGS]i8,
     tuning: Tuning,
@@ -103,20 +117,41 @@ const CAGED_MAJOR_SHAPES = [_]ShapeTemplate{
 };
 
 pub fn fretToMidi(string: u3, fret: u5, tuning: Tuning) pitch.MidiNote {
-    std.debug.assert(string < NUM_STRINGS);
-    return tuning[string] + fret;
+    return fretToMidiGeneric(string, fret, tuning[0..]).?;
+}
+
+pub fn fretToMidiGeneric(string: usize, fret: u8, tuning: []const pitch.MidiNote) ?pitch.MidiNote {
+    if (string >= tuning.len) return null;
+    const midi = @as(u16, tuning[string]) + fret;
+    if (midi > 127) return null;
+    return @as(pitch.MidiNote, @intCast(midi));
 }
 
 pub fn midiToFretPositions(note: pitch.MidiNote, tuning: Tuning, out: *[NUM_STRINGS]FretPosition) []FretPosition {
+    var generic_out: [NUM_STRINGS]GenericFretPosition = undefined;
+    const generic_positions = midiToFretPositionsGeneric(note, tuning[0..], &generic_out);
+
+    for (generic_positions, 0..) |pos, i| {
+        out[i] = .{
+            .string = @as(u3, @intCast(pos.string)),
+            .fret = @as(u5, @intCast(pos.fret)),
+        };
+    }
+
+    return out[0..generic_positions.len];
+}
+
+pub fn midiToFretPositionsGeneric(note: pitch.MidiNote, tuning: []const pitch.MidiNote, out: []GenericFretPosition) []GenericFretPosition {
     var count: usize = 0;
     for (tuning, 0..) |open_note, string| {
         if (note < open_note) continue;
         const fret = note - open_note;
         if (fret > MAX_FRET) continue;
+        if (count >= out.len) return out[0..count];
 
         out[count] = .{
-            .string = @as(u3, @intCast(string)),
-            .fret = @as(u5, @intCast(fret)),
+            .string = string,
+            .fret = @as(u8, @intCast(fret)),
         };
         count += 1;
     }

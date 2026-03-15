@@ -1,4 +1,4 @@
-# Fret Diagrams (Guitar Chord/Scale Visualization)
+# Fret Diagrams (Guitar And Parametric Fretboard Visualization)
 
 > References: [Guitar and Keyboard](../guitar-and-keyboard.md)
 > Source directory: `tmp/harmoniousapp.net/eadgbe/` (2,278 SVGs, 100×100 px)
@@ -6,12 +6,17 @@
 
 ## Overview
 
-Fret diagrams show guitar chord voicings on a grid representing the fretboard. Each dot indicates where to press a string. Special markers show muted strings, open strings, barre chords, and pitch-class guide dots.
+Fret diagrams show chord voicings on a grid representing the fretboard. Each dot indicates where to press a string. Special markers show muted strings, open strings, barre chords, and pitch-class guide dots.
+
+There are now two distinct surfaces in the library:
+
+- a six-string compatibility wrapper for harmonious `eadgbe`
+- a parametric fretboard API that accepts arbitrary string counts and explicit visible fret windows
 
 ## SVG Specifications
 
 - **Canvas**: 100 × 100 px viewBox
-- **Grid**: 6 vertical lines (strings, low E left to high E right) × typically 4-5 horizontal lines (frets)
+- **Grid**: `N` vertical lines (strings) × typically 4-5 horizontal fret cells
 - **Dot size**: ~4px radius circles at string/fret intersections
 - **Markers**:
   - Filled circle = fretted note
@@ -24,8 +29,8 @@ Fret diagrams show guitar chord voicings on a grid representing the fretboard. E
 ## Grid Geometry
 
 ```
-// 6 strings, equally spaced
-string_x(i) = left_margin + i * string_spacing  // i = 0 (low E) to 5 (high E)
+// N strings, equally spaced
+string_x(i) = left_margin + i * string_spacing  // i = 0 .. string_count-1
 
 // Frets, equally spaced
 fret_y(j) = top_margin + j * fret_spacing  // j = 0 (nut) to num_frets
@@ -40,15 +45,17 @@ dot_y(fret) = fret_y(fret - 1) + fret_spacing / 2  // centered between fret line
 ### Step 1: Determine Fret Window
 
 ```
-fret_window(voicing):
+fret_window(voicing, explicit_start = null, visible_frets = 4):
+    if explicit_start is not null:
+        return (explicit_start, explicit_start + visible_frets)
     fretted = [f for f in voicing.frets if f > 0]
     if len(fretted) == 0:
-        return (0, 4)  // open chord, show frets 0-4
+        return (0, visible_frets)  // open chord, show the requested window
     min_fret = min(fretted)
     max_fret = max(fretted)
     // Show enough frets to cover the voicing plus context
-    start_fret = max(1, min_fret - 1)
-    end_fret = max(start_fret + 3, max_fret + 1)
+    start_fret = max(0, min_fret - 1)
+    end_fret = max(start_fret + visible_frets, max_fret + 1)
     return (start_fret, end_fret)
 ```
 
@@ -68,7 +75,7 @@ fret_window(voicing):
 ### Step 3: Draw Dots
 
 ```
-for i in 0..5:
+for i in 0..string_count-1:
     fret = voicing.frets[i]
     if fret < 0:
         // Muted: draw X above nut
@@ -86,8 +93,8 @@ for i in 0..5:
 ```
 detect_barre(voicing):
     // Find common fret across adjacent strings
-    for fret in 1..24:
-        strings_at_fret = [i for i in 0..5 if voicing.frets[i] >= fret]
+    for fret in 1..max(voicing.frets):
+        strings_at_fret = [i for i in 0..string_count-1 if voicing.frets[i] >= fret]
         if len(strings_at_fret) >= 2:
             // Check if these are consecutive strings
             if max(strings_at_fret) - min(strings_at_fret) == len(strings_at_fret) - 1:
@@ -120,7 +127,7 @@ for each selected_position:
         draw_circle(x, y, radius=3, fill="black", opacity=0.35)
 ```
 
-## File Naming Convention
+## Compatibility File Naming Convention
 
 `tmp/harmoniousapp.net/eadgbe/{root}-{chord_type}.svg`
 Example: `tmp/harmoniousapp.net/eadgbe/C-Major.svg`, `tmp/harmoniousapp.net/eadgbe/A-Minor-7th.svg`
@@ -129,14 +136,6 @@ Multiple voicings per chord are stored with position suffixes.
 
 ## Counts
 - tmp/harmoniousapp.net/eadgbe/: 2,278 SVGs (multiple voicings per chord × 12 roots)
-
-## Multi-Dot Mode
-
-The interactive fretboard supports multi-dot mode where each string can have multiple dots pressed (for showing all possible positions of a pitch class on a string). The fret array representation uses arrays within arrays:
-```
-// Single dot: frets = [0, 3, 2, 0, 1, 0]
-// Multi-dot: frets = [[0], [3,5], [2,4], [0,2], [1,3], [0,1]]
-```
 
 ## Algorithm Dependencies
 - [Guitar Voicing](../algorithms/guitar-voicing.md): fret position computation, CAGED shapes

@@ -37,9 +37,12 @@ const REQUIRED_EXPORTS = [
   "lmt_roman_numeral",
   "lmt_roman_numeral_parts",
   "lmt_fret_to_midi",
+  "lmt_fret_to_midi_n",
   "lmt_midi_to_fret_positions",
+  "lmt_midi_to_fret_positions_n",
   "lmt_svg_clock_optc",
   "lmt_svg_fret",
+  "lmt_svg_fret_n",
   "lmt_svg_chord_staff",
 ];
 
@@ -269,17 +272,22 @@ function runGuitarApis() {
   ensureWasmLoaded();
   const arena = new ScratchArena();
 
-  const tuningValues = parseCsvIntegers(document.getElementById("guitar-tuning").value, 0, 127, 6);
+  const tuningValues = parseCsvIntegers(document.getElementById("guitar-tuning").value, 0, 127);
+  if (tuningValues.length === 0) {
+    throw new Error("Tuning must include at least one MIDI note");
+  }
   const stringValue = getNumberInput("guitar-string");
   const fretValue = getNumberInput("guitar-fret");
   const midiValue = getNumberInput("guitar-midi");
 
   const tuningPtr = writeU8Array(arena, tuningValues);
 
-  const fretToMidi = wasm.lmt_fret_to_midi(stringValue, fretValue, tuningPtr);
+  const fretToMidiGeneric = wasm.lmt_fret_to_midi_n(stringValue, fretValue, tuningPtr, tuningValues.length);
+  const fretToMidiCompat = tuningValues.length === 6 ? wasm.lmt_fret_to_midi(stringValue, fretValue, tuningPtr) : null;
 
-  const outPosPtr = arena.alloc(6 * 2, 1);
-  const posCount = wasm.lmt_midi_to_fret_positions(midiValue, tuningPtr, outPosPtr);
+  const outPosPtr = arena.alloc(Math.max(1, tuningValues.length) * 2, 1);
+  const posCount = wasm.lmt_midi_to_fret_positions_n(midiValue, tuningPtr, tuningValues.length, outPosPtr, tuningValues.length);
+  const compatPosCount = tuningValues.length === 6 ? wasm.lmt_midi_to_fret_positions(midiValue, tuningPtr, outPosPtr) : null;
 
   const positions = [];
   const bytes = u8();
@@ -290,10 +298,16 @@ function runGuitarApis() {
     });
   }
 
-  outGuitar.textContent = [
-    `lmt_fret_to_midi(string=${stringValue}, fret=${fretValue}): ${fretToMidi}`,
-    `lmt_midi_to_fret_positions(note=${midiValue}): ${JSON.stringify(positions)}`,
-  ].join("\n");
+  const lines = [
+    `lmt_fret_to_midi_n(string=${stringValue}, fret=${fretValue}, tuning_count=${tuningValues.length}): ${fretToMidiGeneric}`,
+    `lmt_midi_to_fret_positions_n(note=${midiValue}, tuning_count=${tuningValues.length}): ${JSON.stringify(positions)}`,
+  ];
+  if (fretToMidiCompat !== null && compatPosCount !== null) {
+    lines.push(`compat wrapper lmt_fret_to_midi(...): ${fretToMidiCompat}`);
+    lines.push(`compat wrapper lmt_midi_to_fret_positions(...): ${compatPosCount} positions`);
+  }
+
+  outGuitar.textContent = lines.join("\n");
 }
 
 function runSvgApis() {
@@ -303,14 +317,19 @@ function runSvgApis() {
   const mainSet = resolveMainSet();
   const chordType = getSelectValue("chord-type");
   const chordRoot = getNumberInput("chord-root");
-  const fretValues = parseCsvIntegers(document.getElementById("svg-frets").value, -1, 24, 6);
-  const standardTuning = [40, 45, 50, 55, 59, 64];
-  const tuningPtr = writeU8Array(arena, standardTuning);
+  const fretValues = parseCsvIntegers(document.getElementById("svg-frets").value, -1, 127);
+  if (fretValues.length === 0) {
+    throw new Error("Fret diagram must include at least one string");
+  }
+  const tuningValues = parseCsvIntegers(document.getElementById("guitar-tuning").value, 0, 127);
+  const tuningPtr = writeU8Array(arena, tuningValues);
+  const windowStart = getNumberInput("svg-window-start");
+  const visibleFrets = getNumberInput("svg-visible-frets");
   const fretMidiNotes = fretValues
-    .map((fret, stringIndex) => (fret < 0 ? null : wasm.lmt_fret_to_midi(stringIndex, fret, tuningPtr)))
+    .map((fret, stringIndex) => (fret < 0 || stringIndex >= tuningValues.length ? null : wasm.lmt_fret_to_midi_n(stringIndex, fret, tuningPtr, tuningValues.length)))
     .filter((value) => value !== null);
   const staffMidiNotes = canonicalChordStaffMidiNotes(chordType, chordRoot);
-  const aligned = arraysEqual(fretMidiNotes, staffMidiNotes);
+  const aligned = tuningValues.length === fretValues.length && arraysEqual(fretMidiNotes, staffMidiNotes);
 
   const svgBufPtr = arena.alloc(C_STRING_CAPACITY, 1);
 
@@ -318,20 +337,31 @@ function runSvgApis() {
   const clockSvg = readCString(svgBufPtr);
 
   const fretsPtr = writeI8Array(arena, fretValues);
-  const fretLen = wasm.lmt_svg_fret(fretsPtr, svgBufPtr, C_STRING_CAPACITY);
+  const fretLen = wasm.lmt_svg_fret_n(fretsPtr, fretValues.length, windowStart, visibleFrets, svgBufPtr, C_STRING_CAPACITY);
   const fretSvg = readCString(svgBufPtr);
+  const compatFretLen = fretValues.length === 6 ? wasm.lmt_svg_fret(fretsPtr, svgBufPtr, C_STRING_CAPACITY) : null;
 
   const staffLen = wasm.lmt_svg_chord_staff(chordType, chordRoot, svgBufPtr, C_STRING_CAPACITY);
   const staffSvg = readCString(svgBufPtr);
 
-  outSvgMeta.textContent = [
+  const lines = [
     `lmt_svg_clock_optc bytes: ${clockLen}`,
-    `lmt_svg_fret bytes: ${fretLen}`,
+    `lmt_svg_fret_n bytes: ${fretLen}`,
     `lmt_svg_chord_staff bytes: ${staffLen}`,
+    `string_count: ${fretValues.length}`,
+    `window_start: ${windowStart}`,
+    `visible_frets: ${visibleFrets}`,
     `fret voicing midi: ${JSON.stringify(fretMidiNotes)}`,
     `chord staff midi: ${JSON.stringify(staffMidiNotes)}`,
     `aligned: ${aligned ? "yes" : "no"}`,
-  ].join("\n");
+  ];
+  if (compatFretLen !== null) {
+    lines.push(`compat wrapper lmt_svg_fret bytes: ${compatFretLen}`);
+  }
+  if (tuningValues.length !== fretValues.length) {
+    lines.push("note: tuning/fret counts differ, so MIDI alignment is semantic-only for overlapping strings");
+  }
+  outSvgMeta.textContent = lines.join("\n");
 
   svgClockHost.innerHTML = clockSvg;
   svgFretHost.innerHTML = fretSvg;
