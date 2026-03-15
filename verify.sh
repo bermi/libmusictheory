@@ -565,6 +565,13 @@ else
     unverified "0062 generic fret semantics guardrail (guitar core or research docs missing)"
 fi
 
+if [ -f "$ROOT_DIR/include/libmusictheory.h" ] && [ -f "$ROOT_DIR/src/c_api.zig" ]; then
+    check_cmd "cd '$ROOT_DIR' && rg -n \"lmt_guide_dot|lmt_generate_voicings_n|lmt_pitch_class_guide_n|lmt_frets_to_url_n|lmt_url_to_frets_n\" include/libmusictheory.h" "0063 generic fret semantic ABI guardrail (public header exposes guide/voicing/url symbols)"
+    check_cmd "cd '$ROOT_DIR' && rg -n \"lmt_generate_voicings_n|lmt_pitch_class_guide_n|lmt_frets_to_url_n|lmt_url_to_frets_n\" src/c_api.zig build.zig scripts/check_wasm_exports.mjs examples/wasm-demo/app.js examples/wasm-demo/index.html" "0063 generic fret semantic ABI guardrail (c api, exports, and docs demo wired to new symbols)"
+else
+    unverified "0063 generic fret semantic ABI guardrail (header or c api missing)"
+fi
+
 if [ -f "$ROOT_DIR/examples/wasm-demo/scaled-render-parity.html" ] && rg -Fq 'step("wasm-scaled-render-parity"' "$ROOT_DIR/build.zig"; then
     check_cmd "cd '$ROOT_DIR' && zig build wasm-scaled-render-parity 2>&1" "0059 scaled render parity bundle build"
     check_cmd "cd '$ROOT_DIR' && ! rg -n \"\\.scale\\(|transform:\\s*scale|style\\.transform\" examples/wasm-demo/scaled-render-parity.js" "0059 scaled render parity anti-cheat guardrail (no css/post-bitmap scaling shortcut)"

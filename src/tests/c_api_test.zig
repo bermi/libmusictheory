@@ -17,6 +17,12 @@ const LmtFretPos = extern struct {
     fret: u8,
 };
 
+const LmtGuideDot = extern struct {
+    position: LmtFretPos,
+    pitch_class: u8,
+    opacity: f32,
+};
+
 extern fn lmt_pcs_from_list(pcs_ptr: [*c]const u8, count: u8) callconv(.c) u16;
 extern fn lmt_pcs_to_list(set: u16, out: [*c]u8) callconv(.c) u8;
 extern fn lmt_pcs_cardinality(set: u16) callconv(.c) u8;
@@ -42,6 +48,10 @@ extern fn lmt_fret_to_midi(string: u8, fret: u8, tuning_ptr: [*c]const u8) callc
 extern fn lmt_fret_to_midi_n(string: u32, fret: u8, tuning_ptr: [*c]const u8, tuning_count: u32) callconv(.c) u8;
 extern fn lmt_midi_to_fret_positions(note: u8, tuning_ptr: [*c]const u8, out: [*c]LmtFretPos) callconv(.c) u8;
 extern fn lmt_midi_to_fret_positions_n(note: u8, tuning_ptr: [*c]const u8, tuning_count: u32, out: [*c]LmtFretPos, out_cap: u32) callconv(.c) u32;
+extern fn lmt_generate_voicings_n(chord_set: u16, tuning_ptr: [*c]const u8, tuning_count: u32, max_fret: u8, max_span: u8, out_frets: [*c]i8, out_voicing_cap: u32) callconv(.c) u32;
+extern fn lmt_pitch_class_guide_n(selected_ptr: [*c]const LmtFretPos, selected_count: u32, min_fret: u8, max_fret: u8, tuning_ptr: [*c]const u8, tuning_count: u32, out: [*c]LmtGuideDot, out_cap: u32) callconv(.c) u32;
+extern fn lmt_frets_to_url_n(frets_ptr: [*c]const i8, fret_count: u32, buf: [*c]u8, buf_size: u32) callconv(.c) u32;
+extern fn lmt_url_to_frets_n(url_ptr: [*c]const u8, out: [*c]i8, out_cap: u32) callconv(.c) u32;
 
 extern fn lmt_svg_clock_optc(set: u16, buf: [*c]u8, buf_size: u32) callconv(.c) u32;
 extern fn lmt_svg_fret(frets_ptr: [*c]const i8, buf: [*c]u8, buf_size: u32) callconv(.c) u32;
@@ -61,8 +71,12 @@ extern fn lmt_svg_compat_generate(kind_index: u32, image_index: u32, buf: [*c]u8
 test "c abi header layout and constants" {
     try testing.expectEqual(@as(usize, 2), @sizeOf(c.lmt_pitch_class_set));
     try testing.expectEqual(@as(usize, 2), @sizeOf(c.lmt_key_context));
+    try testing.expectEqual(@as(usize, 8), @sizeOf(c.lmt_guide_dot));
     try testing.expectEqual(@as(usize, 0), @offsetOf(c.lmt_key_context, "tonic"));
     try testing.expectEqual(@as(usize, 1), @offsetOf(c.lmt_key_context, "quality"));
+    try testing.expectEqual(@as(usize, 0), @offsetOf(c.lmt_guide_dot, "position"));
+    try testing.expectEqual(@as(usize, 2), @offsetOf(c.lmt_guide_dot, "pitch_class"));
+    try testing.expectEqual(@as(usize, 4), @offsetOf(c.lmt_guide_dot, "opacity"));
     try testing.expectEqual(@as(c_int, 0), c.LMT_SCALE_DIATONIC);
     try testing.expectEqual(@as(c_int, 16), c.LMT_MODE_WHOLE_TONE);
     try testing.expectEqual(@as(c_int, 3), c.LMT_CHORD_AUGMENTED);
@@ -146,6 +160,53 @@ test "c abi guitar functions" {
     try testing.expectEqual(@as(u32, 4), count_n);
     try testing.expectEqual(@as(u8, 0), out_n[3].fret);
     try testing.expectEqual(@as(u8, 3), out_n[3].string);
+
+    const four_string_voicing_tuning = [_]u8{ 48, 52, 55, 60 };
+    var voicing_rows: [64 * 4]i8 = [_]i8{-1} ** (64 * 4);
+    const voicing_count = lmt_generate_voicings_n(pcs.C_MAJOR_TRIAD, @ptrCast(&four_string_voicing_tuning), four_string_voicing_tuning.len, 12, 4, @ptrCast(&voicing_rows), 64);
+    try testing.expect(voicing_count > 0);
+
+    var found_open = false;
+    var row: usize = 0;
+    while (row < voicing_count) : (row += 1) {
+        const start = row * four_string_voicing_tuning.len;
+        if (std.mem.eql(i8, voicing_rows[start .. start + four_string_voicing_tuning.len], &[_]i8{ 0, 0, 0, 0 })) {
+            found_open = true;
+            break;
+        }
+    }
+    try testing.expect(found_open);
+
+    const selected = [_]LmtFretPos{
+        .{ .string = 0, .fret = 0 },
+    };
+    const guide_tuning = [_]u8{ 55, 60, 64, 67 };
+    var guide_out: [32]LmtGuideDot = undefined;
+    const guide_count = lmt_pitch_class_guide_n(@ptrCast(&selected), selected.len, 0, 12, @ptrCast(&guide_tuning), guide_tuning.len, @ptrCast(&guide_out), guide_out.len);
+    try testing.expect(guide_count > 0);
+
+    var has_open_g = false;
+    var has_c_string_g = false;
+    var guide_i: usize = 0;
+    while (guide_i < @min(guide_count, guide_out.len)) : (guide_i += 1) {
+        const dot = guide_out[guide_i];
+        if (dot.position.string == 3 and dot.position.fret == 0) has_open_g = true;
+        if (dot.position.string == 1 and dot.position.fret == 7) has_c_string_g = true;
+    }
+    try testing.expect(has_open_g);
+    try testing.expect(has_c_string_g);
+    try testing.expectApproxEqAbs(@as(f32, 0.35), guide_out[0].opacity, 0.0001);
+
+    const frets = [_]i8{ 0, 2, 3, 2 };
+    var url_buf: [64]u8 = [_]u8{0} ** 64;
+    const url_len = lmt_frets_to_url_n(@ptrCast(&frets), frets.len, @ptrCast(&url_buf), url_buf.len);
+    try testing.expectEqualStrings("0,2,3,2", url_buf[0..url_len]);
+
+    const url_input = "0,2,3,2";
+    var parsed_frets: [8]i8 = [_]i8{-1} ** 8;
+    const parsed_count = lmt_url_to_frets_n(url_input.ptr, @ptrCast(&parsed_frets), parsed_frets.len);
+    try testing.expectEqual(@as(u32, 4), parsed_count);
+    try testing.expectEqualSlices(i8, frets[0..], parsed_frets[0..parsed_count]);
 }
 
 test "c abi svg generators" {

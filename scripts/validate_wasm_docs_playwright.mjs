@@ -168,6 +168,10 @@ async function waitForRenderedOutputs(page) {
       snapshot.scaleMode.includes("lmt_scale") &&
       snapshot.chord.includes("lmt_chord") &&
       snapshot.guitar.includes("lmt_fret_to_midi_n") &&
+      snapshot.guitar.includes("lmt_generate_voicings_n") &&
+      snapshot.guitar.includes("lmt_pitch_class_guide_n") &&
+      snapshot.guitar.includes("lmt_frets_to_url_n") &&
+      snapshot.guitar.includes("lmt_url_to_frets_n") &&
       snapshot.svgMeta.includes("lmt_svg_clock_optc bytes:") &&
       snapshot.svgMeta.includes("lmt_svg_fret_n bytes:") &&
       snapshot.svgMeta.includes("aligned: yes") &&

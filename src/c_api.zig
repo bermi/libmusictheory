@@ -30,6 +30,12 @@ pub const LmtFretPos = extern struct {
     fret: u8,
 };
 
+pub const LmtGuideDot = extern struct {
+    position: LmtFretPos,
+    pitch_class: u8,
+    opacity: f32,
+};
+
 const SCALE_DIATONIC: u8 = 0;
 const SCALE_ACOUSTIC: u8 = 1;
 const SCALE_DIMINISHED: u8 = 2;
@@ -79,6 +85,9 @@ var c_string_slot_index: usize = 0;
 var compat_svg_buf: [4 * 1024 * 1024]u8 = undefined;
 var wasm_client_scratch: [8 * 1024 * 1024]u8 = undefined;
 const MAX_PARAMETRIC_FRET_STRINGS: usize = 64;
+const MAX_C_API_GENERIC_VOICINGS: usize = MAX_PARAMETRIC_FRET_STRINGS * MAX_PARAMETRIC_FRET_STRINGS;
+var generic_voicing_meta_buf: [MAX_C_API_GENERIC_VOICINGS]guitar.GenericVoicing = undefined;
+var generic_voicing_fret_buf: [MAX_C_API_GENERIC_VOICINGS * MAX_PARAMETRIC_FRET_STRINGS]i8 = undefined;
 
 fn maskPitchClassSet(raw: u16) pcs.PitchClassSet {
     return @as(pcs.PitchClassSet, @intCast(raw & 0x0fff));
@@ -195,6 +204,44 @@ fn decodeTuningGeneric(ptr: [*c]const u8, tuning_count: u32, out: *[MAX_PARAMETR
         out[i] = @as(pitch.MidiNote, @intCast(@min(raw, @as(u8, 127))));
     }
     return out[0..len];
+}
+
+fn isSelectedGuidePosition(selected_ptr: [*c]const LmtFretPos, selected_count: usize, string: usize, fret: u8) bool {
+    if (selected_ptr == null) return false;
+
+    var i: usize = 0;
+    while (i < selected_count) : (i += 1) {
+        const pos = selected_ptr[i];
+        if (pos.string == @as(u8, @intCast(@min(string, @as(usize, 255)))) and pos.fret == fret) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+fn selectedGuidePitchClasses(selected_ptr: [*c]const LmtFretPos, selected_count: usize, tuning: []const pitch.MidiNote) pcs.PitchClassSet {
+    if (selected_ptr == null or selected_count == 0 or tuning.len == 0) return 0;
+
+    var out: pcs.PitchClassSet = 0;
+    var i: usize = 0;
+    while (i < selected_count) : (i += 1) {
+        const pos = selected_ptr[i];
+        const midi = guitar.fretToMidiGeneric(pos.string, pos.fret, tuning) orelse continue;
+        const pc = @as(pitch.PitchClass, @intCast(midi % 12));
+        out |= @as(pcs.PitchClassSet, 1) << pc;
+    }
+
+    return out;
+}
+
+fn parseUrlFretToken(raw_token: []const u8) ?i8 {
+    const token = std.mem.trim(u8, raw_token, " \t\r\n");
+    if (token.len == 0) return null;
+
+    const parsed = std.fmt.parseInt(i16, token, 10) catch return null;
+    if (parsed < -1 or parsed > std.math.maxInt(i8)) return null;
+    return @as(i8, @intCast(parsed));
 }
 
 fn writeCString(text: []const u8) [*c]const u8 {
@@ -406,6 +453,125 @@ export fn lmt_midi_to_fret_positions_n(note: u8, tuning_ptr: [*c]const u8, tunin
     }
 
     return @as(u32, @intCast(positions.len));
+}
+
+export fn lmt_generate_voicings_n(chord_set: u16, tuning_ptr: [*c]const u8, tuning_count: u32, max_fret: u8, max_span: u8, out_frets: [*c]i8, out_voicing_cap: u32) callconv(.C) u32 {
+    var tuning_buf: [MAX_PARAMETRIC_FRET_STRINGS]pitch.MidiNote = undefined;
+    const tuning = decodeTuningGeneric(tuning_ptr, tuning_count, &tuning_buf);
+    if (tuning.len == 0 or out_frets == null or out_voicing_cap == 0) return 0;
+
+    const row_cap = @as(usize, @intCast(out_voicing_cap));
+    if (row_cap > MAX_C_API_GENERIC_VOICINGS) return 0;
+
+    const generated = guitar.generateVoicingsGeneric(
+        maskPitchClassSet(chord_set),
+        tuning,
+        max_fret,
+        max_span,
+        generic_voicing_meta_buf[0..row_cap],
+        generic_voicing_fret_buf[0 .. row_cap * tuning.len],
+    );
+
+    for (generated, 0..) |voicing, row| {
+        const row_start = row * tuning.len;
+        @memcpy(out_frets[row_start .. row_start + tuning.len], voicing.frets);
+    }
+
+    return @as(u32, @intCast(generated.len));
+}
+
+export fn lmt_pitch_class_guide_n(selected_ptr: [*c]const LmtFretPos, selected_count: u32, min_fret: u8, max_fret: u8, tuning_ptr: [*c]const u8, tuning_count: u32, out: [*c]LmtGuideDot, out_cap: u32) callconv(.C) u32 {
+    var tuning_buf: [MAX_PARAMETRIC_FRET_STRINGS]pitch.MidiNote = undefined;
+    const tuning = decodeTuningGeneric(tuning_ptr, tuning_count, &tuning_buf);
+    if (tuning.len == 0 or max_fret < min_fret) return 0;
+
+    const selected_len = @as(usize, @intCast(selected_count));
+    const selected_pcs = selectedGuidePitchClasses(selected_ptr, selected_len, tuning);
+    if (selected_pcs == 0) return 0;
+
+    const write_cap = @as(usize, @intCast(out_cap));
+    var total: usize = 0;
+
+    for (tuning, 0..) |_, string| {
+        var fret = min_fret;
+        while (true) : (fret += 1) {
+            if (isSelectedGuidePosition(selected_ptr, selected_len, string, fret)) {
+                if (fret == max_fret or fret == std.math.maxInt(u8)) break;
+                continue;
+            }
+
+            const midi = guitar.fretToMidiGeneric(string, fret, tuning) orelse {
+                if (fret == max_fret or fret == std.math.maxInt(u8)) break;
+                continue;
+            };
+            const pc = @as(pitch.PitchClass, @intCast(midi % 12));
+            const bit = @as(pcs.PitchClassSet, 1) << pc;
+            if ((selected_pcs & bit) != 0) {
+                if (out != null and total < write_cap) {
+                    out[total] = .{
+                        .position = .{
+                            .string = @as(u8, @intCast(@min(string, @as(usize, 255)))),
+                            .fret = fret,
+                        },
+                        .pitch_class = pc,
+                        .opacity = guitar.GUIDE_OPACITY,
+                    };
+                }
+                total += 1;
+            }
+
+            if (fret == max_fret or fret == std.math.maxInt(u8)) break;
+        }
+    }
+
+    return @as(u32, @intCast(total));
+}
+
+export fn lmt_frets_to_url_n(frets_ptr: [*c]const i8, fret_count: u32, buf: [*c]u8, buf_size: u32) callconv(.C) u32 {
+    if (buf == null or buf_size == 0) return 0;
+
+    const out = buf[0..@as(usize, @intCast(buf_size))];
+    var stream = std.io.fixedBufferStream(out);
+    const writer = stream.writer();
+    const count = @as(usize, @intCast(fret_count));
+
+    if (count > 0 and frets_ptr == null) return 0;
+
+    var i: usize = 0;
+    while (i < count) : (i += 1) {
+        if (i > 0) writer.writeByte(',') catch return 0;
+
+        const fret = frets_ptr[i];
+        if (fret < -1) return 0;
+        if (fret == -1) {
+            writer.writeAll("-1") catch return 0;
+        } else {
+            writer.print("{d}", .{fret}) catch return 0;
+        }
+    }
+
+    if (stream.pos >= out.len) return 0;
+    out[stream.pos] = 0;
+    return @as(u32, @intCast(stream.pos));
+}
+
+export fn lmt_url_to_frets_n(url_ptr: [*c]const u8, out: [*c]i8, out_cap: u32) callconv(.C) u32 {
+    if (url_ptr == null) return 0;
+
+    const url = std.mem.sliceTo(@as([*:0]const u8, @ptrCast(url_ptr)), 0);
+    const write_cap = @as(usize, @intCast(out_cap));
+    var count: usize = 0;
+
+    var it = std.mem.splitScalar(u8, url, ',');
+    while (it.next()) |raw_token| {
+        const fret = parseUrlFretToken(raw_token) orelse return 0;
+        if (out != null and count < write_cap) {
+            out[count] = fret;
+        }
+        count += 1;
+    }
+
+    return @as(u32, @intCast(count));
 }
 
 export fn lmt_svg_clock_optc(set: u16, buf: [*c]u8, buf_size: u32) callconv(.C) u32 {

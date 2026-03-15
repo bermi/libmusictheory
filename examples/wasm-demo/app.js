@@ -40,6 +40,10 @@ const REQUIRED_EXPORTS = [
   "lmt_fret_to_midi_n",
   "lmt_midi_to_fret_positions",
   "lmt_midi_to_fret_positions_n",
+  "lmt_generate_voicings_n",
+  "lmt_pitch_class_guide_n",
+  "lmt_frets_to_url_n",
+  "lmt_url_to_frets_n",
   "lmt_svg_clock_optc",
   "lmt_svg_fret",
   "lmt_svg_fret_n",
@@ -48,6 +52,8 @@ const REQUIRED_EXPORTS = [
 
 const SCRATCH_BASE = 1 << 20;
 const C_STRING_CAPACITY = 64 * 1024;
+const GUIDE_DOT_BYTES = 8;
+const encoder = new TextEncoder();
 
 class ScratchArena {
   constructor() {
@@ -104,6 +110,14 @@ function writeU8Array(arena, values) {
 function writeI8Array(arena, values) {
   const ptr = arena.alloc(values.length, 1);
   i8().set(values, ptr);
+  return ptr;
+}
+
+function writeCString(arena, text) {
+  const bytes = encoder.encode(text);
+  const ptr = arena.alloc(bytes.length + 1, 1);
+  u8().set(bytes, ptr);
+  u8()[ptr + bytes.length] = 0;
   return ptr;
 }
 
@@ -279,6 +293,12 @@ function runGuitarApis() {
   const stringValue = getNumberInput("guitar-string");
   const fretValue = getNumberInput("guitar-fret");
   const midiValue = getNumberInput("guitar-midi");
+  const maxFret = getNumberInput("guitar-max-fret");
+  const maxSpan = getNumberInput("guitar-max-span");
+  const guideMinFret = getNumberInput("guitar-guide-min-fret");
+  const guideMaxFret = getNumberInput("guitar-guide-max-fret");
+  const chordSet = resolveMainSet();
+  const fretValues = parseCsvIntegers(document.getElementById("svg-frets").value, -1, 127);
 
   const tuningPtr = writeU8Array(arena, tuningValues);
 
@@ -298,9 +318,77 @@ function runGuitarApis() {
     });
   }
 
+  const voicingRowCap = 64;
+  const voicingPtr = arena.alloc(voicingRowCap * tuningValues.length, 1);
+  const voicingCount = wasm.lmt_generate_voicings_n(
+    chordSet,
+    tuningPtr,
+    tuningValues.length,
+    maxFret,
+    maxSpan,
+    voicingPtr,
+    voicingRowCap,
+  );
+  const previewVoicings = [];
+  const fretBytes = i8();
+  for (let row = 0; row < Math.min(voicingCount, 5); row += 1) {
+    const start = voicingPtr + row * tuningValues.length;
+    previewVoicings.push(Array.from(fretBytes.subarray(start, start + tuningValues.length)));
+  }
+
+  const selectedPositions = [];
+  for (let stringIndex = 0; stringIndex < Math.min(fretValues.length, tuningValues.length); stringIndex += 1) {
+    const selectedFret = fretValues[stringIndex];
+    if (selectedFret >= 0) {
+      selectedPositions.push({ string: stringIndex, fret: selectedFret });
+    }
+  }
+  const selectedPtr = arena.alloc(Math.max(1, selectedPositions.length) * 2, 1);
+  for (let index = 0; index < selectedPositions.length; index += 1) {
+    bytes[selectedPtr + index * 2] = selectedPositions[index].string;
+    bytes[selectedPtr + index * 2 + 1] = selectedPositions[index].fret;
+  }
+
+  const guideCap = 64;
+  const guidePtr = arena.alloc(guideCap * GUIDE_DOT_BYTES, 4);
+  const guideCount = wasm.lmt_pitch_class_guide_n(
+    selectedPtr,
+    selectedPositions.length,
+    guideMinFret,
+    guideMaxFret,
+    tuningPtr,
+    tuningValues.length,
+    guidePtr,
+    guideCap,
+  );
+  const guideView = new DataView(memory.buffer, guidePtr, Math.min(guideCount, guideCap) * GUIDE_DOT_BYTES);
+  const guideDots = [];
+  for (let index = 0; index < Math.min(guideCount, 8); index += 1) {
+    const offset = index * GUIDE_DOT_BYTES;
+    guideDots.push({
+      string: guideView.getUint8(offset),
+      fret: guideView.getUint8(offset + 1),
+      pitch_class: guideView.getUint8(offset + 2),
+      opacity: Number(guideView.getFloat32(offset + 4, true).toFixed(3)),
+    });
+  }
+
+  const urlBufPtr = arena.alloc(256, 1);
+  const fretsPtr = writeI8Array(arena, fretValues);
+  const urlLength = wasm.lmt_frets_to_url_n(fretsPtr, fretValues.length, urlBufPtr, 256);
+  const fretUrl = urlLength > 0 || fretValues.length === 0 ? readCString(urlBufPtr) : "<buffer-too-small>";
+  const urlPtr = writeCString(arena, fretUrl);
+  const parsedFretsPtr = arena.alloc(Math.max(1, fretValues.length), 1);
+  const parsedCount = wasm.lmt_url_to_frets_n(urlPtr, parsedFretsPtr, fretValues.length);
+  const parsedFrets = Array.from(i8().subarray(parsedFretsPtr, parsedFretsPtr + Math.min(parsedCount, fretValues.length)));
+
   const lines = [
     `lmt_fret_to_midi_n(string=${stringValue}, fret=${fretValue}, tuning_count=${tuningValues.length}): ${fretToMidiGeneric}`,
     `lmt_midi_to_fret_positions_n(note=${midiValue}, tuning_count=${tuningValues.length}): ${JSON.stringify(positions)}`,
+    `lmt_generate_voicings_n(chord_set=${setToHex(chordSet)}, tuning_count=${tuningValues.length}, max_fret=${maxFret}, max_span=${maxSpan}): rows=${voicingCount}, preview=${JSON.stringify(previewVoicings)}`,
+    `lmt_pitch_class_guide_n(selected=${JSON.stringify(selectedPositions)}, fret_range=${guideMinFret}-${guideMaxFret}, tuning_count=${tuningValues.length}): rows=${guideCount}, preview=${JSON.stringify(guideDots)}`,
+    `lmt_frets_to_url_n(fret_count=${fretValues.length}): ${fretUrl}`,
+    `lmt_url_to_frets_n(url): ${JSON.stringify(parsedFrets)}`,
   ];
   if (fretToMidiCompat !== null && compatPosCount !== null) {
     lines.push(`compat wrapper lmt_fret_to_midi(...): ${fretToMidiCompat}`);

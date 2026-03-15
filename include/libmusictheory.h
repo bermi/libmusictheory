@@ -70,6 +70,12 @@ typedef struct {
     uint8_t fret;
 } lmt_fret_pos;
 
+typedef struct {
+    lmt_fret_pos position;
+    uint8_t pitch_class;
+    float opacity;
+} lmt_guide_dot;
+
 lmt_pitch_class_set lmt_pcs_from_list(const lmt_pitch_class *pcs, uint8_t count);
 uint8_t lmt_pcs_to_list(lmt_pitch_class_set set, lmt_pitch_class *out);
 uint8_t lmt_pcs_cardinality(lmt_pitch_class_set set);
@@ -97,6 +103,10 @@ lmt_midi_note lmt_fret_to_midi(uint8_t string, uint8_t fret, const uint8_t *tuni
 uint8_t lmt_midi_to_fret_positions(lmt_midi_note note, const uint8_t *tuning, lmt_fret_pos *out);
 lmt_midi_note lmt_fret_to_midi_n(uint32_t string, uint8_t fret, const uint8_t *tuning, uint32_t tuning_count);
 uint32_t lmt_midi_to_fret_positions_n(lmt_midi_note note, const uint8_t *tuning, uint32_t tuning_count, lmt_fret_pos *out, uint32_t out_cap);
+uint32_t lmt_generate_voicings_n(lmt_pitch_class_set chord_set, const uint8_t *tuning, uint32_t tuning_count, uint8_t max_fret, uint8_t max_span, int8_t *out_frets, uint32_t out_voicing_cap);
+uint32_t lmt_pitch_class_guide_n(const lmt_fret_pos *selected, uint32_t selected_count, uint8_t min_fret, uint8_t max_fret, const uint8_t *tuning, uint32_t tuning_count, lmt_guide_dot *out, uint32_t out_cap);
+uint32_t lmt_frets_to_url_n(const int8_t *frets, uint32_t fret_count, char *buf, uint32_t buf_size);
+uint32_t lmt_url_to_frets_n(const char *url, int8_t *out, uint32_t out_cap);
 
 uint32_t lmt_svg_clock_optc(lmt_pitch_class_set set, char *buf, uint32_t buf_size);
 uint32_t lmt_svg_fret(const int8_t *frets, char *buf, uint32_t buf_size);
