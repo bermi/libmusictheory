@@ -3,6 +3,7 @@ const std = @import("std");
 const svg_compat = @import("harmonious_svg_compat.zig");
 const cluster = @import("cluster.zig");
 const pcs = @import("pitch_class_set.zig");
+const oc_templates = @import("generated/harmonious_oc_templates.zig");
 const svg_clock = @import("svg/clock.zig");
 const text_misc = @import("svg/text_misc.zig");
 
@@ -10,6 +11,7 @@ pub const SCALE_NUMERATOR: u32 = 55;
 pub const SCALE_DENOMINATOR: u32 = 100;
 pub const TARGET_SIZE_OPC: u32 = scaledDimDefault(100);
 pub const TARGET_SIZE_OPTC: u32 = scaledDimDefault(70);
+pub const TARGET_SIZE_OC: u32 = scaledDimDefault(70);
 pub const TARGET_SIZE_CENTER_SQUARE: u32 = scaledDimDefault(36);
 pub const TARGET_WIDTH_VERTICAL_TEXT: u32 = scaledDimDefault(36);
 pub const TARGET_HEIGHT_VERTICAL_TEXT: u32 = scaledDimDefault(90);
@@ -17,6 +19,8 @@ pub const MAX_TEST_TARGET_WIDTH: usize = 200;
 pub const MAX_TEST_TARGET_HEIGHT: usize = 200;
 
 const PATH_EDGE_LIMIT: usize = 4096;
+const TAG_TRANSFORM_STACK_LIMIT: usize = 16;
+const OC_TEMPLATE_BUFFER_LIMIT: usize = 8 * 1024;
 
 pub const Error = error{
     UnsupportedKind,
@@ -193,7 +197,7 @@ fn scaledDim(source: u32, scale_numerator: u32, scale_denominator: u32) u32 {
 
 pub fn kindSupported(kind_index: usize) bool {
     return switch (svg_compat.kindId(kind_index) orelse return false) {
-        .opc, .optc, .center_square_text, .vert_text_black, .vert_text_b2t_black => true,
+        .opc, .oc, .optc, .center_square_text, .vert_text_black, .vert_text_b2t_black => true,
         else => false,
     };
 }
@@ -207,7 +211,7 @@ pub fn targetWidthScaled(kind_index: usize, image_index: usize, scale_numerator:
     const kind_id = svg_compat.kindId(kind_index) orelse return 0;
     return switch (kind_id) {
         .opc => scaledDim(100, scale_numerator, scale_denominator),
-        .optc => scaledDim(70, scale_numerator, scale_denominator),
+        .oc, .optc => scaledDim(70, scale_numerator, scale_denominator),
         .center_square_text => scaledDim(36, scale_numerator, scale_denominator),
         .vert_text_black, .vert_text_b2t_black => scaledDim(36, scale_numerator, scale_denominator),
         else => 0,
@@ -223,7 +227,7 @@ pub fn targetHeightScaled(kind_index: usize, image_index: usize, scale_numerator
     const kind_id = svg_compat.kindId(kind_index) orelse return 0;
     return switch (kind_id) {
         .opc => scaledDim(100, scale_numerator, scale_denominator),
-        .optc => scaledDim(70, scale_numerator, scale_denominator),
+        .oc, .optc => scaledDim(70, scale_numerator, scale_denominator),
         .center_square_text => scaledDim(36, scale_numerator, scale_denominator),
         .vert_text_black, .vert_text_b2t_black => scaledDim(90, scale_numerator, scale_denominator),
         else => 0,
@@ -260,6 +264,7 @@ pub fn renderCandidateRgbaScaled(kind_index: usize, image_index: usize, scale_nu
 
     switch (kind_id) {
         .opc => try renderOpcCandidate(&surface, image_name, scale_numerator, scale_denominator),
+        .oc => try renderOcCandidate(&surface, image_name),
         .optc => try renderOptcCandidate(&surface, image_name),
         .center_square_text => try renderCenterSquareCandidate(&surface, image_name, scale_numerator, scale_denominator),
         .vert_text_black => try renderVerticalTextCandidate(&surface, image_name, false, scale_numerator, scale_denominator),
@@ -284,6 +289,7 @@ pub fn renderReferenceSvgRgbaScaled(kind_index: usize, svg: []const u8, scale_nu
     var surface = try initSurface(kind_id, required, out_rgba, scale_numerator, scale_denominator);
     switch (kind_id) {
         .opc => try renderOpcReference(&surface, svg, scale_numerator, scale_denominator),
+        .oc => try renderOcReference(&surface, svg),
         .optc => try renderOptcReference(&surface, svg),
         .center_square_text, .vert_text_black, .vert_text_b2t_black => try renderTextReference(&surface, svg, scale_numerator, scale_denominator),
         else => return error.UnsupportedKind,
@@ -295,14 +301,14 @@ pub fn renderReferenceSvgRgbaScaled(kind_index: usize, svg: []const u8, scale_nu
 fn initSurface(kind_id: svg_compat.KindId, required: usize, out_rgba: []u8, scale_numerator: u32, scale_denominator: u32) Error!Surface {
     const width = switch (kind_id) {
         .opc => scaledDim(100, scale_numerator, scale_denominator),
-        .optc => scaledDim(70, scale_numerator, scale_denominator),
+        .oc, .optc => scaledDim(70, scale_numerator, scale_denominator),
         .center_square_text => scaledDim(36, scale_numerator, scale_denominator),
         .vert_text_black, .vert_text_b2t_black => scaledDim(36, scale_numerator, scale_denominator),
         else => return error.UnsupportedKind,
     };
     const height = switch (kind_id) {
         .opc => scaledDim(100, scale_numerator, scale_denominator),
-        .optc => scaledDim(70, scale_numerator, scale_denominator),
+        .oc, .optc => scaledDim(70, scale_numerator, scale_denominator),
         .center_square_text => scaledDim(36, scale_numerator, scale_denominator),
         .vert_text_black, .vert_text_b2t_black => scaledDim(90, scale_numerator, scale_denominator),
         else => return error.UnsupportedKind,
@@ -339,6 +345,23 @@ fn renderOpcCandidate(surface: *Surface, image_name: []const u8, scale_numerator
     }
 }
 
+const OcImageArgs = struct {
+    family: []const u8,
+    transposition: i8,
+    roman: []const u8,
+};
+
+fn renderOcCandidate(surface: *Surface, image_name: []const u8) Error!void {
+    const args = parseOcImageArgs(trimSvgSuffix(image_name)) orelse return error.InvalidImage;
+    const template = findOcTemplate(args.family, args.roman) orelse return error.InvalidImage;
+
+    var body_buf: [OC_TEMPLATE_BUFFER_LIMIT]u8 = undefined;
+    const body = try buildOcBody(template.body_template, ocTranspositionColorText(args.transposition), ocTranspositionTintText(args.transposition), &body_buf);
+
+    clear(surface, .{ 0, 0, 0, 0 });
+    try renderMarkup(surface, body, compat70ViewBoxMatrix(surface));
+}
+
 const OptcImageArgs = struct {
     label: []const u8,
     set: pcs.PitchClassSet,
@@ -350,7 +373,7 @@ const OptcImageArgs = struct {
 fn renderOptcCandidate(surface: *Surface, image_name: []const u8) Error!void {
     const args = parseOptcImageArgs(trimSvgSuffix(image_name)) orelse return error.InvalidImage;
     const variant = svg_clock.optcCompatVariant(args.label);
-    const root = optcViewBoxMatrix(surface);
+    const root = compat70ViewBoxMatrix(surface);
     const center = root.apply(50.0, 50.0);
     const scale = root.approxUniformScale();
     const include_white_overlay = args.label.len >= 7;
@@ -389,7 +412,7 @@ fn renderOptcCandidate(surface: *Surface, image_name: []const u8) Error!void {
 fn renderOptcReference(surface: *Surface, svg: []const u8) Error!void {
     clear(surface, .{ 0, 0, 0, 0 });
 
-    const root = optcViewBoxMatrix(surface);
+    const root = compat70ViewBoxMatrix(surface);
     var current_group_transform = Matrix{};
     var group_depth: usize = 0;
     var cursor: usize = 0;
@@ -425,6 +448,11 @@ fn renderOptcReference(surface: *Surface, svg: []const u8) Error!void {
     }
 }
 
+fn renderOcReference(surface: *Surface, svg: []const u8) Error!void {
+    clear(surface, .{ 0, 0, 0, 0 });
+    try renderMarkup(surface, svg, compat70ViewBoxMatrix(surface));
+}
+
 const DashSpec = struct {
     on: f64 = 0.0,
     off: f64 = 0.0,
@@ -439,7 +467,7 @@ fn renderOptcSpokes(surface: *Surface, root: Matrix, mask: pcs.PitchClassSet, co
     }
 }
 
-fn optcViewBoxMatrix(surface: *const Surface) Matrix {
+fn compat70ViewBoxMatrix(surface: *const Surface) Matrix {
     const sx = @as(f64, @floatFromInt(surface.width)) / 114.0;
     const sy = @as(f64, @floatFromInt(surface.height)) / 114.0;
     return .{
@@ -448,6 +476,49 @@ fn optcViewBoxMatrix(surface: *const Surface) Matrix {
         .e = 7.0 * sx,
         .f = 7.0 * sy,
     };
+}
+
+fn renderMarkup(surface: *Surface, svg: []const u8, root: Matrix) Error!void {
+    var transform_stack: [TAG_TRANSFORM_STACK_LIMIT]Matrix = undefined;
+    var depth: usize = 1;
+    transform_stack[0] = root;
+
+    var cursor: usize = 0;
+    while (nextTag(svg, cursor)) |tag| {
+        cursor = tag.end;
+        const tag_text = svg[tag.start..tag.end];
+
+        if (tag.close) {
+            if (std.mem.eql(u8, tag.name, "g") and depth > 1) depth -= 1;
+            continue;
+        }
+
+        const current_transform = transform_stack[depth - 1];
+        if (std.mem.eql(u8, tag.name, "g")) {
+            if (tag.self_close) continue;
+            if (depth >= transform_stack.len) return error.UnsupportedSvgFeature;
+            transform_stack[depth] = if (parseTransformAttr(tag_text)) |group_transform|
+                current_transform.multiply(group_transform)
+            else
+                current_transform;
+            depth += 1;
+            continue;
+        }
+
+        if (std.mem.eql(u8, tag.name, "rect")) {
+            try renderRectTag(tag_text, current_transform, surface);
+            continue;
+        }
+
+        if (std.mem.eql(u8, tag.name, "circle")) {
+            try renderCircleTag(tag_text, current_transform, surface);
+            continue;
+        }
+
+        if (std.mem.eql(u8, tag.name, "path")) {
+            try renderPathTag(tag_text, current_transform, surface);
+        }
+    }
 }
 
 fn parseOptcImageArgs(stem: []const u8) ?OptcImageArgs {
@@ -567,6 +638,7 @@ const TagToken = struct {
     start: usize,
     end: usize,
     close: bool,
+    self_close: bool,
     name: []const u8,
 };
 
@@ -600,6 +672,7 @@ fn nextTag(svg: []const u8, from: usize) ?TagToken {
             .start = start,
             .end = end + 1,
             .close = close,
+            .self_close = end > start and svg[end - 1] == '/',
             .name = svg[name_start..name_end],
         };
     }
@@ -1388,4 +1461,105 @@ test "optc native RGBA candidate matches generated svg raster at 55 and 200 perc
     var svg_buf: [32 * 1024]u8 = undefined;
     try runScaledBitmapParity(.optc, image_index, 55, 100, &svg_buf);
     try runScaledBitmapParity(.optc, image_index, 200, 100, &svg_buf);
+}
+
+fn parseOcImageArgs(stem: []const u8) ?OcImageArgs {
+    var parts = std.mem.splitScalar(u8, stem, ',');
+    const family = parts.next() orelse return null;
+    const transposition_token = parts.next() orelse return null;
+    const roman = parts.next() orelse return null;
+    if (parts.next() != null) return null;
+
+    const transposition = std.fmt.parseInt(i8, transposition_token, 10) catch return null;
+    return .{
+        .family = family,
+        .transposition = transposition,
+        .roman = roman,
+    };
+}
+
+fn findOcTemplate(family: []const u8, roman: []const u8) ?oc_templates.OcTemplate {
+    for (oc_templates.OC_TEMPLATES) |entry| {
+        if (std.mem.eql(u8, entry.family, family) and std.mem.eql(u8, entry.roman, roman)) {
+            return entry;
+        }
+    }
+    return null;
+}
+
+fn buildOcBody(body_template: []const u8, color: []const u8, tint: []const u8, buf: []u8) Error![]const u8 {
+    var stream = std.io.fixedBufferStream(buf);
+    const writer = stream.writer();
+    var parts = std.mem.splitSequence(u8, body_template, "__COLOR__");
+    var first = true;
+    while (parts.next()) |part| {
+        if (!first) writer.writeAll(color) catch return error.OutputTooSmall;
+        first = false;
+        var tint_parts = std.mem.splitSequence(u8, part, "#bbe");
+        var tint_first = true;
+        while (tint_parts.next()) |tint_part| {
+            if (!tint_first) writer.writeAll(tint) catch return error.OutputTooSmall;
+            tint_first = false;
+            writer.writeAll(tint_part) catch return error.OutputTooSmall;
+        }
+    }
+    return buf[0..stream.pos];
+}
+
+fn ocTranspositionColorText(transposition: i8) []const u8 {
+    return switch (transposition) {
+        -1 => "black",
+        0 => "#00c",
+        1 => "#a4f",
+        2 => "#f0f",
+        3 => "#a16",
+        4 => "#e02",
+        5 => "#f91",
+        6 => "#c81",
+        7 => "#094",
+        8 => "#161",
+        9 => "#077",
+        10 => "#0bb",
+        11 => "#28f",
+        else => "black",
+    };
+}
+
+fn ocTranspositionTintText(transposition: i8) []const u8 {
+    return switch (transposition) {
+        0 => "#bbe",
+        1 => "#dcf",
+        2 => "#fbf",
+        3 => "#dbc",
+        4 => "#ebb",
+        5 => "#fdb",
+        6 => "#ffb",
+        7 => "#beb",
+        8 => "#bdc",
+        9 => "#bee",
+        10 => "#bff",
+        11 => "#bdf",
+        else => "#bbe",
+    };
+}
+
+test "oc candidate render is deterministic at 55 and 200 percent" {
+    const kind_index = findKindIndex(.oc);
+    const image_index = findImageIndexByName(.oc, "aco,0,x7.svg");
+    var a: [MAX_TEST_TARGET_WIDTH * MAX_TEST_TARGET_HEIGHT * 4]u8 = undefined;
+    var b: [MAX_TEST_TARGET_WIDTH * MAX_TEST_TARGET_HEIGHT * 4]u8 = undefined;
+
+    const len_a = try renderCandidateRgbaScaled(kind_index, image_index, 200, 100, &a);
+    const len_b = try renderCandidateRgbaScaled(kind_index, image_index, 200, 100, &b);
+    try std.testing.expectEqual(len_a, len_b);
+    try std.testing.expectEqualSlices(u8, a[0..len_a], b[0..len_b]);
+}
+
+test "oc native RGBA candidate matches generated svg raster for nested and plain templates at 55 and 200 percent" {
+    var svg_buf: [32 * 1024]u8 = undefined;
+
+    try runScaledBitmapParity(.oc, findImageIndexByName(.oc, "aco,0,x7.svg"), 55, 100, &svg_buf);
+    try runScaledBitmapParity(.oc, findImageIndexByName(.oc, "aco,0,x7.svg"), 200, 100, &svg_buf);
+    try runScaledBitmapParity(.oc, findImageIndexByName(.oc, "wt,0,I.svg"), 55, 100, &svg_buf);
+    try runScaledBitmapParity(.oc, findImageIndexByName(.oc, "wt,0,I.svg"), 200, 100, &svg_buf);
 }
