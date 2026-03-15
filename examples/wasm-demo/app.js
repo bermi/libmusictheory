@@ -326,6 +326,47 @@ function runSvgApis() {
   svgClockHost.innerHTML = clockSvg;
   svgFretHost.innerHTML = fretSvg;
   svgStaffHost.innerHTML = staffSvg;
+
+  normalizeSvgPreview(svgClockHost);
+  normalizeSvgPreview(svgFretHost);
+  normalizeSvgPreview(svgStaffHost);
+}
+
+function normalizeSvgPreview(host) {
+  const svg = host.querySelector("svg");
+  if (!svg) return;
+
+  svg.style.display = "block";
+  svg.style.maxWidth = "100%";
+  svg.style.maxHeight = "100%";
+
+  const originalViewBox = svg.getAttribute("viewBox");
+  if (originalViewBox && !svg.dataset.originalViewBox) {
+    svg.dataset.originalViewBox = originalViewBox;
+  }
+
+  try {
+    const bbox = svg.getBBox();
+    if (!Number.isFinite(bbox.width) || !Number.isFinite(bbox.height) || bbox.width <= 0 || bbox.height <= 0) {
+      svg.dataset.previewNormalized = "0";
+      return;
+    }
+
+    const padX = Math.max(4, bbox.width * 0.08);
+    const padY = Math.max(4, bbox.height * 0.12);
+    const viewBox = [
+      (bbox.x - padX).toFixed(2),
+      (bbox.y - padY).toFixed(2),
+      (bbox.width + padX * 2).toFixed(2),
+      (bbox.height + padY * 2).toFixed(2),
+    ].join(" ");
+
+    svg.setAttribute("viewBox", viewBox);
+    svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+    svg.dataset.previewNormalized = "1";
+  } catch (_error) {
+    svg.dataset.previewNormalized = "0";
+  }
 }
 
 function runAll() {

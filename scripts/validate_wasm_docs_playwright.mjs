@@ -152,6 +152,9 @@ async function waitForRenderedOutputs(page) {
       clock: document.getElementById("svg-clock")?.innerHTML || "",
       fret: document.getElementById("svg-fret")?.innerHTML || "",
       staff: document.getElementById("svg-staff")?.innerHTML || "",
+      clockNormalized: document.querySelector("#svg-clock svg")?.dataset.previewNormalized || "",
+      fretNormalized: document.querySelector("#svg-fret svg")?.dataset.previewNormalized || "",
+      staffNormalized: document.querySelector("#svg-staff svg")?.dataset.previewNormalized || "",
       status: document.getElementById("status")?.textContent || "",
     }));
 
@@ -168,7 +171,10 @@ async function waitForRenderedOutputs(page) {
       snapshot.svgMeta.includes("lmt_svg_clock_optc bytes:") &&
       snapshot.clock.includes("<svg") &&
       snapshot.fret.includes("<svg") &&
-      snapshot.staff.includes("<svg");
+      snapshot.staff.includes("<svg") &&
+      snapshot.clockNormalized === "1" &&
+      snapshot.fretNormalized === "1" &&
+      snapshot.staffNormalized === "1";
 
     if (ready) return;
 
