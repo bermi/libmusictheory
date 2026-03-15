@@ -304,6 +304,13 @@ function runSvgApis() {
   const chordType = getSelectValue("chord-type");
   const chordRoot = getNumberInput("chord-root");
   const fretValues = parseCsvIntegers(document.getElementById("svg-frets").value, -1, 24, 6);
+  const standardTuning = [40, 45, 50, 55, 59, 64];
+  const tuningPtr = writeU8Array(arena, standardTuning);
+  const fretMidiNotes = fretValues
+    .map((fret, stringIndex) => (fret < 0 ? null : wasm.lmt_fret_to_midi(stringIndex, fret, tuningPtr)))
+    .filter((value) => value !== null);
+  const staffMidiNotes = canonicalChordStaffMidiNotes(chordType, chordRoot);
+  const aligned = arraysEqual(fretMidiNotes, staffMidiNotes);
 
   const svgBufPtr = arena.alloc(C_STRING_CAPACITY, 1);
 
@@ -321,6 +328,9 @@ function runSvgApis() {
     `lmt_svg_clock_optc bytes: ${clockLen}`,
     `lmt_svg_fret bytes: ${fretLen}`,
     `lmt_svg_chord_staff bytes: ${staffLen}`,
+    `fret voicing midi: ${JSON.stringify(fretMidiNotes)}`,
+    `chord staff midi: ${JSON.stringify(staffMidiNotes)}`,
+    `aligned: ${aligned ? "yes" : "no"}`,
   ].join("\n");
 
   svgClockHost.innerHTML = clockSvg;
@@ -330,6 +340,25 @@ function runSvgApis() {
   normalizeSvgPreview(svgClockHost);
   normalizeSvgPreview(svgFretHost);
   normalizeSvgPreview(svgStaffHost);
+}
+
+function canonicalChordStaffMidiNotes(chordType, chordRoot) {
+  const rootMidi = 60 + (chordRoot % 12);
+  switch (chordType) {
+    case 1:
+      return [rootMidi, rootMidi + 3, rootMidi + 7];
+    case 2:
+      return [rootMidi, rootMidi + 3, rootMidi + 6];
+    case 3:
+      return [rootMidi, rootMidi + 4, rootMidi + 8];
+    default:
+      return [rootMidi, rootMidi + 4, rootMidi + 7];
+  }
+}
+
+function arraysEqual(a, b) {
+  if (a.length !== b.length) return false;
+  return a.every((value, index) => value === b[index]);
 }
 
 function normalizeSvgPreview(host) {

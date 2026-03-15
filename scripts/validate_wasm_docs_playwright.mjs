@@ -169,6 +169,7 @@ async function waitForRenderedOutputs(page) {
       snapshot.chord.includes("lmt_chord") &&
       snapshot.guitar.includes("lmt_fret_to_midi") &&
       snapshot.svgMeta.includes("lmt_svg_clock_optc bytes:") &&
+      snapshot.svgMeta.includes("aligned: yes") &&
       snapshot.clock.includes("<svg") &&
       snapshot.fret.includes("<svg") &&
       snapshot.staff.includes("<svg") &&
