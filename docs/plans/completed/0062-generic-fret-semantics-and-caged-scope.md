@@ -43,7 +43,7 @@ It does not pretend that CAGED is a generic fretted-instrument abstraction. CAGE
 
 ## Implementation History (Point-in-Time)
 
-- `REPLACE_COMMIT` — 2026-03-15
+- `a6dca04` — 2026-03-15
 - Shipped behavior:
   - added `GenericVoicing` plus `generateVoicingsGeneric`, `pitchClassGuideGeneric`, `fretsToUrlGeneric`, and `urlToFretsGeneric` in `/Users/bermi/code/libmusictheory/src/guitar.zig`
   - kept six-string wrappers intact, with URL helpers delegating to the new generic path
