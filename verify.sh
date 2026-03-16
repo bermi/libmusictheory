@@ -837,13 +837,14 @@ else
 fi
 
 if [ -f "$ROOT_DIR/src/svg/fret.zig" ] && [ -f "$ROOT_DIR/src/svg/staff.zig" ]; then
-    if rg -Fq 'class="marker-open"' "$ROOT_DIR/src/tests/svg_fret_test.zig" 2>/dev/null && \
-        rg -Fq 'accidental-sharp' "$ROOT_DIR/src/tests/svg_staff_test.zig" 2>/dev/null && \
-        rg -Fq 'shape-rendering="geometricPrecision"' "$ROOT_DIR/src/svg/fret.zig" "$ROOT_DIR/src/svg/staff.zig" 2>/dev/null; then
-        pass "0065 core svg quality guardrail (vector markers, explicit accidental glyphs, and geometric precision styling wired)"
-    else
-        unverified "0065 core svg quality guardrail (renderer quality uplift not yet fully implemented)"
-    fi
+    check_cmd "cd '$ROOT_DIR' && \
+        rg -Fq 'marker-open' src/tests/svg_fret_test.zig && \
+        rg -Fq 'marker-muted' src/tests/svg_fret_test.zig && \
+        rg -Fq 'accidental-natural' src/tests/svg_staff_test.zig && \
+        rg -Fq 'accidental-sharp' src/tests/svg_staff_test.zig && \
+        rg -Fq 'geometricPrecision' src/svg/fret.zig src/svg/staff.zig && \
+        ! rg -Fq '>X</text>' src/svg/fret.zig && \
+        ! rg -Fq '>O</text>' src/svg/fret.zig" "0065 core svg quality guardrail (vector markers, explicit accidental glyphs, and geometric precision styling wired)"
 else
     unverified "0065 core svg quality guardrail (core svg renderers not present)"
 fi

@@ -221,6 +221,7 @@ test "c abi svg generators" {
     const len2 = lmt_svg_fret(@ptrCast(&frets), @ptrCast(&svg_buf), @intCast(svg_buf.len));
     try testing.expect(len2 > 0);
     try testing.expect(std.mem.startsWith(u8, svg_buf[0..4], "<svg"));
+    try testing.expect(std.mem.indexOf(u8, svg_buf[0..len2], "marker-open") != null);
 
     const four_string = [_]i8{ 0, 0, 0, 3 };
     const len2n = lmt_svg_fret_n(@ptrCast(&four_string), four_string.len, 0, 4, @ptrCast(&svg_buf), @intCast(svg_buf.len));
@@ -230,6 +231,8 @@ test "c abi svg generators" {
     const len3 = lmt_svg_chord_staff(c.LMT_CHORD_MAJOR, 0, @ptrCast(&svg_buf), @intCast(svg_buf.len));
     try testing.expect(len3 > 0);
     try testing.expect(std.mem.startsWith(u8, svg_buf[0..4], "<svg"));
+    try testing.expect(std.mem.indexOf(u8, svg_buf[0..len3], "shape-rendering=\"geometricPrecision\"") != null);
+    try testing.expect(std.mem.indexOf(u8, svg_buf[0..len3], "class=\"notehead\"") != null);
 }
 
 test "c abi raster generators" {

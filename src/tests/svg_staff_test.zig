@@ -30,6 +30,9 @@ test "svg dimensions and xml validity" {
     try testing.expect(std.mem.startsWith(u8, chord_svg, "<svg"));
     try testing.expect(std.mem.indexOf(u8, chord_svg, "width=\"170\"") != null);
     try testing.expect(std.mem.indexOf(u8, chord_svg, "height=\"110.77\"") != null);
+    try testing.expect(std.mem.indexOf(u8, chord_svg, "shape-rendering=\"geometricPrecision\"") != null);
+    try testing.expect(std.mem.indexOf(u8, chord_svg, "class=\"notehead\"") != null);
+    try testing.expect(std.mem.indexOf(u8, chord_svg, "class=\"stem\"") != null);
 
     var grand_buf: [8192]u8 = undefined;
     const grand_svg = staff.renderGrandChordStaff(&notes, c_major, &grand_buf);
@@ -47,9 +50,21 @@ test "accidental glyphs appear only when needed" {
 
     var in_key_buf: [8192]u8 = undefined;
     const in_key_svg = staff.renderChordStaff(&[_]pitch.MidiNote{66}, g_major, &in_key_buf); // F#
-    try testing.expect(std.mem.indexOf(u8, in_key_svg, "class=\"accidental\"") == null);
+    try testing.expectEqual(@as(usize, 1), std.mem.count(u8, in_key_svg, "class=\"accidental "));
+    try testing.expect(std.mem.indexOf(u8, in_key_svg, "accidental-natural") == null);
 
     var altered_buf: [8192]u8 = undefined;
     const altered_svg = staff.renderChordStaff(&[_]pitch.MidiNote{65}, g_major, &altered_buf); // F natural
-    try testing.expect(std.mem.indexOf(u8, altered_svg, "class=\"accidental\"") != null);
+    try testing.expectEqual(@as(usize, 2), std.mem.count(u8, altered_svg, "class=\"accidental "));
+    try testing.expect(std.mem.indexOf(u8, altered_svg, "accidental-natural") != null);
+
+    var sharp_buf: [8192]u8 = undefined;
+    const sharp_svg = staff.renderChordStaff(&[_]pitch.MidiNote{61}, key.Key.init(pitch.pc.C, .major), &sharp_buf); // C#
+    try testing.expectEqual(@as(usize, 1), std.mem.count(u8, sharp_svg, "class=\"accidental "));
+    try testing.expect(std.mem.indexOf(u8, sharp_svg, "accidental-sharp") != null);
+
+    var flat_key_buf: [8192]u8 = undefined;
+    const flat_key_svg = staff.renderChordStaff(&[_]pitch.MidiNote{70}, key.Key.init(pitch.pc.F, .major), &flat_key_buf); // Bb in key
+    try testing.expectEqual(@as(usize, 1), std.mem.count(u8, flat_key_svg, "class=\"accidental "));
+    try testing.expect(std.mem.indexOf(u8, flat_key_svg, "accidental-natural") == null);
 }

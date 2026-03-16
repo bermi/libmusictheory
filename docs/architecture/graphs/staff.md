@@ -16,6 +16,7 @@ Kinds covered:
 
 - Compatibility-first deterministic emitters for exact harmoniousapp parity.
 - Note parsing, key signature logic, and base layout are algorithmic.
+- The core public/docs renderer in `src/svg/staff.zig` now uses spelled-note staff placement, vector accidental glyphs, and explicit notehead/stem/ledger styling instead of text placeholder accidentals and semitone-only y mapping.
 - Remaining parity support includes compact patch/shim datasets for historical numeric/string edge cases.
 
 ## Alternative Programmatic Approaches Studied

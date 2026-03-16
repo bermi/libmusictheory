@@ -10,6 +10,7 @@
 ## Current Approach
 
 - Core logic computes fret geometry, visible fret windows, and barre markers algorithmically from caller-provided fret slices.
+- The core public/docs renderer in `src/svg/fret.zig` emits vector open/muted markers, rounded barre shapes, and explicit stroke styling with `shape-rendering="geometricPrecision"`.
 - The public API now has two layers:
   - a parametric fretboard surface for arbitrary string counts and custom visible fret windows
   - a six-string compatibility wrapper that preserves harmonious `eadgbe` behavior

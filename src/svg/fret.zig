@@ -7,6 +7,7 @@ const GRID_WIDTH: f32 = 60.0;
 const FRET_SPACING: f32 = 15.0;
 pub const DEFAULT_VISIBLE_FRETS: u32 = 4;
 const MAX_DIAGRAM_FRET: u32 = std.math.maxInt(u8);
+const MARKER_Y: f32 = 10.0;
 
 pub const Barre = struct {
     fret: u5,
@@ -45,13 +46,27 @@ pub fn renderDiagram(spec: DiagramSpec, buf: []u8) []u8 {
     const w = stream.writer();
 
     if (spec.frets.len == 0) {
-        w.writeAll("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"100\" height=\"100\" viewBox=\"0 0 100 100\">\n</svg>\n") catch unreachable;
+        w.writeAll("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"100\" height=\"100\" viewBox=\"0 0 100 100\" shape-rendering=\"geometricPrecision\" text-rendering=\"geometricPrecision\">\n</svg>\n") catch unreachable;
         return buf[0..stream.pos];
     }
 
     const window = genericFretWindow(spec.frets, spec.window_start, spec.visible_frets);
 
-    w.writeAll("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"100\" height=\"100\" viewBox=\"0 0 100 100\">\n") catch unreachable;
+    w.writeAll(
+        \\<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100" shape-rendering="geometricPrecision" text-rendering="geometricPrecision">
+        \\<style>
+        \\.string,.fret,.marker-open,.marker-muted,.position{vector-effect:non-scaling-stroke}
+        \\.string{stroke:#171717;stroke-width:1.1;stroke-linecap:round}
+        \\.fret{stroke:#171717;stroke-width:1.35;stroke-linecap:round}
+        \\.nut{stroke:#101010;stroke-width:3.6;stroke-linecap:round}
+        \\.dot{fill:#111}
+        \\.barre{fill:#111}
+        \\.marker-open{fill:#fff;stroke:#111;stroke-width:1.7}
+        \\.marker-muted{stroke:#111;stroke-width:1.9;stroke-linecap:round}
+        \\.position{fill:#4b4338;font-size:10px;font-weight:600;font-family:ui-sans-serif,-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif}
+        \\</style>
+        \\
+    ) catch unreachable;
 
     drawGrid(w, spec.frets.len, window);
 
@@ -59,14 +74,14 @@ pub fn renderDiagram(spec: DiagramSpec, buf: []u8) []u8 {
         const x = stringX(string, spec.frets.len);
 
         if (fret < 0) {
-            w.print("<text class=\"muted\" x=\"{d:.2}\" y=\"12\" text-anchor=\"middle\" font-size=\"10\">X</text>\n", .{x}) catch unreachable;
+            drawMutedMarker(w, x);
         } else if (fret == 0) {
-            w.print("<text class=\"open\" x=\"{d:.2}\" y=\"12\" text-anchor=\"middle\" font-size=\"10\">O</text>\n", .{x}) catch unreachable;
+            drawOpenMarker(w, x);
         } else {
             const ufret = @as(u32, @intCast(fret));
             if (ufret <= window.start or ufret > window.end) continue;
             const y = dotY(ufret, window);
-            w.print("<circle class=\"dot\" cx=\"{d:.2}\" cy=\"{d:.2}\" r=\"4\" fill=\"black\" />\n", .{ x, y }) catch unreachable;
+            w.print("<circle class=\"dot\" cx=\"{d:.2}\" cy=\"{d:.2}\" r=\"4.35\" />\n", .{ x, y }) catch unreachable;
         }
     }
 
@@ -76,7 +91,7 @@ pub fn renderDiagram(spec: DiagramSpec, buf: []u8) []u8 {
             const x0 = stringX(barre.low_string, spec.frets.len) - 4.0;
             const x1 = stringX(barre.high_string, spec.frets.len) + 4.0;
             const width = x1 - x0;
-            w.print("<rect class=\"barre\" x=\"{d:.2}\" y=\"{d:.2}\" width=\"{d:.2}\" height=\"8\" rx=\"4\" fill=\"black\" />\n", .{ x0, y - 4.0, width }) catch unreachable;
+            w.print("<rect class=\"barre\" x=\"{d:.2}\" y=\"{d:.2}\" width=\"{d:.2}\" height=\"8.7\" rx=\"4.35\" />\n", .{ x0, y - 4.35, width }) catch unreachable;
         }
     }
 
@@ -170,21 +185,30 @@ fn drawGrid(writer: anytype, string_count: usize, window: GenericFretWindow) voi
     var string: usize = 0;
     while (string < string_count) : (string += 1) {
         const x = stringX(string, string_count);
-        writer.print("<line x1=\"{d:.2}\" y1=\"20\" x2=\"{d:.2}\" y2=\"{d:.2}\" stroke=\"black\" stroke-width=\"1\" />\n", .{ x, x, gridBottom(window) }) catch unreachable;
+        writer.print("<line class=\"string\" x1=\"{d:.2}\" y1=\"20\" x2=\"{d:.2}\" y2=\"{d:.2}\" />\n", .{ x, x, gridBottom(window) }) catch unreachable;
     }
 
     const line_count = window.end - window.start;
     var i: u32 = 0;
     while (i <= line_count) : (i += 1) {
         const y = GRID_TOP + @as(f32, @floatFromInt(i)) * FRET_SPACING;
-        const width: u32 = if (window.start == 0 and i == 0) 3 else 1;
-        writer.print("<line x1=\"20\" y1=\"{d:.2}\" x2=\"80\" y2=\"{d:.2}\" stroke=\"black\" stroke-width=\"{d}\" />\n", .{ y, y, width }) catch unreachable;
+        const klass = if (window.start == 0 and i == 0) "nut" else "fret";
+        writer.print("<line class=\"{s}\" x1=\"20\" y1=\"{d:.2}\" x2=\"80\" y2=\"{d:.2}\" />\n", .{ klass, y, y }) catch unreachable;
     }
 
     if (window.start > 0) {
         const pos = window.start + 1;
-        writer.print("<text class=\"position\" x=\"8\" y=\"30\" font-size=\"10\">{d}</text>\n", .{pos}) catch unreachable;
+        writer.print("<text class=\"position\" x=\"8\" y=\"30\">{d}</text>\n", .{pos}) catch unreachable;
     }
+}
+
+fn drawOpenMarker(writer: anytype, x: f32) void {
+    writer.print("<circle class=\"marker-open\" cx=\"{d:.2}\" cy=\"{d:.2}\" r=\"4.3\" />\n", .{ x, MARKER_Y }) catch unreachable;
+}
+
+fn drawMutedMarker(writer: anytype, x: f32) void {
+    writer.print("<line class=\"marker-muted\" x1=\"{d:.2}\" y1=\"{d:.2}\" x2=\"{d:.2}\" y2=\"{d:.2}\" />\n", .{ x - 3.6, MARKER_Y - 3.6, x + 3.6, MARKER_Y + 3.6 }) catch unreachable;
+    writer.print("<line class=\"marker-muted\" x1=\"{d:.2}\" y1=\"{d:.2}\" x2=\"{d:.2}\" y2=\"{d:.2}\" />\n", .{ x - 3.6, MARKER_Y + 3.6, x + 3.6, MARKER_Y - 3.6 }) catch unreachable;
 }
 
 fn stringX(string: usize, string_count: usize) f32 {

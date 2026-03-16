@@ -13,6 +13,7 @@ test "fret diagram svg validity and dimensions" {
     try testing.expect(std.mem.startsWith(u8, svg, "<svg"));
     try testing.expect(std.mem.indexOf(u8, svg, "width=\"100\"") != null);
     try testing.expect(std.mem.indexOf(u8, svg, "height=\"100\"") != null);
+    try testing.expect(std.mem.indexOf(u8, svg, "shape-rendering=\"geometricPrecision\"") != null);
 }
 
 test "dot positions and open muted markers" {
@@ -21,11 +22,13 @@ test "dot positions and open muted markers" {
     var buf: [8192]u8 = undefined;
     const svg = fret.renderFretDiagram(voicing, &buf);
 
-    const dot = "<circle class=\"dot\" cx=\"32.00\" cy=\"57.50\" r=\"4\" fill=\"black\" />";
+    const dot = "<circle class=\"dot\" cx=\"32.00\" cy=\"57.50\" r=\"4.35\" />";
     try testing.expect(std.mem.indexOf(u8, svg, dot) != null);
 
-    try testing.expect(std.mem.indexOf(u8, svg, "class=\"open\"") != null);
-    try testing.expect(std.mem.indexOf(u8, svg, "class=\"muted\"") != null);
+    try testing.expect(std.mem.indexOf(u8, svg, "class=\"marker-open\"") != null);
+    try testing.expect(std.mem.indexOf(u8, svg, "class=\"marker-muted\"") != null);
+    try testing.expect(std.mem.indexOf(u8, svg, ">X</text>") == null);
+    try testing.expect(std.mem.indexOf(u8, svg, ">O</text>") == null);
 }
 
 test "barre detection" {
@@ -50,7 +53,7 @@ test "generic fret diagram supports four strings" {
     try testing.expect(std.mem.indexOf(u8, svg, "class=\"position\"") != null);
     try testing.expect(std.mem.indexOf(u8, svg, ">3</text>") != null);
     try testing.expect(std.mem.indexOf(u8, svg, "cx=\"80.00\" cy=\"27.50\"") != null);
-    try testing.expect(std.mem.indexOf(u8, svg, "class=\"open\"") != null);
+    try testing.expect(std.mem.indexOf(u8, svg, "class=\"marker-open\"") != null);
 }
 
 test "generic fret diagram supports explicit fret windows" {

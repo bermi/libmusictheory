@@ -146,3 +146,14 @@ The Zig library provides:
 5. Layout collision detection (second intervals)
 
 SVG path rendering of music font glyphs (noteheads, clefs, accidentals) will use embedded glyph outlines — either extracted from SMuFL-compliant fonts or generated procedurally.
+
+## Core Renderer Notes (Docs Surface)
+
+The interactive API docs use the core Zig staff renderer in `src/svg/staff.zig`, not the VexFlow compatibility renderer. As of 2026-03-16 that core renderer now:
+
+- computes vertical staff placement from spelled note names plus octave, not raw semitone distance
+- derives note spellings through `src/note_spelling.zig`, so key context controls whether a note is shown as sharp, flat, natural, or unmarked
+- emits vector accidental glyphs for note accidentals and key signatures instead of literal `#`, `b`, or `n` text placeholders
+- emits noteheads, stems, ledger lines, and staff lines with explicit SVG classes plus `shape-rendering="geometricPrecision"`
+
+This renderer is intended to be a clean, lightweight algorithmic notation surface for the public API docs. Exact byte-for-byte harmonious parity for `scale`, `chord`, and `grand-chord` remains the responsibility of the dedicated compatibility renderers.

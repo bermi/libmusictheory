@@ -127,6 +127,17 @@ for each selected_position:
         draw_circle(x, y, radius=3, fill="black", opacity=0.35)
 ```
 
+## Core Renderer Notes (Docs Surface)
+
+The interactive API docs use the core Zig fret renderer in `src/svg/fret.zig`. As of 2026-03-16 that renderer is explicitly parametric and stylistically upgraded:
+
+- string spacing is derived from caller-provided `string_count`, so the generic API is no longer tied to six-string display geometry
+- open strings and muted strings are rendered as vector markers (`marker-open`, `marker-muted`) instead of literal `O` and `X` text
+- fret, string, nut, dot, barre, and position-label styling is emitted through explicit SVG classes with `shape-rendering="geometricPrecision"`
+- barre detection still follows the same adjacency rule, but the rendered shape now uses a rounded vector bar rather than placeholder line art
+
+The harmonious `eadgbe` compatibility lane still uses the dedicated compat renderer. The core fret API is the algorithmic, parametric surface used by the docs and by non-harmonious consumers.
+
 ## Compatibility File Naming Convention
 
 `tmp/harmoniousapp.net/eadgbe/{root}-{chord_type}.svg`
