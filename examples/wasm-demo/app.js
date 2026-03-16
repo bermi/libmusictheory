@@ -55,6 +55,33 @@ const C_STRING_CAPACITY = 64 * 1024;
 const GUIDE_DOT_BYTES = 8;
 const encoder = new TextEncoder();
 
+function setStatus(message, tone = "ready") {
+  statusEl.textContent = message;
+  statusEl.style.color = tone === "error" ? "#b03620" : "#1f6c72";
+}
+
+function renderSectionError(label, target, err) {
+  if (target) {
+    target.textContent = `${label} error: ${err.message}`;
+  }
+}
+
+function clearSvgHosts() {
+  svgClockHost.innerHTML = "";
+  svgFretHost.innerHTML = "";
+  svgStaffHost.innerHTML = "";
+}
+
+function executeSection(label, fn, onError = null) {
+  try {
+    fn();
+    return null;
+  } catch (err) {
+    if (onError) onError(err);
+    return `${label}: ${err.message}`;
+  }
+}
+
 class ScratchArena {
   constructor() {
     this.ptr = SCRATCH_BASE;
@@ -171,6 +198,7 @@ function setToList(setValue) {
 
 function runPcsApis() {
   ensureWasmLoaded();
+  currentMainSet = 0;
   const arena = new ScratchArena();
 
   const mainList = parseCsvIntegers(document.getElementById("pcs-main").value, 0, 11);
@@ -484,8 +512,9 @@ function normalizeSvgPreview(host) {
   if (!svg) return;
 
   svg.style.display = "block";
+  svg.style.height = "auto";
   svg.style.maxWidth = "100%";
-  svg.style.maxHeight = "100%";
+  svg.style.maxHeight = "160px";
 
   const originalViewBox = svg.getAttribute("viewBox");
   if (originalViewBox && !svg.dataset.originalViewBox) {
@@ -497,6 +526,15 @@ function normalizeSvgPreview(host) {
     if (!Number.isFinite(bbox.width) || !Number.isFinite(bbox.height) || bbox.width <= 0 || bbox.height <= 0) {
       svg.dataset.previewNormalized = "0";
       return;
+    }
+
+    const aspect = bbox.width / bbox.height;
+    if (aspect <= 1.5) {
+      svg.style.width = "220px";
+    } else if (aspect <= 2.8) {
+      svg.style.width = "320px";
+    } else {
+      svg.style.width = "560px";
     }
 
     const padX = Math.max(4, bbox.width * 0.08);
@@ -517,12 +555,32 @@ function normalizeSvgPreview(host) {
 }
 
 function runAll() {
-  runPcsApis();
-  runClassificationApis();
-  runScaleModeApis();
-  runChordApis();
-  runGuitarApis();
-  runSvgApis();
+  const errors = [];
+  currentMainSet = 0;
+
+  const steps = [
+    ["PCS APIs", runPcsApis, (err) => renderSectionError("PCS APIs", outPcs, err)],
+    ["Classification APIs", runClassificationApis, (err) => renderSectionError("Classification APIs", outClassification, err)],
+    ["Scale/Mode APIs", runScaleModeApis, (err) => renderSectionError("Scale/Mode APIs", outScaleMode, err)],
+    ["Chord APIs", runChordApis, (err) => renderSectionError("Chord APIs", outChord, err)],
+    ["Guitar APIs", runGuitarApis, (err) => renderSectionError("Guitar APIs", outGuitar, err)],
+    ["SVG APIs", runSvgApis, (err) => {
+      renderSectionError("SVG APIs", outSvgMeta, err);
+      clearSvgHosts();
+    }],
+  ];
+
+  for (const [label, fn, onError] of steps) {
+    const error = executeSection(label, fn, onError);
+    if (error) errors.push(error);
+  }
+
+  if (errors.length === 0) {
+    setStatus("All sections rendered successfully.");
+    return;
+  }
+
+  setStatus(`Run all completed with ${errors.length} section error(s): ${errors.join("; ")}`, "error");
 }
 
 async function instantiateWasm() {
@@ -555,21 +613,27 @@ function verifyExports(exportsObj) {
 }
 
 function wireUi() {
-  document.getElementById("run-pcs").addEventListener("click", () => runSafe(runPcsApis));
-  document.getElementById("run-classification").addEventListener("click", () => runSafe(runClassificationApis));
-  document.getElementById("run-scale-mode").addEventListener("click", () => runSafe(runScaleModeApis));
-  document.getElementById("run-chord").addEventListener("click", () => runSafe(runChordApis));
-  document.getElementById("run-guitar").addEventListener("click", () => runSafe(runGuitarApis));
-  document.getElementById("run-svg").addEventListener("click", () => runSafe(runSvgApis));
-  document.getElementById("run-all").addEventListener("click", () => runSafe(runAll));
+  document.getElementById("run-pcs").addEventListener("click", () => runSafe("PCS APIs", runPcsApis, (err) => renderSectionError("PCS APIs", outPcs, err)));
+  document.getElementById("run-classification").addEventListener("click", () => runSafe("Classification APIs", runClassificationApis, (err) => renderSectionError("Classification APIs", outClassification, err)));
+  document.getElementById("run-scale-mode").addEventListener("click", () => runSafe("Scale/Mode APIs", runScaleModeApis, (err) => renderSectionError("Scale/Mode APIs", outScaleMode, err)));
+  document.getElementById("run-chord").addEventListener("click", () => runSafe("Chord APIs", runChordApis, (err) => renderSectionError("Chord APIs", outChord, err)));
+  document.getElementById("run-guitar").addEventListener("click", () => runSafe("Guitar APIs", runGuitarApis, (err) => renderSectionError("Guitar APIs", outGuitar, err)));
+  document.getElementById("run-svg").addEventListener("click", () => runSafe("SVG APIs", runSvgApis, (err) => {
+    renderSectionError("SVG APIs", outSvgMeta, err);
+    clearSvgHosts();
+  }));
+  document.getElementById("run-all").addEventListener("click", () => runSafe("All sections", runAll));
 }
 
-function runSafe(fn) {
-  try {
-    fn();
-  } catch (err) {
-    statusEl.textContent = `Error: ${err.message}`;
-    statusEl.style.color = "#b03620";
+function runSafe(label, fn, onError = null) {
+  const error = executeSection(label, fn, onError);
+  if (error) {
+    setStatus(`Error: ${error}`, "error");
+    return;
+  }
+
+  if (label !== "All sections") {
+    setStatus(`${label} rendered successfully.`);
   }
 }
 
@@ -580,14 +644,12 @@ async function main() {
     verifyExports(wasm);
     memory = wasm.memory;
 
-    statusEl.textContent = "WASM loaded. Interactive API calls are ready.";
-    statusEl.style.color = "#1f6c72";
+    setStatus("WASM loaded. Interactive API calls are ready.");
 
     wireUi();
     runAll();
   } catch (err) {
-    statusEl.textContent = `Failed to initialize: ${err.message}`;
-    statusEl.style.color = "#b03620";
+    setStatus(`Failed to initialize: ${err.message}`, "error");
   }
 }
 

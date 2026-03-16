@@ -130,7 +130,13 @@ async function waitForInteractiveReady(page) {
   const deadline = Date.now() + timeoutMs;
   while (true) {
     const statusText = (await page.textContent("#status")) || "";
-    if (statusText.includes("WASM loaded. Interactive API calls are ready.")) return;
+    if (
+      statusText.includes("WASM loaded. Interactive API calls are ready.") ||
+      statusText.includes("All sections rendered successfully.") ||
+      statusText.includes("Run all completed with")
+    ) {
+      return;
+    }
     if (statusText.includes("Failed to initialize:")) throw new Error(statusText);
     if (Date.now() > deadline) {
       throw new Error(`timed out waiting for docs initialization; status=${JSON.stringify(statusText)}`);
@@ -155,6 +161,9 @@ async function waitForRenderedOutputs(page) {
       clockNormalized: document.querySelector("#svg-clock svg")?.dataset.previewNormalized || "",
       fretNormalized: document.querySelector("#svg-fret svg")?.dataset.previewNormalized || "",
       staffNormalized: document.querySelector("#svg-staff svg")?.dataset.previewNormalized || "",
+      clockBounds: document.querySelector("#svg-clock svg")?.getBoundingClientRect?.() || null,
+      fretBounds: document.querySelector("#svg-fret svg")?.getBoundingClientRect?.() || null,
+      staffBounds: document.querySelector("#svg-staff svg")?.getBoundingClientRect?.() || null,
       status: document.getElementById("status")?.textContent || "",
     }));
 
@@ -178,9 +187,14 @@ async function waitForRenderedOutputs(page) {
       snapshot.clock.includes("<svg") &&
       snapshot.fret.includes("<svg") &&
       snapshot.staff.includes("<svg") &&
+      snapshot.status.includes("All sections rendered successfully.") &&
       snapshot.clockNormalized === "1" &&
       snapshot.fretNormalized === "1" &&
-      snapshot.staffNormalized === "1";
+      snapshot.staffNormalized === "1" &&
+      snapshot.clockBounds &&
+      snapshot.fretBounds &&
+      snapshot.staffBounds &&
+      visibleBoundsOk(snapshot);
 
     if (ready) return;
 
@@ -234,7 +248,18 @@ async function main() {
       await page.goto(docsUrl.toString(), { waitUntil: "domcontentloaded" });
       await page.waitForSelector("#run-all", { timeout: 30_000 });
       await waitForInteractiveReady(page);
-      await page.click("#run-all");
+      await page.evaluate(() => {
+        document.getElementById("out-pcs").textContent = "";
+        document.getElementById("out-classification").textContent = "";
+        document.getElementById("out-scale-mode").textContent = "";
+        document.getElementById("out-chord").textContent = "";
+        document.getElementById("out-guitar").textContent = "";
+        document.getElementById("out-svg-meta").textContent = "";
+        document.getElementById("svg-clock").innerHTML = "";
+        document.getElementById("svg-fret").innerHTML = "";
+        document.getElementById("svg-staff").innerHTML = "";
+      });
+      await page.evaluate(() => document.getElementById("run-all")?.click());
       await waitForRenderedOutputs(page);
       console.log("wasm docs smoke passed: interactive examples rendered successfully");
     } finally {
@@ -248,6 +273,17 @@ async function main() {
       throw new Error(`failed to start local docs server: ${stderr}`);
     }
   }
+}
+
+function visibleBoundsOk(snapshot) {
+  return (
+    snapshot.clockBounds.width >= 100 &&
+    snapshot.clockBounds.height >= 100 &&
+    snapshot.fretBounds.width >= 150 &&
+    snapshot.fretBounds.height >= 150 &&
+    snapshot.staffBounds.width >= 240 &&
+    snapshot.staffBounds.height >= 70
+  );
 }
 
 main().catch((err) => {
