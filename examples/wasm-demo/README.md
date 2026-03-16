@@ -67,6 +67,8 @@ The docs bundle now exposes both:
 - six-string compatibility wrappers such as `lmt_svg_fret`
 - parametric fretboard APIs such as `lmt_fret_to_midi_n`, `lmt_midi_to_fret_positions_n`, and `lmt_svg_fret_n`
 
+Core non-compat SVG generators in the docs bundle now share a common quality prelude. Exact harmonious compatibility generators remain frozen and are not visually restyled.
+
 ## Project Completion Criteria
 
 The project is not visually complete until all 15 compatibility kinds pass Native RGBA Proof at `55%` and `200%`.

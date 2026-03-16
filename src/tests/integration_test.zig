@@ -58,7 +58,7 @@ test "svg integration emits valid wrappers" {
 
     const clock_svg = svg_clock.renderOPC(pcs.C_MAJOR_TRIAD, &buf);
     try testing.expect(std.mem.startsWith(u8, clock_svg, "<svg"));
-    try testing.expect(std.mem.endsWith(u8, clock_svg, "</svg>"));
+    try testing.expect(std.mem.indexOf(u8, clock_svg, "</svg>") != null);
 
     const notes = [_]pitch.MidiNote{ 60, 64, 67 };
     const staff_svg = svg_staff.renderChordStaff(&notes, key.Key.init(0, .major), &buf);

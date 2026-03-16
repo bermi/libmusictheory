@@ -498,8 +498,8 @@ else
 fi
 
 if [ -f "$ROOT_DIR/src/generated/harmonious_even_segment_xz.zig" ]; then
-    check_cmd "cd '$ROOT_DIR' && ! rg -n \"harmonious_even_gzip\" src/svg/evenness_chart.zig" "0035 even compat guardrail (no monolithic even gzip replay import when segmented assets exist)"
-    check_cmd "cd '$ROOT_DIR' && rg -n \"harmonious_even_segment_xz\" src/svg/evenness_chart.zig" "0035 even compat guardrail (segmented even xz module wired in)"
+    check_cmd "cd '$ROOT_DIR' && ! rg -n \"harmonious_even_gzip\" src/svg/evenness_compat.zig" "0035 even compat guardrail (no monolithic even gzip replay import when segmented assets exist)"
+    check_cmd "cd '$ROOT_DIR' && rg -n \"harmonious_even_segment_xz\" src/svg/evenness_compat.zig" "0035 even compat guardrail (segmented even xz module wired in)"
     check_cmd "cd '$ROOT_DIR' && test ! -f src/generated/harmonious_even_segment_gzip.zig" "0035 even compat guardrail (legacy segmented gzip artifact removed after xz cutover)"
     check_cmd "cd '$ROOT_DIR' && test ! -f src/generated/harmonious_even_gzip.zig" "0035 even compat guardrail (gzip payload artifact removed when segmented assets exist)"
     check_cmd "cd '$ROOT_DIR' && test ! -f src/generated/harmonious_even_segments.zig" "0035 even compat guardrail (uncompressed segmented payload artifact removed)"
@@ -778,7 +778,7 @@ else
 fi
 
 if [ -f "$ROOT_DIR/src/render/ir.zig" ] && [ -f "$ROOT_DIR/src/render/svg_serializer.zig" ]; then
-    check_cmd "cd '$ROOT_DIR' && rg -n \"render/ir\\.zig|render/svg_serializer\\.zig\" src/svg/clock.zig" "0029 rendering IR guardrail (optc pilot wired through render IR + serializer)"
+    check_cmd "cd '$ROOT_DIR' && rg -n \"render/ir\\.zig|render/svg_serializer\\.zig\" src/svg/clock_compat.zig" "0029 rendering IR guardrail (optc pilot wired through render IR + serializer)"
     if [ -f "$ROOT_DIR/src/tests/render_ir_test.zig" ]; then
         check_cmd "cd '$ROOT_DIR' && zig build test 2>&1" "0029 rendering IR determinism test suite"
     else
@@ -847,6 +847,35 @@ if [ -f "$ROOT_DIR/src/svg/fret.zig" ] && [ -f "$ROOT_DIR/src/svg/staff.zig" ]; 
         ! rg -Fq '>O</text>' src/svg/fret.zig" "0065 core svg quality guardrail (vector markers, explicit accidental glyphs, and geometric precision styling wired)"
 else
     unverified "0065 core svg quality guardrail (core svg renderers not present)"
+fi
+
+if [ -f "$ROOT_DIR/src/svg/quality.zig" ]; then
+    check_cmd "cd '$ROOT_DIR' && \
+        rg -n 'const svg_quality = @import\\(\"quality\\.zig\"\\);' \
+            src/svg/clock.zig \
+            src/svg/staff.zig \
+            src/svg/fret.zig \
+            src/svg/mode_icon.zig \
+            src/svg/circle_of_fifths.zig \
+            src/svg/evenness_chart.zig \
+            src/svg/text_misc.zig \
+            src/svg/orbifold.zig \
+            src/svg/tessellation.zig \
+            src/svg/key_sig.zig \
+            src/svg/n_tet_chart.zig >/dev/null" "0066 shared svg quality guardrail (non-compat generators import shared quality module)"
+    check_cmd "cd '$ROOT_DIR' && \
+        ! rg -n 'const svg_quality = @import\\(\"quality\\.zig\"\\);' \
+            src/harmonious_svg_compat.zig \
+            src/svg/clock_compat.zig \
+            src/svg/evenness_compat.zig \
+            src/svg/text_misc_compat.zig \
+            src/svg/chord_compat.zig \
+            src/svg/fret_compat.zig \
+            src/svg/majmin_compat.zig >/dev/null" "0066 shared svg quality guardrail (exact compat renderers stay visually frozen)"
+    check_cmd "cd '$ROOT_DIR' && \
+        rg -n 'writeSvgPrelude\\(' src/svg/clock.zig src/svg/staff.zig src/svg/fret.zig src/svg/mode_icon.zig src/svg/circle_of_fifths.zig src/svg/evenness_chart.zig src/svg/text_misc.zig src/svg/orbifold.zig src/svg/tessellation.zig src/svg/key_sig.zig src/svg/n_tet_chart.zig >/dev/null" "0066 shared svg quality guardrail (shared prelude wired across generated svg families)"
+else
+    unverified "0066 shared svg quality guardrail (shared quality module not yet implemented)"
 fi
 
 if [ -f "$ROOT_DIR/scripts/validate_harmonious_scaled_render_parity_playwright.mjs" ]; then

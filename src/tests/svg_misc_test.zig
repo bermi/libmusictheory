@@ -37,6 +37,8 @@ test "mode icon color mapping and svg validity" {
     try testing.expect(std.mem.indexOf(u8, svg, "width=\"70\"") != null);
     try testing.expect(std.mem.indexOf(u8, svg, "height=\"70\"") != null);
     try testing.expect(std.mem.indexOf(u8, svg, "fill=\"#00C\"") != null);
+    try testing.expect(std.mem.indexOf(u8, svg, "shape-rendering=\"geometricPrecision\"") != null);
+    try testing.expect(std.mem.indexOf(u8, svg, "mode-label") != null);
 }
 
 test "evenness chart ring counts match set class cardinality counts" {
@@ -60,6 +62,8 @@ test "evenness chart ring counts match set class cardinality counts" {
     const svg = evenness_chart.renderEvennessChart(&svg_buf);
     try testing.expect(std.mem.startsWith(u8, svg, "<svg"));
     try testing.expect(std.mem.indexOf(u8, svg, "class=\"dot\"") != null);
+    try testing.expect(std.mem.indexOf(u8, svg, "shape-rendering=\"geometricPrecision\"") != null);
+    try testing.expect(std.mem.indexOf(u8, svg, "class=\"ring\"") != null);
 }
 
 test "circle of fifths order and svg validity" {
@@ -73,6 +77,8 @@ test "circle of fifths order and svg validity" {
     try testing.expect(std.mem.indexOf(u8, svg, "width=\"100\"") != null);
     try testing.expect(std.mem.indexOf(u8, svg, ">C<") != null);
     try testing.expect(std.mem.indexOf(u8, svg, ">G<") != null);
+    try testing.expect(std.mem.indexOf(u8, svg, "class=\"cof-ring\"") != null);
+    try testing.expect(std.mem.indexOf(u8, svg, "shape-rendering=\"geometricPrecision\"") != null);
 }
 
 test "orbifold graph svg validity" {
@@ -83,6 +89,8 @@ test "orbifold graph svg validity" {
     try testing.expect(std.mem.indexOf(u8, svg, "viewBox=\"0 0 540 540\"") != null);
     try testing.expect(std.mem.indexOf(u8, svg, "class=\"orbifold-node\"") != null);
     try testing.expect(std.mem.indexOf(u8, svg, "class=\"orbifold-edge\"") != null);
+    try testing.expect(std.mem.indexOf(u8, svg, "shape-rendering=\"geometricPrecision\"") != null);
+    try testing.expect(std.mem.indexOf(u8, svg, "orbifold-label") != null);
 }
 
 test "key signature renders expected sharp count" {
@@ -94,6 +102,7 @@ test "key signature renders expected sharp count" {
     try testing.expect(std.mem.indexOf(u8, svg, "width=\"133\"") != null);
     try testing.expectEqual(@as(usize, 6), countSubstring(svg, "class=\"accidental sharp\""));
     try testing.expectEqual(@as(usize, 0), countSubstring(svg, "class=\"accidental flat\""));
+    try testing.expect(std.mem.indexOf(u8, svg, "shape-rendering=\"geometricPrecision\"") != null);
 }
 
 test "vertical and center text svg validity" {
@@ -101,12 +110,15 @@ test "vertical and center text svg validity" {
     const vertical = text_misc.renderVerticalLabel("6-1", false, &vertical_buf);
     try testing.expect(std.mem.startsWith(u8, vertical, "<svg"));
     try testing.expect(std.mem.indexOf(u8, vertical, "rotate(90)") != null);
+    try testing.expect(std.mem.indexOf(u8, vertical, "shape-rendering=\"geometricPrecision\"") != null);
+    try testing.expect(std.mem.indexOf(u8, vertical, "class=\"vert-label\"") != null);
 
     var center_buf: [4096]u8 = undefined;
     const center = text_misc.renderCenterSquareGlyph("A", &center_buf);
     try testing.expect(std.mem.startsWith(u8, center, "<svg"));
     try testing.expect(std.mem.indexOf(u8, center, "translate(18,0)") != null);
-    try testing.expect(std.mem.indexOf(u8, center, "style=\"fill: gray\"") != null);
+    try testing.expect(std.mem.indexOf(u8, center, "shape-rendering=\"geometricPrecision\"") != null);
+    try testing.expect(std.mem.indexOf(u8, center, "class=\"center-square\"") != null);
 }
 
 test "n tet chart svg validity" {
@@ -115,4 +127,6 @@ test "n tet chart svg validity" {
     try testing.expect(std.mem.startsWith(u8, svg, "<svg"));
     try testing.expect(std.mem.indexOf(u8, svg, "N-TET Error") != null);
     try testing.expect(std.mem.indexOf(u8, svg, "class=\"n-tet-bar\"") != null);
+    try testing.expect(std.mem.indexOf(u8, svg, "shape-rendering=\"geometricPrecision\"") != null);
+    try testing.expect(std.mem.indexOf(u8, svg, "chart-grid") != null);
 }

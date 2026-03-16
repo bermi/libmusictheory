@@ -5,6 +5,7 @@ const note_name = @import("../note_name.zig");
 const note_spelling = @import("../note_spelling.zig");
 const pcs = @import("../pitch_class_set.zig");
 const harmony = @import("../harmony.zig");
+const svg_quality = @import("quality.zig");
 
 pub const Clef = enum {
     treble,
@@ -172,16 +173,15 @@ fn drawNote(writer: anytype, x: f32, note: SpelledStaffNote) void {
 }
 
 fn writeSvgPrelude(writer: anytype, width: comptime_int, height: []const u8, view_box: []const u8) void {
-    writer.print("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{d}\" height=\"{s}\" viewBox=\"{s}\" shape-rendering=\"geometricPrecision\" text-rendering=\"geometricPrecision\">\n", .{ width, height, view_box }) catch unreachable;
-    writer.writeAll(
-        \\<style>
+    var width_buf: [16]u8 = undefined;
+    const width_text = std.fmt.bufPrint(&width_buf, "{d}", .{width}) catch unreachable;
+    svg_quality.writeSvgPrelude(writer, width_text, height, view_box,
         \\.staff-line,.ledger-line,.stem,.accidental path,.accidental line{vector-effect:non-scaling-stroke}
         \\.staff-line,.ledger-line{stroke:#171717;stroke-width:1.2;stroke-linecap:round}
         \\.ledger-line{stroke-width:1.4}
         \\.notehead{fill:#111;stroke:#111;stroke-width:0.6}
         \\.stem{stroke:#111;stroke-width:1.35;stroke-linecap:round}
         \\.accidental{stroke:#111;fill:none;stroke-width:1.25;stroke-linecap:round;stroke-linejoin:round}
-        \\</style>
         \\
     ) catch unreachable;
 }

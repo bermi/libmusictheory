@@ -1,11 +1,10 @@
 const std = @import("std");
-const builtin = @import("builtin");
 const pitch = @import("../pitch.zig");
 const pcs = @import("../pitch_class_set.zig");
 const set_class = @import("../set_class.zig");
 const evenness = @import("../evenness.zig");
 const cluster = @import("../cluster.zig");
-const even_segments = @import("../generated/harmonious_even_segment_xz.zig");
+const svg_quality = @import("quality.zig");
 
 pub const MAX_DOTS: usize = set_class.SET_CLASSES.len;
 
@@ -63,12 +62,18 @@ pub fn renderEvennessChart(buf: []u8) []u8 {
     var dots_buf: [MAX_DOTS]Dot = undefined;
     const dots = computeDots(&dots_buf);
 
-    w.writeAll("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"500\" height=\"650\" viewBox=\"-100 -40 1100 1320\">\n") catch unreachable;
+    svg_quality.writeSvgPrelude(w, "500", "650", "-100 -40 1100 1320",
+        \\.ring,.dot{vector-effect:non-scaling-stroke}
+        \\.ring{fill:none;stroke:#8f949d;stroke-width:2;stroke-linecap:round}
+        \\.dot{stroke:white;stroke-width:1.25}
+        \\
+    ) catch unreachable;
+    w.writeAll("<rect x=\"-100\" y=\"-40\" width=\"1100\" height=\"1320\" fill=\"white\" />\n") catch unreachable;
 
     var ring: u4 = 1;
     while (ring <= 5) : (ring += 1) {
         const r = 290.68884 * @as(f32, @floatFromInt(ring));
-        w.print("<circle class=\"ring\" cx=\"0\" cy=\"0\" r=\"{d:.2}\" style=\"fill: none; stroke: #888; stroke-width: 2\" />\n", .{r}) catch unreachable;
+        w.print("<circle class=\"ring\" cx=\"0\" cy=\"0\" r=\"{d:.2}\" />\n", .{r}) catch unreachable;
     }
 
     for (dots) |dot| {
@@ -81,49 +86,6 @@ pub fn renderEvennessChart(buf: []u8) []u8 {
 
     w.writeAll("</svg>\n") catch unreachable;
     return buf[0..stream.pos];
-}
-
-pub fn renderEvennessByName(name: []const u8, buf: []u8) []u8 {
-    var out_stream = std.io.fixedBufferStream(buf);
-    if (std.mem.eql(u8, name, "grad")) {
-        if (!appendXzSegment(even_segments.COMPAT_PREFIX_XZ[0..], &out_stream)) return "";
-        if (!appendXzSegment(even_segments.COMMON_BODY_XZ[0..], &out_stream)) return "";
-        if (!appendXzSegment(even_segments.GRAD_TAIL_XZ[0..], &out_stream)) return "";
-        return buf[0..out_stream.pos];
-    }
-
-    if (std.mem.eql(u8, name, "line")) {
-        if (!appendXzSegment(even_segments.COMPAT_PREFIX_XZ[0..], &out_stream)) return "";
-        if (!appendXzSegment(even_segments.COMMON_BODY_XZ[0..], &out_stream)) return "";
-        if (!appendXzSegment(even_segments.LINE_TAIL_XZ[0..], &out_stream)) return "";
-        return buf[0..out_stream.pos];
-    }
-
-    if (!appendXzSegment(even_segments.INDEX_PREFIX_XZ[0..], &out_stream)) return "";
-    if (!appendXzSegment(even_segments.COMMON_BODY_XZ[0..], &out_stream)) return "";
-    if (!appendXzSegment(even_segments.INDEX_TAIL_XZ[0..], &out_stream)) return "";
-    return buf[0..out_stream.pos];
-}
-
-fn allocator() std.mem.Allocator {
-    return if (builtin.target.cpu.arch == .wasm32)
-        std.heap.wasm_allocator
-    else
-        std.heap.page_allocator;
-}
-
-fn appendXzSegment(segment: []const u8, out_stream: *std.io.FixedBufferStream([]u8)) bool {
-    var in_stream = std.io.fixedBufferStream(segment);
-    var dec = std.compress.xz.decompress(allocator(), in_stream.reader()) catch return false;
-    defer dec.deinit();
-
-    var scratch: [1024]u8 = undefined;
-    while (true) {
-        const n = dec.reader().read(&scratch) catch return false;
-        if (n == 0) break;
-        out_stream.writer().writeAll(scratch[0..n]) catch return false;
-    }
-    return true;
 }
 
 pub fn forteLabel(sc: set_class.SetClass, out: *[16]u8) []u8 {

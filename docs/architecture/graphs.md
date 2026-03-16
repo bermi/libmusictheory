@@ -49,6 +49,17 @@ Render stack target for all graph families:
 
 Key rule: theory and layout layers must never depend on serializer quirks.
 
+## Visual Contract Split
+
+- Exact harmonious compatibility output is frozen and must not be visually restyled.
+- Non-compat generated SVG output shares a library-wide quality prelude:
+  - canonical SVG prelude
+  - geometric precision flags
+  - shared typography stacks
+  - shared label outline/stroke conventions
+
+This keeps the parity contract honest while still raising the quality bar for the library's own generated diagrams.
+
 ## Canonical Determinism Rules
 
 Required for exact compat and stable cross-platform output:

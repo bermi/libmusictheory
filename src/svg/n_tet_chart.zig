@@ -1,4 +1,5 @@
 const std = @import("std");
+const svg_quality = @import("quality.zig");
 
 const Tuning = struct {
     name: []const u8,
@@ -18,9 +19,23 @@ pub fn renderNTetChart(buf: []u8) []u8 {
     var stream = std.io.fixedBufferStream(buf);
     const w = stream.writer();
 
-    w.writeAll("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"500\" height=\"220\" viewBox=\"0 0 500 220\">\n") catch unreachable;
+    svg_quality.writeSvgPrelude(w, "500", "220", "0 0 500 220",
+        \\.chart-grid,.n-tet-bar{vector-effect:non-scaling-stroke}
+        \\.chart-grid{stroke:#d6dae2;stroke-width:1}
+        \\.chart-title{font-size:16px;fill:black}
+        \\.chart-label{font-size:12px;fill:black}
+        \\.chart-value{font-size:11px;fill:#333}
+        \\.n-tet-bar{fill:#2c7;rx:4;ry:4}
+        \\
+    ) catch unreachable;
     w.writeAll("<rect x=\"0\" y=\"0\" width=\"500\" height=\"220\" fill=\"white\" />\n") catch unreachable;
-    w.writeAll("<text x=\"20\" y=\"26\" font-size=\"16\" fill=\"black\">N-TET Error vs. Just Intonation</text>\n") catch unreachable;
+    w.writeAll("<text class=\"label-sans chart-title\" x=\"20\" y=\"26\">N-TET Error vs. Just Intonation</text>\n") catch unreachable;
+
+    var grid: usize = 0;
+    while (grid < 5) : (grid += 1) {
+        const x = 110 + @as(i32, @intCast(grid + 1)) * 70;
+        w.print("<line class=\"chart-grid\" x1=\"{d}\" y1=\"44\" x2=\"{d}\" y2=\"205\" />\n", .{ x, x }) catch unreachable;
+    }
 
     var i: usize = 0;
     while (i < TUNINGS.len) : (i += 1) {
@@ -28,9 +43,9 @@ pub fn renderNTetChart(buf: []u8) []u8 {
         const y = 55 + @as(i32, @intCast(i)) * 32;
         const width = 18.0 * t.avg_error_cents;
 
-        w.print("<text x=\"20\" y=\"{d}\" font-size=\"12\" fill=\"black\">{s}</text>\n", .{ y + 12, t.name }) catch unreachable;
-        w.print("<rect class=\"n-tet-bar\" x=\"110\" y=\"{d}\" width=\"{d:.2}\" height=\"18\" fill=\"#2c7\" />\n", .{ y, width }) catch unreachable;
-        w.print("<text x=\"{d:.2}\" y=\"{d}\" font-size=\"11\" fill=\"#333\">{d:.2}c</text>\n", .{ 118.0 + width, y + 13, t.avg_error_cents }) catch unreachable;
+        w.print("<text class=\"label-sans chart-label\" x=\"20\" y=\"{d}\">{s}</text>\n", .{ y + 12, t.name }) catch unreachable;
+        w.print("<rect class=\"n-tet-bar\" x=\"110\" y=\"{d}\" width=\"{d:.2}\" height=\"18\" rx=\"4\" ry=\"4\" />\n", .{ y, width }) catch unreachable;
+        w.print("<text class=\"label-mono chart-value\" x=\"{d:.2}\" y=\"{d}\">{d:.2}c</text>\n", .{ 118.0 + width, y + 13, t.avg_error_cents }) catch unreachable;
     }
 
     w.writeAll("</svg>\n") catch unreachable;

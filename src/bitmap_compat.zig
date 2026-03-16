@@ -6,7 +6,7 @@ const pcs = @import("pitch_class_set.zig");
 const oc_templates = @import("generated/harmonious_oc_templates.zig");
 const fret_compat = @import("svg/fret_compat.zig");
 const chord_compat = @import("svg/chord_compat.zig");
-const svg_clock = @import("svg/clock.zig");
+const svg_clock_compat = @import("svg/clock_compat.zig");
 const text_misc = @import("svg/text_misc.zig");
 
 pub const SCALE_NUMERATOR: u32 = 55;
@@ -489,7 +489,7 @@ fn renderOpcCandidate(surface: *Surface, image_name: []const u8, scale_numerator
 
     var pc: u4 = 0;
     while (pc < 12) : (pc += 1) {
-        const pos = svg_clock.circlePosition(@intCast(pc), 50.0, 42.0);
+        const pos = svg_clock_compat.circlePosition(@intCast(pc), 50.0, 42.0);
         const transformed = transform.apply(pos.x, pos.y);
         const bit = @as(pcs.PitchClassSet, 1) << pc;
         const fill = if ((set & bit) != 0) OPC_FILL_COLORS[pc] else .{ 255, 255, 255, 255 };
@@ -524,7 +524,7 @@ const OptcImageArgs = struct {
 
 fn renderOptcCandidate(surface: *Surface, image_name: []const u8) Error!void {
     const args = parseOptcImageArgs(trimSvgSuffix(image_name)) orelse return error.InvalidImage;
-    const variant = svg_clock.optcCompatVariant(args.label);
+    const variant = svg_clock_compat.optcCompatVariant(args.label);
     const root = compat70ViewBoxMatrix(surface);
     const center = root.apply(50.0, 50.0);
     const scale = root.approxUniformScale();
@@ -542,7 +542,7 @@ fn renderOptcCandidate(surface: *Surface, image_name: []const u8) Error!void {
 
     drawCircle(surface, center.x, center.y, 20.0 * scale, parseColor(variant.center_fill), hexColor("#000"), 2.0 * scale);
 
-    for (svg_clock.OPTC_COMPAT_PC_ORDER) |pc| {
+    for (svg_clock_compat.OPTC_COMPAT_PC_ORDER) |pc| {
         const bit = @as(pcs.PitchClassSet, 1) << pc;
         const present = (args.set & bit) != 0;
         const in_cluster = (args.cluster_mask & bit) != 0;
@@ -552,7 +552,7 @@ fn renderOptcCandidate(surface: *Surface, image_name: []const u8) Error!void {
             parseColor("gray")
         else
             hexColor("#000");
-        const pos = svg_clock.optcCompatCirclePosition(pc);
+        const pos = svg_clock_compat.optcCompatCirclePosition(pc);
         const transformed = root.apply(pos.x, pos.y);
         drawCircle(surface, transformed.x, transformed.y, 10.0 * scale, fill, hexColor("#000"), 3.0 * scale);
     }
@@ -615,7 +615,7 @@ fn renderOptcSpokes(surface: *Surface, root: Matrix, mask: pcs.PitchClassSet, co
     while (pc < 12) : (pc += 1) {
         const bit = @as(pcs.PitchClassSet, 1) << pc;
         if ((mask & bit) == 0) continue;
-        try renderPathStroke(surface, svg_clock.optcCompatSpokePath(pc), root, color, stroke_width, dash.on, dash.off);
+        try renderPathStroke(surface, svg_clock_compat.optcCompatSpokePath(pc), root, color, stroke_width, dash.on, dash.off);
     }
 }
 

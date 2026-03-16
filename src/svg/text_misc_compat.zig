@@ -1,6 +1,5 @@
 const std = @import("std");
 const primitives = @import("../generated/harmonious_text_primitives.zig");
-const svg_quality = @import("quality.zig");
 
 const PairDeltaStep = struct {
     dx: i32,
@@ -143,62 +142,58 @@ pub fn centerSquarePathData(glyph: []const u8) ?[]const u8 {
 
 pub fn renderVerticalLabel(text: []const u8, bottom_to_top: bool, buf: []u8) []u8 {
     var path_buf: [16 * 1024]u8 = undefined;
-    const path_d = buildVerticalPath(text, bottom_to_top, &path_buf) orelse return renderVerticalFallback(text, bottom_to_top, buf);
+    const path_d = buildVerticalPath(text, bottom_to_top, &path_buf);
 
-    var stream = std.io.fixedBufferStream(buf);
-    const w = stream.writer();
-    const transform = if (bottom_to_top) "rotate(-90),translate(-45,0)" else "rotate(90),translate(45,0)";
+    if (path_d) |d| {
+        var stream_exact = std.io.fixedBufferStream(buf);
+        const exact = stream_exact.writer();
 
-    svg_quality.writeSvgPrelude(w, "36", "90", "0 0 36 90",
-        \\.vert-label{fill:black}
-        \\
-    ) catch unreachable;
-    w.print("<g transform=\"{s}\">\n", .{transform}) catch unreachable;
-    w.print("<path class=\"vert-label\" d=\"{s}\" />\n", .{path_d}) catch unreachable;
-    w.writeAll("</g>\n</svg>\n") catch unreachable;
-    return buf[0..stream.pos];
-}
+        const transform = if (bottom_to_top) "rotate(-90),translate(-45,0)" else "rotate(90),translate(45,0)";
+        exact.writeAll("<svg version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" x=\"0px\" y=\"0px\" enable-background=\"new 0 0 36 90\" xml:space=\"preserve\" viewBox=\"0 0 36 90\">\n") catch unreachable;
+        exact.writeAll("  <!-- Loaded SVG font from path \"./svg-fonts/enhanced-firasanscondensed-book.svg\" -->\n") catch unreachable;
+        exact.print("  <g transform=\"{s}\">\n", .{transform}) catch unreachable;
+        exact.print("    <path style=\"fill: black\" d=\"{s}\"/>\n", .{d}) catch unreachable;
+        exact.writeAll("  </g>\n") catch unreachable;
+        exact.writeAll("</svg>") catch unreachable;
+        return buf[0..stream_exact.pos];
+    }
 
-fn renderVerticalFallback(text: []const u8, bottom_to_top: bool, buf: []u8) []u8 {
     var stream = std.io.fixedBufferStream(buf);
     const w = stream.writer();
 
     const rotate = if (bottom_to_top) "-90" else "90";
     const tx = if (bottom_to_top) "-45" else "45";
 
-    svg_quality.writeSvgPrelude(w, "36", "90", "0 0 36 90",
-        \\.vert-fallback{font-size:18px;fill:black}
-        \\
-    ) catch unreachable;
+    w.writeAll("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 36 90\">\n") catch unreachable;
     w.print("<g transform=\"rotate({s}),translate({s},0)\">\n", .{ rotate, tx }) catch unreachable;
-    w.print("<text class=\"label-sans vert-fallback\" x=\"-10\" y=\"20\">{s}</text>\n", .{text}) catch unreachable;
-    w.writeAll("</g>\n</svg>\n") catch unreachable;
+    w.print("<text x=\"-10\" y=\"20\" font-size=\"18\" fill=\"black\" font-family=\"sans-serif\">{s}</text>\n", .{text}) catch unreachable;
+    w.writeAll("</g>\n") catch unreachable;
+    w.writeAll("</svg>\n") catch unreachable;
+
     return buf[0..stream.pos];
 }
 
 pub fn renderCenterSquareGlyph(glyph: []const u8, buf: []u8) []u8 {
     if (findCenterTemplate(glyph)) |d| {
-        var stream = std.io.fixedBufferStream(buf);
-        const w = stream.writer();
+        var stream_exact = std.io.fixedBufferStream(buf);
+        const exact = stream_exact.writer();
 
-        svg_quality.writeSvgPrelude(w, "36", "36", "0 0 36 36",
-            \\.center-square{fill:gray}
-            \\
-        ) catch unreachable;
-        w.writeAll("<g transform=\"translate(18,0)\">\n") catch unreachable;
-        w.print("<path class=\"center-square\" d=\"{s}\" />\n", .{d}) catch unreachable;
-        w.writeAll("</g>\n</svg>\n") catch unreachable;
-        return buf[0..stream.pos];
+        exact.writeAll("<svg version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" x=\"0px\" y=\"0px\" enable-background=\"new 0 0 36 36\" xml:space=\"preserve\" viewBox=\"0 0 36 36\">\n") catch unreachable;
+        exact.writeAll("  <!-- Loaded SVG font from path \"./svg-fonts/enhanced-firasanscondensed-book.svg\" -->\n") catch unreachable;
+        exact.writeAll("  <g transform=\"translate(18,0)\">\n") catch unreachable;
+        exact.print("    <path style=\"fill: gray\" d=\"{s}\"/>\n", .{d}) catch unreachable;
+        exact.writeAll("  </g>\n") catch unreachable;
+        exact.writeAll("</svg>") catch unreachable;
+        return buf[0..stream_exact.pos];
     }
 
     var stream = std.io.fixedBufferStream(buf);
     const w = stream.writer();
-    svg_quality.writeSvgPrelude(w, "36", "36", "0 0 36 36",
-        \\.center-glyph{font-size:20px;fill:gray}
-        \\
-    ) catch unreachable;
+
+    w.writeAll("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 36 36\">\n") catch unreachable;
     w.writeAll("<rect x=\"0\" y=\"0\" width=\"36\" height=\"36\" fill=\"white\" />\n") catch unreachable;
-    w.print("<text class=\"label-sans center-glyph\" x=\"18\" y=\"22\" text-anchor=\"middle\">{s}</text>\n", .{glyph}) catch unreachable;
+    w.print("<text x=\"18\" y=\"22\" text-anchor=\"middle\" font-size=\"20\" fill=\"gray\" font-family=\"sans-serif\">{s}</text>\n", .{glyph}) catch unreachable;
     w.writeAll("</svg>\n") catch unreachable;
+
     return buf[0..stream.pos];
 }

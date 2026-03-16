@@ -1,5 +1,6 @@
 const std = @import("std");
 const pitch = @import("../pitch.zig");
+const svg_quality = @import("quality.zig");
 
 const PC_COLORS = [_][]const u8{
     "#00C", "#a4f", "#f0f", "#a16", "#e02", "#f91",
@@ -19,9 +20,17 @@ pub fn renderCircleOfFifths(buf: []u8) []u8 {
 
     const order = fifthsOrder();
 
-    w.writeAll("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"100\" height=\"100\" viewBox=\"0 0 100 100\">\n") catch unreachable;
-    w.writeAll("<rect x=\"0\" y=\"0\" width=\"100\" height=\"100\" style=\"fill: white\"/>\n") catch unreachable;
-    w.writeAll("<circle cx=\"50\" cy=\"50\" r=\"45\" fill=\"none\" stroke=\"#bbb\" stroke-width=\"1\" />\n") catch unreachable;
+    svg_quality.writeSvgPrelude(w, "100", "100", "0 0 100 100",
+        \\.cof-ring,.major-key,.minor-key{vector-effect:non-scaling-stroke}
+        \\.cof-ring{stroke:#aeb3bd;stroke-width:1.1;fill:none}
+        \\.major-key{stroke:black;stroke-width:0.6}
+        \\.minor-key{stroke:#666;stroke-width:0.6}
+        \\.major-label{font-size:5.2px;fill:white}
+        \\.minor-label{font-size:3.8px;fill:black}
+        \\
+    ) catch unreachable;
+    w.writeAll("<rect x=\"0\" y=\"0\" width=\"100\" height=\"100\" fill=\"white\"/>\n") catch unreachable;
+    w.writeAll("<circle class=\"cof-ring\" cx=\"50\" cy=\"50\" r=\"45\" />\n") catch unreachable;
 
     for (order, 0..) |pc, i| {
         const angle = std.math.tau * (@as(f32, @floatFromInt(i)) / 12.0);
@@ -34,11 +43,11 @@ pub fn renderCircleOfFifths(buf: []u8) []u8 {
         const minor_label = minorLabel(pc);
         const fill = PC_COLORS[pc];
 
-        w.print("<circle class=\"major-key\" cx=\"{d:.2}\" cy=\"{d:.2}\" r=\"5.5\" fill=\"{s}\" stroke=\"black\" stroke-width=\"0.5\" />\n", .{ outer_x, outer_y, fill }) catch unreachable;
-        w.print("<text x=\"{d:.2}\" y=\"{d:.2}\" text-anchor=\"middle\" dominant-baseline=\"middle\" font-size=\"5.2\" fill=\"white\">{s}</text>\n", .{ outer_x, outer_y + 0.2, major_label }) catch unreachable;
+        w.print("<circle class=\"major-key\" cx=\"{d:.2}\" cy=\"{d:.2}\" r=\"5.5\" fill=\"{s}\" />\n", .{ outer_x, outer_y, fill }) catch unreachable;
+        w.print("<text class=\"label-sans inverse-outline major-label\" x=\"{d:.2}\" y=\"{d:.2}\" text-anchor=\"middle\" dominant-baseline=\"middle\">{s}</text>\n", .{ outer_x, outer_y + 0.2, major_label }) catch unreachable;
 
-        w.print("<circle class=\"minor-key\" cx=\"{d:.2}\" cy=\"{d:.2}\" r=\"3.8\" fill=\"white\" stroke=\"#777\" stroke-width=\"0.5\" />\n", .{ inner_x, inner_y }) catch unreachable;
-        w.print("<text x=\"{d:.2}\" y=\"{d:.2}\" text-anchor=\"middle\" dominant-baseline=\"middle\" font-size=\"3.8\" fill=\"black\">{s}</text>\n", .{ inner_x, inner_y + 0.1, minor_label }) catch unreachable;
+        w.print("<circle class=\"minor-key\" cx=\"{d:.2}\" cy=\"{d:.2}\" r=\"3.8\" fill=\"white\" />\n", .{ inner_x, inner_y }) catch unreachable;
+        w.print("<text class=\"label-sans label-outline minor-label\" x=\"{d:.2}\" y=\"{d:.2}\" text-anchor=\"middle\" dominant-baseline=\"middle\">{s}</text>\n", .{ inner_x, inner_y + 0.1, minor_label }) catch unreachable;
     }
 
     w.writeAll("</svg>\n") catch unreachable;

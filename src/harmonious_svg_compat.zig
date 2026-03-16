@@ -1,22 +1,23 @@
 const std = @import("std");
+const build_options = @import("build_options");
 
 const name_pack = @import("harmonious_name_pack.zig");
 const oc_templates = @import("generated/harmonious_oc_templates.zig");
 const pitch = @import("pitch.zig");
 const pcs = @import("pitch_class_set.zig");
 const cluster = @import("cluster.zig");
-const key = @import("key.zig");
 const guitar = @import("guitar.zig");
+const key = if (build_options.enable_harmonious_generic_fallbacks) @import("key.zig") else struct {};
 
-const svg_clock = @import("svg/clock.zig");
+const svg_clock_compat = @import("svg/clock_compat.zig");
 const svg_fret_compat = @import("svg/fret_compat.zig");
-const svg_staff = @import("svg/staff.zig");
 const svg_chord_compat = @import("svg/chord_compat.zig");
 const svg_scale_nomod_compat = @import("svg/scale_nomod_compat.zig");
-const svg_text_misc = @import("svg/text_misc.zig");
-const svg_evenness_chart = @import("svg/evenness_chart.zig");
+const svg_text_misc_compat = @import("svg/text_misc_compat.zig");
+const svg_evenness_compat = @import("svg/evenness_compat.zig");
 const svg_majmin_compat = @import("svg/majmin_compat.zig");
 const svg_majmin_scene = @import("svg/majmin_scene.zig");
+const svg_staff = if (build_options.enable_harmonious_generic_fallbacks) @import("svg/staff.zig") else struct {};
 
 pub const KindId = enum(u8) {
     vert_text_black,
@@ -110,10 +111,10 @@ pub fn generateByName(kind_index: usize, image_name: []const u8, buf: []u8) []u8
     const stem = trimSvgSuffix(image_name);
 
     return switch (info.id) {
-        .vert_text_black => svg_text_misc.renderVerticalLabel(stem, false, buf),
-        .vert_text_b2t_black => svg_text_misc.renderVerticalLabel(stem, true, buf),
-        .center_square_text => svg_text_misc.renderCenterSquareGlyph(stem, buf),
-        .even => svg_evenness_chart.renderEvennessByName(stem, buf),
+        .vert_text_black => svg_text_misc_compat.renderVerticalLabel(stem, false, buf),
+        .vert_text_b2t_black => svg_text_misc_compat.renderVerticalLabel(stem, true, buf),
+        .center_square_text => svg_text_misc_compat.renderCenterSquareGlyph(stem, buf),
+        .even => svg_evenness_compat.renderEvennessByName(stem, buf),
         .opc => renderOpcClock(stem, buf),
         .optc => renderOptcClock(stem, buf),
         .oc => renderModeIcon(stem, buf),
@@ -181,12 +182,12 @@ fn firstCsvField(text: []const u8) []const u8 {
 fn renderOpcClock(stem: []const u8, buf: []u8) []u8 {
     const label = firstCsvField(stem);
     const set = parseSetLabel(label) orelse return renderFallback("opc", stem, buf);
-    return svg_clock.renderOPC(set, buf);
+    return svg_clock_compat.renderOPC(set, buf);
 }
 
 fn renderOptcClock(stem: []const u8, buf: []u8) []u8 {
     const args = parseOptcImageArgs(stem) orelse return renderFallback("optc", stem, buf);
-    return svg_clock.renderOPTCHarmoniousCompat(
+    return svg_clock_compat.renderOPTCHarmoniousCompat(
         args.set,
         args.label,
         .{
@@ -376,6 +377,7 @@ fn renderChordLike(stem: []const u8, kind: ChordLikeKind, buf: []u8) []u8 {
 fn renderScaleStaff(stem: []const u8, buf: []u8) []u8 {
     const compat_svg = svg_scale_nomod_compat.render(stem, buf);
     if (compat_svg.len > 0) return compat_svg;
+    if (!build_options.enable_harmonious_generic_fallbacks) return renderFallback("scale", stem, buf);
 
     var parts = std.mem.splitScalar(u8, stem, ',');
     const key_token = parts.next() orelse return renderFallback("scale", stem, buf);

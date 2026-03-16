@@ -3,7 +3,7 @@ const testing = std.testing;
 
 const ir = @import("../render/ir.zig");
 const svg_serializer = @import("../render/svg_serializer.zig");
-const clock = @import("../svg/clock.zig");
+const clock = @import("../svg/clock_compat.zig");
 const pcs = @import("../pitch_class_set.zig");
 
 test "render ir serializer preserves path spacing semantics" {

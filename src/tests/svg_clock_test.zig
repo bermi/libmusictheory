@@ -4,6 +4,7 @@ const std = @import("std");
 const pitch = @import("../pitch.zig");
 const pcs = @import("../pitch_class_set.zig");
 const clock = @import("../svg/clock.zig");
+const clock_compat = @import("../svg/clock_compat.zig");
 
 test "clock circle positions follow 30 degree steps" {
     const p0 = clock.circlePosition(0, 50.0, 42.0);
@@ -23,6 +24,8 @@ test "opc svg generation basic validity" {
     try testing.expect(std.mem.startsWith(u8, svg, "<svg"));
     try testing.expect(std.mem.indexOf(u8, svg, "</svg>") != null);
     try testing.expect(std.mem.indexOf(u8, svg, "width=\"100\"") != null);
+    try testing.expect(std.mem.indexOf(u8, svg, "class=\"opc-node\"") != null);
+    try testing.expect(std.mem.indexOf(u8, svg, "shape-rendering=\"geometricPrecision\"") != null);
     try testing.expect(std.mem.indexOf(u8, svg, "fill=\"white\"") != null);
 }
 
@@ -33,19 +36,21 @@ test "optc cluster coloring and center label" {
 
     try testing.expect(std.mem.startsWith(u8, svg, "<svg"));
 
-    const gray_top = "<circle cx=\"50.00\" cy=\"8.00\" r=\"10\" stroke=\"black\" stroke-width=\"3\" fill=\"gray\" />";
+    const gray_top = "<circle class=\"optc-node\" cx=\"50.00\" cy=\"8.00\" r=\"10\" fill=\"gray\" />";
     try testing.expect(std.mem.indexOf(u8, svg, gray_top) != null);
 
-    const black_pc5 = "<circle cx=\"71.00\" cy=\"86.37\" r=\"10\" stroke=\"black\" stroke-width=\"3\" fill=\"black\" />";
+    const black_pc5 = "<circle class=\"optc-node\" cx=\"71.00\" cy=\"86.37\" r=\"10\" fill=\"black\" />";
     try testing.expect(std.mem.indexOf(u8, svg, black_pc5) != null);
 
     try testing.expect(std.mem.indexOf(u8, svg, ">0125<") != null);
+    try testing.expect(std.mem.indexOf(u8, svg, "label-serif inverse-outline optc-center") != null);
+    try testing.expect(std.mem.indexOf(u8, svg, "shape-rendering=\"geometricPrecision\"") != null);
 }
 
 test "optc harmonious compat emits xml prolog and variant glyph path" {
     const set = pcs.fromList(&[_]pitch.PitchClass{ 0, 1 });
     var buf: [16384]u8 = undefined;
-    const svg = clock.renderOPTCHarmoniousCompat(
+    const svg = clock_compat.renderOPTCHarmoniousCompat(
         set,
         "01",
         .{
@@ -64,7 +69,7 @@ test "optc harmonious compat emits xml prolog and variant glyph path" {
 test "optc harmonious compat renders spoke metadata overlays" {
     const set = pcs.fromList(&[_]pitch.PitchClass{ 0, 6 });
     var buf: [16384]u8 = undefined;
-    const svg = clock.renderOPTCHarmoniousCompat(
+    const svg = clock_compat.renderOPTCHarmoniousCompat(
         set,
         "06",
         .{
@@ -82,7 +87,7 @@ test "optc harmonious compat renders spoke metadata overlays" {
 test "optc harmonious compat adds white spokes for large A-label variants" {
     const set = pcs.fromList(&[_]pitch.PitchClass{ 0, 1, 3, 5, 6, 8, 10 });
     var buf: [16384]u8 = undefined;
-    const svg = clock.renderOPTCHarmoniousCompat(
+    const svg = clock_compat.renderOPTCHarmoniousCompat(
         set,
         "013568A",
         .{

@@ -114,6 +114,7 @@ pub fn build(b: *std.Build) void {
     });
     const native_build_options = b.addOptions();
     native_build_options.addOption(bool, "enable_raster_backend", true);
+    native_build_options.addOption(bool, "enable_harmonious_generic_fallbacks", true);
     lib_mod.addOptions("build_options", native_build_options);
 
     // ── Static library (C ABI) ──────────────────────────────────
@@ -160,6 +161,9 @@ pub fn build(b: *std.Build) void {
         .target = wasm_target,
         .optimize = .ReleaseSmall,
     });
+    const wasm_validation_build_options = b.addOptions();
+    wasm_validation_build_options.addOption(bool, "enable_harmonious_generic_fallbacks", false);
+    wasm_mod.addOptions("build_options", wasm_validation_build_options);
     wasm_mod.export_symbol_names = &validation_export_symbols;
 
     const wasm_exe = b.addExecutable(.{
@@ -219,6 +223,7 @@ pub fn build(b: *std.Build) void {
     });
     const wasm_docs_build_options = b.addOptions();
     wasm_docs_build_options.addOption(bool, "enable_raster_backend", false);
+    wasm_docs_build_options.addOption(bool, "enable_harmonious_generic_fallbacks", true);
     wasm_docs_mod.addOptions("build_options", wasm_docs_build_options);
     wasm_docs_mod.export_symbol_names = &full_demo_export_symbols;
 
@@ -274,6 +279,9 @@ pub fn build(b: *std.Build) void {
         .target = wasm_target,
         .optimize = .ReleaseSmall,
     });
+    const wasm_render_compare_build_options = b.addOptions();
+    wasm_render_compare_build_options.addOption(bool, "enable_harmonious_generic_fallbacks", false);
+    wasm_render_compare_mod.addOptions("build_options", wasm_render_compare_build_options);
     wasm_render_compare_mod.export_symbol_names = &render_compare_export_symbols;
 
     const wasm_render_compare_exe = b.addExecutable(.{

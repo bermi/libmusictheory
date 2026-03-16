@@ -3,9 +3,7 @@ const pitch = @import("../pitch.zig");
 const pcs = @import("../pitch_class_set.zig");
 const cluster = @import("../cluster.zig");
 const set_class = @import("../set_class.zig");
-const optc_templates = @import("../generated/harmonious_optc_templates.zig");
-const render_ir = @import("../render/ir.zig");
-const render_svg_serializer = @import("../render/svg_serializer.zig");
+const svg_quality = @import("quality.zig");
 
 const TAU = std.math.pi * 2.0;
 
@@ -17,92 +15,6 @@ const OPC_STROKE_COLORS = [_][]const u8{
 const OPC_FILL_COLORS = [_][]const u8{
     "#00C", "#a4f", "#f0f", "#a16", "#e02", "#f91",
     "#ff0", "#1e0", "#094", "#0bb", "#16b", "#28f",
-};
-
-const OPC_CX = [_][]const u8{
-    "50",
-    "71",
-    "86.37306695894642",
-    "92",
-    "86.37306695894642",
-    "71",
-    "50",
-    "29.000000000000014",
-    "13.626933041053585",
-    "8.000000000000002",
-    "13.62693304105358",
-    "28.999999999999982",
-};
-
-const OPC_CY = [_][]const u8{
-    "8.000000000000002",
-    "13.626933041053574",
-    "28.999999999999993",
-    "50",
-    "71",
-    "86.37306695894642",
-    "92",
-    "86.37306695894644",
-    "71.00000000000001",
-    "50.000000000000014",
-    "28.999999999999993",
-    "13.62693304105359",
-};
-
-pub const OPTC_COMPAT_PC_ORDER = [_]u4{ 3, 4, 5, 6, 7, 8, 9, 10, 11, 0, 1, 2 };
-
-const OPTC_COMPAT_CX = [_][]const u8{
-    "50.00",
-    "71.00",
-    "86.37",
-    "92.00",
-    "86.37",
-    "71.00",
-    "50.00",
-    "29.00",
-    "13.63",
-    "8.00",
-    "13.63",
-    "29.00",
-};
-
-const OPTC_COMPAT_CY = [_][]const u8{
-    "8.00",
-    "13.63",
-    "29.00",
-    "50.00",
-    "71.00",
-    "86.37",
-    "92.00",
-    "86.37",
-    "71.00",
-    "50.00",
-    "29.00",
-    "13.63",
-};
-
-const OPTC_COMPAT_SPOKE_PATHS = [_][]const u8{
-    "M50,18L50,30",
-    "M66,22.287187078897965L60,32.67949192431123",
-    "M77.71281292110204,34L67.32050807568878,40",
-    "M82,50L70,50",
-    "M77.71281292110204,66L67.32050807568878,60",
-    "M66,77.71281292110203L60,67.32050807568876",
-    "M50,82L50,70",
-    "M34.00000000000001,77.71281292110204L40,67.32050807568878",
-    "M22.28718707889796,66L32.67949192431122,60",
-    "M18,50.00000000000001L30,50",
-    "M22.287187078897958,34.00000000000001L32.67949192431122,40.00000000000001",
-    "M33.999999999999986,22.28718707889797L39.99999999999999,32.67949192431123",
-};
-
-const OPTC_PRE_G_BLANK_LINES = [_]u8{ 4, 8, 7, 6, 5 };
-const OPTC_POST_G_BLANK_LINES = [_]u8{ 6, 2, 3, 4, 5 };
-
-pub const OptcCompatMetadata = struct {
-    cluster_mask: pcs.PitchClassSet,
-    dash_mask: pcs.PitchClassSet,
-    black_mask: pcs.PitchClassSet,
 };
 
 pub const Point = struct {
@@ -122,8 +34,12 @@ pub fn renderOPC(set: pcs.PitchClassSet, buf: []u8) []u8 {
     var stream = std.io.fixedBufferStream(buf);
     const w = stream.writer();
 
-    w.writeAll("<svg version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" x=\"0px\" y=\"0px\" width=\"100\" height=\"100\" xml:space=\"preserve\" viewBox=\"0 0 100 100\">\n") catch unreachable;
-    w.writeAll("  <rect x=\"0\" y=\"0\" width=\"100\" height=\"100\" style=\"fill: white\"/>\n") catch unreachable;
+    svg_quality.writeSvgPrelude(w, "100", "100", "0 0 100 100",
+        \\.opc-bg{fill:white}
+        \\.opc-node{vector-effect:non-scaling-stroke}
+        \\
+    ) catch unreachable;
+    w.writeAll("<rect class=\"opc-bg\" x=\"0\" y=\"0\" width=\"100\" height=\"100\" />\n") catch unreachable;
 
     var pc: u4 = 0;
     while (pc < 12) : (pc += 1) {
@@ -131,13 +47,12 @@ pub fn renderOPC(set: pcs.PitchClassSet, buf: []u8) []u8 {
         const fill = if (present) OPC_FILL_COLORS[pc] else "white";
 
         w.print(
-            "  <circle transform=\"scale(0.877),translate(7,7)\" cx=\"{s}\" cy=\"{s}\" r=\"9.5\" stroke=\"{s}\" stroke-width=\"3\" fill=\"{s}\"/>\n",
-            .{ OPC_CX[pc], OPC_CY[pc], OPC_STROKE_COLORS[pc], fill },
+            "<circle class=\"opc-node\" transform=\"scale(0.877),translate(7,7)\" cx=\"{d:.12}\" cy=\"{d:.12}\" r=\"9.5\" stroke=\"{s}\" stroke-width=\"3\" fill=\"{s}\" />\n",
+            .{ circlePosition(@intCast(pc), 50.0, 42.0).x, circlePosition(@intCast(pc), 50.0, 42.0).y, OPC_STROKE_COLORS[pc], fill },
         ) catch unreachable;
     }
 
-    w.writeAll("\n") catch unreachable;
-    w.writeAll("</svg>") catch unreachable;
+    w.writeAll("</svg>\n") catch unreachable;
     return buf[0..stream.pos];
 }
 
@@ -147,8 +62,14 @@ pub fn renderOPTC(set: pcs.PitchClassSet, prime_label: []const u8, buf: []u8) []
 
     const cluster_info = cluster.getClusters(set);
 
-    w.writeAll("<svg version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\" width=\"70\" height=\"70\" viewBox=\"-7 -7 114 114\">\n") catch unreachable;
-    w.writeAll("<circle cx=\"50.00\" cy=\"50.00\" r=\"20\" stroke=\"black\" stroke-width=\"2\" fill=\"transparent\" />\n") catch unreachable;
+    svg_quality.writeSvgPrelude(w, "70", "70", "-7 -7 114 114",
+        \\.optc-ring,.optc-node{vector-effect:non-scaling-stroke}
+        \\.optc-ring{fill:none;stroke:black;stroke-width:2}
+        \\.optc-node{stroke:black;stroke-width:3}
+        \\.optc-center{font-size:16px;fill:black}
+        \\
+    ) catch unreachable;
+    w.writeAll("<circle class=\"optc-ring\" cx=\"50.00\" cy=\"50.00\" r=\"20\" />\n") catch unreachable;
 
     var pc: u4 = 0;
     while (pc < 12) : (pc += 1) {
@@ -165,200 +86,15 @@ pub fn renderOPTC(set: pcs.PitchClassSet, prime_label: []const u8, buf: []u8) []
             "black";
 
         w.print(
-            "<circle cx=\"{d:.2}\" cy=\"{d:.2}\" r=\"10\" stroke=\"black\" stroke-width=\"3\" fill=\"{s}\" />\n",
+            "<circle class=\"optc-node\" cx=\"{d:.2}\" cy=\"{d:.2}\" r=\"10\" fill=\"{s}\" />\n",
             .{ p.x, p.y, fill },
         ) catch unreachable;
     }
 
-    w.print("<text x=\"50\" y=\"55\" text-anchor=\"middle\" font-size=\"16\" fill=\"black\">{s}</text>\n", .{prime_label}) catch unreachable;
+    w.print("<text class=\"label-serif inverse-outline optc-center\" x=\"50\" y=\"55\" text-anchor=\"middle\">{s}</text>\n", .{prime_label}) catch unreachable;
     w.writeAll("</svg>\n") catch unreachable;
 
     return buf[0..stream.pos];
-}
-
-pub fn renderOPTCHarmoniousCompat(set: pcs.PitchClassSet, label: []const u8, metadata: OptcCompatMetadata, buf: []u8) []u8 {
-    var ops: [512]render_ir.Op = undefined;
-    var builder = render_ir.Builder.init(&ops);
-
-    const variant_index = findOptcVariantIndex(label);
-    const variant = optc_templates.OPTC_VARIANTS[variant_index];
-    const write_spokes = metadata.dash_mask != 0 and metadata.black_mask != 0;
-
-    builder.raw("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n") catch return "";
-    builder.raw("<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n") catch return "";
-    builder.raw("<svg version=\"1.1\" id=\"Layer_1\" xmlns=\"http://www.w3.org/2000/svg\"\n") catch return "";
-    builder.raw("  xmlns:xlink=\"http://www.w3.org/1999/xlink\" x=\"0px\" y=\"0px\"\n") catch return "";
-    builder.raw("        width=\"70px\" height=\"70px\" viewBox=\"-7 -7 114 114\"\n") catch return "";
-    builder.raw("        enable-background=\"new 0 0 70 70\" xml:space=\"preserve\">\n") catch return "";
-    builder.raw("\n") catch return "";
-    builder.raw("<!--rect x=\"-200\" y=\"-200\" width=\"400\" height=\"400\" style=\"fill:#eee\" / -->\n") catch return "";
-
-    if (write_spokes) {
-        builder.raw("\n") catch return "";
-        appendOptcSpokePaths(&builder, metadata.dash_mask, metadata.black_mask, label.len >= 7) catch return "";
-        builder.raw("\n\n") catch return "";
-    } else {
-        builder.raw("\n\n\n") catch return "";
-    }
-
-    builder.circle(.{
-        .cx = "50.00",
-        .cy = "50.00",
-        .r = "20",
-        .stroke = "black",
-        .stroke_width = "2",
-        .fill = variant.center_fill,
-    }) catch return "";
-    builder.raw("\n") catch return "";
-
-    for (OPTC_COMPAT_PC_ORDER) |pc| {
-        const bit = @as(pcs.PitchClassSet, 1) << pc;
-        const present = (set & bit) != 0;
-        const in_cluster = (metadata.cluster_mask & bit) != 0;
-        const fill = if (!present)
-            "transparent"
-        else if (in_cluster)
-            "gray"
-        else
-            "black";
-
-        builder.circle(.{
-            .cx = OPTC_COMPAT_CX[pc],
-            .cy = OPTC_COMPAT_CY[pc],
-            .r = "10",
-            .stroke = "black",
-            .stroke_width = "3",
-            .fill = fill,
-        }) catch return "";
-    }
-
-    appendBlankLines(&builder, OPTC_PRE_G_BLANK_LINES[variant_index]) catch return "";
-
-    const g_attrs = [_]render_ir.Attr{
-        .{ .key = "transform", .value = variant.transform },
-    };
-    builder.groupStart(&g_attrs, true) catch return "";
-    builder.path(.{
-        .fill = variant.text_fill,
-        .d = variant.text_path,
-    }) catch return "";
-    builder.groupEnd(true) catch return "";
-    appendBlankLines(&builder, OPTC_POST_G_BLANK_LINES[variant_index]) catch return "";
-    builder.raw("</svg>\n") catch return "";
-
-    var stream = std.io.fixedBufferStream(buf);
-    render_svg_serializer.write(builder.scene(), stream.writer(), .strict) catch return "";
-    return buf[0..stream.pos];
-}
-
-pub fn optcCompatVariant(label: []const u8) optc_templates.OptcVariant {
-    return optc_templates.OPTC_VARIANTS[findOptcVariantIndex(label)];
-}
-
-pub fn optcCompatCirclePosition(pc: u4) Point {
-    return switch (pc) {
-        0 => .{ .x = 50.00, .y = 8.00 },
-        1 => .{ .x = 71.00, .y = 13.63 },
-        2 => .{ .x = 86.37, .y = 29.00 },
-        3 => .{ .x = 92.00, .y = 50.00 },
-        4 => .{ .x = 86.37, .y = 71.00 },
-        5 => .{ .x = 71.00, .y = 86.37 },
-        6 => .{ .x = 50.00, .y = 92.00 },
-        7 => .{ .x = 29.00, .y = 86.37 },
-        8 => .{ .x = 13.63, .y = 71.00 },
-        9 => .{ .x = 8.00, .y = 50.00 },
-        10 => .{ .x = 13.63, .y = 29.00 },
-        11 => .{ .x = 29.00, .y = 13.63 },
-        else => unreachable,
-    };
-}
-
-pub fn optcCompatSpokePath(pc: u4) []const u8 {
-    return OPTC_COMPAT_SPOKE_PATHS[pc];
-}
-
-fn appendBlankLines(builder: *render_ir.Builder, count: usize) !void {
-    var i: usize = 0;
-    while (i < count) : (i += 1) {
-        try builder.raw("\n");
-    }
-}
-
-fn appendOptcSpokePaths(builder: *render_ir.Builder, dash_mask: pcs.PitchClassSet, black_mask: pcs.PitchClassSet, include_white_overlay: bool) !void {
-    var pc: u4 = 0;
-    while (pc < 12) : (pc += 1) {
-        const bit = @as(pcs.PitchClassSet, 1) << pc;
-        if ((dash_mask & bit) != 0) {
-            try builder.path(.{
-                .stroke = "#777",
-                .stroke_width = "9",
-                .fill = "transparent",
-                .stroke_dasharray = "1.6,0.8",
-                .d = OPTC_COMPAT_SPOKE_PATHS[pc],
-                .newline = false,
-            });
-        }
-    }
-
-    pc = 0;
-    while (pc < 12) : (pc += 1) {
-        const bit = @as(pcs.PitchClassSet, 1) << pc;
-        if ((black_mask & bit) != 0) {
-            try builder.path(.{
-                .stroke = "black",
-                .stroke_width = "9",
-                .fill = "transparent",
-                .d = OPTC_COMPAT_SPOKE_PATHS[pc],
-                .spaces_before_d = 2,
-                .newline = false,
-            });
-        }
-    }
-
-    if (!include_white_overlay) return;
-
-    pc = 0;
-    while (pc < 12) : (pc += 1) {
-        const bit = @as(pcs.PitchClassSet, 1) << pc;
-        if ((black_mask & bit) != 0) {
-            try builder.path(.{
-                .stroke = "white",
-                .stroke_width = "5",
-                .fill = "transparent",
-                .d = OPTC_COMPAT_SPOKE_PATHS[pc],
-                .spaces_before_d = 2,
-                .newline = false,
-            });
-        }
-    }
-}
-
-fn findOptcVariantIndex(label: []const u8) usize {
-    for (optc_templates.OPTC_SPECIAL_LABELS) |entry| {
-        if (std.mem.eql(u8, entry.label, label)) return entry.variant_index;
-    }
-
-    var normalized_buf: [16]u8 = undefined;
-    const normalized = normalizeLabelForOptcVariantLookup(label, &normalized_buf);
-    if (!std.mem.eql(u8, label, normalized)) {
-        for (optc_templates.OPTC_SPECIAL_LABELS) |entry| {
-            if (std.mem.eql(u8, entry.label, normalized)) return entry.variant_index;
-        }
-    }
-
-    return 0;
-}
-
-fn normalizeLabelForOptcVariantLookup(label: []const u8, out: []u8) []const u8 {
-    if (label.len > out.len) return label;
-    for (label, 0..) |ch, i| {
-        out[i] = switch (ch) {
-            'A' => 't',
-            'B' => 'e',
-            else => ch,
-        };
-    }
-    return out[0..label.len];
 }
 
 pub fn generateAllOPTCFiles(dir: std.fs.Dir) !void {

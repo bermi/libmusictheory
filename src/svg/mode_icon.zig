@@ -1,5 +1,6 @@
 const std = @import("std");
 const pitch = @import("../pitch.zig");
+const svg_quality = @import("quality.zig");
 
 const PC_COLORS = [_][]const u8{
     "#00C", "#a4f", "#f0f", "#a16", "#e02", "#f91",
@@ -37,9 +38,13 @@ pub fn renderModeIcon(spec: ModeIconSpec, buf: []u8) []u8 {
     const color = PC_COLORS[root_pc];
     const roman = degreeRoman(spec);
 
-    w.writeAll("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"70\" height=\"70\" viewBox=\"-7 -7 114 114\">\n") catch unreachable;
-    w.print("<rect x=\"8\" y=\"8\" width=\"86\" height=\"86\" stroke=\"black\" stroke-width=\"4\" fill=\"{s}\" />\n", .{color}) catch unreachable;
-    w.print("<text x=\"51\" y=\"58\" text-anchor=\"middle\" font-size=\"30\" fill=\"white\" font-family=\"serif\">{s}</text>\n", .{roman}) catch unreachable;
+    svg_quality.writeSvgPrelude(w, "70", "70", "-7 -7 114 114",
+        \\.mode-frame{vector-effect:non-scaling-stroke;stroke:black;stroke-width:4;stroke-linejoin:round}
+        \\.mode-label{font-size:30px;fill:white}
+        \\
+    ) catch unreachable;
+    w.print("<rect class=\"mode-frame\" x=\"8\" y=\"8\" width=\"86\" height=\"86\" rx=\"10\" ry=\"10\" fill=\"{s}\" />\n", .{color}) catch unreachable;
+    w.print("<text class=\"label-serif inverse-outline mode-label\" x=\"51\" y=\"58\" text-anchor=\"middle\">{s}</text>\n", .{roman}) catch unreachable;
     w.writeAll("</svg>\n") catch unreachable;
 
     return buf[0..stream.pos];

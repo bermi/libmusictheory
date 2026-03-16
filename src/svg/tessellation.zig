@@ -1,6 +1,7 @@
 const std = @import("std");
 const pitch = @import("../pitch.zig");
 const pcs = @import("../pitch_class_set.zig");
+const svg_quality = @import("quality.zig");
 
 pub const CANVAS_WIDTH: u16 = 300;
 pub const CANVAS_HEIGHT: u16 = 360;
@@ -119,9 +120,12 @@ pub fn renderScaleTessellation(buf: []u8) []u8 {
     var stream = std.io.fixedBufferStream(buf);
     const w = stream.writer();
 
-    w.print(
-        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{d}\" height=\"{d}\" viewBox=\"0 0 {d} {d}\">\n",
-        .{ CANVAS_WIDTH, CANVAS_HEIGHT, CANVAS_WIDTH, CANVAS_HEIGHT },
+    svg_quality.writeSvgPrelude(w, "300", "360", "0 0 300 360",
+        \\.vl-edge,.tile{vector-effect:non-scaling-stroke}
+        \\.vl-edge{stroke:#222;stroke-width:0.75;opacity:0.42}
+        \\.tile{stroke:black;stroke-width:1;stroke-linejoin:round}
+        \\.tile-label{font-size:8px;fill:white}
+        \\
     ) catch unreachable;
 
     w.print(
@@ -132,10 +136,7 @@ pub fn renderScaleTessellation(buf: []u8) []u8 {
     for (edges) |edge| {
         const from = tiles[edge.from_idx];
         const to = tiles[edge.to_idx];
-        w.print(
-            "<line class=\"vl-edge\" x1=\"{d:.2}\" y1=\"{d:.2}\" x2=\"{d:.2}\" y2=\"{d:.2}\" stroke=\"#222\" stroke-width=\"0.7\" opacity=\"0.5\" />\n",
-            .{ from.cx, from.cy, to.cx, to.cy },
-        ) catch unreachable;
+        w.print("<line class=\"vl-edge\" x1=\"{d:.2}\" y1=\"{d:.2}\" x2=\"{d:.2}\" y2=\"{d:.2}\" />\n", .{ from.cx, from.cy, to.cx, to.cy }) catch unreachable;
     }
 
     for (tiles) |tile| {
@@ -235,10 +236,7 @@ fn drawTile(writer: anytype, tile: Tile) void {
         .harmonic_major => "M",
     };
 
-    writer.print(
-        "<text x=\"{d:.2}\" y=\"{d:.2}\" text-anchor=\"middle\" dominant-baseline=\"middle\" font-size=\"8\" fill=\"white\" font-family=\"sans-serif\">{s}{s}</text>\n",
-        .{ tile.cx, tile.cy + 0.5, PC_NAMES[tile.root], label },
-    ) catch unreachable;
+    writer.print("<text class=\"label-sans inverse-outline tile-label\" x=\"{d:.2}\" y=\"{d:.2}\" text-anchor=\"middle\" dominant-baseline=\"middle\">{s}{s}</text>\n", .{ tile.cx, tile.cy + 0.5, PC_NAMES[tile.root], label }) catch unreachable;
 }
 
 fn drawPolygon(writer: anytype, class_name: []const u8, shape_name: []const u8, cx: f32, cy: f32, radius: f32, sides: u8, rotation: f64, fill: []const u8) void {
@@ -252,5 +250,5 @@ fn drawPolygon(writer: anytype, class_name: []const u8, shape_name: []const u8, 
         writer.print("{d:.2},{d:.2} ", .{ x, y }) catch unreachable;
     }
 
-    writer.print("\" fill=\"{s}\" stroke=\"black\" stroke-width=\"1\" />\n", .{fill}) catch unreachable;
+    writer.print("\" fill=\"{s}\" />\n", .{fill}) catch unreachable;
 }

@@ -1,5 +1,6 @@
 const std = @import("std");
 const guitar = @import("../guitar.zig");
+const svg_quality = @import("quality.zig");
 
 const GRID_LEFT: f32 = 20.0;
 const GRID_TOP: f32 = 20.0;
@@ -52,9 +53,7 @@ pub fn renderDiagram(spec: DiagramSpec, buf: []u8) []u8 {
 
     const window = genericFretWindow(spec.frets, spec.window_start, spec.visible_frets);
 
-    w.writeAll(
-        \\<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100" shape-rendering="geometricPrecision" text-rendering="geometricPrecision">
-        \\<style>
+    svg_quality.writeSvgPrelude(w, "100", "100", "0 0 100 100",
         \\.string,.fret,.marker-open,.marker-muted,.position{vector-effect:non-scaling-stroke}
         \\.string{stroke:#171717;stroke-width:1.1;stroke-linecap:round}
         \\.fret{stroke:#171717;stroke-width:1.35;stroke-linecap:round}
@@ -63,8 +62,7 @@ pub fn renderDiagram(spec: DiagramSpec, buf: []u8) []u8 {
         \\.barre{fill:#111}
         \\.marker-open{fill:#fff;stroke:#111;stroke-width:1.7}
         \\.marker-muted{stroke:#111;stroke-width:1.9;stroke-linecap:round}
-        \\.position{fill:#4b4338;font-size:10px;font-weight:600;font-family:ui-sans-serif,-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif}
-        \\</style>
+        \\.position{fill:#4b4338;font-size:10px;font-weight:600;font-family:"Avenir Next","Avenir","SF Pro Display","Segoe UI","Helvetica Neue",Arial,sans-serif}
         \\
     ) catch unreachable;
 

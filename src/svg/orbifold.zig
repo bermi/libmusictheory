@@ -2,6 +2,7 @@ const std = @import("std");
 const pitch = @import("../pitch.zig");
 const pcs = @import("../pitch_class_set.zig");
 const voice_leading = @import("../voice_leading.zig");
+const svg_quality = @import("quality.zig");
 
 pub const NODE_COUNT: usize = 40;
 pub const MAX_EDGES: usize = 512;
@@ -90,19 +91,27 @@ pub fn renderTriadOrbifold(buf: []u8) []u8 {
     var edges_buf: [MAX_EDGES]Edge = undefined;
     const edges = buildTriadEdges(nodes, &edges_buf);
 
-    w.writeAll("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 540 540\" width=\"100%\" height=\"100%\">\n") catch unreachable;
-    w.writeAll("<ellipse cx=\"270\" cy=\"270\" rx=\"156.25\" ry=\"247.5\" style=\"fill:none;stroke:#bbb;stroke-width:2px;\" />\n") catch unreachable;
+    svg_quality.writeSvgPrelude(w, "100%", "100%", "0 0 540 540",
+        \\.orbifold-shell,.orbifold-edge,.orbifold-node{vector-effect:non-scaling-stroke}
+        \\.orbifold-shell{fill:none;stroke:#b7bcc6;stroke-width:2}
+        \\.orbifold-edge{stroke:#aeb4bf;stroke-width:1.1}
+        \\.orbifold-node{stroke-width:1.1}
+        \\.orbifold-label{font-size:6px;fill:white}
+        \\
+    ) catch unreachable;
+    w.writeAll("<rect x=\"0\" y=\"0\" width=\"540\" height=\"540\" fill=\"white\" />\n") catch unreachable;
+    w.writeAll("<ellipse class=\"orbifold-shell\" cx=\"270\" cy=\"270\" rx=\"156.25\" ry=\"247.5\" />\n") catch unreachable;
 
     for (edges) |edge| {
         const from = nodes[edge.from_idx];
         const to = nodes[edge.to_idx];
-        w.print("<line class=\"orbifold-edge\" x1=\"{d:.2}\" y1=\"{d:.2}\" x2=\"{d:.2}\" y2=\"{d:.2}\" stroke=\"#bbb\" stroke-width=\"1\" />\n", .{ from.x, from.y, to.x, to.y }) catch unreachable;
+        w.print("<line class=\"orbifold-edge\" x1=\"{d:.2}\" y1=\"{d:.2}\" x2=\"{d:.2}\" y2=\"{d:.2}\" />\n", .{ from.x, from.y, to.x, to.y }) catch unreachable;
     }
 
     for (nodes) |node| {
         const style = nodeStyle(node.quality);
-        w.print("<circle class=\"orbifold-node\" cx=\"{d:.2}\" cy=\"{d:.2}\" r=\"8\" fill=\"{s}\" stroke=\"{s}\" stroke-width=\"1\" />\n", .{ node.x, node.y, style.fill, style.stroke }) catch unreachable;
-        w.print("<text x=\"{d:.2}\" y=\"{d:.2}\" text-anchor=\"middle\" font-size=\"6\" fill=\"white\">{s}{s}</text>\n", .{ node.x, node.y + 2.2, rootName(node.root), qualitySuffix(node.quality) }) catch unreachable;
+        w.print("<circle class=\"orbifold-node\" cx=\"{d:.2}\" cy=\"{d:.2}\" r=\"8\" fill=\"{s}\" stroke=\"{s}\" />\n", .{ node.x, node.y, style.fill, style.stroke }) catch unreachable;
+        w.print("<text class=\"label-sans inverse-outline orbifold-label\" x=\"{d:.2}\" y=\"{d:.2}\" text-anchor=\"middle\">{s}{s}</text>\n", .{ node.x, node.y + 2.2, rootName(node.root), qualitySuffix(node.quality) }) catch unreachable;
     }
 
     w.writeAll("</svg>\n") catch unreachable;
