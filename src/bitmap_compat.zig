@@ -25,8 +25,11 @@ const PATH_EDGE_LIMIT: usize = 4096;
 const TAG_TRANSFORM_STACK_LIMIT: usize = 16;
 const OC_TEMPLATE_BUFFER_LIMIT: usize = 8 * 1024;
 const CHORD_COMPAT_SVG_BUFFER_LIMIT: usize = 64 * 1024;
+const GENERATED_COMPAT_SVG_BUFFER_LIMIT: usize = 256 * 1024;
 const SCALE_SOURCE_WIDTH: f64 = 363.0;
 const SCALE_SOURCE_HEIGHT: f64 = 113.0;
+const EVEN_SOURCE_WIDTH: u32 = 500;
+const EVEN_SOURCE_HEIGHT: u32 = 650;
 const EADGBE_STRING_COUNT: usize = fret_compat.NumStrings;
 const CHORD_CLIPPED_SOURCE_WIDTH: f64 = 170.0;
 const CHORD_CLIPPED_SOURCE_HEIGHT: f64 = 82.05128205128206;
@@ -261,7 +264,7 @@ fn scaledDimFloat(source: f64, scale_numerator: u32, scale_denominator: u32) u32
 
 pub fn kindSupported(kind_index: usize) bool {
     return switch (svg_compat.kindId(kind_index) orelse return false) {
-        .scale, .opc, .oc, .optc, .eadgbe, .wide_chord, .chord_clipped, .grand_chord, .chord, .center_square_text, .vert_text_black, .vert_text_b2t_black => true,
+        .even, .scale, .opc, .oc, .optc, .eadgbe, .wide_chord, .chord_clipped, .grand_chord, .chord, .center_square_text, .vert_text_black, .vert_text_b2t_black => true,
         else => false,
     };
 }
@@ -271,7 +274,7 @@ pub fn candidateBackend(kind_index: usize) ?CandidateBackend {
         .opc, .optc, .eadgbe => .direct_primitives,
         .center_square_text, .vert_text_black, .vert_text_b2t_black => .path_geometry,
         .oc => .markup_template_raster,
-        .scale, .wide_chord, .chord_clipped, .grand_chord, .chord => .generated_svg_raster,
+        .even, .scale, .wide_chord, .chord_clipped, .grand_chord, .chord => .generated_svg_raster,
         else => null,
     };
 }
@@ -293,6 +296,7 @@ pub fn targetWidthScaled(kind_index: usize, image_index: usize, scale_numerator:
     _ = image_index;
     const kind_id = svg_compat.kindId(kind_index) orelse return 0;
     return switch (kind_id) {
+        .even => scaledDim(EVEN_SOURCE_WIDTH, scale_numerator, scale_denominator),
         .scale => scaledDimFloat(SCALE_SOURCE_WIDTH, scale_numerator, scale_denominator),
         .opc => scaledDim(100, scale_numerator, scale_denominator),
         .eadgbe => scaledDim(100, scale_numerator, scale_denominator),
@@ -315,6 +319,7 @@ pub fn targetHeightScaled(kind_index: usize, image_index: usize, scale_numerator
     _ = image_index;
     const kind_id = svg_compat.kindId(kind_index) orelse return 0;
     return switch (kind_id) {
+        .even => scaledDim(EVEN_SOURCE_HEIGHT, scale_numerator, scale_denominator),
         .scale => scaledDimFloat(SCALE_SOURCE_HEIGHT, scale_numerator, scale_denominator),
         .opc => scaledDim(100, scale_numerator, scale_denominator),
         .eadgbe => scaledDim(100, scale_numerator, scale_denominator),
@@ -358,6 +363,7 @@ pub fn renderCandidateRgbaScaled(kind_index: usize, image_index: usize, scale_nu
     var surface = try initSurface(kind_id, required, out_rgba, scale_numerator, scale_denominator);
 
     switch (kind_id) {
+        .even => try renderGeneratedCompatCandidateExtended(&surface, kind_index, image_index),
         .scale => try renderGeneratedCompatCandidate(&surface, kind_index, image_index),
         .opc => try renderOpcCandidate(&surface, image_name, scale_numerator, scale_denominator),
         .oc => try renderOcCandidate(&surface, image_name),
@@ -389,6 +395,7 @@ pub fn renderReferenceSvgRgbaScaled(kind_index: usize, svg: []const u8, scale_nu
 
     var surface = try initSurface(kind_id, required, out_rgba, scale_numerator, scale_denominator);
     switch (kind_id) {
+        .even => try renderMarkupReferenceExtended(&surface, svg),
         .scale => try renderMarkupReference(&surface, svg),
         .opc => try renderOpcReference(&surface, svg, scale_numerator, scale_denominator),
         .oc => try renderOcReference(&surface, svg),
@@ -404,6 +411,7 @@ pub fn renderReferenceSvgRgbaScaled(kind_index: usize, svg: []const u8, scale_nu
 
 fn initSurface(kind_id: svg_compat.KindId, required: usize, out_rgba: []u8, scale_numerator: u32, scale_denominator: u32) Error!Surface {
     const width = switch (kind_id) {
+        .even => scaledDim(EVEN_SOURCE_WIDTH, scale_numerator, scale_denominator),
         .scale => scaledDimFloat(SCALE_SOURCE_WIDTH, scale_numerator, scale_denominator),
         .opc => scaledDim(100, scale_numerator, scale_denominator),
         .eadgbe => scaledDim(100, scale_numerator, scale_denominator),
@@ -417,6 +425,7 @@ fn initSurface(kind_id: svg_compat.KindId, required: usize, out_rgba: []u8, scal
         else => return error.UnsupportedKind,
     };
     const height = switch (kind_id) {
+        .even => scaledDim(EVEN_SOURCE_HEIGHT, scale_numerator, scale_denominator),
         .scale => scaledDimFloat(SCALE_SOURCE_HEIGHT, scale_numerator, scale_denominator),
         .opc => scaledDim(100, scale_numerator, scale_denominator),
         .eadgbe => scaledDim(100, scale_numerator, scale_denominator),
@@ -637,10 +646,125 @@ fn renderMarkup(surface: *Surface, svg: []const u8, root: Matrix) Error!void {
     }
 }
 
+const GradientStop = struct {
+    offset: f64 = 0.0,
+    color: [4]u8 = .{ 0, 0, 0, 0 },
+};
+
+const LinearGradient = struct {
+    id: []const u8,
+    x1: f64 = 0.0,
+    y1: f64 = 0.0,
+    x2: f64 = 1.0,
+    y2: f64 = 0.0,
+    transform: Matrix = .{},
+    stops: [2]GradientStop = .{ .{}, .{} },
+    stop_count: usize = 0,
+};
+
+const GradientRegistry = struct {
+    entries: [8]LinearGradient = undefined,
+    count: usize = 0,
+
+    fn append(self: *GradientRegistry, gradient: LinearGradient) Error!void {
+        if (self.count >= self.entries.len) return error.UnsupportedSvgFeature;
+        self.entries[self.count] = gradient;
+        self.count += 1;
+    }
+
+    fn find(self: *const GradientRegistry, id: []const u8) ?LinearGradient {
+        for (self.entries[0..self.count]) |gradient| {
+            if (std.mem.eql(u8, gradient.id, id)) return gradient;
+        }
+        return null;
+    }
+};
+
+const MarkupFrame = struct {
+    transform: Matrix,
+    suppress: bool,
+};
+
+fn renderMarkupExtended(surface: *Surface, svg: []const u8, root: Matrix, gradients: *const GradientRegistry) Error!void {
+    var stack: [TAG_TRANSFORM_STACK_LIMIT]MarkupFrame = undefined;
+    var depth: usize = 1;
+    stack[0] = .{ .transform = root, .suppress = false };
+
+    var cursor: usize = 0;
+    while (nextTag(svg, cursor)) |tag| {
+        cursor = tag.end;
+        const tag_text = svg[tag.start..tag.end];
+
+        if (tag.close) {
+            if (std.mem.eql(u8, tag.name, "svg") or std.mem.eql(u8, tag.name, "g") or std.mem.eql(u8, tag.name, "defs") or std.mem.eql(u8, tag.name, "linearGradient")) {
+                if (depth > 1) depth -= 1;
+            }
+            continue;
+        }
+
+        const current = stack[depth - 1];
+        if (std.mem.eql(u8, tag.name, "svg") or std.mem.eql(u8, tag.name, "g") or std.mem.eql(u8, tag.name, "defs") or std.mem.eql(u8, tag.name, "linearGradient")) {
+            if (tag.self_close) continue;
+            if (depth >= stack.len) return error.UnsupportedSvgFeature;
+            stack[depth] = .{
+                .transform = if (std.mem.eql(u8, tag.name, "svg") or std.mem.eql(u8, tag.name, "g"))
+                    if (parseTransformAttr(tag_text)) |element_transform|
+                        current.transform.multiply(element_transform)
+                    else
+                        current.transform
+                else
+                    current.transform,
+                .suppress = current.suppress or std.mem.eql(u8, tag.name, "defs") or std.mem.eql(u8, tag.name, "linearGradient"),
+            };
+            depth += 1;
+            continue;
+        }
+
+        if (current.suppress) continue;
+
+        if (std.mem.eql(u8, tag.name, "rect")) {
+            try renderRectTag(tag_text, current.transform, surface);
+            continue;
+        }
+
+        if (std.mem.eql(u8, tag.name, "circle")) {
+            try renderCircleTag(tag_text, current.transform, surface);
+            continue;
+        }
+
+        if (std.mem.eql(u8, tag.name, "line")) {
+            try renderLineTag(tag_text, current.transform, surface);
+            continue;
+        }
+
+        if (std.mem.eql(u8, tag.name, "ellipse")) {
+            try renderEllipseTag(tag_text, current.transform, surface);
+            continue;
+        }
+
+        if (std.mem.eql(u8, tag.name, "path")) {
+            try renderPathTagExtended(tag_text, current.transform, surface, gradients);
+            continue;
+        }
+
+        if (std.mem.eql(u8, tag.name, "stop")) continue;
+
+        return error.UnsupportedSvgFeature;
+    }
+}
+
 fn renderSvgDocument(surface: *Surface, svg: []const u8) Error!void {
     clear(surface, .{ 0, 0, 0, 0 });
     const root = try svgDocumentMatrix(surface, svg);
     try renderMarkup(surface, svg, root);
+}
+
+fn renderSvgDocumentExtended(surface: *Surface, svg: []const u8) Error!void {
+    clear(surface, .{ 0, 0, 0, 0 });
+    const root = try svgDocumentMatrix(surface, svg);
+    var gradients = GradientRegistry{};
+    try collectLinearGradients(svg, &gradients);
+    try renderMarkupExtended(surface, svg, root, &gradients);
 }
 
 fn svgDocumentMatrix(surface: *const Surface, svg: []const u8) Error!Matrix {
@@ -811,14 +935,25 @@ fn renderChordCompatCandidate(surface: *Surface, image_name: []const u8, kind: c
 }
 
 fn renderGeneratedCompatCandidate(surface: *Surface, kind_index: usize, image_index: usize) Error!void {
-    var svg_buf: [CHORD_COMPAT_SVG_BUFFER_LIMIT]u8 = undefined;
+    var svg_buf: [GENERATED_COMPAT_SVG_BUFFER_LIMIT]u8 = undefined;
     const svg = svg_compat.generateByIndex(kind_index, image_index, &svg_buf);
     if (svg.len == 0) return error.InvalidImage;
     try renderSvgDocument(surface, svg);
 }
 
+fn renderGeneratedCompatCandidateExtended(surface: *Surface, kind_index: usize, image_index: usize) Error!void {
+    var svg_buf: [GENERATED_COMPAT_SVG_BUFFER_LIMIT]u8 = undefined;
+    const svg = svg_compat.generateByIndex(kind_index, image_index, &svg_buf);
+    if (svg.len == 0) return error.InvalidImage;
+    try renderSvgDocumentExtended(surface, svg);
+}
+
 fn renderMarkupReference(surface: *Surface, svg: []const u8) Error!void {
     try renderSvgDocument(surface, svg);
+}
+
+fn renderMarkupReferenceExtended(surface: *Surface, svg: []const u8) Error!void {
+    try renderSvgDocumentExtended(surface, svg);
 }
 
 fn renderEadgbeFrets(surface: *Surface, frets: [EADGBE_STRING_COUNT]i8, scale_numerator: u32, scale_denominator: u32) Error!void {
@@ -1281,6 +1416,60 @@ fn nextTag(svg: []const u8, from: usize) ?TagToken {
     return null;
 }
 
+fn collectLinearGradients(svg: []const u8, gradients: *GradientRegistry) Error!void {
+    var cursor: usize = 0;
+    while (nextTag(svg, cursor)) |tag| {
+        cursor = tag.end;
+        if (tag.close or !std.mem.eql(u8, tag.name, "linearGradient")) continue;
+
+        const tag_text = svg[tag.start..tag.end];
+        const id = parseAttr(tag_text, "id") orelse return error.InvalidSvg;
+        var gradient = LinearGradient{
+            .id = id,
+            .x1 = parseAttrNumber(tag_text, "x1") orelse 0.0,
+            .y1 = parseAttrNumber(tag_text, "y1") orelse 0.0,
+            .x2 = parseAttrNumber(tag_text, "x2") orelse 1.0,
+            .y2 = parseAttrNumber(tag_text, "y2") orelse 0.0,
+        };
+        if (parseAttr(tag_text, "gradientTransform")) |gradient_transform| {
+            gradient.transform = try parseTransformList(gradient_transform);
+        }
+
+        while (nextTag(svg, cursor)) |inner| {
+            cursor = inner.end;
+            if (inner.close and std.mem.eql(u8, inner.name, "linearGradient")) break;
+            if (inner.close or !std.mem.eql(u8, inner.name, "stop")) continue;
+            const stop_tag = svg[inner.start..inner.end];
+            if (gradient.stop_count >= gradient.stops.len) return error.UnsupportedSvgFeature;
+            gradient.stops[gradient.stop_count] = parseGradientStop(stop_tag);
+            gradient.stop_count += 1;
+        }
+
+        if (gradient.stop_count == 0) continue;
+        if (gradient.stop_count == 1) gradient.stops[1] = gradient.stops[0];
+        try gradients.append(gradient);
+    }
+}
+
+fn parseGradientStop(tag_text: []const u8) GradientStop {
+    const offset_value = parsePresentationValue(tag_text, "offset") orelse "0";
+    const stop_color_value = parsePresentationValue(tag_text, "stop-color") orelse "black";
+    const stop_opacity = parseOpacityFactor(parsePresentationValue(tag_text, "stop-opacity"));
+    return .{
+        .offset = parseGradientOffset(offset_value),
+        .color = applyAlpha(parseColor(stop_color_value), stop_opacity),
+    };
+}
+
+fn parseGradientOffset(text: []const u8) f64 {
+    const trimmed = std.mem.trim(u8, text, " \t\r\n");
+    if (trimmed.len == 0) return 0.0;
+    if (trimmed[trimmed.len - 1] == '%') {
+        return std.math.clamp(parseNumber(trimmed[0 .. trimmed.len - 1], 0.0) / 100.0, 0.0, 1.0);
+    }
+    return std.math.clamp(parseNumber(trimmed, 0.0), 0.0, 1.0);
+}
+
 fn renderRectTag(tag_text: []const u8, root: Matrix, surface: *Surface) Error!void {
     var paint = Paint{};
     applyPaintAttrs(tag_text, &paint);
@@ -1295,12 +1484,41 @@ fn renderRectTag(tag_text: []const u8, root: Matrix, surface: *Surface) Error!vo
     else
         root;
 
-    if (!isAxisAligned(transform)) return error.UnsupportedSvgFeature;
-    const p = transform.apply(x, y);
-    const sx = @sqrt(transform.a * transform.a + transform.b * transform.b);
-    const sy = @sqrt(transform.c * transform.c + transform.d * transform.d);
+    if (isAxisAligned(transform)) {
+        const p = transform.apply(x, y);
+        const sx = @sqrt(transform.a * transform.a + transform.b * transform.b);
+        const sy = @sqrt(transform.c * transform.c + transform.d * transform.d);
+        drawRect(surface, p.x, p.y, width * sx, height * sy, paint.fill, paint.stroke, paint.stroke_width * @max(sx, sy));
+        return;
+    }
 
-    drawRect(surface, p.x, p.y, width * sx, height * sy, paint.fill, paint.stroke, paint.stroke_width * @max(sx, sy));
+    var edges = [_]Edge{
+        .{ .a = transform.apply(x, y), .b = transform.apply(x + width, y) },
+        .{ .a = transform.apply(x + width, y), .b = transform.apply(x + width, y + height) },
+        .{ .a = transform.apply(x + width, y + height), .b = transform.apply(x, y + height) },
+        .{ .a = transform.apply(x, y + height), .b = transform.apply(x, y) },
+    };
+    if (paint.fill[3] > 0) fillEdges(surface, &edges, paint.fill);
+    if (paint.stroke[3] > 0 and paint.stroke_width > 0.0) {
+        const scale = transform.approxUniformScale();
+        strokeEdges(surface, &edges, paint.stroke, paint.stroke_width * scale, paint.stroke_dash_on * scale, paint.stroke_dash_off * scale);
+    }
+}
+
+fn renderLineTag(tag_text: []const u8, parent_transform: Matrix, surface: *Surface) Error!void {
+    var paint = Paint{};
+    applyPaintAttrs(tag_text, &paint);
+
+    const x1 = parseAttrNumber(tag_text, "x1") orelse return error.InvalidSvg;
+    const y1 = parseAttrNumber(tag_text, "y1") orelse return error.InvalidSvg;
+    const x2 = parseAttrNumber(tag_text, "x2") orelse return error.InvalidSvg;
+    const y2 = parseAttrNumber(tag_text, "y2") orelse return error.InvalidSvg;
+
+    const transform = if (parseTransformAttr(tag_text)) |element_transform|
+        parent_transform.multiply(element_transform)
+    else
+        parent_transform;
+    drawLineSegment(surface, transform.apply(x1, y1), transform.apply(x2, y2), paint.stroke, paint.stroke_width * transform.approxUniformScale());
 }
 
 fn renderCircleTag(tag_text: []const u8, root: Matrix, surface: *Surface) Error!void {
@@ -1321,7 +1539,32 @@ fn renderCircleTag(tag_text: []const u8, root: Matrix, surface: *Surface) Error!
     drawCircle(surface, center.x, center.y, radius, paint.fill, paint.stroke, stroke_width);
 }
 
+fn renderEllipseTag(tag_text: []const u8, parent_transform: Matrix, surface: *Surface) Error!void {
+    var paint = Paint{};
+    applyPaintAttrs(tag_text, &paint);
+    const cx = parseAttrNumber(tag_text, "cx") orelse return error.InvalidSvg;
+    const cy = parseAttrNumber(tag_text, "cy") orelse return error.InvalidSvg;
+    const rx = parseAttrNumber(tag_text, "rx") orelse return error.InvalidSvg;
+    const ry = parseAttrNumber(tag_text, "ry") orelse return error.InvalidSvg;
+
+    const transform = if (parseTransformAttr(tag_text)) |element_transform|
+        parent_transform.multiply(element_transform)
+    else
+        parent_transform;
+
+    var edges: [96]Edge = undefined;
+    const edge_count = buildEllipseEdges(cx, cy, rx, ry, transform, &edges);
+    if (paint.fill[3] > 0) fillEdges(surface, edges[0..edge_count], paint.fill);
+    if (paint.stroke[3] > 0 and paint.stroke_width > 0.0) {
+        strokeEdges(surface, edges[0..edge_count], paint.stroke, paint.stroke_width * transform.approxUniformScale(), paint.stroke_dash_on * transform.approxUniformScale(), paint.stroke_dash_off * transform.approxUniformScale());
+    }
+}
+
 fn renderPathTag(tag_text: []const u8, parent_transform: Matrix, surface: *Surface) Error!void {
+    try renderPathTagExtended(tag_text, parent_transform, surface, null);
+}
+
+fn renderPathTagExtended(tag_text: []const u8, parent_transform: Matrix, surface: *Surface, gradients: ?*const GradientRegistry) Error!void {
     var paint = Paint{};
     applyPaintAttrs(tag_text, &paint);
     const d = parseAttr(tag_text, "d") orelse return error.InvalidSvg;
@@ -1330,7 +1573,15 @@ fn renderPathTag(tag_text: []const u8, parent_transform: Matrix, surface: *Surfa
         parent_transform.multiply(element_transform)
     else
         parent_transform;
-    if (paint.fill[3] > 0) {
+
+    if (fillGradientId(tag_text)) |gradient_id| {
+        if (gradients) |gradient_registry| {
+            const gradient = gradient_registry.find(gradient_id) orelse return error.InvalidSvg;
+            try renderPathGradientFill(surface, d, transform, gradient);
+        } else {
+            return error.UnsupportedSvgFeature;
+        }
+    } else if (paint.fill[3] > 0) {
         try renderPathFill(surface, d, transform, paint.fill);
     }
     if (paint.stroke[3] > 0 and paint.stroke_width > 0.0) {
@@ -1347,12 +1598,31 @@ fn renderPathTag(tag_text: []const u8, parent_transform: Matrix, surface: *Surfa
     }
 }
 
+fn buildEllipseEdges(cx: f64, cy: f64, rx: f64, ry: f64, transform: Matrix, edges: *[96]Edge) usize {
+    const step_count = edges.len;
+    var prev = transform.apply(cx + rx, cy);
+    var index: usize = 0;
+    while (index < step_count) : (index += 1) {
+        const angle = (2.0 * std.math.pi * @as(f64, @floatFromInt(index + 1))) / @as(f64, @floatFromInt(step_count));
+        const next = transform.apply(cx + std.math.cos(angle) * rx, cy + std.math.sin(angle) * ry);
+        edges[index] = .{ .a = prev, .b = next };
+        prev = next;
+    }
+    return step_count;
+}
+
 fn renderPathFill(surface: *Surface, d: []const u8, transform: Matrix, fill: [4]u8) Error!void {
     if (fill[3] == 0) return;
 
     var builder = PathBuilder{};
     try buildPathEdges(d, transform, &builder);
     fillEdges(surface, builder.edges[0..builder.edge_count], fill);
+}
+
+fn renderPathGradientFill(surface: *Surface, d: []const u8, transform: Matrix, gradient: LinearGradient) Error!void {
+    var builder = PathBuilder{};
+    try buildPathEdges(d, transform, &builder);
+    fillEdgesGradient(surface, builder.edges[0..builder.edge_count], gradient, transform);
 }
 
 fn renderPathStroke(surface: *Surface, d: []const u8, transform: Matrix, stroke: [4]u8, stroke_width: f64, dash_on: f64, dash_off: f64) Error!void {
@@ -1498,6 +1768,83 @@ fn fillEdges(surface: *Surface, edges: []const Edge, fill: [4]u8) void {
             }
         }
     }
+}
+
+fn fillEdgesGradient(surface: *Surface, edges: []const Edge, gradient: LinearGradient, path_transform: Matrix) void {
+    if (edges.len == 0) return;
+
+    var min_x = edges[0].a.x;
+    var max_x = edges[0].a.x;
+    var min_y = edges[0].a.y;
+    var max_y = edges[0].a.y;
+    for (edges) |edge| {
+        min_x = @min(min_x, @min(edge.a.x, edge.b.x));
+        max_x = @max(max_x, @max(edge.a.x, edge.b.x));
+        min_y = @min(min_y, @min(edge.a.y, edge.b.y));
+        max_y = @max(max_y, @max(edge.a.y, edge.b.y));
+    }
+
+    const x0: i32 = @as(i32, @intFromFloat(@floor(min_x))) - 1;
+    const x1: i32 = @as(i32, @intFromFloat(@ceil(max_x))) + 1;
+    const y0: i32 = @as(i32, @intFromFloat(@floor(min_y))) - 1;
+    const y1: i32 = @as(i32, @intFromFloat(@ceil(max_y))) + 1;
+
+    var py = y0;
+    while (py <= y1) : (py += 1) {
+        const y = @as(f64, @floatFromInt(py)) + 0.5;
+        var px = x0;
+        while (px <= x1) : (px += 1) {
+            const x = @as(f64, @floatFromInt(px)) + 0.5;
+            var winding: i32 = 0;
+
+            for (edges) |edge| {
+                if (edge.a.y <= y) {
+                    if (edge.b.y > y and isLeft(edge.a, edge.b, .{ .x = x, .y = y }) > 0.0) winding += 1;
+                } else {
+                    if (edge.b.y <= y and isLeft(edge.a, edge.b, .{ .x = x, .y = y }) < 0.0) winding -= 1;
+                }
+            }
+
+            if (winding != 0) {
+                if (pixelPtr(surface, px, py)) |dst| blend(dst, sampleLinearGradient(gradient, path_transform, x, y));
+            }
+        }
+    }
+}
+
+fn sampleLinearGradient(gradient: LinearGradient, path_transform: Matrix, x: f64, y: f64) [4]u8 {
+    const transform = path_transform.multiply(gradient.transform);
+    const start = transform.apply(gradient.x1, gradient.y1);
+    const end = transform.apply(gradient.x2, gradient.y2);
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+    const len_sq = dx * dx + dy * dy;
+    const t = if (len_sq <= 0.0000001)
+        0.0
+    else
+        std.math.clamp(((x - start.x) * dx + (y - start.y) * dy) / len_sq, 0.0, 1.0);
+
+    const start_stop = gradient.stops[0];
+    const end_stop = gradient.stops[if (gradient.stop_count > 1) 1 else 0];
+    if (gradient.stop_count <= 1 or end_stop.offset <= start_stop.offset + 0.0000001) return end_stop.color;
+    if (t <= start_stop.offset) return start_stop.color;
+    if (t >= end_stop.offset) return end_stop.color;
+    const local = (t - start_stop.offset) / (end_stop.offset - start_stop.offset);
+    return lerpColor(start_stop.color, end_stop.color, local);
+}
+
+fn lerpColor(a: [4]u8, b: [4]u8, t: f64) [4]u8 {
+    return .{
+        lerpChannel(a[0], b[0], t),
+        lerpChannel(a[1], b[1], t),
+        lerpChannel(a[2], b[2], t),
+        lerpChannel(a[3], b[3], t),
+    };
+}
+
+fn lerpChannel(a: u8, b: u8, t: f64) u8 {
+    const value = @as(f64, @floatFromInt(a)) + (@as(f64, @floatFromInt(b)) - @as(f64, @floatFromInt(a))) * t;
+    return @as(u8, @intFromFloat(std.math.clamp(@floor(value + 0.5), 0.0, 255.0)));
 }
 
 fn strokeEdges(surface: *Surface, edges: []const Edge, stroke: [4]u8, stroke_width: f64, dash_on: f64, dash_off: f64) void {
@@ -1649,6 +1996,24 @@ fn applyPaintAttrs(tag_text: []const u8, paint: *Paint) void {
             }
         }
     }
+
+    const opacity = parseOpacityFactor(parsePresentationValue(tag_text, "opacity"));
+    const fill_opacity = parseOpacityFactor(parsePresentationValue(tag_text, "fill-opacity"));
+    const stroke_opacity = parseOpacityFactor(parsePresentationValue(tag_text, "stroke-opacity"));
+    paint.fill = applyAlpha(paint.fill, opacity * fill_opacity);
+    paint.stroke = applyAlpha(paint.stroke, opacity * stroke_opacity);
+}
+
+fn parseOpacityFactor(value: ?[]const u8) f64 {
+    const raw = value orelse return 1.0;
+    return std.math.clamp(parseNumber(raw, 1.0), 0.0, 1.0);
+}
+
+fn applyAlpha(color: [4]u8, factor: f64) [4]u8 {
+    if (color[3] == 0) return color;
+    var out = color;
+    out[3] = @as(u8, @intFromFloat(std.math.clamp(@floor(@as(f64, @floatFromInt(color[3])) * factor + 0.5), 0.0, 255.0)));
+    return out;
 }
 
 fn parseDashArray(text: []const u8) DashSpec {
@@ -1806,6 +2171,25 @@ fn parseAttr(tag_text: []const u8, name: []const u8) ?[]const u8 {
     return null;
 }
 
+fn parseStyleValue(style: []const u8, name: []const u8) ?[]const u8 {
+    var parts = std.mem.splitScalar(u8, style, ';');
+    while (parts.next()) |part| {
+        const colon = std.mem.indexOfScalar(u8, part, ':') orelse continue;
+        const key = std.mem.trim(u8, part[0..colon], " \t\r\n");
+        if (!std.mem.eql(u8, key, name)) continue;
+        return std.mem.trim(u8, part[colon + 1 ..], " \t\r\n");
+    }
+    return null;
+}
+
+fn parsePresentationValue(tag_text: []const u8, name: []const u8) ?[]const u8 {
+    const direct = parseAttr(tag_text, name);
+    if (parseAttr(tag_text, "style")) |style| {
+        if (parseStyleValue(style, name)) |value| return value;
+    }
+    return direct;
+}
+
 fn parseAttrNumber(tag_text: []const u8, name: []const u8) ?f64 {
     const value = parseAttr(tag_text, name) orelse return null;
     return parseNumber(value, 0.0);
@@ -1874,6 +2258,7 @@ fn parseColor(text: []const u8) [4]u8 {
     if (std.mem.eql(u8, text, "black")) return .{ 0, 0, 0, 255 };
     if (std.mem.eql(u8, text, "white")) return .{ 255, 255, 255, 255 };
     if (std.mem.eql(u8, text, "gray")) return .{ 128, 128, 128, 255 };
+    if (std.mem.eql(u8, text, "red")) return .{ 255, 0, 0, 255 };
     if (text.len == 4 and text[0] == '#') {
         return .{
             hexNibble(text[1]) * 17,
@@ -1890,7 +2275,40 @@ fn parseColor(text: []const u8) [4]u8 {
             255,
         };
     }
+    if (std.mem.startsWith(u8, text, "rgb(") and std.mem.endsWith(u8, text, ")")) {
+        var rgb = parseNumberList(text[4 .. text.len - 1]);
+        return .{
+            colorChannel(rgb.next() orelse 0.0),
+            colorChannel(rgb.next() orelse 0.0),
+            colorChannel(rgb.next() orelse 0.0),
+            255,
+        };
+    }
+    if (std.mem.startsWith(u8, text, "rgba(") and std.mem.endsWith(u8, text, ")")) {
+        var rgba = parseNumberList(text[5 .. text.len - 1]);
+        return .{
+            colorChannel(rgba.next() orelse 0.0),
+            colorChannel(rgba.next() orelse 0.0),
+            colorChannel(rgba.next() orelse 0.0),
+            alphaChannel(rgba.next() orelse 1.0),
+        };
+    }
     return .{ 0, 0, 0, 255 };
+}
+
+fn colorChannel(value: f64) u8 {
+    return @as(u8, @intFromFloat(std.math.clamp(@floor(value + 0.5), 0.0, 255.0)));
+}
+
+fn alphaChannel(value: f64) u8 {
+    const scaled = if (value <= 1.0) value * 255.0 else value;
+    return @as(u8, @intFromFloat(std.math.clamp(@floor(scaled + 0.5), 0.0, 255.0)));
+}
+
+fn fillGradientId(tag_text: []const u8) ?[]const u8 {
+    const fill_value = parsePresentationValue(tag_text, "fill") orelse return null;
+    if (!std.mem.startsWith(u8, fill_value, "url(#") or fill_value.len < 7 or fill_value[fill_value.len - 1] != ')') return null;
+    return fill_value[5 .. fill_value.len - 1];
 }
 
 fn clear(surface: *Surface, rgba: [4]u8) void {
@@ -2003,10 +2421,16 @@ fn findImageIndexByName(kind_id: svg_compat.KindId, image_name: []const u8) usiz
 fn runScaledBitmapParity(kind_id: svg_compat.KindId, image_index: usize, scale_numerator: u32, scale_denominator: u32, svg_buf: []u8) !void {
     const kind_index = findKindIndex(kind_id);
     const svg = svg_compat.generateByIndex(kind_index, image_index, svg_buf);
-    var candidate: [MAX_TEST_TARGET_WIDTH * MAX_TEST_TARGET_HEIGHT * 4]u8 = undefined;
-    var reference: [MAX_TEST_TARGET_WIDTH * MAX_TEST_TARGET_HEIGHT * 4]u8 = undefined;
-    const candidate_len = try renderCandidateRgbaScaled(kind_index, image_index, scale_numerator, scale_denominator, &candidate);
-    const reference_len = try renderReferenceSvgRgbaScaled(kind_index, svg, scale_numerator, scale_denominator, &reference);
+    const required = requiredRgbaBytesScaled(kind_index, image_index, scale_numerator, scale_denominator);
+    try std.testing.expect(required > 0);
+
+    const candidate = try std.testing.allocator.alloc(u8, required);
+    defer std.testing.allocator.free(candidate);
+    const reference = try std.testing.allocator.alloc(u8, required);
+    defer std.testing.allocator.free(reference);
+
+    const candidate_len = try renderCandidateRgbaScaled(kind_index, image_index, scale_numerator, scale_denominator, candidate);
+    const reference_len = try renderReferenceSvgRgbaScaled(kind_index, svg, scale_numerator, scale_denominator, reference);
     try std.testing.expectEqual(candidate_len, reference_len);
     try std.testing.expectEqualSlices(u8, candidate[0..candidate_len], reference[0..reference_len]);
 }
@@ -2227,4 +2651,14 @@ test "scale native RGBA candidate matches generated svg raster at 55 and 200 per
     try runScaledBitmapParity(.scale, findImageIndexByName(.scale, "C,B-3,C-4,D-4,Eb-4,F-4,Gb-4,Gs-4,A-4,B-4.svg"), 200, 100, &svg_buf);
     try runScaledBitmapParity(.scale, findImageIndexByName(.scale, "Fs,Bb-3,Db-4,Eb-4,Gb-4,Ab-4,Bb-4.svg"), 55, 100, &svg_buf);
     try runScaledBitmapParity(.scale, findImageIndexByName(.scale, "Fs,Bb-3,Db-4,Eb-4,Gb-4,Ab-4,Bb-4.svg"), 200, 100, &svg_buf);
+}
+
+test "even native RGBA candidate matches generated svg raster at 55 and 200 percent" {
+    var svg_buf: [GENERATED_COMPAT_SVG_BUFFER_LIMIT]u8 = undefined;
+    try runScaledBitmapParity(.even, findImageIndexByName(.even, "index.svg"), 55, 100, &svg_buf);
+    try runScaledBitmapParity(.even, findImageIndexByName(.even, "index.svg"), 200, 100, &svg_buf);
+    try runScaledBitmapParity(.even, findImageIndexByName(.even, "grad.svg"), 55, 100, &svg_buf);
+    try runScaledBitmapParity(.even, findImageIndexByName(.even, "grad.svg"), 200, 100, &svg_buf);
+    try runScaledBitmapParity(.even, findImageIndexByName(.even, "line.svg"), 55, 100, &svg_buf);
+    try runScaledBitmapParity(.even, findImageIndexByName(.even, "line.svg"), 200, 100, &svg_buf);
 }

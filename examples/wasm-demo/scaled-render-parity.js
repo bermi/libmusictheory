@@ -161,15 +161,13 @@ async function runScaledRenderParity() {
         let width = 0;
         let height = 0;
         let rgbaBytes = 0;
-        let candidatePtr = 0;
-        let referencePtr = 0;
+        let rgbaPtr = 0;
         if (nativeSupported) {
           width = wasm.lmt_bitmap_compat_target_width_scaled(kindIndex, indexes[0] ?? 0, scale.numerator, scale.denominator);
           height = wasm.lmt_bitmap_compat_target_height_scaled(kindIndex, indexes[0] ?? 0, scale.numerator, scale.denominator);
           rgbaBytes = wasm.lmt_bitmap_compat_required_rgba_bytes_scaled(kindIndex, indexes[0] ?? 0, scale.numerator, scale.denominator);
           if (!width || !height || !rgbaBytes) throw new Error(`scaled render target unavailable for native-rgba kind ${kindName} at ${scale.label}`);
-          candidatePtr = arena.alloc(rgbaBytes, 4);
-          referencePtr = arena.alloc(rgbaBytes, 4);
+          rgbaPtr = arena.alloc(rgbaBytes, 4);
         }
 
         const samples = [];
@@ -187,7 +185,7 @@ async function runScaledRenderParity() {
           let referenceUrl = "";
 
           if (nativeSupported) {
-            const candidateWritten = wasm.lmt_bitmap_compat_render_candidate_rgba_scaled(kindIndex, imageIndex, scale.numerator, scale.denominator, candidatePtr, rgbaBytes);
+            const candidateWritten = wasm.lmt_bitmap_compat_render_candidate_rgba_scaled(kindIndex, imageIndex, scale.numerator, scale.denominator, rgbaPtr, rgbaBytes);
             if (candidateWritten !== rgbaBytes) {
               kindFailures += 1;
               if (!firstFailure) {
@@ -201,23 +199,23 @@ async function runScaledRenderParity() {
             if (!referenceSvg.ok) {
               kindFailures += 1;
               if (!firstFailure) {
-                firstFailure = { meta: `kind=${kindName} | source=${candidateSource} | backend=${candidateBackend} | scale=${scale.label} | image=${imageName} | error=missing reference | url=${referenceSvg.url}`, width, height, candidate: cloneBytes(memory, candidatePtr, rgbaBytes), reference: new Uint8ClampedArray(rgbaBytes), diff: new Uint8ClampedArray(rgbaBytes) };
+                firstFailure = { meta: `kind=${kindName} | source=${candidateSource} | backend=${candidateBackend} | scale=${scale.label} | image=${imageName} | error=missing reference | url=${referenceSvg.url}`, width, height, candidate: cloneBytes(memory, rgbaPtr, rgbaBytes), reference: new Uint8ClampedArray(rgbaBytes), diff: new Uint8ClampedArray(rgbaBytes) };
               }
               continue;
             }
 
+            candidateBytes = cloneBytes(memory, rgbaPtr, rgbaBytes);
             const svgLen = writeUtf8(memory, svgPtr, referenceSvg.svg);
-            const referenceWritten = wasm.lmt_bitmap_compat_render_reference_svg_rgba_scaled(kindIndex, scale.numerator, scale.denominator, svgPtr, svgLen, referencePtr, rgbaBytes);
+            const referenceWritten = wasm.lmt_bitmap_compat_render_reference_svg_rgba_scaled(kindIndex, scale.numerator, scale.denominator, svgPtr, svgLen, rgbaPtr, rgbaBytes);
             if (referenceWritten !== rgbaBytes) {
               kindFailures += 1;
               if (!firstFailure) {
-                firstFailure = { meta: `kind=${kindName} | source=${candidateSource} | backend=${candidateBackend} | scale=${scale.label} | image=${imageName} | error=reference raster failed | url=${referenceSvg.url}`, width, height, candidate: cloneBytes(memory, candidatePtr, rgbaBytes), reference: new Uint8ClampedArray(rgbaBytes), diff: new Uint8ClampedArray(rgbaBytes) };
+                firstFailure = { meta: `kind=${kindName} | source=${candidateSource} | backend=${candidateBackend} | scale=${scale.label} | image=${imageName} | error=reference raster failed | url=${referenceSvg.url}`, width, height, candidate: candidateBytes, reference: new Uint8ClampedArray(rgbaBytes), diff: new Uint8ClampedArray(rgbaBytes) };
               }
               continue;
             }
 
-            candidateBytes = cloneBytes(memory, candidatePtr, rgbaBytes);
-            referenceBytes = cloneBytes(memory, referencePtr, rgbaBytes);
+            referenceBytes = cloneBytes(memory, rgbaPtr, rgbaBytes);
           } else {
             const candidateSvg = readCopyString(memory, wasm.lmt_svg_compat_generate, svgPtr, SVG_CAPACITY, kindIndex, imageIndex);
             if (!candidateSvg) {

@@ -608,7 +608,7 @@ if [ -f "$ROOT_DIR/examples/wasm-demo/native-rgba-proof.html" ] && rg -Fq 'step(
         unverified "0060 native RGBA proof export guardrail (scripts/check_wasm_exports.mjs or node missing)"
     fi
     if [ -d "$ROOT_DIR/tmp/harmoniousapp.net" ] && rg -Fq 'wasm-native-rgba-proof/tmp/harmoniousapp.net' "$ROOT_DIR/build.zig"; then
-        check_cmd "cd '$ROOT_DIR' && test -d zig-out/wasm-native-rgba-proof/tmp/harmoniousapp.net && test -f zig-out/wasm-native-rgba-proof/tmp/harmoniousapp.net/opc/047,0,0,0.svg && test -f zig-out/wasm-native-rgba-proof/tmp/harmoniousapp.net/oc/wt,0,I.svg && test -f zig-out/wasm-native-rgba-proof/tmp/harmoniousapp.net/eadgbe/-1,3,2,0,1,0.svg && test -f zig-out/wasm-native-rgba-proof/tmp/harmoniousapp.net/center-square-text/A.svg && test -f zig-out/wasm-native-rgba-proof/tmp/harmoniousapp.net/vert-text-black/6-9.svg && test -f zig-out/wasm-native-rgba-proof/tmp/harmoniousapp.net/vert-text-b2t-black/6-9.svg" "0060 native RGBA proof bundle guardrail (local harmonious refs mirrored into proof output)"
+        check_cmd "cd '$ROOT_DIR' && test -d zig-out/wasm-native-rgba-proof/tmp/harmoniousapp.net && test -f zig-out/wasm-native-rgba-proof/tmp/harmoniousapp.net/even/index.svg && test -f zig-out/wasm-native-rgba-proof/tmp/harmoniousapp.net/opc/047,0,0,0.svg && test -f zig-out/wasm-native-rgba-proof/tmp/harmoniousapp.net/oc/wt,0,I.svg && test -f zig-out/wasm-native-rgba-proof/tmp/harmoniousapp.net/eadgbe/-1,3,2,0,1,0.svg && test -f zig-out/wasm-native-rgba-proof/tmp/harmoniousapp.net/center-square-text/A.svg && test -f zig-out/wasm-native-rgba-proof/tmp/harmoniousapp.net/vert-text-black/6-9.svg && test -f zig-out/wasm-native-rgba-proof/tmp/harmoniousapp.net/vert-text-b2t-black/6-9.svg" "0060 native RGBA proof bundle guardrail (local harmonious refs mirrored into proof output)"
     else
         unverified "0060 native RGBA proof bundle guardrail (proof ref mirror not yet implemented)"
     fi
@@ -847,7 +847,7 @@ fi
 
 if [ -f "$ROOT_DIR/scripts/validate_harmonious_native_rgba_proof_playwright.mjs" ]; then
     if command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
-        check_cmd "cd '$ROOT_DIR' && node scripts/validate_harmonious_native_rgba_proof_playwright.mjs --sample-per-kind 5 --kinds scale,opc,optc,oc,eadgbe,wide-chord,chord-clipped,grand-chord,chord,center-square-text,vert-text-black,vert-text-b2t-black --scales 55:100,200:100 2>&1" "0057 native RGBA proof playwright sampled validation (supported scale + simple families + fret + chord staff + text at 55% and 200%, 0 drift failures)"
+        check_cmd "cd '$ROOT_DIR' && node scripts/validate_harmonious_native_rgba_proof_playwright.mjs --sample-per-kind 5 --kinds even,scale,opc,optc,oc,eadgbe,wide-chord,chord-clipped,grand-chord,chord,center-square-text,vert-text-black,vert-text-b2t-black --scales 55:100,200:100 2>&1" "0057 native RGBA proof playwright sampled validation (supported simple families + even + scale + fret + chord staff + text at 55% and 200%, 0 drift failures)"
     else
         unverified "0056 native RGBA proof playwright sampled validation (node/npm/python3 missing)"
     fi

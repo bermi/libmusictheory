@@ -106,8 +106,7 @@ async function runNativeRgbaProof() {
         const rgbaBytes = wasm.lmt_bitmap_compat_required_rgba_bytes_scaled(kindIndex, indexes[0] ?? 0, scale.numerator, scale.denominator);
         if (!width || !height || !rgbaBytes) throw new Error(`native RGBA target unavailable for ${kindName} at ${scale.label}`);
 
-        const candidatePtr = arena.alloc(rgbaBytes, 4);
-        const referencePtr = arena.alloc(rgbaBytes, 4);
+        const rgbaPtr = arena.alloc(rgbaBytes, 4);
         const samples = [];
         let kindCompared = 0;
         let kindPassing = 0;
@@ -117,7 +116,7 @@ async function runNativeRgbaProof() {
         page.progressEl.textContent = `Generating native RGBA proof for ${kindName} @ ${scale.percentLabel} (${indexes.length}/${total}) [${candidateSource} | ${candidateBackend}]`;
         for (const imageIndex of indexes) {
           const imageName = readCopyString(memory, wasm.lmt_svg_compat_image_name, namePtr, NAME_CAPACITY, kindIndex, imageIndex);
-          const candidateWritten = wasm.lmt_bitmap_compat_render_candidate_rgba_scaled(kindIndex, imageIndex, scale.numerator, scale.denominator, candidatePtr, rgbaBytes);
+          const candidateWritten = wasm.lmt_bitmap_compat_render_candidate_rgba_scaled(kindIndex, imageIndex, scale.numerator, scale.denominator, rgbaPtr, rgbaBytes);
           if (candidateWritten !== rgbaBytes) {
             kindFailures += 1;
             if (!firstFailure) {
@@ -141,7 +140,7 @@ async function runNativeRgbaProof() {
                 meta: `kind=${kindName} | source=${candidateSource} | scale=${scale.label} | image=${imageName} | error=missing reference | url=${referenceSvg.url}`,
                 width,
                 height,
-                candidate: cloneBytes(memory, candidatePtr, rgbaBytes),
+                candidate: cloneBytes(memory, rgbaPtr, rgbaBytes),
                 reference: new Uint8ClampedArray(rgbaBytes),
                 diff: new Uint8ClampedArray(rgbaBytes),
               };
@@ -149,8 +148,9 @@ async function runNativeRgbaProof() {
             continue;
           }
 
+          const candidateBytes = cloneBytes(memory, rgbaPtr, rgbaBytes);
           const svgLen = writeUtf8(memory, svgPtr, referenceSvg.svg);
-          const referenceWritten = wasm.lmt_bitmap_compat_render_reference_svg_rgba_scaled(kindIndex, scale.numerator, scale.denominator, svgPtr, svgLen, referencePtr, rgbaBytes);
+          const referenceWritten = wasm.lmt_bitmap_compat_render_reference_svg_rgba_scaled(kindIndex, scale.numerator, scale.denominator, svgPtr, svgLen, rgbaPtr, rgbaBytes);
           if (referenceWritten !== rgbaBytes) {
             kindFailures += 1;
             if (!firstFailure) {
@@ -158,7 +158,7 @@ async function runNativeRgbaProof() {
                 meta: `kind=${kindName} | source=${candidateSource} | scale=${scale.label} | image=${imageName} | error=reference raster failed | url=${referenceSvg.url}`,
                 width,
                 height,
-                candidate: cloneBytes(memory, candidatePtr, rgbaBytes),
+                candidate: candidateBytes,
                 reference: new Uint8ClampedArray(rgbaBytes),
                 diff: new Uint8ClampedArray(rgbaBytes),
               };
@@ -166,8 +166,7 @@ async function runNativeRgbaProof() {
             continue;
           }
 
-          const candidateBytes = cloneBytes(memory, candidatePtr, rgbaBytes);
-          const referenceBytes = cloneBytes(memory, referencePtr, rgbaBytes);
+          const referenceBytes = cloneBytes(memory, rgbaPtr, rgbaBytes);
           const diff = makeDiff(candidateBytes, referenceBytes, width, height);
           kindCompared += 1;
           compared += 1;
