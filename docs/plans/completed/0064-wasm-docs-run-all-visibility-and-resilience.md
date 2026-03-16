@@ -29,3 +29,13 @@ Fix the full interactive docs workflow so the `Run all sections` action is trust
 - The docs page reports explicit success or section-scoped failure after `Run all sections`.
 - Fret and staff previews render at visibly inspectable size in the docs layout.
 - `./verify.sh` passes.
+
+## Implementation History (Point-in-Time)
+
+- `d1e040a` — 2026-03-16
+  - Strengthened the docs verification path so the Playwright script clears the rendered outputs before clicking `Run all sections`, waits for the explicit success status, and checks that the clock/fret/staff previews land at visibly inspectable sizes.
+  - Hardened the docs UI so `Run all sections` continues through section-local failures, writes per-section error text instead of silently aborting later sections, and reports explicit overall success or failure in the page status.
+  - Rebalanced preview sizing so fret and staff SVGs are large enough for manual inspection without blowing up the docs card layout.
+  - Completion gates:
+    - `node scripts/validate_wasm_docs_playwright.mjs`
+    - `./verify.sh`
