@@ -40,10 +40,6 @@ async function runNativeRgbaProof() {
     const kindFilter = parseKindFilter();
     const scales = parseScaleSpecs(parseQueryScales() || page.scaleListInput.value);
 
-    const arena = scratchArena(wasm);
-    const namePtr = arena.alloc(NAME_CAPACITY, 1);
-    const svgPtr = arena.alloc(SVG_CAPACITY, 1);
-
     const rows = [];
     const sampleGroups = [];
     let firstFailure = null;
@@ -94,6 +90,9 @@ async function runNativeRgbaProof() {
         }
 
         supportedRows += 1;
+        const arena = scratchArena(wasm);
+        const namePtr = arena.alloc(NAME_CAPACITY, 1);
+        const svgPtr = arena.alloc(SVG_CAPACITY, 1);
         const indexes = sampleIndexes(total, samplePerKind);
         const width = wasm.lmt_bitmap_compat_target_width_scaled(kindIndex, indexes[0] ?? 0, scale.numerator, scale.denominator);
         const height = wasm.lmt_bitmap_compat_target_height_scaled(kindIndex, indexes[0] ?? 0, scale.numerator, scale.denominator);

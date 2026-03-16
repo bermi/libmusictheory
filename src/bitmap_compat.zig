@@ -18,13 +18,15 @@ pub const TARGET_SIZE_EADGBE: u32 = scaledDimDefault(100);
 pub const TARGET_SIZE_CENTER_SQUARE: u32 = scaledDimDefault(36);
 pub const TARGET_WIDTH_VERTICAL_TEXT: u32 = scaledDimDefault(36);
 pub const TARGET_HEIGHT_VERTICAL_TEXT: u32 = scaledDimDefault(90);
-pub const MAX_TEST_TARGET_WIDTH: usize = 512;
+pub const MAX_TEST_TARGET_WIDTH: usize = 800;
 pub const MAX_TEST_TARGET_HEIGHT: usize = 512;
 
 const PATH_EDGE_LIMIT: usize = 4096;
 const TAG_TRANSFORM_STACK_LIMIT: usize = 16;
 const OC_TEMPLATE_BUFFER_LIMIT: usize = 8 * 1024;
 const CHORD_COMPAT_SVG_BUFFER_LIMIT: usize = 64 * 1024;
+const SCALE_SOURCE_WIDTH: f64 = 363.0;
+const SCALE_SOURCE_HEIGHT: f64 = 113.0;
 const EADGBE_STRING_COUNT: usize = fret_compat.NumStrings;
 const CHORD_CLIPPED_SOURCE_WIDTH: f64 = 170.0;
 const CHORD_CLIPPED_SOURCE_HEIGHT: f64 = 82.05128205128206;
@@ -252,7 +254,7 @@ fn scaledDimFloat(source: f64, scale_numerator: u32, scale_denominator: u32) u32
 
 pub fn kindSupported(kind_index: usize) bool {
     return switch (svg_compat.kindId(kind_index) orelse return false) {
-        .opc, .oc, .optc, .eadgbe, .wide_chord, .chord_clipped, .grand_chord, .chord, .center_square_text, .vert_text_black, .vert_text_b2t_black => true,
+        .scale, .opc, .oc, .optc, .eadgbe, .wide_chord, .chord_clipped, .grand_chord, .chord, .center_square_text, .vert_text_black, .vert_text_b2t_black => true,
         else => false,
     };
 }
@@ -265,6 +267,7 @@ pub fn targetWidthScaled(kind_index: usize, image_index: usize, scale_numerator:
     _ = image_index;
     const kind_id = svg_compat.kindId(kind_index) orelse return 0;
     return switch (kind_id) {
+        .scale => scaledDimFloat(SCALE_SOURCE_WIDTH, scale_numerator, scale_denominator),
         .opc => scaledDim(100, scale_numerator, scale_denominator),
         .eadgbe => scaledDim(100, scale_numerator, scale_denominator),
         .oc, .optc => scaledDim(70, scale_numerator, scale_denominator),
@@ -286,6 +289,7 @@ pub fn targetHeightScaled(kind_index: usize, image_index: usize, scale_numerator
     _ = image_index;
     const kind_id = svg_compat.kindId(kind_index) orelse return 0;
     return switch (kind_id) {
+        .scale => scaledDimFloat(SCALE_SOURCE_HEIGHT, scale_numerator, scale_denominator),
         .opc => scaledDim(100, scale_numerator, scale_denominator),
         .eadgbe => scaledDim(100, scale_numerator, scale_denominator),
         .oc, .optc => scaledDim(70, scale_numerator, scale_denominator),
@@ -328,6 +332,7 @@ pub fn renderCandidateRgbaScaled(kind_index: usize, image_index: usize, scale_nu
     var surface = try initSurface(kind_id, required, out_rgba, scale_numerator, scale_denominator);
 
     switch (kind_id) {
+        .scale => try renderGeneratedCompatCandidate(&surface, kind_index, image_index),
         .opc => try renderOpcCandidate(&surface, image_name, scale_numerator, scale_denominator),
         .oc => try renderOcCandidate(&surface, image_name),
         .optc => try renderOptcCandidate(&surface, image_name),
@@ -358,11 +363,12 @@ pub fn renderReferenceSvgRgbaScaled(kind_index: usize, svg: []const u8, scale_nu
 
     var surface = try initSurface(kind_id, required, out_rgba, scale_numerator, scale_denominator);
     switch (kind_id) {
+        .scale => try renderMarkupReference(&surface, svg),
         .opc => try renderOpcReference(&surface, svg, scale_numerator, scale_denominator),
         .oc => try renderOcReference(&surface, svg),
         .optc => try renderOptcReference(&surface, svg),
         .eadgbe => try renderEadgbeReference(&surface, svg, scale_numerator, scale_denominator),
-        .wide_chord, .chord_clipped, .grand_chord, .chord => try renderChordCompatReference(&surface, svg),
+        .wide_chord, .chord_clipped, .grand_chord, .chord => try renderMarkupReference(&surface, svg),
         .center_square_text, .vert_text_black, .vert_text_b2t_black => try renderTextReference(&surface, svg, scale_numerator, scale_denominator),
         else => return error.UnsupportedKind,
     }
@@ -372,6 +378,7 @@ pub fn renderReferenceSvgRgbaScaled(kind_index: usize, svg: []const u8, scale_nu
 
 fn initSurface(kind_id: svg_compat.KindId, required: usize, out_rgba: []u8, scale_numerator: u32, scale_denominator: u32) Error!Surface {
     const width = switch (kind_id) {
+        .scale => scaledDimFloat(SCALE_SOURCE_WIDTH, scale_numerator, scale_denominator),
         .opc => scaledDim(100, scale_numerator, scale_denominator),
         .eadgbe => scaledDim(100, scale_numerator, scale_denominator),
         .oc, .optc => scaledDim(70, scale_numerator, scale_denominator),
@@ -384,6 +391,7 @@ fn initSurface(kind_id: svg_compat.KindId, required: usize, out_rgba: []u8, scal
         else => return error.UnsupportedKind,
     };
     const height = switch (kind_id) {
+        .scale => scaledDimFloat(SCALE_SOURCE_HEIGHT, scale_numerator, scale_denominator),
         .opc => scaledDim(100, scale_numerator, scale_denominator),
         .eadgbe => scaledDim(100, scale_numerator, scale_denominator),
         .oc, .optc => scaledDim(70, scale_numerator, scale_denominator),
@@ -776,7 +784,14 @@ fn renderChordCompatCandidate(surface: *Surface, image_name: []const u8, kind: c
     try renderSvgDocument(surface, svg);
 }
 
-fn renderChordCompatReference(surface: *Surface, svg: []const u8) Error!void {
+fn renderGeneratedCompatCandidate(surface: *Surface, kind_index: usize, image_index: usize) Error!void {
+    var svg_buf: [CHORD_COMPAT_SVG_BUFFER_LIMIT]u8 = undefined;
+    const svg = svg_compat.generateByIndex(kind_index, image_index, &svg_buf);
+    if (svg.len == 0) return error.InvalidImage;
+    try renderSvgDocument(surface, svg);
+}
+
+fn renderMarkupReference(surface: *Surface, svg: []const u8) Error!void {
     try renderSvgDocument(surface, svg);
 }
 
@@ -2176,4 +2191,14 @@ test "chord native RGBA candidate matches generated svg raster at 55 and 200 per
     try runScaledBitmapParity(.chord, findImageIndexByName(.chord, "D_3,F_3,Gs_3.svg"), 200, 100, &svg_buf);
     try runScaledBitmapParity(.chord, findImageIndexByName(.chord, "E_2,Gs_2,Bs_2,Ds_3,Fs_3.svg"), 55, 100, &svg_buf);
     try runScaledBitmapParity(.chord, findImageIndexByName(.chord, "E_2,Gs_2,Bs_2,Ds_3,Fs_3.svg"), 200, 100, &svg_buf);
+}
+
+test "scale native RGBA candidate matches generated svg raster at 55 and 200 percent" {
+    var svg_buf: [CHORD_COMPAT_SVG_BUFFER_LIMIT]u8 = undefined;
+    try runScaledBitmapParity(.scale, findImageIndexByName(.scale, "A,A-4,B-4,C-5,D-5,E-5,F-5,G-5,A-5.svg"), 55, 100, &svg_buf);
+    try runScaledBitmapParity(.scale, findImageIndexByName(.scale, "A,A-4,B-4,C-5,D-5,E-5,F-5,G-5,A-5.svg"), 200, 100, &svg_buf);
+    try runScaledBitmapParity(.scale, findImageIndexByName(.scale, "C,B-3,C-4,D-4,Eb-4,F-4,Gb-4,Gs-4,A-4,B-4.svg"), 55, 100, &svg_buf);
+    try runScaledBitmapParity(.scale, findImageIndexByName(.scale, "C,B-3,C-4,D-4,Eb-4,F-4,Gb-4,Gs-4,A-4,B-4.svg"), 200, 100, &svg_buf);
+    try runScaledBitmapParity(.scale, findImageIndexByName(.scale, "Fs,Bb-3,Db-4,Eb-4,Gb-4,Ab-4,Bb-4.svg"), 55, 100, &svg_buf);
+    try runScaledBitmapParity(.scale, findImageIndexByName(.scale, "Fs,Bb-3,Db-4,Eb-4,Gb-4,Ab-4,Bb-4.svg"), 200, 100, &svg_buf);
 }

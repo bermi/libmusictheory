@@ -125,10 +125,6 @@ async function runScaledRenderParity() {
     const kindFilter = parseKindFilter();
     const scales = parseScaleSpecs(parseQueryScales() || page.scaleListInput.value);
 
-    const arena = scratchArena(wasm);
-    const namePtr = arena.alloc(NAME_CAPACITY, 1);
-    const svgPtr = arena.alloc(SVG_CAPACITY, 1);
-
     const rows = [];
     const sampleGroups = [];
     let firstFailure = null;
@@ -151,6 +147,9 @@ async function runScaledRenderParity() {
         supportedRows += 1;
         if (nativeSupported) nativeRgbaRows += 1;
         else generatedSvgRows += 1;
+        const arena = scratchArena(wasm);
+        const namePtr = arena.alloc(NAME_CAPACITY, 1);
+        const svgPtr = arena.alloc(SVG_CAPACITY, 1);
 
         const indexes = sampleIndexes(total, samplePerKind);
         let width = 0;
