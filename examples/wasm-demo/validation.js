@@ -37,12 +37,12 @@ class ScratchArena {
 
   alloc(size, align = 1) {
     if (align < 1) {
-      throw new Error(`invalid arena alignment ${align}`);
+      throw new Error(`bad arena alignment ${align}`);
     }
     const out = Math.ceil(this.ptr / align) * align;
     const next = out + size;
     if (next > this.limit) {
-      throw new Error(`wasm scratch exhausted (${next - this.base}/${this.limit - this.base})`);
+      throw new Error(`wasm scratch exhausted ${next - this.base}/${this.limit - this.base}`);
     }
     this.ptr = next;
     return out;
@@ -71,7 +71,7 @@ function compatScratchArena() {
   const ptr = wasm.lmt_wasm_scratch_ptr();
   const size = wasm.lmt_wasm_scratch_size();
   if (!ptr || size === 0) {
-    throw new Error("WASM scratch region is unavailable");
+    throw new Error("WASM scratch unavailable");
   }
   return new ScratchArena(ptr, size);
 }
@@ -208,15 +208,15 @@ function setMismatchPreview(mismatch) {
 
 function renderVisualSamples(samplesByKind, options) {
   if (!options.enabled) {
-    clearVisualSamples("Random visual compare is disabled for this run.");
+    clearVisualSamples("Random visual compare disabled.");
     return;
   }
   if (!options.compareEnabled) {
-    clearVisualSamples("Enable reference comparison to display side-by-side generated and harmonious SVGs.");
+    clearVisualSamples("Enable reference comparison to display generated and harmonious SVGs.");
     return;
   }
   if (samplesByKind.length === 0) {
-    clearVisualSamples("No visual samples were collected in this run.");
+    clearVisualSamples("No visual samples collected.");
     return;
   }
 
@@ -266,7 +266,7 @@ function renderVisualSamples(samplesByKind, options) {
     .join("");
 
   visualSamplesHost.innerHTML = `
-    <p class="small">Random samples per kind: ${options.samplesPerKind} (or fewer when kind image count is lower).</p>
+    <p class="small">Random samples per kind: ${options.samplesPerKind}.</p>
     ${body}
   `;
 }
@@ -295,10 +295,10 @@ async function runValidation() {
   const visualSamplesPerKind = readVisualSampleCount();
 
   try {
-    progressEl.textContent = "Starting compatibility generation...";
+    progressEl.textContent = "Starting validation...";
     summaryHost.innerHTML = "";
     clearMismatchPreview();
-    clearVisualSamples("Collecting random visual samples...");
+    clearVisualSamples("Loading samples...");
 
     const arena = compatScratchArena();
     const nameOutPtr = arena.alloc(NAME_STRING_CAPACITY, 1);
