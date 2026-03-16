@@ -39,6 +39,7 @@ Close native-RGBA proof for the staff and fret compatibility families while pres
 
 ## Implementation History (Point-in-Time)
 
+- `b1778f6` — 2026-03-16
 - `99f0dc9` — 2026-03-16
 - `702c7b6` — 2026-03-16
 - Completion state shipped in this plan:
