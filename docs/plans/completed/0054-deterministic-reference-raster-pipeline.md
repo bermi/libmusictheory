@@ -25,6 +25,7 @@ Provide a deterministic native-RGBA reference lane for harmonious SVGs at canoni
 
 - `4e01095` — 2026-03-15
 - `8a22f12` — 2026-03-16
+- `90cc334` — 2026-03-16
 - Completion state shipped in this plan:
   - extended the Zig-side SVG rasterizer in `/Users/bermi/code/libmusictheory/src/bitmap_compat.zig` from the initial simple-family subset to the full harmonious compatibility corpus
   - added deterministic handling for gradients, transformed containers, transformed rects, ellipses, complex filled/stroked paths, and majmin quadratic path commands

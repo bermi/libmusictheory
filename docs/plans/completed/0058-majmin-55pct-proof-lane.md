@@ -37,6 +37,7 @@ Close native-RGBA proof for the majmin compatibility families without reintroduc
 
 ## Implementation History (Point-in-Time)
 
+- `90cc334` — 2026-03-16
 - Completion state shipped in this plan:
   - added majmin native-proof kind support, target sizing, and reference/candidate raster wiring in `/Users/bermi/code/libmusictheory/src/bitmap_compat.zig`
   - fixed quadratic path handling for majmin text-outline paths in `/Users/bermi/code/libmusictheory/src/bitmap_compat.zig`
