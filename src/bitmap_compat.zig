@@ -4,6 +4,7 @@ const svg_compat = @import("harmonious_svg_compat.zig");
 const cluster = @import("cluster.zig");
 const pcs = @import("pitch_class_set.zig");
 const oc_templates = @import("generated/harmonious_oc_templates.zig");
+const fret_compat = @import("svg/fret_compat.zig");
 const svg_clock = @import("svg/clock.zig");
 const text_misc = @import("svg/text_misc.zig");
 
@@ -12,6 +13,7 @@ pub const SCALE_DENOMINATOR: u32 = 100;
 pub const TARGET_SIZE_OPC: u32 = scaledDimDefault(100);
 pub const TARGET_SIZE_OPTC: u32 = scaledDimDefault(70);
 pub const TARGET_SIZE_OC: u32 = scaledDimDefault(70);
+pub const TARGET_SIZE_EADGBE: u32 = scaledDimDefault(100);
 pub const TARGET_SIZE_CENTER_SQUARE: u32 = scaledDimDefault(36);
 pub const TARGET_WIDTH_VERTICAL_TEXT: u32 = scaledDimDefault(36);
 pub const TARGET_HEIGHT_VERTICAL_TEXT: u32 = scaledDimDefault(90);
@@ -21,6 +23,34 @@ pub const MAX_TEST_TARGET_HEIGHT: usize = 200;
 const PATH_EDGE_LIMIT: usize = 4096;
 const TAG_TRANSFORM_STACK_LIMIT: usize = 16;
 const OC_TEMPLATE_BUFFER_LIMIT: usize = 8 * 1024;
+const EADGBE_STRING_COUNT: usize = fret_compat.NumStrings;
+const EADGBE_DOT_X = [_]f64{ -9.5, 2.5, 14.5, 26.5, 38.5, 50.5 };
+const EADGBE_XMARK_X = [_]f64{ 0.0, 12.0, 24.0, 36.0, 48.0, 60.0 };
+const EADGBE_DOT_Y = [_]f64{ -43.5, -31.5, -19.5, -7.5, 4.5 };
+const EADGBE_DOT_CENTER_X: f64 = 16.114458;
+const EADGBE_DOT_CENTER_Y: f64 = 67.921684;
+const EADGBE_DOT_RADIUS: f64 = 4.3674698;
+const EADGBE_BASE_GROUP = Matrix{ .e = 14.5, .f = 5.0 };
+const EADGBE_X_ROTATE = Matrix{
+    .a = 0.7071068,
+    .b = -0.7071068,
+    .c = 0.7071068,
+    .d = 0.7071068,
+    .e = -44.365971,
+    .f = 15.412027,
+};
+const EADGBE_X_LINE_A = "M 42,24 L 42,36";
+const EADGBE_X_LINE_B = "M 36,30 L 48,30";
+const EADGBE_BARRE_CURVE = "M 4,0 C 0,0 0,12 4,12";
+const EADGBE_MASK_3299_A: u8 = (1 << 1) | (1 << 2);
+const EADGBE_MASK_3299_B: u8 = (1 << 3) | (1 << 4);
+const EADGBE_MASK_3299_C: u8 = (1 << 4) | (1 << 5);
+const EADGBE_MASK_3307_A: u8 = (1 << 1) | (1 << 2) | (1 << 3);
+const EADGBE_MASK_3307_B: u8 = (1 << 2) | (1 << 3) | (1 << 4);
+const EADGBE_MASK_3307_C: u8 = (1 << 3) | (1 << 4) | (1 << 5);
+const EADGBE_MASK_3311_A: u8 = (1 << 0) | (1 << 2) | (1 << 3);
+const EADGBE_MASK_3311_B: u8 = (1 << 1) | (1 << 3) | (1 << 4);
+const EADGBE_MASK_3311_C: u8 = (1 << 2) | (1 << 4) | (1 << 5);
 
 pub const Error = error{
     UnsupportedKind,
@@ -197,7 +227,7 @@ fn scaledDim(source: u32, scale_numerator: u32, scale_denominator: u32) u32 {
 
 pub fn kindSupported(kind_index: usize) bool {
     return switch (svg_compat.kindId(kind_index) orelse return false) {
-        .opc, .oc, .optc, .center_square_text, .vert_text_black, .vert_text_b2t_black => true,
+        .opc, .oc, .optc, .eadgbe, .center_square_text, .vert_text_black, .vert_text_b2t_black => true,
         else => false,
     };
 }
@@ -211,6 +241,7 @@ pub fn targetWidthScaled(kind_index: usize, image_index: usize, scale_numerator:
     const kind_id = svg_compat.kindId(kind_index) orelse return 0;
     return switch (kind_id) {
         .opc => scaledDim(100, scale_numerator, scale_denominator),
+        .eadgbe => scaledDim(100, scale_numerator, scale_denominator),
         .oc, .optc => scaledDim(70, scale_numerator, scale_denominator),
         .center_square_text => scaledDim(36, scale_numerator, scale_denominator),
         .vert_text_black, .vert_text_b2t_black => scaledDim(36, scale_numerator, scale_denominator),
@@ -227,6 +258,7 @@ pub fn targetHeightScaled(kind_index: usize, image_index: usize, scale_numerator
     const kind_id = svg_compat.kindId(kind_index) orelse return 0;
     return switch (kind_id) {
         .opc => scaledDim(100, scale_numerator, scale_denominator),
+        .eadgbe => scaledDim(100, scale_numerator, scale_denominator),
         .oc, .optc => scaledDim(70, scale_numerator, scale_denominator),
         .center_square_text => scaledDim(36, scale_numerator, scale_denominator),
         .vert_text_black, .vert_text_b2t_black => scaledDim(90, scale_numerator, scale_denominator),
@@ -266,6 +298,7 @@ pub fn renderCandidateRgbaScaled(kind_index: usize, image_index: usize, scale_nu
         .opc => try renderOpcCandidate(&surface, image_name, scale_numerator, scale_denominator),
         .oc => try renderOcCandidate(&surface, image_name),
         .optc => try renderOptcCandidate(&surface, image_name),
+        .eadgbe => try renderEadgbeCandidate(&surface, image_name, scale_numerator, scale_denominator),
         .center_square_text => try renderCenterSquareCandidate(&surface, image_name, scale_numerator, scale_denominator),
         .vert_text_black => try renderVerticalTextCandidate(&surface, image_name, false, scale_numerator, scale_denominator),
         .vert_text_b2t_black => try renderVerticalTextCandidate(&surface, image_name, true, scale_numerator, scale_denominator),
@@ -291,6 +324,7 @@ pub fn renderReferenceSvgRgbaScaled(kind_index: usize, svg: []const u8, scale_nu
         .opc => try renderOpcReference(&surface, svg, scale_numerator, scale_denominator),
         .oc => try renderOcReference(&surface, svg),
         .optc => try renderOptcReference(&surface, svg),
+        .eadgbe => try renderEadgbeReference(&surface, svg, scale_numerator, scale_denominator),
         .center_square_text, .vert_text_black, .vert_text_b2t_black => try renderTextReference(&surface, svg, scale_numerator, scale_denominator),
         else => return error.UnsupportedKind,
     }
@@ -301,6 +335,7 @@ pub fn renderReferenceSvgRgbaScaled(kind_index: usize, svg: []const u8, scale_nu
 fn initSurface(kind_id: svg_compat.KindId, required: usize, out_rgba: []u8, scale_numerator: u32, scale_denominator: u32) Error!Surface {
     const width = switch (kind_id) {
         .opc => scaledDim(100, scale_numerator, scale_denominator),
+        .eadgbe => scaledDim(100, scale_numerator, scale_denominator),
         .oc, .optc => scaledDim(70, scale_numerator, scale_denominator),
         .center_square_text => scaledDim(36, scale_numerator, scale_denominator),
         .vert_text_black, .vert_text_b2t_black => scaledDim(36, scale_numerator, scale_denominator),
@@ -308,6 +343,7 @@ fn initSurface(kind_id: svg_compat.KindId, required: usize, out_rgba: []u8, scal
     };
     const height = switch (kind_id) {
         .opc => scaledDim(100, scale_numerator, scale_denominator),
+        .eadgbe => scaledDim(100, scale_numerator, scale_denominator),
         .oc, .optc => scaledDim(70, scale_numerator, scale_denominator),
         .center_square_text => scaledDim(36, scale_numerator, scale_denominator),
         .vert_text_black, .vert_text_b2t_black => scaledDim(90, scale_numerator, scale_denominator),
@@ -612,6 +648,431 @@ fn renderTextReference(surface: *Surface, svg: []const u8, scale_numerator: u32,
         const attrs = svg[match.start..match.end];
         try renderPathTag(attrs, base_transform, surface);
     }
+}
+
+const EadgbeBarreStyle = enum {
+    text3319,
+    text3299,
+    text3307,
+    text3315,
+    text3311,
+};
+
+const EadgbeBarreInfo = struct {
+    style: EadgbeBarreStyle,
+    target: i8,
+};
+
+const EadgbeLayout = struct {
+    empty: bool,
+    has_nut: bool,
+    start_fret: i8,
+    barres: [2]?EadgbeBarreInfo = .{ null, null },
+};
+
+fn renderEadgbeCandidate(surface: *Surface, image_name: []const u8, scale_numerator: u32, scale_denominator: u32) Error!void {
+    const frets = parseEadgbeImageStem(trimSvgSuffix(image_name)) orelse return error.InvalidImage;
+    try renderEadgbeFrets(surface, frets, scale_numerator, scale_denominator);
+}
+
+fn renderEadgbeReference(surface: *Surface, svg: []const u8, scale_numerator: u32, scale_denominator: u32) Error!void {
+    const frets = try parseEadgbeFretsFromSvg(svg);
+    try renderEadgbeFrets(surface, frets, scale_numerator, scale_denominator);
+}
+
+fn renderEadgbeFrets(surface: *Surface, frets: [EADGBE_STRING_COUNT]i8, scale_numerator: u32, scale_denominator: u32) Error!void {
+    clear(surface, .{ 0, 0, 0, 0 });
+
+    const root = rootScaleMatrix(scale_numerator, scale_denominator);
+    const group = root.multiply(EADGBE_BASE_GROUP);
+    const scale = root.approxUniformScale();
+    renderEadgbeGrid(surface, group, scale);
+
+    const layout = analyzeEadgbeLayout(frets);
+    if (layout.empty) return;
+
+    if (layout.has_nut) {
+        drawLineSegment(surface, group.apply(6.0, 16.5), group.apply(67.0, 16.5), hexColor("#000"), 4.0 * scale);
+    } else {
+        renderEadgbePositionLabel(surface, group, layout.start_fret, scale);
+    }
+
+    for (layout.barres) |maybe_barre| {
+        if (maybe_barre) |barre| try renderEadgbeBarre(surface, group, frets, layout.start_fret, barre, scale);
+    }
+
+    var rev: usize = 0;
+    while (rev < EADGBE_STRING_COUNT) : (rev += 1) {
+        const string_index = EADGBE_STRING_COUNT - 1 - rev;
+        const fret = frets[string_index];
+        if (fret < 0) {
+            try renderEadgbeXMarker(surface, group, string_index, layout.has_nut, scale);
+            continue;
+        }
+        if (fret == 0) {
+            renderEadgbeOpenMarker(surface, group, string_index, scale);
+            continue;
+        }
+
+        const y_idx_i = fret - layout.start_fret;
+        if (y_idx_i < 0 or y_idx_i > 4) continue;
+        renderEadgbeDotMarker(surface, group, string_index, @as(usize, @intCast(y_idx_i)), scale);
+    }
+}
+
+fn renderEadgbeGrid(surface: *Surface, group: Matrix, scale: f64) void {
+    const top_left = group.apply(6.5, 18.5);
+    drawRect(surface, top_left.x, top_left.y, 60.0 * scale, 60.0 * scale, .{ 0, 0, 0, 0 }, hexColor("#000"), scale);
+
+    for (&[_]f64{ 18.5, 30.5, 42.5, 54.5 }) |x| {
+        drawLineSegment(surface, group.apply(x, 18.5), group.apply(x, 78.5), hexColor("#000"), scale);
+    }
+    for (&[_]f64{ 30.5, 42.5, 54.5, 66.5 }) |y| {
+        drawLineSegment(surface, group.apply(6.5, y), group.apply(66.5, y), hexColor("#000"), scale);
+    }
+}
+
+fn renderEadgbeDotMarker(surface: *Surface, group: Matrix, string_index: usize, y_idx: usize, scale: f64) void {
+    const center = group.apply(EADGBE_DOT_CENTER_X + EADGBE_DOT_X[string_index], EADGBE_DOT_CENTER_Y + EADGBE_DOT_Y[y_idx]);
+    drawCircle(surface, center.x, center.y, EADGBE_DOT_RADIUS * scale, hexColor("#000"), hexColor("#000"), scale);
+}
+
+fn renderEadgbeOpenMarker(surface: *Surface, group: Matrix, string_index: usize, scale: f64) void {
+    const center = group.apply(EADGBE_DOT_CENTER_X + EADGBE_DOT_X[string_index], EADGBE_DOT_CENTER_Y - 61.25);
+    drawCircle(surface, center.x, center.y, EADGBE_DOT_RADIUS * scale, .{ 0, 0, 0, 0 }, hexColor("#000"), scale);
+}
+
+fn renderEadgbeXMarker(surface: *Surface, group: Matrix, string_index: usize, has_nut: bool, scale: f64) Error!void {
+    const outer = group.multiply(parseTranslateTransformArgs(EADGBE_XMARK_X[string_index], if (has_nut) 0.0 else 4.0)).multiply(EADGBE_X_ROTATE);
+    try renderPathStroke(surface, EADGBE_X_LINE_A, outer, hexColor("#000"), scale, 0.0, 0.0);
+    try renderPathStroke(surface, EADGBE_X_LINE_B, outer, hexColor("#000"), scale, 0.0, 0.0);
+}
+
+fn renderEadgbePositionLabel(surface: *Surface, group: Matrix, start_fret: i8, scale: f64) void {
+    const value: u8 = @intCast(@max(start_fret, 0));
+    var digits: [2]u8 = undefined;
+    const digit_count: usize = if (value >= 10) 2 else 1;
+    if (digit_count == 2) {
+        digits[0] = '0' + @as(u8, @intCast(value / 10));
+        digits[1] = '0' + @as(u8, @intCast(value % 10));
+    } else {
+        digits[0] = '0' + value;
+    }
+
+    const digit_width: f64 = 5.2;
+    const digit_height: f64 = 9.2;
+    const digit_gap: f64 = 1.6;
+    const total_width = if (digit_count == 2) digit_width * 2.0 + digit_gap else digit_width;
+    const base_x = 73.0 - total_width / 2.0;
+    const base_y = 19.0;
+
+    var i: usize = 0;
+    while (i < digit_count) : (i += 1) {
+        renderEadgbeDigit(surface, group, digits[i], base_x + @as(f64, @floatFromInt(i)) * (digit_width + digit_gap), base_y, digit_width, digit_height, 0.95 * scale);
+    }
+}
+
+fn renderEadgbeDigit(surface: *Surface, group: Matrix, digit: u8, x: f64, y: f64, width: f64, height: f64, stroke_width: f64) void {
+    const mask: u8 = switch (digit) {
+        '0' => 0b0111111,
+        '1' => 0b0000110,
+        '2' => 0b1011011,
+        '3' => 0b1001111,
+        '4' => 0b1100110,
+        '5' => 0b1101101,
+        '6' => 0b1111101,
+        '7' => 0b0000111,
+        '8' => 0b1111111,
+        '9' => 0b1101111,
+        else => 0,
+    };
+    const half_h = height / 2.0;
+    const color = hexColor("#000");
+
+    if ((mask & (1 << 0)) != 0) drawLineSegment(surface, group.apply(x, y), group.apply(x + width, y), color, stroke_width);
+    if ((mask & (1 << 1)) != 0) drawLineSegment(surface, group.apply(x + width, y), group.apply(x + width, y + half_h), color, stroke_width);
+    if ((mask & (1 << 2)) != 0) drawLineSegment(surface, group.apply(x + width, y + half_h), group.apply(x + width, y + height), color, stroke_width);
+    if ((mask & (1 << 3)) != 0) drawLineSegment(surface, group.apply(x, y + height), group.apply(x + width, y + height), color, stroke_width);
+    if ((mask & (1 << 4)) != 0) drawLineSegment(surface, group.apply(x, y + half_h), group.apply(x, y + height), color, stroke_width);
+    if ((mask & (1 << 5)) != 0) drawLineSegment(surface, group.apply(x, y), group.apply(x, y + half_h), color, stroke_width);
+    if ((mask & (1 << 6)) != 0) drawLineSegment(surface, group.apply(x, y + half_h), group.apply(x + width, y + half_h), color, stroke_width);
+}
+
+fn renderEadgbeBarre(surface: *Surface, group: Matrix, frets: [EADGBE_STRING_COUNT]i8, start_fret: i8, barre: EadgbeBarreInfo, scale: f64) Error!void {
+    const y_idx_i = barre.target - start_fret;
+    if (y_idx_i < 0 or y_idx_i > 4) return;
+    const y_idx: usize = @intCast(y_idx_i);
+    const mask = eadgbeFretMask(frets, barre.target);
+    const min_index = eadgbeMinIndex(mask) orelse return;
+    const max_index = eadgbeMaxIndex(mask) orelse return;
+    const span = max_index - min_index + 1;
+
+    const Size = struct { width: f64, height: f64, x_offset: f64 };
+    const size: Size = switch (barre.style) {
+        .text3319 => .{ .width = 5.8, .height = 17.5, .x_offset = -8.6 },
+        .text3315 => .{ .width = 5.5, .height = 16.0, .x_offset = -8.1 },
+        .text3311 => .{ .width = 5.0, .height = 13.6, .x_offset = -7.8 },
+        .text3299 => .{ .width = 4.8, .height = 12.4, .x_offset = -7.2 },
+        .text3307 => .{ .width = 5.2, .height = 13.8, .x_offset = -7.6 },
+    };
+    const height = size.height + @as(f64, @floatFromInt(@max(span, 2) - 2)) * 0.5;
+    const x = EADGBE_DOT_CENTER_X + EADGBE_DOT_X[min_index] + size.x_offset;
+    const y = (EADGBE_DOT_CENTER_Y + EADGBE_DOT_Y[y_idx]) - height / 2.0;
+    const transform = group.multiply(parseTranslateTransformArgs(x, y)).multiply(.{
+        .a = size.width / 4.0,
+        .d = height / 12.0,
+    });
+    try renderPathStroke(surface, EADGBE_BARRE_CURVE, transform, hexColor("#000"), 0.9 * scale, 0.0, 0.0);
+}
+
+fn parseEadgbeImageStem(stem: []const u8) ?[EADGBE_STRING_COUNT]i8 {
+    var frets: [EADGBE_STRING_COUNT]i8 = [_]i8{-1} ** EADGBE_STRING_COUNT;
+    if (std.mem.eql(u8, stem, "index")) return frets;
+
+    var parts = std.mem.splitScalar(u8, stem, ',');
+    var count: usize = 0;
+    while (parts.next()) |token| {
+        if (count >= EADGBE_STRING_COUNT) return null;
+        frets[count] = std.fmt.parseInt(i8, token, 10) catch return null;
+        count += 1;
+    }
+    if (count != EADGBE_STRING_COUNT) return null;
+    return frets;
+}
+
+fn parseEadgbeFretsFromSvg(svg: []const u8) Error![EADGBE_STRING_COUNT]i8 {
+    const unset = std.math.minInt(i8);
+    var frets: [EADGBE_STRING_COUNT]i8 = [_]i8{unset} ** EADGBE_STRING_COUNT;
+    const has_nut = std.mem.indexOf(u8, svg, "id=\"path3297\"") != null;
+    const start_fret = if (has_nut) @as(i8, 1) else parseEadgbeStartFret(svg) orelse -1;
+
+    var marker_count: usize = 0;
+    var cursor: usize = 0;
+    while (std.mem.indexOfPos(u8, svg, cursor, "<!-- x -->")) |comment_start| {
+        const group_start = std.mem.indexOfPos(u8, svg, comment_start, "<g") orelse break;
+        const group_end = std.mem.indexOfPos(u8, svg, group_start, ">") orelse break;
+        const tag_text = svg[group_start .. group_end + 1];
+        const transform = parseTransformAttr(tag_text) orelse return error.InvalidSvg;
+        const string_index = matchNearestCandidate(transform.e, &EADGBE_XMARK_X) orelse return error.InvalidSvg;
+        frets[string_index] = -1;
+        marker_count += 1;
+        cursor = group_end + 1;
+    }
+
+    cursor = 0;
+    while (nextTag(svg, cursor)) |tag| {
+        cursor = tag.end;
+        if (tag.close or !std.mem.eql(u8, tag.name, "path")) continue;
+
+        const tag_text = svg[tag.start..tag.end];
+        const id = parseAttr(tag_text, "id") orelse continue;
+        if (!std.mem.eql(u8, id, "path3261") and !std.mem.eql(u8, id, "path3287")) continue;
+
+        const transform = parseTransformAttr(tag_text) orelse return error.InvalidSvg;
+        const string_index = matchNearestCandidate(transform.e, &EADGBE_DOT_X) orelse return error.InvalidSvg;
+        if (std.mem.eql(u8, id, "path3287")) {
+            frets[string_index] = 0;
+            marker_count += 1;
+            continue;
+        }
+
+        if (start_fret < 0) return error.InvalidSvg;
+        const y_idx = matchNearestCandidate(transform.f, &EADGBE_DOT_Y) orelse return error.InvalidSvg;
+        frets[string_index] = start_fret + @as(i8, @intCast(y_idx));
+        marker_count += 1;
+    }
+
+    if (marker_count == 0) return [_]i8{-1} ** EADGBE_STRING_COUNT;
+
+    for (frets) |fret| {
+        if (fret == unset) return error.InvalidSvg;
+    }
+    return frets;
+}
+
+fn parseEadgbeStartFret(svg: []const u8) ?i8 {
+    const tspan = findTag(svg, "tspan", 0) orelse return null;
+    const close = std.mem.indexOfPos(u8, svg, tspan.end, "</tspan>") orelse return null;
+    const raw = std.mem.trim(u8, svg[tspan.end..close], " \t\r\n");
+    if (raw.len == 0) return null;
+    return std.fmt.parseInt(i8, raw, 10) catch null;
+}
+
+fn matchNearestCandidate(value: f64, candidates: []const f64) ?usize {
+    var best: ?usize = null;
+    var best_delta: f64 = 0.0;
+    for (candidates, 0..) |candidate, index| {
+        const delta = @abs(candidate - value);
+        if (best == null or delta < best_delta) {
+            best = index;
+            best_delta = delta;
+        }
+    }
+    if (best == null or best_delta > 0.25) return null;
+    return best;
+}
+
+fn analyzeEadgbeLayout(frets: [EADGBE_STRING_COUNT]i8) EadgbeLayout {
+    var min_fret: i8 = 127;
+    var max_fret: i8 = -1;
+    for (frets) |fret| {
+        if (fret < 0) continue;
+        if (fret < min_fret) min_fret = fret;
+        if (fret > max_fret) max_fret = fret;
+    }
+
+    if (max_fret < 0) {
+        return .{
+            .empty = true,
+            .has_nut = false,
+            .start_fret = 1,
+        };
+    }
+
+    var layout = EadgbeLayout{
+        .empty = false,
+        .has_nut = max_fret <= 5,
+        .start_fret = if (max_fret <= 5) 1 else min_fret,
+    };
+    var barre_count: usize = 0;
+
+    if (eadgbeCompute3319(frets)) |target| {
+        layout.barres[0] = .{ .style = .text3319, .target = target };
+    } else if (eadgbeCompute3315(frets)) |target| {
+        layout.barres[0] = .{ .style = .text3315, .target = target };
+    } else if (eadgbeCompute3311(frets)) |target| {
+        layout.barres[0] = .{ .style = .text3311, .target = target };
+    } else {
+        if (eadgbeCompute3299(frets)) |target| {
+            layout.barres[barre_count] = .{ .style = .text3299, .target = target };
+            barre_count += 1;
+        }
+        if (eadgbeCompute3307(frets)) |target| {
+            layout.barres[barre_count] = .{ .style = .text3307, .target = target };
+        }
+    }
+
+    return layout;
+}
+
+fn eadgbeCompute3319(frets: [EADGBE_STRING_COUNT]i8) ?i8 {
+    const target = frets[0];
+    if (target <= 0) return null;
+    if (frets[EADGBE_STRING_COUNT - 1] != target) return null;
+    if (!eadgbeHasHigherFret(frets, target)) return null;
+    if (!eadgbeHasLowerFret(frets, target)) return target;
+    if (target == 2 and frets[1] == 0 and frets[2] == 0 and frets[3] == 2 and frets[4] == 3 and frets[5] == 2) return target;
+    return null;
+}
+
+fn eadgbeCompute3315(frets: [EADGBE_STRING_COUNT]i8) ?i8 {
+    const target = frets[1];
+    if (frets[0] != -1) return null;
+    if (target <= 0) return null;
+    if (frets[5] != target) return null;
+    if (eadgbeHasLowerFret(frets, target)) return null;
+    if (!eadgbeHasHigherFret(frets, target)) return null;
+    return target;
+}
+
+fn eadgbeCompute3311(frets: [EADGBE_STRING_COUNT]i8) ?i8 {
+    if (frets[0] == -1 and frets[1] > 0 and frets[2] == frets[1] + 1 and frets[3] == frets[1] and frets[4] == frets[1] and frets[5] == 0) {
+        return frets[1];
+    }
+
+    const target = eadgbeMinPositiveFret(frets) orelse return null;
+    const mask = eadgbeFretMask(frets, target);
+    if (mask != EADGBE_MASK_3311_A and mask != EADGBE_MASK_3311_B and mask != EADGBE_MASK_3311_C) return null;
+    if (eadgbeHasLowerFret(frets, target)) return null;
+    if (!eadgbeHasHigherFret(frets, target)) return null;
+    return target;
+}
+
+fn eadgbeCompute3299(frets: [EADGBE_STRING_COUNT]i8) ?i8 {
+    const target = eadgbeMinPositiveFret(frets) orelse return null;
+    const mask = eadgbeFretMask(frets, target);
+
+    if (mask == EADGBE_MASK_3299_A and frets[3] > target) return target;
+    if (mask == EADGBE_MASK_3299_B and frets[2] > target and frets[5] < 0 and frets[0] >= 0 and frets[1] >= 0) return target;
+    if (mask == EADGBE_MASK_3299_C and target == 1 and frets[0] > target and frets[1] > target and frets[2] > target and frets[3] == 0) return target;
+
+    return null;
+}
+
+fn eadgbeCompute3307(frets: [EADGBE_STRING_COUNT]i8) ?i8 {
+    const mp = eadgbeMinPositiveFret(frets) orelse return null;
+    const mask = eadgbeFretMask(frets, mp);
+    const above_mp = eadgbeHasHigherFret(frets, mp);
+
+    if (mask == EADGBE_MASK_3307_B and above_mp) return mp;
+    if (mask == EADGBE_MASK_3307_C and (mp >= 2 or above_mp)) return mp;
+
+    if (mask == EADGBE_MASK_3307_A and frets[1] > 0 and frets[2] == frets[1] and frets[3] == frets[1] and frets[4] < 0 and frets[5] < 0 and frets[0] == frets[1] + 3) {
+        return mp;
+    }
+    if (frets[0] == -1 and frets[2] > 0 and frets[4] == frets[2] and frets[1] == frets[2] + 2 and frets[3] == frets[5] and (frets[3] == frets[2] + 1 or frets[3] == frets[2] + 2)) {
+        return frets[2];
+    }
+    if (frets[0] == -1 and frets[3] > 0 and frets[5] == frets[3] and frets[4] == frets[3] + 1 and frets[2] == frets[3] + 2 and (frets[1] == frets[3] + 2 or frets[1] == frets[3] + 3)) {
+        return frets[3];
+    }
+    if (frets[0] == -1 and frets[3] > 0 and frets[4] == frets[3] and frets[5] == frets[3]) {
+        if (frets[1] == -1 and (frets[2] == frets[3] - 1 or frets[2] == frets[3] - 2) and frets[2] >= 0 and !(frets[3] == 1 and frets[2] == 0)) {
+            return frets[3];
+        }
+        if (frets[1] == frets[3] - 2 and frets[2] == frets[3] - 2 and frets[1] > 0) {
+            return frets[3];
+        }
+    }
+    return null;
+}
+
+fn eadgbeMinPositiveFret(frets: [EADGBE_STRING_COUNT]i8) ?i8 {
+    var min: i8 = 127;
+    for (frets) |fret| {
+        if (fret <= 0) continue;
+        if (fret < min) min = fret;
+    }
+    return if (min == 127) null else min;
+}
+
+fn eadgbeHasLowerFret(frets: [EADGBE_STRING_COUNT]i8, target: i8) bool {
+    for (frets) |fret| {
+        if (fret >= 0 and fret < target) return true;
+    }
+    return false;
+}
+
+fn eadgbeHasHigherFret(frets: [EADGBE_STRING_COUNT]i8, target: i8) bool {
+    for (frets) |fret| {
+        if (fret > target) return true;
+    }
+    return false;
+}
+
+fn eadgbeFretMask(frets: [EADGBE_STRING_COUNT]i8, fret: i8) u8 {
+    var mask: u8 = 0;
+    for (frets, 0..) |current, index| {
+        if (current == fret) mask |= @as(u8, 1) << @as(u3, @intCast(index));
+    }
+    return mask;
+}
+
+fn eadgbeMinIndex(mask: u8) ?usize {
+    var index: usize = 0;
+    while (index < EADGBE_STRING_COUNT) : (index += 1) {
+        if ((mask & (@as(u8, 1) << @as(u3, @intCast(index)))) != 0) return index;
+    }
+    return null;
+}
+
+fn eadgbeMaxIndex(mask: u8) ?usize {
+    var index: usize = EADGBE_STRING_COUNT;
+    while (index > 0) {
+        index -= 1;
+        if ((mask & (@as(u8, 1) << @as(u3, @intCast(index)))) != 0) return index;
+    }
+    return null;
 }
 
 fn findTag(svg: []const u8, tag_name: []const u8, from: usize) ?struct { start: usize, end: usize } {
@@ -1562,4 +2023,27 @@ test "oc native RGBA candidate matches generated svg raster for nested and plain
     try runScaledBitmapParity(.oc, findImageIndexByName(.oc, "aco,0,x7.svg"), 200, 100, &svg_buf);
     try runScaledBitmapParity(.oc, findImageIndexByName(.oc, "wt,0,I.svg"), 55, 100, &svg_buf);
     try runScaledBitmapParity(.oc, findImageIndexByName(.oc, "wt,0,I.svg"), 200, 100, &svg_buf);
+}
+
+test "eadgbe candidate render is deterministic at 55 and 200 percent" {
+    const kind_index = findKindIndex(.eadgbe);
+    const image_index = findImageIndexByName(.eadgbe, "-1,3,2,0,1,0.svg");
+    var a: [MAX_TEST_TARGET_WIDTH * MAX_TEST_TARGET_HEIGHT * 4]u8 = undefined;
+    var b: [MAX_TEST_TARGET_WIDTH * MAX_TEST_TARGET_HEIGHT * 4]u8 = undefined;
+
+    const len_a = try renderCandidateRgbaScaled(kind_index, image_index, 200, 100, &a);
+    const len_b = try renderCandidateRgbaScaled(kind_index, image_index, 200, 100, &b);
+    try std.testing.expectEqual(len_a, len_b);
+    try std.testing.expectEqualSlices(u8, a[0..len_a], b[0..len_b]);
+}
+
+test "eadgbe native RGBA candidate matches parsed reference bitmap at 55 and 200 percent" {
+    var svg_buf: [32 * 1024]u8 = undefined;
+
+    try runScaledBitmapParity(.eadgbe, findImageIndexByName(.eadgbe, "-1,3,2,0,1,0.svg"), 55, 100, &svg_buf);
+    try runScaledBitmapParity(.eadgbe, findImageIndexByName(.eadgbe, "-1,3,2,0,1,0.svg"), 200, 100, &svg_buf);
+    try runScaledBitmapParity(.eadgbe, findImageIndexByName(.eadgbe, "9,9,9,11,9,9.svg"), 55, 100, &svg_buf);
+    try runScaledBitmapParity(.eadgbe, findImageIndexByName(.eadgbe, "9,9,9,11,9,9.svg"), 200, 100, &svg_buf);
+    try runScaledBitmapParity(.eadgbe, findImageIndexByName(.eadgbe, "9,9,8,7,7,-1.svg"), 55, 100, &svg_buf);
+    try runScaledBitmapParity(.eadgbe, findImageIndexByName(.eadgbe, "9,9,8,7,7,-1.svg"), 200, 100, &svg_buf);
 }

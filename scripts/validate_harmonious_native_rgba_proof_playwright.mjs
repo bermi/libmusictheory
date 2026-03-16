@@ -15,7 +15,7 @@ const timeoutMs = Number.parseInt(process.env.LMT_NATIVE_RGBA_PROOF_TIMEOUT_MS |
 const referenceRoot = process.env.LMT_HARMONIOUS_REF_ROOT || '/tmp/harmoniousapp.net';
 const installDir = path.join(rootDir, 'zig-out', 'wasm-native-rgba-proof');
 const requestedPort = process.env.LMT_VALIDATION_PORT ? Number.parseInt(process.env.LMT_VALIDATION_PORT, 10) : null;
-const defaultKinds = ['opc', 'optc', 'oc', 'center-square-text', 'vert-text-black', 'vert-text-b2t-black'];
+const defaultKinds = ['opc', 'optc', 'oc', 'eadgbe', 'center-square-text', 'vert-text-black', 'vert-text-b2t-black'];
 
 function parseArgs(argv) {
   const out = { samplePerKind: 5, kinds: [...defaultKinds], scales: ['55:100', '200:100'] };
