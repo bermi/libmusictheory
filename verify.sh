@@ -836,6 +836,18 @@ else
     unverified "0050 wasm full docs playwright smoke validation (script not yet implemented)"
 fi
 
+if [ -f "$ROOT_DIR/src/svg/fret.zig" ] && [ -f "$ROOT_DIR/src/svg/staff.zig" ]; then
+    if rg -Fq 'class="marker-open"' "$ROOT_DIR/src/tests/svg_fret_test.zig" 2>/dev/null && \
+        rg -Fq 'accidental-sharp' "$ROOT_DIR/src/tests/svg_staff_test.zig" 2>/dev/null && \
+        rg -Fq 'shape-rendering="geometricPrecision"' "$ROOT_DIR/src/svg/fret.zig" "$ROOT_DIR/src/svg/staff.zig" 2>/dev/null; then
+        pass "0065 core svg quality guardrail (vector markers, explicit accidental glyphs, and geometric precision styling wired)"
+    else
+        unverified "0065 core svg quality guardrail (renderer quality uplift not yet fully implemented)"
+    fi
+else
+    unverified "0065 core svg quality guardrail (core svg renderers not present)"
+fi
+
 if [ -f "$ROOT_DIR/scripts/validate_harmonious_scaled_render_parity_playwright.mjs" ]; then
     if command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
         check_cmd "cd '$ROOT_DIR' && node scripts/validate_harmonious_scaled_render_parity_playwright.mjs --sample-per-kind 5 --kinds vert-text-black,even,scale,opc,oc,optc,eadgbe,center-square-text,wide-chord,chord-clipped,grand-chord,majmin/modes,majmin/scales,chord,vert-text-b2t-black --scales 55:100,200:100 2>&1" "0059 scaled render parity playwright sampled validation (all kinds at 55% and 200%, 0 drift failures)"
