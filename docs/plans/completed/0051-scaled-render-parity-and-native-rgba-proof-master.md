@@ -3,7 +3,7 @@
 > Dependencies: 0030, 0031, 0050
 > Follow-up: 0052-0060 staged slice plans
 
-Status: Draft
+Status: Completed
 
 ## Objective
 
@@ -38,24 +38,13 @@ Rebase the visual validation track so the repo makes only truthful claims:
 - no post-render scaling
 - this is the only lane allowed to use the word `proof`
 
-## Do Not Fool Ourselves
+## Delivered Outcome
 
-A family is not visually complete unless all of the following are true:
-
-1. exact SVG parity stays green
-2. scaled render parity stays green at `55%` and `200%`
-3. native-RGBA proof stays green at `55%` and `200%`
-4. anti-cheat rules still ban replay shortcuts and browser-side scaling shortcuts
-
-If a family only passes scaled render parity through `generated-svg`, it is not proven.
-
-## Naming Rules
-
-- do not use `proof` for generated-SVG or browser-raster candidate paths
-- do not use the legacy generated-SVG label in user-facing text
-- report candidate source as:
-  - `native-rgba`
-  - `generated-svg`
+- `Exact SVG Parity` is green for all 15 kinds
+- `Scaled Render Parity` is green for all 15 kinds at `55%` and `200%`
+- `Native-RGBA Proof` is green for all 15 kinds at `55%` and `200%`
+- `./verify.sh` now reports `NATIVE_RGBA_PROOF_COMPLETE=yes`
+- the repo no longer conflates parity-only candidate paths with strict proof claims
 
 ## Bundle Split
 
@@ -68,26 +57,24 @@ If a family only passes scaled render parity through `generated-svg`, it is not 
 - `zig-out/wasm-docs`
   - full interactive examples
 
-## Coordinated Slice Roles
-
-- `0052` and `0053` define proof-lane guardrails and RGBA ABI/export surface
-- `0054` and `0055` improve deterministic raster support for native proof work
-- `0056`, `0057`, and `0058` are native-proof closure slices by family group
-- `0059` is scaled-render-parity closure only
-- `0060` is the only project-level visual completion plan
-
-## Completion Policy
-
-The visual rendering project is complete only when:
-
-- exact SVG parity passes for all 15 kinds
-- scaled render parity passes for all 15 kinds at `55%` and `200%`
-- native-RGBA proof passes for all 15 kinds at `55%` and `200%`
-
 ## Verification Commands
 
 - `./verify.sh`
 - `zig build wasm-scaled-render-parity`
 - `zig build wasm-native-rgba-proof`
 - `node scripts/validate_harmonious_scaled_render_parity_playwright.mjs --sample-per-kind 5 --kinds vert-text-black,even,scale,opc,oc,optc,eadgbe,center-square-text,wide-chord,chord-clipped,grand-chord,majmin/modes,majmin/scales,chord,vert-text-b2t-black --scales 55:100,200:100`
-- `node scripts/validate_harmonious_native_rgba_proof_playwright.mjs --sample-per-kind 5 --kinds opc,center-square-text,vert-text-black,vert-text-b2t-black --scales 55:100,200:100`
+- `node scripts/validate_harmonious_native_rgba_proof_playwright.mjs --sample-per-kind 5 --kinds vert-text-black,even,scale,opc,oc,optc,eadgbe,center-square-text,wide-chord,chord-clipped,grand-chord,majmin/modes,majmin/scales,chord,vert-text-b2t-black --scales 55:100,200:100`
+
+## Implementation History (Point-in-Time)
+
+- `61c199c` — 2026-03-15
+- `90cc334` — 2026-03-16
+- Completion state shipped in this plan:
+  - split the old mixed bitmap lane into `Scaled Render Parity` and `Native RGBA Proof`
+  - tightened terminology and guardrails so parity-only lanes are not mislabeled as proof
+  - closed the family slices `0056`, `0057`, and `0058`, the parity closure `0059`, and the project-level proof closure `0060`
+- Completion gates used:
+  - `./verify.sh`
+  - `zig build verify`
+  - `node scripts/validate_harmonious_scaled_render_parity_playwright.mjs --sample-per-kind 5 --kinds vert-text-black,even,scale,opc,oc,optc,eadgbe,center-square-text,wide-chord,chord-clipped,grand-chord,majmin/modes,majmin/scales,chord,vert-text-b2t-black --scales 55:100,200:100`
+  - `node scripts/validate_harmonious_native_rgba_proof_playwright.mjs --sample-per-kind 5 --kinds vert-text-black,even,scale,opc,oc,optc,eadgbe,center-square-text,wide-chord,chord-clipped,grand-chord,majmin/modes,majmin/scales,chord,vert-text-b2t-black --scales 55:100,200:100`
