@@ -845,7 +845,7 @@ fi
 
 if [ -f "$ROOT_DIR/scripts/validate_harmonious_native_rgba_proof_playwright.mjs" ]; then
     if command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
-        check_cmd "cd '$ROOT_DIR' && node scripts/validate_harmonious_native_rgba_proof_playwright.mjs --sample-per-kind 5 --kinds opc,optc,oc,eadgbe,center-square-text,vert-text-black,vert-text-b2t-black --scales 55:100,200:100 2>&1" "0057 native RGBA proof playwright sampled validation (supported simple families + fret + text at 55% and 200%, 0 drift failures)"
+        check_cmd "cd '$ROOT_DIR' && node scripts/validate_harmonious_native_rgba_proof_playwright.mjs --sample-per-kind 5 --kinds opc,optc,oc,eadgbe,wide-chord,chord-clipped,center-square-text,vert-text-black,vert-text-b2t-black --scales 55:100,200:100 2>&1" "0057 native RGBA proof playwright sampled validation (supported simple families + fret + bounded chord staff + text at 55% and 200%, 0 drift failures)"
     else
         unverified "0056 native RGBA proof playwright sampled validation (node/npm/python3 missing)"
     fi
