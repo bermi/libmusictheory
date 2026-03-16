@@ -23,6 +23,8 @@ The currently supported native subset is:
 
 ## Remaining Work
 
+- keep the recovered `even` display-domain model honest and testable while marker
+  placement and variant decoration rules are still being reconstructed
 - add deterministic native candidate and reference handling for `even`, including its gradient case
 - expand the native-proof Playwright run beyond the current six supported kinds once additional support is real
 

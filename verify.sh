@@ -424,6 +424,12 @@ else
     unverified "0024 harmoniousapp.net compatibility test suite (src/tests/svg_harmonious_compat_test.zig not yet implemented)"
 fi
 
+if [ -f "$ROOT_DIR/src/tests/even_compat_model_test.zig" ]; then
+    check_cmd "cd '$ROOT_DIR' && zig build test 2>&1" "0064 even compat domain model test suite"
+else
+    unverified "0064 even compat domain model test suite (src/tests/even_compat_model_test.zig not yet implemented)"
+fi
+
 if [ -f "$ROOT_DIR/examples/wasm-demo/validation.html" ]; then
     check_cmd "cd '$ROOT_DIR' && zig build wasm-demo 2>&1" "0024 wasm validation page build"
 else

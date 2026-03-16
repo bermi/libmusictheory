@@ -15,6 +15,7 @@ pub const fc_components = @import("fc_components.zig");
 pub const interval_analysis = @import("interval_analysis.zig");
 pub const cluster = @import("cluster.zig");
 pub const evenness = @import("evenness.zig");
+pub const even_compat_model = @import("even_compat_model.zig");
 pub const scale = @import("scale.zig");
 pub const mode = @import("mode.zig");
 pub const key_signature = @import("key_signature.zig");
@@ -53,6 +54,7 @@ test {
     _ = @import("tests/set_class_test.zig");
     _ = @import("tests/interval_analysis_test.zig");
     _ = @import("tests/cluster_evenness_test.zig");
+    _ = @import("tests/even_compat_model_test.zig");
     _ = @import("tests/scales_modes_test.zig");
     _ = @import("tests/keys_signatures_test.zig");
     _ = @import("tests/chord_construction_test.zig");

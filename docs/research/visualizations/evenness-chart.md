@@ -135,20 +135,46 @@ These notes describe the exact structure of the harmonious compatibility targets
 
 ### Card-6 Selection Gap
 
-- A complement-collapse model for cardinality-6 yields `35` classes (`16` cluster-free, `19` clustered).
-- Compatibility requires `36` classes (`16` cluster-free, `20` clustered), so one additional clustered card-6 class is retained beyond pure collapse.
-- This exact card-6 inclusion rule is still unresolved and must be derived before final
-  fully algorithmic parity conversion.
+- The cardinality-6 gap is now resolved.
+- A pure complement-collapse model for cardinality `6` yields `35` classes, but the
+  compatibility chart keeps `36`.
+- The retained domain is:
+  - all `30` non-symmetric OPTIC hexachords, plus
+  - exactly `6` self-complementary symmetric hexachords.
+- The six retained symmetric hexachords are:
+  - `6-1`
+  - `6-7`
+  - `6-8`
+  - `6-20`
+  - `6-32`
+  - `6-35`
+- The omitted `14` symmetric hexachords are precisely the symmetric hexachords whose
+  complements are distinct OPTIC classes.
 
 ### Open Implementation Constraint
 
 - Do not re-introduce embedded reference payloads for `even/*`.
 - Target implementation should derive:
-  - class domain selection (including exact card-6 rule),
+  - class domain selection,
   - ray ordering,
   - marker sequencing and placement,
   - variant-specific decoration blocks (`index` / `grad` / `line`),
   while preserving byte-exact output parity.
+
+### Marker Semantics Recovered From Source Text
+
+The original tutorial text in `tmp/harmoniousapp.net/p/0c/Beyond-Diatonic.html`
+defines the semantic families used by `even/index.svg`:
+
+- hexagon: diatonic scale or subsets
+- square: acoustic scale or subsets, excluding diatonic subsets
+- six-sided star: whole-tone scale
+- octagon: diminished scale and subsets, excluding the above
+- red triangle: harmonic major / harmonic minor / augmented-hex neighborhoods
+- dark gray circle: all remaining set classes
+
+This semantic family assignment can now be modeled algorithmically for OPTIC
+representatives, independent of the historical SVG payload path.
 
 ### Audit Automation
 

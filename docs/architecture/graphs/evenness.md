@@ -5,11 +5,19 @@
 - `src/svg/evenness_chart.zig:19` `computeDots`
 - `src/svg/evenness_chart.zig:58` `renderEvennessChart`
 - `src/svg/evenness_chart.zig:85` `renderEvennessByName` (compat `even/index|line|grad`)
+- `src/even_compat_model.zig:1` recovered display-domain and marker-family rules for
+  the historical compat chart
 
 ## Current Approach
 
 - Dot coordinates are computed algorithmically from set cardinality and normalized evenness distance.
-- Compatibility named outputs (`index`, `line`, `grad`) currently decode compressed payloads from `src/generated/harmonious_even_gzip.zig` for exact historical parity.
+- Compatibility named outputs (`index`, `line`, `grad`) currently decode segmented XZ
+  payloads from `src/generated/harmonious_even_segment_xz.zig` for exact historical parity.
+- The chart domain is no longer a black box:
+  - all OPTIC representatives are retained except `14` symmetric hexachords,
+  - `C=6` keeps only the `6` self-complementary symmetric hexachords,
+  - index marker families follow recovered scale-family subset rules from the original
+    Harmonious tutorial text.
 
 ## Alternative Programmatic Approaches Studied
 
@@ -35,9 +43,13 @@ Backend mapping:
 
 ## Path to Fully Algorithmic
 
-1. Rebuild `even/index`, `even/line`, `even/grad` from style parameters over shared geometry model.
-2. Eliminate gzip payload dependency while preserving byte-stable serializer policy where needed.
-3. Use analytic style generators for gradients/line families.
+1. Rebuild `even/index`, `even/line`, `even/grad` from style parameters over the
+   recovered display-domain model in `src/even_compat_model.zig`.
+2. Replace the remaining payload-backed marker placement and per-variant decoration
+   blocks with deterministic geometry rules.
+3. Eliminate the segmented XZ dependency while preserving byte-stable serializer
+   policy where exact SVG parity still matters.
+4. Use the same display-domain model for direct native-RGBA proof rendering.
 
 ## Samples
 
