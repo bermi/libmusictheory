@@ -45,6 +45,7 @@ Close the native-RGBA proof lane for the simple compatibility families with stri
 - `f46d43d` — 2026-03-16
 - `8a22f12` — 2026-03-16
 - `870ba04` — 2026-03-16
+- `ae80483` — 2026-03-16
 - Completion state shipped in this plan:
   - added `optc` native-RGBA proof support in `/Users/bermi/code/libmusictheory/src/bitmap_compat.zig`
   - added `oc` native-RGBA proof support in `/Users/bermi/code/libmusictheory/src/bitmap_compat.zig`

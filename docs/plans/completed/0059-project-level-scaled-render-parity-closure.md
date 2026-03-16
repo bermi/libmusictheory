@@ -46,6 +46,7 @@ Completion of this plan does not imply visual project completion.
 
 - `61c199c` — 2026-03-15
 - `c1e38f9` — 2026-03-16
+- `ae80483` — 2026-03-16
 - Completion state shipped in this plan:
   - renamed the all-kind bitmap lane to `Scaled Render Parity` and split it from `Native RGBA Proof` across `/Users/bermi/code/libmusictheory/build.zig`, `/Users/bermi/code/libmusictheory/examples/wasm-demo/scaled-render-parity.html`, `/Users/bermi/code/libmusictheory/examples/wasm-demo/scaled-render-parity.js`, and `/Users/bermi/code/libmusictheory/scripts/validate_harmonious_scaled_render_parity_playwright.mjs`
   - exposed native candidate backend subtype truth from `/Users/bermi/code/libmusictheory/src/bitmap_compat.zig`, `/Users/bermi/code/libmusictheory/src/c_api.zig`, and `/Users/bermi/code/libmusictheory/src/wasm_scaled_render_api.zig`
