@@ -69,6 +69,7 @@ Rebase the visual validation track so the repo makes only truthful claims:
 
 - `61c199c` — 2026-03-15
 - `90cc334` — 2026-03-16
+- `65855c4` — 2026-03-16
 - Completion state shipped in this plan:
   - split the old mixed bitmap lane into `Scaled Render Parity` and `Native RGBA Proof`
   - tightened terminology and guardrails so parity-only lanes are not mislabeled as proof
