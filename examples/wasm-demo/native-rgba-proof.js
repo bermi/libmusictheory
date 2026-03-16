@@ -29,6 +29,10 @@ let wasm = null;
 let memory = null;
 let runInFlight = false;
 
+function yieldToBrowser() {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
 async function runNativeRgbaProof() {
   if (runInFlight) return;
   runInFlight = true;
@@ -129,6 +133,7 @@ async function runNativeRgbaProof() {
                 diff: new Uint8ClampedArray(rgbaBytes),
               };
             }
+            await yieldToBrowser();
             continue;
           }
 
@@ -145,6 +150,7 @@ async function runNativeRgbaProof() {
                 diff: new Uint8ClampedArray(rgbaBytes),
               };
             }
+            await yieldToBrowser();
             continue;
           }
 
@@ -163,6 +169,7 @@ async function runNativeRgbaProof() {
                 diff: new Uint8ClampedArray(rgbaBytes),
               };
             }
+            await yieldToBrowser();
             continue;
           }
 
@@ -202,6 +209,7 @@ async function runNativeRgbaProof() {
             reference: referenceBytes,
             diff: diff.pixels,
           });
+          await yieldToBrowser();
         }
 
         rows.push({

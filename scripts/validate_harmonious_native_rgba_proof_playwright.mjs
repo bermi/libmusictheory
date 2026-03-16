@@ -15,7 +15,7 @@ const timeoutMs = Number.parseInt(process.env.LMT_NATIVE_RGBA_PROOF_TIMEOUT_MS |
 const referenceRoot = process.env.LMT_HARMONIOUS_REF_ROOT || '/tmp/harmoniousapp.net';
 const installDir = path.join(rootDir, 'zig-out', 'wasm-native-rgba-proof');
 const requestedPort = process.env.LMT_VALIDATION_PORT ? Number.parseInt(process.env.LMT_VALIDATION_PORT, 10) : null;
-const defaultKinds = ['even', 'scale', 'opc', 'optc', 'oc', 'eadgbe', 'wide-chord', 'chord-clipped', 'grand-chord', 'chord', 'center-square-text', 'vert-text-black', 'vert-text-b2t-black'];
+const defaultKinds = ['vert-text-black', 'even', 'scale', 'opc', 'oc', 'optc', 'eadgbe', 'center-square-text', 'wide-chord', 'chord-clipped', 'grand-chord', 'majmin/modes', 'majmin/scales', 'chord', 'vert-text-b2t-black'];
 
 function parseArgs(argv) {
   const out = { samplePerKind: 5, kinds: [...defaultKinds], scales: ['55:100', '200:100'] };
@@ -145,10 +145,16 @@ async function main() {
 
       await page.goto(url.toString(), { waitUntil: 'domcontentloaded' });
       await page.waitForSelector('#run-proof', { timeout: 30000 });
+      await page.waitForFunction(() => {
+        const status = document.getElementById('status')?.textContent || '';
+        return status.includes('WASM loaded. Native RGBA proof validation is ready.');
+      }, { timeout: 30000 });
       await page.fill('#ref-root', referenceRoot);
       await page.fill('#visual-sample-size', String(args.samplePerKind));
       await page.fill('#scale-list', args.scales.map((scale) => scale.replace(':', '/')).join(','));
-      await page.click('#run-proof');
+      await page.evaluate(() => {
+        document.getElementById('run-proof')?.click();
+      });
 
       const deadline = Date.now() + timeoutMs;
       while (true) {

@@ -9,9 +9,9 @@ Build `libmusictheory`, a Zig library exposing a C ABI that implements the compl
 
 ## Lifecycle Status
 
-- Draft: 0001, 0051, 0058, 0060
-- In progress: 0054
-- Completed: 0002, 0003, 0004, 0005, 0006, 0007, 0008, 0009, 0010, 0011, 0012, 0013, 0014, 0015, 0016, 0017, 0018, 0019, 0020, 0021, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0032, 0033, 0034, 0035, 0036, 0037, 0038, 0039, 0040, 0041, 0042, 0043, 0044, 0045, 0046, 0047, 0048, 0049, 0050, 0052, 0053, 0055, 0056, 0057, 0059, 0061, 0062, 0063
+- Draft: 0001, 0051
+- In progress: none
+- Completed: 0002, 0003, 0004, 0005, 0006, 0007, 0008, 0009, 0010, 0011, 0012, 0013, 0014, 0015, 0016, 0017, 0018, 0019, 0020, 0021, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0032, 0033, 0034, 0035, 0036, 0037, 0038, 0039, 0040, 0041, 0042, 0043, 0044, 0045, 0046, 0047, 0048, 0049, 0050, 0052, 0053, 0054, 0055, 0056, 0057, 0058, 0059, 0060, 0061, 0062, 0063
 
 ## Plan Dependencies (Execute in Order)
 
@@ -290,10 +290,10 @@ Split the additive bitmap lane into two honest claims: all-kind scaled render pa
 
 **Deliverable**: a staged master plan with explicit anti-cheat rules, RGBA ABI requirements, deterministic diff metrics, parity/proof naming discipline, and per-family closure gates.
 
-### Phase 7.6 (In Progress Additive): Native-RGBA Proof Execution Track (Plans 0052-0060)
+### Phase 7.6 (Completed Additive): Native-RGBA Proof Execution Track (Plans 0052-0060)
 Execute the native-proof lane in dependency order: anti-cheat guardrails first, then RGBA exports, then reference rasterization, then per-family closure. Scaled render parity remains a separate all-kind lane; families that are not natively supported must remain explicitly unsupported and may not count as proven.
 
-**Deliverable**: separate scaled-render-parity and native-proof bundles, with project completion blocked until `0060` closes. `0059` is not a completion marker; `0060` is the only visual completion marker.
+**Deliverable**: separate scaled-render-parity and native-proof bundles, with `0059` retained as parity-only closure and `0060` closed as the only visual completion marker after all 15 kinds passed strict native-RGBA proof at `55%` and `200%`.
 
 ## Research Documents Index
 

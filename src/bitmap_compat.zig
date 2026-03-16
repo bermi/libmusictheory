@@ -25,11 +25,13 @@ const PATH_EDGE_LIMIT: usize = 4096;
 const TAG_TRANSFORM_STACK_LIMIT: usize = 16;
 const OC_TEMPLATE_BUFFER_LIMIT: usize = 8 * 1024;
 const CHORD_COMPAT_SVG_BUFFER_LIMIT: usize = 64 * 1024;
-const GENERATED_COMPAT_SVG_BUFFER_LIMIT: usize = 256 * 1024;
+const GENERATED_COMPAT_SVG_BUFFER_LIMIT: usize = 512 * 1024;
 const SCALE_SOURCE_WIDTH: f64 = 363.0;
 const SCALE_SOURCE_HEIGHT: f64 = 113.0;
 const EVEN_SOURCE_WIDTH: u32 = 500;
 const EVEN_SOURCE_HEIGHT: u32 = 650;
+const MAJMIN_SOURCE_WIDTH: u32 = 300;
+const MAJMIN_SOURCE_HEIGHT: u32 = 360;
 const EADGBE_STRING_COUNT: usize = fret_compat.NumStrings;
 const CHORD_CLIPPED_SOURCE_WIDTH: f64 = 170.0;
 const CHORD_CLIPPED_SOURCE_HEIGHT: f64 = 82.05128205128206;
@@ -66,6 +68,8 @@ const EADGBE_MASK_3307_C: u8 = (1 << 3) | (1 << 4) | (1 << 5);
 const EADGBE_MASK_3311_A: u8 = (1 << 0) | (1 << 2) | (1 << 3);
 const EADGBE_MASK_3311_B: u8 = (1 << 1) | (1 << 3) | (1 << 4);
 const EADGBE_MASK_3311_C: u8 = (1 << 2) | (1 << 4) | (1 << 5);
+
+var generated_compat_svg_buffer: [GENERATED_COMPAT_SVG_BUFFER_LIMIT]u8 = undefined;
 
 pub const Error = error{
     UnsupportedKind,
@@ -117,6 +121,11 @@ const Edge = struct {
     b: Point,
 };
 
+const ScanIntersection = struct {
+    x: f64,
+    delta: i32,
+};
+
 const Matrix = struct {
     a: f64 = 1.0,
     b: f64 = 0.0,
@@ -165,6 +174,7 @@ const PathBuilder = struct {
     subpath_start: Point = .{ .x = 0.0, .y = 0.0 },
     has_current: bool = false,
     last_cubic_ctrl: ?Point = null,
+    last_quadratic_ctrl: ?Point = null,
     prev_cmd: u8 = 0,
 
     fn moveTo(self: *PathBuilder, point: Point) void {
@@ -172,6 +182,7 @@ const PathBuilder = struct {
         self.subpath_start = point;
         self.has_current = true;
         self.last_cubic_ctrl = null;
+        self.last_quadratic_ctrl = null;
     }
 
     fn lineTo(self: *PathBuilder, transform: Matrix, point: Point) Error!void {
@@ -187,11 +198,12 @@ const PathBuilder = struct {
         self.edge_count += 1;
         self.current = point;
         self.last_cubic_ctrl = null;
+        self.last_quadratic_ctrl = null;
     }
 
     fn cubicTo(self: *PathBuilder, transform: Matrix, ctrl1: Point, ctrl2: Point, point: Point) Error!void {
         const start = self.current;
-        const steps = cubicStepCount(start, ctrl1, ctrl2, point);
+        const steps = cubicStepCount(start, ctrl1, ctrl2, point, transform.approxUniformScale());
 
         var i: u32 = 1;
         while (i <= steps) : (i += 1) {
@@ -201,6 +213,22 @@ const PathBuilder = struct {
         }
         self.current = point;
         self.last_cubic_ctrl = ctrl2;
+        self.last_quadratic_ctrl = null;
+    }
+
+    fn quadraticTo(self: *PathBuilder, transform: Matrix, ctrl: Point, point: Point) Error!void {
+        const start = self.current;
+        const steps = quadraticStepCount(start, ctrl, point, transform.approxUniformScale());
+
+        var i: u32 = 1;
+        while (i <= steps) : (i += 1) {
+            const t = @as(f64, @floatFromInt(i)) / @as(f64, @floatFromInt(steps));
+            const next = quadraticPoint(start, ctrl, point, t);
+            try self.lineTo(transform, next);
+        }
+        self.current = point;
+        self.last_cubic_ctrl = null;
+        self.last_quadratic_ctrl = ctrl;
     }
 
     fn closePath(self: *PathBuilder, transform: Matrix) Error!void {
@@ -210,6 +238,7 @@ const PathBuilder = struct {
         }
         self.current = self.subpath_start;
         self.last_cubic_ctrl = null;
+        self.last_quadratic_ctrl = null;
     }
 };
 
@@ -264,8 +293,7 @@ fn scaledDimFloat(source: f64, scale_numerator: u32, scale_denominator: u32) u32
 
 pub fn kindSupported(kind_index: usize) bool {
     return switch (svg_compat.kindId(kind_index) orelse return false) {
-        .even, .scale, .opc, .oc, .optc, .eadgbe, .wide_chord, .chord_clipped, .grand_chord, .chord, .center_square_text, .vert_text_black, .vert_text_b2t_black => true,
-        else => false,
+        .even, .scale, .opc, .oc, .optc, .eadgbe, .wide_chord, .chord_clipped, .grand_chord, .chord, .center_square_text, .vert_text_black, .vert_text_b2t_black, .majmin_modes, .majmin_scales => true,
     };
 }
 
@@ -274,8 +302,7 @@ pub fn candidateBackend(kind_index: usize) ?CandidateBackend {
         .opc, .optc, .eadgbe => .direct_primitives,
         .center_square_text, .vert_text_black, .vert_text_b2t_black => .path_geometry,
         .oc => .markup_template_raster,
-        .even, .scale, .wide_chord, .chord_clipped, .grand_chord, .chord => .generated_svg_raster,
-        else => null,
+        .even, .scale, .wide_chord, .chord_clipped, .grand_chord, .chord, .majmin_modes, .majmin_scales => .generated_svg_raster,
     };
 }
 
@@ -307,7 +334,7 @@ pub fn targetWidthScaled(kind_index: usize, image_index: usize, scale_numerator:
         .chord_clipped => scaledDimFloat(CHORD_CLIPPED_SOURCE_WIDTH, scale_numerator, scale_denominator),
         .center_square_text => scaledDim(36, scale_numerator, scale_denominator),
         .vert_text_black, .vert_text_b2t_black => scaledDim(36, scale_numerator, scale_denominator),
-        else => 0,
+        .majmin_modes, .majmin_scales => scaledDim(MAJMIN_SOURCE_WIDTH, scale_numerator, scale_denominator),
     };
 }
 
@@ -330,7 +357,7 @@ pub fn targetHeightScaled(kind_index: usize, image_index: usize, scale_numerator
         .chord_clipped => scaledDimFloat(CHORD_CLIPPED_SOURCE_HEIGHT, scale_numerator, scale_denominator),
         .center_square_text => scaledDim(36, scale_numerator, scale_denominator),
         .vert_text_black, .vert_text_b2t_black => scaledDim(90, scale_numerator, scale_denominator),
-        else => 0,
+        .majmin_modes, .majmin_scales => scaledDim(MAJMIN_SOURCE_HEIGHT, scale_numerator, scale_denominator),
     };
 }
 
@@ -376,7 +403,7 @@ pub fn renderCandidateRgbaScaled(kind_index: usize, image_index: usize, scale_nu
         .center_square_text => try renderCenterSquareCandidate(&surface, image_name, scale_numerator, scale_denominator),
         .vert_text_black => try renderVerticalTextCandidate(&surface, image_name, false, scale_numerator, scale_denominator),
         .vert_text_b2t_black => try renderVerticalTextCandidate(&surface, image_name, true, scale_numerator, scale_denominator),
-        else => return error.UnsupportedKind,
+        .majmin_modes, .majmin_scales => try renderGeneratedCompatCandidateExtended(&surface, kind_index, image_index),
     }
 
     return required;
@@ -403,7 +430,7 @@ pub fn renderReferenceSvgRgbaScaled(kind_index: usize, svg: []const u8, scale_nu
         .eadgbe => try renderEadgbeReference(&surface, svg, scale_numerator, scale_denominator),
         .wide_chord, .chord_clipped, .grand_chord, .chord => try renderMarkupReference(&surface, svg),
         .center_square_text, .vert_text_black, .vert_text_b2t_black => try renderTextReference(&surface, svg, scale_numerator, scale_denominator),
-        else => return error.UnsupportedKind,
+        .majmin_modes, .majmin_scales => try renderMarkupReferenceExtended(&surface, svg),
     }
 
     return required;
@@ -422,7 +449,7 @@ fn initSurface(kind_id: svg_compat.KindId, required: usize, out_rgba: []u8, scal
         .chord_clipped => scaledDimFloat(CHORD_CLIPPED_SOURCE_WIDTH, scale_numerator, scale_denominator),
         .center_square_text => scaledDim(36, scale_numerator, scale_denominator),
         .vert_text_black, .vert_text_b2t_black => scaledDim(36, scale_numerator, scale_denominator),
-        else => return error.UnsupportedKind,
+        .majmin_modes, .majmin_scales => scaledDim(MAJMIN_SOURCE_WIDTH, scale_numerator, scale_denominator),
     };
     const height = switch (kind_id) {
         .even => scaledDim(EVEN_SOURCE_HEIGHT, scale_numerator, scale_denominator),
@@ -436,7 +463,7 @@ fn initSurface(kind_id: svg_compat.KindId, required: usize, out_rgba: []u8, scal
         .chord_clipped => scaledDimFloat(CHORD_CLIPPED_SOURCE_HEIGHT, scale_numerator, scale_denominator),
         .center_square_text => scaledDim(36, scale_numerator, scale_denominator),
         .vert_text_black, .vert_text_b2t_black => scaledDim(90, scale_numerator, scale_denominator),
-        else => return error.UnsupportedKind,
+        .majmin_modes, .majmin_scales => scaledDim(MAJMIN_SOURCE_HEIGHT, scale_numerator, scale_denominator),
     };
     if (width == 0 or height == 0) return error.UnsupportedKind;
     return .{
@@ -696,18 +723,18 @@ fn renderMarkupExtended(surface: *Surface, svg: []const u8, root: Matrix, gradie
         const tag_text = svg[tag.start..tag.end];
 
         if (tag.close) {
-            if (std.mem.eql(u8, tag.name, "svg") or std.mem.eql(u8, tag.name, "g") or std.mem.eql(u8, tag.name, "defs") or std.mem.eql(u8, tag.name, "linearGradient")) {
+            if (std.mem.eql(u8, tag.name, "svg") or std.mem.eql(u8, tag.name, "g") or std.mem.eql(u8, tag.name, "a") or std.mem.eql(u8, tag.name, "defs") or std.mem.eql(u8, tag.name, "linearGradient")) {
                 if (depth > 1) depth -= 1;
             }
             continue;
         }
 
         const current = stack[depth - 1];
-        if (std.mem.eql(u8, tag.name, "svg") or std.mem.eql(u8, tag.name, "g") or std.mem.eql(u8, tag.name, "defs") or std.mem.eql(u8, tag.name, "linearGradient")) {
+        if (std.mem.eql(u8, tag.name, "svg") or std.mem.eql(u8, tag.name, "g") or std.mem.eql(u8, tag.name, "a") or std.mem.eql(u8, tag.name, "defs") or std.mem.eql(u8, tag.name, "linearGradient")) {
             if (tag.self_close) continue;
             if (depth >= stack.len) return error.UnsupportedSvgFeature;
             stack[depth] = .{
-                .transform = if (std.mem.eql(u8, tag.name, "svg") or std.mem.eql(u8, tag.name, "g"))
+                .transform = if (std.mem.eql(u8, tag.name, "svg") or std.mem.eql(u8, tag.name, "g") or std.mem.eql(u8, tag.name, "a"))
                     if (parseTransformAttr(tag_text)) |element_transform|
                         current.transform.multiply(element_transform)
                     else
@@ -935,15 +962,13 @@ fn renderChordCompatCandidate(surface: *Surface, image_name: []const u8, kind: c
 }
 
 fn renderGeneratedCompatCandidate(surface: *Surface, kind_index: usize, image_index: usize) Error!void {
-    var svg_buf: [GENERATED_COMPAT_SVG_BUFFER_LIMIT]u8 = undefined;
-    const svg = svg_compat.generateByIndex(kind_index, image_index, &svg_buf);
+    const svg = svg_compat.generateByIndex(kind_index, image_index, &generated_compat_svg_buffer);
     if (svg.len == 0) return error.InvalidImage;
     try renderSvgDocument(surface, svg);
 }
 
 fn renderGeneratedCompatCandidateExtended(surface: *Surface, kind_index: usize, image_index: usize) Error!void {
-    var svg_buf: [GENERATED_COMPAT_SVG_BUFFER_LIMIT]u8 = undefined;
-    const svg = svg_compat.generateByIndex(kind_index, image_index, &svg_buf);
+    const svg = svg_compat.generateByIndex(kind_index, image_index, &generated_compat_svg_buffer);
     if (svg.len == 0) return error.InvalidImage;
     try renderSvgDocumentExtended(surface, svg);
 }
@@ -1719,6 +1744,44 @@ fn buildPathEdges(d: []const u8, transform: Matrix, builder: *PathBuilder) Error
                 }
                 builder.prev_cmd = cmd;
             },
+            'Q', 'q' => {
+                const is_relative = cmd == 'q';
+                while (reader.hasNumber()) {
+                    const x1 = reader.nextNumber() orelse return error.InvalidSvg;
+                    const y1 = reader.nextNumber() orelse return error.InvalidSvg;
+                    const x = reader.nextNumber() orelse return error.InvalidSvg;
+                    const y = reader.nextNumber() orelse return error.InvalidSvg;
+                    const base = if (is_relative) builder.current else Point{ .x = 0.0, .y = 0.0 };
+                    try builder.quadraticTo(
+                        transform,
+                        .{ .x = base.x + x1, .y = base.y + y1 },
+                        .{ .x = base.x + x, .y = base.y + y },
+                    );
+                }
+                builder.prev_cmd = cmd;
+            },
+            'T', 't' => {
+                const is_relative = cmd == 't';
+                while (reader.hasNumber()) {
+                    const reflected = if (builder.prev_cmd == 'Q' or builder.prev_cmd == 'q' or builder.prev_cmd == 'T' or builder.prev_cmd == 't') blk: {
+                        const ctrl = builder.last_quadratic_ctrl orelse builder.current;
+                        break :blk Point{
+                            .x = builder.current.x * 2.0 - ctrl.x,
+                            .y = builder.current.y * 2.0 - ctrl.y,
+                        };
+                    } else builder.current;
+
+                    const x = reader.nextNumber() orelse return error.InvalidSvg;
+                    const y = reader.nextNumber() orelse return error.InvalidSvg;
+                    const base = if (is_relative) builder.current else Point{ .x = 0.0, .y = 0.0 };
+                    try builder.quadraticTo(
+                        transform,
+                        reflected,
+                        .{ .x = base.x + x, .y = base.y + y },
+                    );
+                }
+                builder.prev_cmd = cmd;
+            },
             'Z', 'z' => {
                 try builder.closePath(transform);
                 builder.prev_cmd = cmd;
@@ -1728,9 +1791,7 @@ fn buildPathEdges(d: []const u8, transform: Matrix, builder: *PathBuilder) Error
     }
 }
 
-fn fillEdges(surface: *Surface, edges: []const Edge, fill: [4]u8) void {
-    if (edges.len == 0 or fill[3] == 0) return;
-
+fn edgeBounds(edges: []const Edge) struct { min_x: f64, max_x: f64, min_y: f64, max_y: f64 } {
     var min_x = edges[0].a.x;
     var max_x = edges[0].a.x;
     var min_y = edges[0].a.y;
@@ -1741,73 +1802,120 @@ fn fillEdges(surface: *Surface, edges: []const Edge, fill: [4]u8) void {
         min_y = @min(min_y, @min(edge.a.y, edge.b.y));
         max_y = @max(max_y, @max(edge.a.y, edge.b.y));
     }
+    return .{ .min_x = min_x, .max_x = max_x, .min_y = min_y, .max_y = max_y };
+}
 
-    const x0: i32 = @as(i32, @intFromFloat(@floor(min_x))) - 1;
-    const x1: i32 = @as(i32, @intFromFloat(@ceil(max_x))) + 1;
-    const y0: i32 = @as(i32, @intFromFloat(@floor(min_y))) - 1;
-    const y1: i32 = @as(i32, @intFromFloat(@ceil(max_y))) + 1;
+fn sortScanIntersections(items: []ScanIntersection) void {
+    var i: usize = 1;
+    while (i < items.len) : (i += 1) {
+        const value = items[i];
+        var j = i;
+        while (j > 0 and items[j - 1].x > value.x) : (j -= 1) {
+            items[j] = items[j - 1];
+        }
+        items[j] = value;
+    }
+}
+
+fn collectScanIntersections(edges: []const Edge, y: f64, out: *[PATH_EDGE_LIMIT]ScanIntersection) usize {
+    var count: usize = 0;
+    for (edges) |edge| {
+        const ay = edge.a.y;
+        const by = edge.b.y;
+        if ((ay <= y and by > y) or (by <= y and ay > y)) {
+            if (count >= out.len) break;
+            const t = (y - ay) / (by - ay);
+            out[count] = .{
+                .x = edge.a.x + (edge.b.x - edge.a.x) * t,
+                .delta = if (by > ay) 1 else -1,
+            };
+            count += 1;
+        }
+    }
+    sortScanIntersections(out[0..count]);
+    return count;
+}
+
+fn fillScanlineRange(surface: *Surface, py: i32, x_start: f64, x_end: f64, fill: [4]u8) void {
+    if (fill[3] == 0 or x_end <= x_start) return;
+    const px0: i32 = @as(i32, @intFromFloat(@ceil(x_start - 0.5)));
+    const px1: i32 = @as(i32, @intFromFloat(@ceil(x_end - 0.5)));
+    var px = px0;
+    while (px < px1) : (px += 1) {
+        if (pixelPtr(surface, px, py)) |dst| blend(dst, fill);
+    }
+}
+
+fn fillScanlineRangeGradient(surface: *Surface, py: i32, x_start: f64, x_end: f64, gradient: LinearGradient, path_transform: Matrix) void {
+    if (x_end <= x_start) return;
+    const px0: i32 = @as(i32, @intFromFloat(@ceil(x_start - 0.5)));
+    const px1: i32 = @as(i32, @intFromFloat(@ceil(x_end - 0.5)));
+    var px = px0;
+    while (px < px1) : (px += 1) {
+        if (pixelPtr(surface, px, py)) |dst| {
+            const x = @as(f64, @floatFromInt(px)) + 0.5;
+            const y = @as(f64, @floatFromInt(py)) + 0.5;
+            blend(dst, sampleLinearGradient(gradient, path_transform, x, y));
+        }
+    }
+}
+
+fn fillEdges(surface: *Surface, edges: []const Edge, fill: [4]u8) void {
+    if (edges.len == 0 or fill[3] == 0) return;
+    const bounds = edgeBounds(edges);
+    const y0: i32 = @as(i32, @intFromFloat(@floor(bounds.min_y))) - 1;
+    const y1: i32 = @as(i32, @intFromFloat(@ceil(bounds.max_y))) + 1;
+    var intersections: [PATH_EDGE_LIMIT]ScanIntersection = undefined;
 
     var py = y0;
     while (py <= y1) : (py += 1) {
         const y = @as(f64, @floatFromInt(py)) + 0.5;
-        var px = x0;
-        while (px <= x1) : (px += 1) {
-            const x = @as(f64, @floatFromInt(px)) + 0.5;
-            var winding: i32 = 0;
+        const count = collectScanIntersections(edges, y, &intersections);
+        if (count == 0) continue;
 
-            for (edges) |edge| {
-                if (edge.a.y <= y) {
-                    if (edge.b.y > y and isLeft(edge.a, edge.b, .{ .x = x, .y = y }) > 0.0) winding += 1;
-                } else {
-                    if (edge.b.y <= y and isLeft(edge.a, edge.b, .{ .x = x, .y = y }) < 0.0) winding -= 1;
-                }
-            }
+        var winding: i32 = 0;
+        var prev_x: f64 = intersections[0].x;
+        var i: usize = 0;
+        while (i < count) {
+            const current_x = intersections[i].x;
+            if (winding != 0) fillScanlineRange(surface, py, prev_x, current_x, fill);
 
-            if (winding != 0) {
-                if (pixelPtr(surface, px, py)) |dst| blend(dst, fill);
+            var delta_sum: i32 = 0;
+            while (i < count and @abs(intersections[i].x - current_x) <= 0.0000001) : (i += 1) {
+                delta_sum += intersections[i].delta;
             }
+            winding += delta_sum;
+            prev_x = current_x;
         }
     }
 }
 
 fn fillEdgesGradient(surface: *Surface, edges: []const Edge, gradient: LinearGradient, path_transform: Matrix) void {
     if (edges.len == 0) return;
-
-    var min_x = edges[0].a.x;
-    var max_x = edges[0].a.x;
-    var min_y = edges[0].a.y;
-    var max_y = edges[0].a.y;
-    for (edges) |edge| {
-        min_x = @min(min_x, @min(edge.a.x, edge.b.x));
-        max_x = @max(max_x, @max(edge.a.x, edge.b.x));
-        min_y = @min(min_y, @min(edge.a.y, edge.b.y));
-        max_y = @max(max_y, @max(edge.a.y, edge.b.y));
-    }
-
-    const x0: i32 = @as(i32, @intFromFloat(@floor(min_x))) - 1;
-    const x1: i32 = @as(i32, @intFromFloat(@ceil(max_x))) + 1;
-    const y0: i32 = @as(i32, @intFromFloat(@floor(min_y))) - 1;
-    const y1: i32 = @as(i32, @intFromFloat(@ceil(max_y))) + 1;
+    const bounds = edgeBounds(edges);
+    const y0: i32 = @as(i32, @intFromFloat(@floor(bounds.min_y))) - 1;
+    const y1: i32 = @as(i32, @intFromFloat(@ceil(bounds.max_y))) + 1;
+    var intersections: [PATH_EDGE_LIMIT]ScanIntersection = undefined;
 
     var py = y0;
     while (py <= y1) : (py += 1) {
         const y = @as(f64, @floatFromInt(py)) + 0.5;
-        var px = x0;
-        while (px <= x1) : (px += 1) {
-            const x = @as(f64, @floatFromInt(px)) + 0.5;
-            var winding: i32 = 0;
+        const count = collectScanIntersections(edges, y, &intersections);
+        if (count == 0) continue;
 
-            for (edges) |edge| {
-                if (edge.a.y <= y) {
-                    if (edge.b.y > y and isLeft(edge.a, edge.b, .{ .x = x, .y = y }) > 0.0) winding += 1;
-                } else {
-                    if (edge.b.y <= y and isLeft(edge.a, edge.b, .{ .x = x, .y = y }) < 0.0) winding -= 1;
-                }
-            }
+        var winding: i32 = 0;
+        var prev_x: f64 = intersections[0].x;
+        var i: usize = 0;
+        while (i < count) {
+            const current_x = intersections[i].x;
+            if (winding != 0) fillScanlineRangeGradient(surface, py, prev_x, current_x, gradient, path_transform);
 
-            if (winding != 0) {
-                if (pixelPtr(surface, px, py)) |dst| blend(dst, sampleLinearGradient(gradient, path_transform, x, y));
+            var delta_sum: i32 = 0;
+            while (i < count and @abs(intersections[i].x - current_x) <= 0.0000001) : (i += 1) {
+                delta_sum += intersections[i].delta;
             }
+            winding += delta_sum;
+            prev_x = current_x;
         }
     }
 }
@@ -1948,10 +2056,26 @@ fn cubicPoint(p0: Point, p1: Point, p2: Point, p3: Point, t: f64) Point {
     };
 }
 
-fn cubicStepCount(p0: Point, p1: Point, p2: Point, p3: Point) u32 {
-    const approx_len = distance(p0, p1) + distance(p1, p2) + distance(p2, p3);
-    const steps = @as(u32, @intFromFloat(@ceil(approx_len / 3.0)));
-    return @max(@as(u32, 8), @min(@as(u32, 48), steps));
+fn cubicStepCount(p0: Point, p1: Point, p2: Point, p3: Point, scale: f64) u32 {
+    const scaled_len = (distance(p0, p1) + distance(p1, p2) + distance(p2, p3)) * @max(scale, 0.0001);
+    const steps = @as(u32, @intFromFloat(@ceil(scaled_len / 4.0)));
+    return @max(@as(u32, 4), @min(@as(u32, 24), steps));
+}
+
+fn quadraticPoint(p0: Point, p1: Point, p2: Point, t: f64) Point {
+    const u = 1.0 - t;
+    const tt = t * t;
+    const uu = u * u;
+    return .{
+        .x = uu * p0.x + 2.0 * u * t * p1.x + tt * p2.x,
+        .y = uu * p0.y + 2.0 * u * t * p1.y + tt * p2.y,
+    };
+}
+
+fn quadraticStepCount(p0: Point, p1: Point, p2: Point, scale: f64) u32 {
+    const scaled_len = (distance(p0, p1) + distance(p1, p2)) * @max(scale, 0.0001);
+    const steps = @as(u32, @intFromFloat(@ceil(scaled_len / 4.0)));
+    return @max(@as(u32, 4), @min(@as(u32, 20), steps));
 }
 
 fn distance(a: Point, b: Point) f64 {
@@ -2201,7 +2325,7 @@ fn isAttrNameChar(ch: u8) bool {
 
 fn isPathCommand(ch: u8) bool {
     return switch (ch) {
-        'M', 'm', 'L', 'l', 'C', 'c', 'S', 's', 'Z', 'z' => true,
+        'M', 'm', 'L', 'l', 'C', 'c', 'S', 's', 'Q', 'q', 'T', 't', 'Z', 'z' => true,
         else => false,
     };
 }
@@ -2237,7 +2361,66 @@ fn firstCsvField(text: []const u8) []const u8 {
 }
 
 fn parseNumber(text: []const u8, fallback: f64) f64 {
-    return std.fmt.parseFloat(f64, text) catch fallback;
+    if (text.len == 0) return fallback;
+
+    var index: usize = 0;
+    var sign: f64 = 1.0;
+    if (text[index] == '-') {
+        sign = -1.0;
+        index += 1;
+    } else if (text[index] == '+') {
+        index += 1;
+    }
+    if (index >= text.len) return fallback;
+
+    var value: f64 = 0.0;
+    var saw_digit = false;
+    while (index < text.len and text[index] >= '0' and text[index] <= '9') : (index += 1) {
+        saw_digit = true;
+        value = value * 10.0 + @as(f64, @floatFromInt(text[index] - '0'));
+    }
+
+    if (index < text.len and text[index] == '.') {
+        index += 1;
+        var place: f64 = 0.1;
+        while (index < text.len and text[index] >= '0' and text[index] <= '9') : (index += 1) {
+            saw_digit = true;
+            value += @as(f64, @floatFromInt(text[index] - '0')) * place;
+            place *= 0.1;
+        }
+    }
+
+    if (!saw_digit) return fallback;
+
+    if (index < text.len and (text[index] == 'e' or text[index] == 'E')) {
+        index += 1;
+        if (index >= text.len) return fallback;
+
+        var exp_sign: i32 = 1;
+        if (text[index] == '-') {
+            exp_sign = -1;
+            index += 1;
+        } else if (text[index] == '+') {
+            index += 1;
+        }
+        if (index >= text.len or text[index] < '0' or text[index] > '9') return fallback;
+
+        var exp_value: i32 = 0;
+        while (index < text.len and text[index] >= '0' and text[index] <= '9') : (index += 1) {
+            exp_value = exp_value * 10 + @as(i32, text[index] - '0');
+        }
+        const exp = exp_value * exp_sign;
+        if (exp > 0) {
+            var remaining = exp;
+            while (remaining > 0) : (remaining -= 1) value *= 10.0;
+        } else if (exp < 0) {
+            var remaining = -exp;
+            while (remaining > 0) : (remaining -= 1) value *= 0.1;
+        }
+    }
+
+    if (index != text.len) return fallback;
+    return value * sign;
 }
 
 fn hexNibble(ch: u8) u8 {

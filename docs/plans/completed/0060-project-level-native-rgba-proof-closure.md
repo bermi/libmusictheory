@@ -2,7 +2,7 @@
 
 > Dependencies: 0056, 0057, 0058, 0059
 
-Status: Draft
+Status: Completed
 
 ## Objective
 
@@ -29,3 +29,15 @@ The project may not be called visually complete until all of the following are t
 - `./verify.sh`
 - `zig build wasm-native-rgba-proof`
 - `node scripts/validate_harmonious_native_rgba_proof_playwright.mjs --sample-per-kind 5 --kinds vert-text-black,even,scale,opc,oc,optc,eadgbe,center-square-text,wide-chord,chord-clipped,grand-chord,majmin/modes,majmin/scales,chord,vert-text-b2t-black --scales 55:100,200:100`
+
+## Implementation History (Point-in-Time)
+
+- `61c199c` — 2026-03-15
+- Completion state shipped in this plan:
+  - closed the full-corpus strict proof lane so `/Users/bermi/code/libmusictheory/verify.sh` now reports `NATIVE_RGBA_PROOF_COMPLETE=yes`
+  - completed all-kind strict proof through `/Users/bermi/code/libmusictheory/scripts/validate_harmonious_native_rgba_proof_playwright.mjs`
+  - preserved `exact-svg parity` and `scaled render parity` while moving the last two majmin kinds into the strict native-proof set
+- Completion gates used:
+  - `./verify.sh`
+  - `zig build verify`
+  - `node scripts/validate_harmonious_native_rgba_proof_playwright.mjs --sample-per-kind 5 --kinds vert-text-black,even,scale,opc,oc,optc,eadgbe,center-square-text,wide-chord,chord-clipped,grand-chord,majmin/modes,majmin/scales,chord,vert-text-b2t-black --scales 55:100,200:100`
