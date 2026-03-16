@@ -10,6 +10,7 @@ export const BASE_REQUIRED_EXPORTS = [
   "lmt_bitmap_proof_scale_numerator",
   "lmt_bitmap_proof_scale_denominator",
   "lmt_bitmap_compat_kind_supported",
+  "lmt_bitmap_compat_candidate_backend_name",
   "lmt_bitmap_compat_target_width_scaled",
   "lmt_bitmap_compat_target_height_scaled",
   "lmt_bitmap_compat_required_rgba_bytes_scaled",
@@ -271,11 +272,11 @@ export function renderSamples(page, groups, emptyText) {
   }
   page.samplesHost.innerHTML = groups.map((entry) => `
     <section class="sample-kind">
-      <h3 class="mono">${entry.kind} @ ${entry.scalePercent} [${entry.candidateSource}]</h3>
+      <h3 class="mono">${entry.kind} @ ${entry.scalePercent} [${entry.candidateSource} | ${entry.candidateBackend}]</h3>
       <div class="sample-items">
         ${entry.samples.map((sample) => `
           <article class="sample-item">
-            <p class="sample-meta mono">image=${sample.imageName} | scale=${sample.scalePercent} | source=${sample.candidateSource} | drift=${sample.drift.toFixed(8)} | changed=${sample.changedPixels}</p>
+            <p class="sample-meta mono">image=${sample.imageName} | scale=${sample.scalePercent} | source=${sample.candidateSource} | backend=${sample.candidateBackend} | drift=${sample.drift.toFixed(8)} | changed=${sample.changedPixels}</p>
             <div class="sample-compare">
               <div><h4>Candidate</h4><div class="canvas-host" data-sample-candidate="${entry.key}:${sample.imageName}"></div></div>
               <div><h4>Reference</h4><div class="canvas-host" data-sample-reference="${entry.key}:${sample.imageName}"></div></div>

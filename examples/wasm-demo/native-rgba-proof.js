@@ -47,6 +47,7 @@ async function runNativeRgbaProof() {
     let unsupportedRows = 0;
     let compared = 0;
     let passing = 0;
+    const backendCounts = Object.create(null);
 
     const threshold = 0.0001;
     const kindCount = wasm.lmt_svg_compat_kind_count();
@@ -58,6 +59,9 @@ async function runNativeRgbaProof() {
         const total = wasm.lmt_svg_compat_image_count(kindIndex);
         const candidateSource = "native-rgba";
         const nativeSupported = wasm.lmt_bitmap_compat_kind_supported(kindIndex) === 1;
+        const candidateBackend = nativeSupported
+          ? readCString(memory, wasm.lmt_bitmap_compat_candidate_backend_name(kindIndex))
+          : "unsupported";
 
         if (!nativeSupported) {
           unsupportedRows += 1;
@@ -69,6 +73,7 @@ async function runNativeRgbaProof() {
             scaleLabel: scale.label,
             scalePercent: scale.percentLabel,
             candidateSource,
+            candidateBackend,
             supported: false,
             compared: 0,
             passing: 0,
@@ -88,6 +93,8 @@ async function runNativeRgbaProof() {
           }
           continue;
         }
+        if (!candidateBackend) throw new Error(`missing native candidate backend for ${kindName}`);
+        backendCounts[candidateBackend] = (backendCounts[candidateBackend] || 0) + 1;
 
         supportedRows += 1;
         const arena = scratchArena(wasm);
@@ -107,7 +114,7 @@ async function runNativeRgbaProof() {
         let kindFailures = 0;
         let kindMaxDrift = 0;
 
-        page.progressEl.textContent = `Generating native RGBA proof for ${kindName} @ ${scale.percentLabel} (${indexes.length}/${total}) [${candidateSource}]`;
+        page.progressEl.textContent = `Generating native RGBA proof for ${kindName} @ ${scale.percentLabel} (${indexes.length}/${total}) [${candidateSource} | ${candidateBackend}]`;
         for (const imageIndex of indexes) {
           const imageName = readCopyString(memory, wasm.lmt_svg_compat_image_name, namePtr, NAME_CAPACITY, kindIndex, imageIndex);
           const candidateWritten = wasm.lmt_bitmap_compat_render_candidate_rgba_scaled(kindIndex, imageIndex, scale.numerator, scale.denominator, candidatePtr, rgbaBytes);
@@ -189,6 +196,7 @@ async function runNativeRgbaProof() {
             scaleKey: scale.key,
             scalePercent: scale.percentLabel,
             candidateSource,
+            candidateBackend,
             drift: diff.drift,
             changedPixels: diff.changedPixels,
             candidate: candidateBytes,
@@ -205,6 +213,7 @@ async function runNativeRgbaProof() {
           scaleLabel: scale.label,
           scalePercent: scale.percentLabel,
           candidateSource,
+          candidateBackend,
           supported: true,
           compared: kindCompared,
           passing: kindPassing,
@@ -212,14 +221,14 @@ async function runNativeRgbaProof() {
           drift: kindMaxDrift,
           unsupported: 0,
         });
-        sampleGroups.push({ key: `${kindName}@${scale.key}`, kind: kindName, scaleKey: scale.key, scalePercent: scale.percentLabel, candidateSource, samples });
+        sampleGroups.push({ key: `${kindName}@${scale.key}`, kind: kindName, scaleKey: scale.key, scalePercent: scale.percentLabel, candidateSource, candidateBackend, samples });
       }
     }
 
     page.summaryHost.innerHTML = `
       <table>
         <thead>
-          <tr><th>Kind</th><th>Scale</th><th>Candidate Source</th><th>Directory</th><th>Images</th><th>Support</th><th>Compared</th><th>Passing</th><th>Failures</th><th>Unsupported</th></tr>
+          <tr><th>Kind</th><th>Scale</th><th>Candidate Source</th><th>Candidate Backend</th><th>Directory</th><th>Images</th><th>Support</th><th>Compared</th><th>Passing</th><th>Failures</th><th>Unsupported</th></tr>
         </thead>
         <tbody>
           ${rows.map((row) => `
@@ -227,6 +236,7 @@ async function runNativeRgbaProof() {
               <td class="mono">${row.kind}</td>
               <td class="mono">${row.scalePercent}</td>
               <td class="mono">${row.candidateSource}</td>
+              <td class="mono">${row.candidateBackend}</td>
               <td class="mono">${row.directory}</td>
               <td>${row.total}</td>
               <td class="${row.supported ? "good" : "bad"}">${row.supported ? "supported" : "unsupported"}</td>
@@ -249,6 +259,7 @@ async function runNativeRgbaProof() {
       `Scales: ${scales.map((scale) => `${scale.label} (${scale.percentLabel})`).join(", ")}`,
       `Supported rows: ${supportedRows}`,
       `Unsupported rows: ${unsupportedRows}`,
+      `Backend rows: ${Object.entries(backendCounts).map(([key, value]) => `${key}=${value}`).join(", ") || "none"}`,
       `Compared samples: ${compared}`,
       `Passing samples: ${passing}`,
       `Failures: ${compared - passing}`,
@@ -260,6 +271,7 @@ async function runNativeRgbaProof() {
       requestedScales: scales.map((scale) => scale.key),
       supportedRows,
       unsupportedRows,
+      backendCounts,
       failures: compared - passing,
       compared,
       passing,

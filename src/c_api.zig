@@ -700,6 +700,11 @@ export fn lmt_bitmap_compat_kind_supported(kind_index: u32) callconv(.C) u32 {
     return if (bitmap_compat.kindSupported(@as(usize, kind_index))) 1 else 0;
 }
 
+export fn lmt_bitmap_compat_candidate_backend_name(kind_index: u32) callconv(.C) [*:0]const u8 {
+    if (!build_options.enable_raster_backend) return "".ptr;
+    return (bitmap_compat.candidateBackendName(@as(usize, kind_index)) orelse "").ptr;
+}
+
 export fn lmt_bitmap_compat_target_width_scaled(kind_index: u32, image_index: u32, scale_numerator: u32, scale_denominator: u32) callconv(.C) u32 {
     if (!build_options.enable_raster_backend) return 0;
     return bitmap_compat.targetWidthScaled(@as(usize, kind_index), @as(usize, image_index), scale_numerator, scale_denominator);

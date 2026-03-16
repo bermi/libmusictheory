@@ -65,6 +65,7 @@ const render_compare_export_symbols = [_][]const u8{
     "lmt_bitmap_proof_scale_numerator",
     "lmt_bitmap_proof_scale_denominator",
     "lmt_bitmap_compat_kind_supported",
+    "lmt_bitmap_compat_candidate_backend_name",
     "lmt_bitmap_compat_target_width_scaled",
     "lmt_bitmap_compat_target_width",
     "lmt_bitmap_compat_target_height_scaled",

@@ -159,7 +159,7 @@ async function main() {
         }));
         if (snapshot.status.includes('Scaled render parity failed:')) throw new Error(snapshot.status);
         if (snapshot.summary) {
-          const { failures, supportedRows, compared, passing, nativeRgbaRows, generatedSvgRows, rows } = snapshot.summary;
+          const { failures, supportedRows, compared, passing, nativeRgbaRows, generatedSvgRows, rows, backendCounts } = snapshot.summary;
           const expectedRows = args.kinds.length * args.scales.length;
           if (supportedRows < 1) throw new Error('scaled render parity reported zero supported rows');
           if (rows.length !== expectedRows) {
@@ -168,6 +168,16 @@ async function main() {
           const invalidSources = rows.filter((row) => row.candidateSource !== 'native-rgba' && row.candidateSource !== 'generated-svg');
           if (invalidSources.length > 0) {
             throw new Error(`scaled render parity reported invalid candidate sources: ${invalidSources.map((row) => `${row.kind}@${row.scaleKey}:${row.candidateSource}`).join(', ')}`);
+          }
+          const invalidBackends = rows.filter((row) => !row.candidateBackend);
+          if (invalidBackends.length > 0) {
+            throw new Error(`scaled render parity missing candidate backend reporting: ${invalidBackends.map((row) => `${row.kind}@${row.scaleKey}`).join(', ')}`);
+          }
+          const mismatchedBackends = rows.filter((row) =>
+            (row.candidateSource === 'generated-svg' && row.candidateBackend !== 'browser-generated-svg-bitmap')
+            || (row.candidateSource === 'native-rgba' && row.candidateBackend === 'browser-generated-svg-bitmap'));
+          if (mismatchedBackends.length > 0) {
+            throw new Error(`scaled render parity reported inconsistent source/backend pairs: ${mismatchedBackends.map((row) => `${row.kind}@${row.scaleKey}:${row.candidateSource}/${row.candidateBackend}`).join(', ')}`);
           }
           const missingPairs = [];
           for (const kind of args.kinds) {
@@ -188,7 +198,8 @@ async function main() {
           }
           if (failures !== 0) throw new Error(`scaled render parity failures=${failures}`);
           if (compared !== passing) throw new Error(`scaled render parity compared=${compared} passing=${passing}`);
-          console.log(`scaled render parity passed: supported_rows=${supportedRows} native_rgba_rows=${nativeRgbaRows} generated_svg_rows=${generatedSvgRows} compared=${compared} passing=${passing} scales=${args.scales.join(',')}`);
+          const backendSummary = Object.entries(backendCounts || {}).map(([key, value]) => `${key}=${value}`).join(',');
+          console.log(`scaled render parity passed: supported_rows=${supportedRows} native_rgba_rows=${nativeRgbaRows} generated_svg_rows=${generatedSvgRows} compared=${compared} passing=${passing} backends=${backendSummary} scales=${args.scales.join(',')}`);
           return;
         }
         if (Date.now() > deadline) throw new Error(`timed out waiting for scaled render parity completion; status=${snapshot.status}; progress=${snapshot.progress}`);

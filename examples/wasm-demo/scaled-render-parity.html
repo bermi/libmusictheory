@@ -10,7 +10,7 @@
   <main class="page-shell">
     <section class="hero-card">
       <h1>Harmoniousapp.net Scaled Render Parity Validation</h1>
-      <p>All 15 compatibility kinds are diffed at true target size for `55%` and `200%`. Each row reports whether the candidate pixels came from direct `native-rgba` output or from `generated-svg` rasterized at the requested dimensions.</p>
+      <p>All 15 compatibility kinds are diffed at true target size for `55%` and `200%`. Each row reports both the candidate source (`native-rgba` or `generated-svg`) and the concrete backend subtype so direct drawing, path geometry, markup templates, Zig-side SVG rasterization, and browser-side generated-SVG rasterization are distinguishable.</p>
       <p id="status" class="small">Initializing WASM…</p>
     </section>
 

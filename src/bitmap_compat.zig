@@ -73,6 +73,13 @@ pub const Error = error{
     PathOverflow,
 };
 
+pub const CandidateBackend = enum {
+    direct_primitives,
+    path_geometry,
+    markup_template_raster,
+    generated_svg_raster,
+};
+
 const OPC_STROKE_COLORS = [_][4]u8{
     hexColor("#00c"), hexColor("#a4f"), hexColor("#f0f"), hexColor("#a16"), hexColor("#e02"), hexColor("#f91"),
     hexColor("#c81"), hexColor("#161"), hexColor("#094"), hexColor("#0bb"), hexColor("#16b"), hexColor("#28f"),
@@ -256,6 +263,25 @@ pub fn kindSupported(kind_index: usize) bool {
     return switch (svg_compat.kindId(kind_index) orelse return false) {
         .scale, .opc, .oc, .optc, .eadgbe, .wide_chord, .chord_clipped, .grand_chord, .chord, .center_square_text, .vert_text_black, .vert_text_b2t_black => true,
         else => false,
+    };
+}
+
+pub fn candidateBackend(kind_index: usize) ?CandidateBackend {
+    return switch (svg_compat.kindId(kind_index) orelse return null) {
+        .opc, .optc, .eadgbe => .direct_primitives,
+        .center_square_text, .vert_text_black, .vert_text_b2t_black => .path_geometry,
+        .oc => .markup_template_raster,
+        .scale, .wide_chord, .chord_clipped, .grand_chord, .chord => .generated_svg_raster,
+        else => null,
+    };
+}
+
+pub fn candidateBackendName(kind_index: usize) ?[:0]const u8 {
+    return switch (candidateBackend(kind_index) orelse return null) {
+        .direct_primitives => "direct-primitives",
+        .path_geometry => "path-geometry",
+        .markup_template_raster => "markup-template-raster",
+        .generated_svg_raster => "generated-svg-bitmap",
     };
 }
 

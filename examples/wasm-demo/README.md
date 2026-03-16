@@ -31,6 +31,8 @@ This lane validates all 15 compatibility kinds at both `55%` and `200%` with tar
 - `native-rgba`
 - `generated-svg`
 
+Native-RGBA rows also report their backend subtype so current direct primitive/path rendering is distinguishable from Zig-side markup or generated-SVG rasterization.
+
 This lane is useful and required, but it is not sufficient to call the project visually complete.
 
 ## Native RGBA Proof
@@ -42,7 +44,14 @@ python3 -m http.server --directory zig-out/wasm-native-rgba-proof 8003
 
 Page: <http://localhost:8003/>.
 
-This lane only accepts `native-rgba` candidate pixels generated directly by Zig/WASM. Unsupported kinds remain visible as unsupported rows and fail automated validation.
+This lane only accepts `native-rgba` candidate pixels generated inside Zig/WASM. Each supported row also reports its backend subtype:
+
+- `direct-primitives`
+- `path-geometry`
+- `markup-template-raster`
+- `generated-svg-bitmap`
+
+That keeps the repo honest about which kinds are already direct drawing and which still depend on internal markup/SVG rasterization. Unsupported kinds remain visible as unsupported rows and fail automated validation.
 
 ## Full Interactive API Docs
 

@@ -10,7 +10,7 @@
   <main class="page-shell">
     <section class="hero-card">
       <h1>Harmoniousapp.net Native RGBA Proof Validation</h1>
-      <p>This surface only accepts `native-rgba` candidate pixels generated directly by Zig/WASM at the requested target size. Unsupported kinds remain visible as unsupported rows and fail automated validation.</p>
+      <p>This surface only accepts `native-rgba` candidate pixels generated inside Zig/WASM at the requested target size. Each supported row also reports its backend subtype so direct primitives, path geometry, markup templates, and generated-SVG rasterization inside Zig/WASM are not flattened into one misleading label. Unsupported kinds remain visible as unsupported rows and fail automated validation.</p>
       <p id="status" class="small">Initializing WASM…</p>
     </section>
 

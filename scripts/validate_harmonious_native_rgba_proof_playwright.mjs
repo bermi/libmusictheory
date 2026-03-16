@@ -159,7 +159,7 @@ async function main() {
         }));
         if (snapshot.status.includes('Native RGBA proof failed:')) throw new Error(snapshot.status);
         if (snapshot.summary) {
-          const { failures, unsupportedRows, supportedRows, compared, passing, rows } = snapshot.summary;
+          const { failures, unsupportedRows, supportedRows, compared, passing, rows, backendCounts } = snapshot.summary;
           const expectedRows = args.kinds.length * args.scales.length;
           if (rows.length !== expectedRows) {
             throw new Error(`native RGBA proof returned ${rows.length} rows for ${expectedRows} requested kind/scale pairs`);
@@ -167,6 +167,14 @@ async function main() {
           const invalidSources = rows.filter((row) => row.candidateSource !== 'native-rgba');
           if (invalidSources.length > 0) {
             throw new Error(`native RGBA proof reported invalid candidate sources: ${invalidSources.map((row) => `${row.kind}@${row.scaleKey}:${row.candidateSource}`).join(', ')}`);
+          }
+          const invalidBackends = rows.filter((row) => row.supported && (!row.candidateBackend || row.candidateBackend === 'unsupported'));
+          if (invalidBackends.length > 0) {
+            throw new Error(`native RGBA proof missing candidate backend reporting: ${invalidBackends.map((row) => `${row.kind}@${row.scaleKey}:${row.candidateBackend || 'missing'}`).join(', ')}`);
+          }
+          const browserBackends = rows.filter((row) => row.supported && row.candidateBackend === 'browser-generated-svg-bitmap');
+          if (browserBackends.length > 0) {
+            throw new Error(`native RGBA proof reported browser-side candidate backends: ${browserBackends.map((row) => `${row.kind}@${row.scaleKey}`).join(', ')}`);
           }
           const missingPairs = [];
           for (const kind of args.kinds) {
@@ -188,7 +196,8 @@ async function main() {
           }
           if (failures !== 0) throw new Error(`native RGBA proof failures=${failures}`);
           if (compared !== passing) throw new Error(`native RGBA proof compared=${compared} passing=${passing}`);
-          console.log(`native RGBA proof passed: supported_rows=${supportedRows} compared=${compared} passing=${passing} scales=${args.scales.join(',')}`);
+          const backendSummary = Object.entries(backendCounts || {}).map(([key, value]) => `${key}=${value}`).join(',');
+          console.log(`native RGBA proof passed: supported_rows=${supportedRows} compared=${compared} passing=${passing} backends=${backendSummary} scales=${args.scales.join(',')}`);
           return;
         }
         if (Date.now() > deadline) throw new Error(`timed out waiting for native RGBA proof completion; status=${snapshot.status}; progress=${snapshot.progress}`);

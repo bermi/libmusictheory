@@ -133,6 +133,7 @@ async function runScaledRenderParity() {
     let passing = 0;
     let nativeRgbaRows = 0;
     let generatedSvgRows = 0;
+    const backendCounts = Object.create(null);
 
     const threshold = 0.0001;
     const kindCount = wasm.lmt_svg_compat_kind_count();
@@ -144,9 +145,14 @@ async function runScaledRenderParity() {
         const total = wasm.lmt_svg_compat_image_count(kindIndex);
         const nativeSupported = wasm.lmt_bitmap_compat_kind_supported(kindIndex) === 1;
         const candidateSource = nativeSupported ? "native-rgba" : "generated-svg";
+        const candidateBackend = nativeSupported
+          ? readCString(memory, wasm.lmt_bitmap_compat_candidate_backend_name(kindIndex))
+          : "browser-generated-svg-bitmap";
         supportedRows += 1;
         if (nativeSupported) nativeRgbaRows += 1;
         else generatedSvgRows += 1;
+        if (!candidateBackend) throw new Error(`missing candidate backend for ${kindName}`);
+        backendCounts[candidateBackend] = (backendCounts[candidateBackend] || 0) + 1;
         const arena = scratchArena(wasm);
         const namePtr = arena.alloc(NAME_CAPACITY, 1);
         const svgPtr = arena.alloc(SVG_CAPACITY, 1);
@@ -173,7 +179,7 @@ async function runScaledRenderParity() {
         let kindMaxDrift = 0;
         let kindChangedPixels = 0;
 
-        page.progressEl.textContent = `Generating scaled render parity for ${kindName} @ ${scale.percentLabel} (${indexes.length}/${total}) [${candidateSource}]`;
+        page.progressEl.textContent = `Generating scaled render parity for ${kindName} @ ${scale.percentLabel} (${indexes.length}/${total}) [${candidateSource} | ${candidateBackend}]`;
         for (const imageIndex of indexes) {
           const imageName = readCopyString(memory, wasm.lmt_svg_compat_image_name, namePtr, NAME_CAPACITY, kindIndex, imageIndex);
           let candidateBytes = null;
@@ -185,7 +191,7 @@ async function runScaledRenderParity() {
             if (candidateWritten !== rgbaBytes) {
               kindFailures += 1;
               if (!firstFailure) {
-                firstFailure = { meta: `kind=${kindName} | source=${candidateSource} | scale=${scale.label} | image=${imageName} | error=candidate render failed`, width, height, candidate: new Uint8ClampedArray(rgbaBytes), reference: new Uint8ClampedArray(rgbaBytes), diff: new Uint8ClampedArray(rgbaBytes) };
+                firstFailure = { meta: `kind=${kindName} | source=${candidateSource} | backend=${candidateBackend} | scale=${scale.label} | image=${imageName} | error=candidate render failed`, width, height, candidate: new Uint8ClampedArray(rgbaBytes), reference: new Uint8ClampedArray(rgbaBytes), diff: new Uint8ClampedArray(rgbaBytes) };
               }
               continue;
             }
@@ -195,7 +201,7 @@ async function runScaledRenderParity() {
             if (!referenceSvg.ok) {
               kindFailures += 1;
               if (!firstFailure) {
-                firstFailure = { meta: `kind=${kindName} | source=${candidateSource} | scale=${scale.label} | image=${imageName} | error=missing reference | url=${referenceSvg.url}`, width, height, candidate: cloneBytes(memory, candidatePtr, rgbaBytes), reference: new Uint8ClampedArray(rgbaBytes), diff: new Uint8ClampedArray(rgbaBytes) };
+                firstFailure = { meta: `kind=${kindName} | source=${candidateSource} | backend=${candidateBackend} | scale=${scale.label} | image=${imageName} | error=missing reference | url=${referenceSvg.url}`, width, height, candidate: cloneBytes(memory, candidatePtr, rgbaBytes), reference: new Uint8ClampedArray(rgbaBytes), diff: new Uint8ClampedArray(rgbaBytes) };
               }
               continue;
             }
@@ -205,7 +211,7 @@ async function runScaledRenderParity() {
             if (referenceWritten !== rgbaBytes) {
               kindFailures += 1;
               if (!firstFailure) {
-                firstFailure = { meta: `kind=${kindName} | source=${candidateSource} | scale=${scale.label} | image=${imageName} | error=reference raster failed | url=${referenceSvg.url}`, width, height, candidate: cloneBytes(memory, candidatePtr, rgbaBytes), reference: new Uint8ClampedArray(rgbaBytes), diff: new Uint8ClampedArray(rgbaBytes) };
+                firstFailure = { meta: `kind=${kindName} | source=${candidateSource} | backend=${candidateBackend} | scale=${scale.label} | image=${imageName} | error=reference raster failed | url=${referenceSvg.url}`, width, height, candidate: cloneBytes(memory, candidatePtr, rgbaBytes), reference: new Uint8ClampedArray(rgbaBytes), diff: new Uint8ClampedArray(rgbaBytes) };
               }
               continue;
             }
@@ -217,7 +223,7 @@ async function runScaledRenderParity() {
             if (!candidateSvg) {
               kindFailures += 1;
               if (!firstFailure) {
-                firstFailure = { meta: `kind=${kindName} | source=${candidateSource} | scale=${scale.label} | image=${imageName} | error=candidate svg generation failed`, width: 1, height: 1, candidate: new Uint8ClampedArray(4), reference: new Uint8ClampedArray(4), diff: new Uint8ClampedArray(4) };
+                firstFailure = { meta: `kind=${kindName} | source=${candidateSource} | backend=${candidateBackend} | scale=${scale.label} | image=${imageName} | error=candidate svg generation failed`, width: 1, height: 1, candidate: new Uint8ClampedArray(4), reference: new Uint8ClampedArray(4), diff: new Uint8ClampedArray(4) };
               }
               continue;
             }
@@ -227,7 +233,7 @@ async function runScaledRenderParity() {
             if (!referenceSvg.ok) {
               kindFailures += 1;
               if (!firstFailure) {
-                firstFailure = { meta: `kind=${kindName} | source=${candidateSource} | scale=${scale.label} | image=${imageName} | error=missing reference | url=${referenceSvg.url}`, width: 1, height: 1, candidate: new Uint8ClampedArray(4), reference: new Uint8ClampedArray(4), diff: new Uint8ClampedArray(4) };
+                firstFailure = { meta: `kind=${kindName} | source=${candidateSource} | backend=${candidateBackend} | scale=${scale.label} | image=${imageName} | error=missing reference | url=${referenceSvg.url}`, width: 1, height: 1, candidate: new Uint8ClampedArray(4), reference: new Uint8ClampedArray(4), diff: new Uint8ClampedArray(4) };
               }
               continue;
             }
@@ -242,7 +248,7 @@ async function runScaledRenderParity() {
             } catch (err) {
               kindFailures += 1;
               if (!firstFailure) {
-                firstFailure = { meta: `kind=${kindName} | source=${candidateSource} | scale=${scale.label} | image=${imageName} | error=${err.message} | url=${referenceSvg.url}`, width: Math.max(1, width), height: Math.max(1, height), candidate: new Uint8ClampedArray(Math.max(4, (width * height * 4) || 4)), reference: new Uint8ClampedArray(Math.max(4, (width * height * 4) || 4)), diff: new Uint8ClampedArray(Math.max(4, (width * height * 4) || 4)) };
+                firstFailure = { meta: `kind=${kindName} | source=${candidateSource} | backend=${candidateBackend} | scale=${scale.label} | image=${imageName} | error=${err.message} | url=${referenceSvg.url}`, width: Math.max(1, width), height: Math.max(1, height), candidate: new Uint8ClampedArray(Math.max(4, (width * height * 4) || 4)), reference: new Uint8ClampedArray(Math.max(4, (width * height * 4) || 4)), diff: new Uint8ClampedArray(Math.max(4, (width * height * 4) || 4)) };
               }
               continue;
             }
@@ -260,7 +266,7 @@ async function runScaledRenderParity() {
             kindFailures += 1;
             if (!firstFailure) {
               firstFailure = {
-                meta: `kind=${kindName} | source=${candidateSource} | scale=${scale.label} | image=${imageName} | drift=${diff.drift} | changed=${diff.changedPixels} | url=${referenceUrl}`,
+                meta: `kind=${kindName} | source=${candidateSource} | backend=${candidateBackend} | scale=${scale.label} | image=${imageName} | drift=${diff.drift} | changed=${diff.changedPixels} | url=${referenceUrl}`,
                 width,
                 height,
                 candidate: candidateBytes,
@@ -277,6 +283,7 @@ async function runScaledRenderParity() {
             scaleKey: scale.key,
             scalePercent: scale.percentLabel,
             candidateSource,
+            candidateBackend,
             drift: diff.drift,
             changedPixels: diff.changedPixels,
             candidate: candidateBytes,
@@ -285,15 +292,15 @@ async function runScaledRenderParity() {
           });
         }
 
-        rows.push({ kind: kindName, directory, total, scaleKey: scale.key, scaleLabel: scale.label, scalePercent: scale.percentLabel, candidateSource, supported: true, compared: kindCompared, passing: kindPassing, failures: kindFailures, drift: kindMaxDrift, changedPixels: kindChangedPixels });
-        sampleGroups.push({ key: `${kindName}@${scale.key}`, kind: kindName, scaleKey: scale.key, scalePercent: scale.percentLabel, candidateSource, samples });
+        rows.push({ kind: kindName, directory, total, scaleKey: scale.key, scaleLabel: scale.label, scalePercent: scale.percentLabel, candidateSource, candidateBackend, supported: true, compared: kindCompared, passing: kindPassing, failures: kindFailures, drift: kindMaxDrift, changedPixels: kindChangedPixels });
+        sampleGroups.push({ key: `${kindName}@${scale.key}`, kind: kindName, scaleKey: scale.key, scalePercent: scale.percentLabel, candidateSource, candidateBackend, samples });
       }
     }
 
     page.summaryHost.innerHTML = `
       <table>
         <thead>
-          <tr><th>Kind</th><th>Scale</th><th>Candidate Source</th><th>Directory</th><th>Images</th><th>Compared</th><th>Passing</th><th>Failures</th></tr>
+          <tr><th>Kind</th><th>Scale</th><th>Candidate Source</th><th>Candidate Backend</th><th>Directory</th><th>Images</th><th>Compared</th><th>Passing</th><th>Failures</th></tr>
         </thead>
         <tbody>
           ${rows.map((row) => `
@@ -301,6 +308,7 @@ async function runScaledRenderParity() {
               <td class="mono">${row.kind}</td>
               <td class="mono">${row.scalePercent}</td>
               <td class="mono">${row.candidateSource}</td>
+              <td class="mono">${row.candidateBackend}</td>
               <td class="mono">${row.directory}</td>
               <td>${row.total}</td>
               <td>${row.compared}</td>
@@ -324,6 +332,7 @@ async function runScaledRenderParity() {
       `Supported rows: ${supportedRows}`,
       `Native RGBA rows: ${nativeRgbaRows}`,
       `Generated SVG rows: ${generatedSvgRows}`,
+      `Backend rows: ${Object.entries(backendCounts).map(([key, value]) => `${key}=${value}`).join(", ") || "none"}`,
       `Compared samples: ${compared}`,
       `Passing samples: ${passing}`,
       `Failures: ${compared - passing}`,
@@ -339,6 +348,7 @@ async function runScaledRenderParity() {
       passing,
       nativeRgbaRows,
       generatedSvgRows,
+      backendCounts,
       threshold,
     };
     page.statusEl.textContent = "Scaled render parity run completed.";
