@@ -418,6 +418,23 @@ else
     unverified "0050 wasm full docs bundle build (wasm-docs target not yet implemented)"
 fi
 
+if [ -d "$ROOT_DIR/tmp/harmoniousapp.net" ] && [ -f "$ROOT_DIR/examples/wasm-demo/harmonious-spa.html" ] && rg -Fq 'step("wasm-harmonious-spa"' "$ROOT_DIR/build.zig"; then
+    check_cmd "cd '$ROOT_DIR' && zig build wasm-harmonious-spa 2>&1" "0068 harmonious wasm SPA bundle build"
+    check_cmd "cd '$ROOT_DIR' && test -f zig-out/wasm-harmonious-spa/index.html && test -f zig-out/wasm-harmonious-spa/harmonious-spa.js && test -f zig-out/wasm-harmonious-spa/libmusictheory.wasm" "0068 harmonious wasm SPA bundle guardrail (shell html/js/wasm installed)"
+    if command -v node >/dev/null 2>&1; then
+        check_cmd "cd '$ROOT_DIR' && node scripts/check_wasm_exports.mjs --profile full_demo --wasm zig-out/wasm-harmonious-spa/libmusictheory.wasm" "0068 harmonious wasm SPA export guardrail (required full-demo exports are present)"
+    else
+        unverified "0068 harmonious wasm SPA export guardrail (node missing)"
+    fi
+    if [ -d "$ROOT_DIR/tmp/harmoniousapp.net" ] && rg -Fq 'wasm-harmonious-spa/spa-content' "$ROOT_DIR/build.zig"; then
+        check_cmd "cd '$ROOT_DIR' && test -d zig-out/wasm-harmonious-spa/spa-content/p && test -d zig-out/wasm-harmonious-spa/spa-content/keyboard && test -d zig-out/wasm-harmonious-spa/spa-content/eadgbe-frets && test -d zig-out/wasm-harmonious-spa/css && test -d zig-out/wasm-harmonious-spa/js-client && test -d zig-out/wasm-harmonious-spa/svg" "0068 harmonious wasm SPA bundle guardrail (content corpus and original static assets installed)"
+    else
+        unverified "0068 harmonious wasm SPA bundle guardrail (spa-content install not yet implemented)"
+    fi
+else
+    unverified "0068 harmonious wasm SPA bundle build (tmp/harmoniousapp.net, shell page, or build target not yet implemented)"
+fi
+
 if [ -f "$ROOT_DIR/src/tests/svg_harmonious_compat_test.zig" ]; then
     check_cmd "cd '$ROOT_DIR' && zig build test 2>&1" "0024 harmoniousapp.net compatibility test suite"
 else
@@ -841,6 +858,16 @@ if [ -f "$ROOT_DIR/scripts/validate_wasm_docs_playwright.mjs" ]; then
     fi
 else
     unverified "0050 wasm full docs playwright smoke validation (script not yet implemented)"
+fi
+
+if [ -d "$ROOT_DIR/tmp/harmoniousapp.net" ] && [ -f "$ROOT_DIR/scripts/validate_harmonious_spa_playwright.mjs" ]; then
+    if command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
+        check_cmd "cd '$ROOT_DIR' && node scripts/validate_harmonious_spa_playwright.mjs 2>&1" "0068 harmonious wasm SPA playwright validation"
+    else
+        unverified "0068 harmonious wasm SPA playwright validation (node/npm/python3 missing)"
+    fi
+else
+    unverified "0068 harmonious wasm SPA playwright validation (tmp/harmoniousapp.net or script missing)"
 fi
 
 if [ -f "$ROOT_DIR/src/svg/fret.zig" ] && [ -f "$ROOT_DIR/src/svg/staff.zig" ]; then

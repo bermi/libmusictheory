@@ -1,0 +1,173 @@
+#!/usr/bin/env python3
+"""Generate the local corpus manifest for the harmonious WASM SPA.
+
+Input:
+  tmp/harmoniousapp.net/
+
+Output:
+  examples/wasm-demo/harmonious-spa-manifest.js (or build output path)
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import re
+from html import unescape
+from pathlib import Path
+from urllib.parse import urljoin
+
+PAGE_DIRS = ("p", "keyboard", "eadgbe-frets")
+COMPAT_PREFIXES = (
+    "vert-text-black/",
+    "even/",
+    "scale/",
+    "opc/",
+    "oc/",
+    "optc/",
+    "eadgbe/",
+    "center-square-text/",
+    "wide-chord/",
+    "chord-clipped/",
+    "grand-chord/",
+    "majmin/",
+    "chord/",
+    "vert-text-b2t-black/",
+)
+AUTO_ROUTE_MAP = {
+    "keys": "/p/a7/Keys.html",
+    "chords": "/p/fc/Chords.html",
+    "set-class": "/p/71/Set-Classes.html",
+    "modes": "/p/39/Modes.html",
+    "scales": "/p/34/Scales.html",
+    "jaxx-theory": "/p/43/Glossary-Jazz-Theory.html",
+}
+TITLE_RE = re.compile(r"<title>(.*?)</title>", re.IGNORECASE | re.DOTALL)
+PARAGRAPH_RE = re.compile(r"<p\b[^>]*>(.*?)</p>", re.IGNORECASE | re.DOTALL)
+URL_ATTR_RE = re.compile(r"(?:src|href)\s*=\s*['\"]([^'\"]+)['\"]", re.IGNORECASE)
+TAG_RE = re.compile(r"<[^>]+>")
+SPACE_RE = re.compile(r"\s+")
+SCRIPT_STYLE_RE = re.compile(r"<(script|style)\b.*?</\1>", re.IGNORECASE | re.DOTALL)
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--root", default="tmp/harmoniousapp.net", help="harmonious snapshot root")
+    parser.add_argument("--out", required=True, help="output JS module path")
+    return parser.parse_args()
+
+
+def strip_html(fragment: str) -> str:
+    cleaned = TAG_RE.sub(" ", fragment)
+    cleaned = unescape(cleaned)
+    cleaned = SPACE_RE.sub(" ", cleaned).strip()
+    return cleaned
+
+
+def extract_title(text: str) -> str:
+    match = TITLE_RE.search(text)
+    if not match:
+        return "Untitled - Harmonious"
+    return strip_html(match.group(1))
+
+
+def extract_excerpt(text: str) -> str:
+    cleaned = SCRIPT_STYLE_RE.sub(" ", text)
+    for match in PARAGRAPH_RE.finditer(cleaned):
+        excerpt = strip_html(match.group(1))
+        if excerpt:
+            return excerpt[:240]
+    return ""
+
+
+def normalize_route(path: Path, root: Path) -> str:
+    route = "/" + path.relative_to(root).as_posix()
+    return "/index.html" if route == "/index.html" else route
+
+
+def resolve_attr(route: str, attr: str) -> str:
+    if attr.startswith("javascript:") or attr.startswith("mailto:") or attr.startswith("tel:"):
+        return attr
+    if attr.startswith("auto:"):
+        return attr
+    if attr.startswith("https://harmoniousapp.net") or attr.startswith("http://harmoniousapp.net"):
+        attr = re.sub(r"^https?://harmoniousapp\.net", "/", attr)
+    base = route
+    if not base.endswith(".html"):
+        if not base.endswith("/"):
+            base += "/"
+    return urljoin(base, attr)
+
+
+def is_compat_ref(resolved: str) -> bool:
+    normalized = resolved.lstrip("/")
+    return any(normalized.startswith(prefix) for prefix in COMPAT_PREFIXES) and normalized.endswith(".svg")
+
+
+def collect_pages(root: Path) -> tuple[list[dict], dict[str, list[int]]]:
+    pages: list[dict] = []
+    reverse_index: dict[str, list[int]] = {}
+
+    html_paths = [root / "index.html"]
+    for directory in PAGE_DIRS:
+        html_paths.extend(sorted((root / directory).rglob("*.html")))
+
+    for path in html_paths:
+        if not path.is_file():
+            continue
+        route = normalize_route(path, root)
+        text = path.read_text(encoding="utf-8", errors="ignore")
+        page_refs: list[str] = []
+        for attr in URL_ATTR_RE.findall(text):
+            resolved = resolve_attr(route, attr)
+            if is_compat_ref(resolved):
+                normalized = resolved.lstrip("/")
+                if normalized not in page_refs:
+                    page_refs.append(normalized)
+        page_index = len(pages)
+        pages.append(
+            {
+                "route": route,
+                "title": extract_title(text),
+                "excerpt": extract_excerpt(text),
+            }
+        )
+        for ref in page_refs:
+            reverse_index.setdefault(ref, []).append(page_index)
+
+    return pages, reverse_index
+
+
+def main() -> int:
+    args = parse_args()
+    root = Path(args.root)
+    out = Path(args.out)
+    if not root.is_dir():
+        raise SystemExit(f"missing harmonious snapshot root: {root}")
+
+    pages, reverse_index = collect_pages(root)
+    payload = {
+        "version": 1,
+        "homeRoute": "/index.html",
+        "autoRouteMap": AUTO_ROUTE_MAP,
+        "pages": pages,
+        "reverseIndex": reverse_index,
+        "randomRoutes": [page["route"] for page in pages if page["route"] != "/index.html"],
+    }
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(
+        "// Auto-generated by scripts/generate_harmonious_spa_manifest.py\n"
+        "// DO NOT EDIT MANUALLY.\n\n"
+        f"export const HARMONIOUS_SPA_MANIFEST = {json.dumps(payload, separators=(',', ':'))};\n",
+        encoding="utf-8",
+    )
+    print(
+        "wrote",
+        out,
+        f"(pages={len(pages)}, indexed_refs={len(reverse_index)}, random_routes={len(payload['randomRoutes'])})",
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

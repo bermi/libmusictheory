@@ -274,6 +274,57 @@ pub fn build(b: *std.Build) void {
     wasm_docs_step.dependOn(&install_docs_validation_js.step);
     maybeInstallDirectory(b, wasm_docs_step, "tmp/harmoniousapp.net", "wasm-docs/tmp/harmoniousapp.net");
 
+    const install_harmonious_spa_wasm = b.addInstallFileWithDir(
+        wasm_docs_exe.getEmittedBin(),
+        .prefix,
+        "wasm-harmonious-spa/libmusictheory.wasm",
+    );
+    const install_harmonious_spa_html = b.addInstallFileWithDir(
+        b.path("examples/wasm-demo/harmonious-spa.html"),
+        .prefix,
+        "wasm-harmonious-spa/index.html",
+    );
+    const install_harmonious_spa_js = b.addInstallFileWithDir(
+        b.path("examples/wasm-demo/harmonious-spa.js"),
+        .prefix,
+        "wasm-harmonious-spa/harmonious-spa.js",
+    );
+
+    const wasm_harmonious_spa_step = b.step("wasm-harmonious-spa", "Build harmoniousapp.net SPA shell backed by libmusictheory WASM");
+    wasm_harmonious_spa_step.dependOn(&wasm_docs_exe.step);
+    wasm_harmonious_spa_step.dependOn(&install_harmonious_spa_wasm.step);
+    wasm_harmonious_spa_step.dependOn(&install_harmonious_spa_html.step);
+    wasm_harmonious_spa_step.dependOn(&install_harmonious_spa_js.step);
+
+    if (localDirExists("tmp/harmoniousapp.net")) {
+        const spa_manifest_cmd = b.addSystemCommand(&.{"python3"});
+        spa_manifest_cmd.addFileArg(b.path("scripts/generate_harmonious_spa_manifest.py"));
+        spa_manifest_cmd.addArgs(&.{ "--root", "tmp/harmoniousapp.net", "--out" });
+        const spa_manifest_out = spa_manifest_cmd.addOutputFileArg("harmonious-spa-manifest.js");
+        const install_harmonious_spa_manifest = b.addInstallFileWithDir(
+            spa_manifest_out,
+            .prefix,
+            "wasm-harmonious-spa/harmonious-spa-manifest.js",
+        );
+        const install_harmonious_spa_home = b.addInstallFileWithDir(
+            b.path("tmp/harmoniousapp.net/index.html"),
+            .prefix,
+            "wasm-harmonious-spa/spa-content/index.html",
+        );
+
+        wasm_harmonious_spa_step.dependOn(&spa_manifest_cmd.step);
+        wasm_harmonious_spa_step.dependOn(&install_harmonious_spa_manifest.step);
+        wasm_harmonious_spa_step.dependOn(&install_harmonious_spa_home.step);
+        maybeInstallDirectory(b, wasm_harmonious_spa_step, "tmp/harmoniousapp.net/p", "wasm-harmonious-spa/spa-content/p");
+        maybeInstallDirectory(b, wasm_harmonious_spa_step, "tmp/harmoniousapp.net/keyboard", "wasm-harmonious-spa/spa-content/keyboard");
+        maybeInstallDirectory(b, wasm_harmonious_spa_step, "tmp/harmoniousapp.net/eadgbe-frets", "wasm-harmonious-spa/spa-content/eadgbe-frets");
+        maybeInstallDirectory(b, wasm_harmonious_spa_step, "tmp/harmoniousapp.net/css", "wasm-harmonious-spa/css");
+        maybeInstallDirectory(b, wasm_harmonious_spa_step, "tmp/harmoniousapp.net/js-client", "wasm-harmonious-spa/js-client");
+        maybeInstallDirectory(b, wasm_harmonious_spa_step, "tmp/harmoniousapp.net/svg", "wasm-harmonious-spa/svg");
+        maybeInstallDirectory(b, wasm_harmonious_spa_step, "tmp/harmoniousapp.net/assets", "wasm-harmonious-spa/assets");
+        maybeInstallDirectory(b, wasm_harmonious_spa_step, "tmp/harmoniousapp.net/woff", "wasm-harmonious-spa/woff");
+    }
+
     const wasm_render_compare_mod = b.createModule(.{
         .root_source_file = b.path("src/wasm_scaled_render_api.zig"),
         .target = wasm_target,
