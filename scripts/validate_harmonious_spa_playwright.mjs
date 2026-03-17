@@ -16,6 +16,7 @@ const timeoutMs = Number.parseInt(process.env.LMT_HARMONIOUS_SPA_TIMEOUT_MS || "
 const requestedPort = parsePort(process.env.LMT_VALIDATION_PORT || "");
 const compatRequestPattern = /\/(?:tmp\/harmoniousapp\.net\/)?(?:vert-text-black|even|scale|opc|oc|optc|eadgbe|center-square-text|wide-chord|chord-clipped|grand-chord|majmin|chord|vert-text-b2t-black)\//;
 const keyTriRequestPattern = /\/key-tri\//;
+const shellHrefForRoute = (route) => `/index.html?route=${encodeURIComponent(route)}`;
 
 function parsePort(raw) {
   if (raw == null || String(raw).trim() === "") return null;
@@ -228,8 +229,8 @@ async function main() {
       if (!ready.home) {
         throw new Error(`home page did not render through SPA shell: ${JSON.stringify(ready)}`);
       }
-      const homeAutoLink = await page.evaluate(() => document.querySelector('a[href="/p/a7/Keys.html"]')?.getAttribute("href") || null);
-      if (homeAutoLink !== "/p/a7/Keys.html") {
+      const homeAutoLink = await page.evaluate(() => document.querySelector('a[data-lmt-shell-route="/p/a7/Keys.html"]')?.getAttribute("href") || null);
+      if (homeAutoLink !== shellHrefForRoute("/p/a7/Keys.html")) {
         throw new Error(`auto:* links were not rewritten on home page; got ${homeAutoLink}`);
       }
       const homeCompatImages = await page.evaluate(() => document.querySelectorAll("img[data-lmt-image-source='wasm-compat']").length);
@@ -237,7 +238,7 @@ async function main() {
         throw new Error(`expected wasm-backed home images, got compat count=${homeCompatImages}`);
       }
 
-      await page.click('a[href="/p/a7/Keys.html"]');
+      await page.click(`a[href="${shellHrefForRoute("/p/a7/Keys.html")}"]`);
       const keysPage = await waitForRoute(
         page,
         "/p/a7/Keys.html",
@@ -256,10 +257,10 @@ async function main() {
       await page.evaluate(() => window.HarmoniousClient.fakeNavigateTo("/p/7c/E-Major"));
       const eMajorPage = await waitForRoute(
         page,
-        "/p/7c/E-Major",
+        "/p/7c/E-Major.html",
         (snapshot) => snapshot.title.includes("E Major")
           && snapshot.currentKeyText.includes("Key of E")
-          && snapshot.currentKeyHref === "/p/7c/E-Major"
+          && snapshot.currentKeyHref === shellHrefForRoute("/p/7c/E-Major")
           && snapshot.sliderEntries > 0
           && snapshot.sliderImageCount > 0
           && snapshot.sliderText.includes("E"),
@@ -267,7 +268,7 @@ async function main() {
       if (
         !eMajorPage.title.includes("E Major")
         || !eMajorPage.currentKeyText.includes("Key of E")
-        || eMajorPage.currentKeyHref !== "/p/7c/E-Major"
+        || eMajorPage.currentKeyHref !== shellHrefForRoute("/p/7c/E-Major")
         || eMajorPage.sliderEntries <= 0
         || eMajorPage.sliderImageCount <= 0
         || !eMajorPage.sliderText.includes("E")
@@ -290,7 +291,7 @@ async function main() {
       }, keySliderVariant);
       const variantSnapshot = await waitForRoute(
         page,
-        "/p/7c/E-Major",
+        "/p/7c/E-Major.html",
         (snapshot) => snapshot.sliderEntries > 0 && /E\s+min|E\s+dim/i.test(snapshot.sliderText),
       );
       if (!/E\s+min|E\s+dim/i.test(variantSnapshot.sliderText)) {
@@ -298,13 +299,13 @@ async function main() {
       }
 
       await page.evaluate(() => window.HarmoniousClient.fakeNavigateTo("/keyboard/C_3,E_3,G_3"));
-      const keyboardPage = await waitForRoute(page, "/keyboard/C_3,E_3,G_3", (snapshot) => snapshot.keyboardEntries > 0 && snapshot.compatImages > 0);
+      const keyboardPage = await waitForRoute(page, "/keyboard/C_3,E_3,G_3.html", (snapshot) => snapshot.keyboardEntries > 0 && snapshot.compatImages > 0);
       if (keyboardPage.keyboardEntries <= 0) {
         throw new Error(`keyboard search pane did not populate: ${JSON.stringify(keyboardPage)}`);
       }
 
       await page.evaluate(() => window.HarmoniousClient.fakeNavigateTo("/eadgbe-frets/0,2,2,1,0,0"));
-      const fretPage = await waitForRoute(page, "/eadgbe-frets/0,2,2,1,0,0", (snapshot) => snapshot.fretEntries > 0 && snapshot.compatImages > 0);
+      const fretPage = await waitForRoute(page, "/eadgbe-frets/0,2,2,1,0,0.html", (snapshot) => snapshot.fretEntries > 0 && snapshot.compatImages > 0);
       if (fretPage.fretEntries <= 0) {
         throw new Error(`fret search pane did not populate: ${JSON.stringify(fretPage)}`);
       }
@@ -314,6 +315,42 @@ async function main() {
       const randomPage = await waitForRoute(page, null, (snapshot) => snapshot.state?.lastRoute && snapshot.state.lastRoute !== beforeRandomRoute && snapshot.state.lastRoute !== "/random/");
       if (!randomPage.state?.lastRoute || randomPage.state.lastRoute === beforeRandomRoute) {
         throw new Error(`random navigation did not change route: ${JSON.stringify(randomPage)}`);
+      }
+
+      await page.goto(`${spaUrl.toString()}?route=${encodeURIComponent("/p/fb/C-Major")}`, { waitUntil: "domcontentloaded" });
+      const directPage = await waitForSpaReady(page, "/p/fb/C-Major.html");
+      if (!directPage.title.includes("C Major")) {
+        throw new Error(`direct shell boot for /p route failed: ${JSON.stringify(directPage)}`);
+      }
+
+      await page.goto(`${spaUrl.toString()}?route=${encodeURIComponent("/keyboard/C_3,E_3,G_3")}`, { waitUntil: "domcontentloaded" });
+      const directKeyboard = await waitForSpaReady(page, "/keyboard/C_3,E_3,G_3.html");
+      const directKeyboardSnapshot = await waitForRoute(page, "/keyboard/C_3,E_3,G_3.html", (snapshot) => snapshot.keyboardEntries > 0 && snapshot.compatImages > 0);
+      if (!directKeyboard.title.includes("Keyboard") || directKeyboardSnapshot.keyboardEntries <= 0) {
+        throw new Error(`direct shell boot for keyboard route failed: ${JSON.stringify({ directKeyboard, directKeyboardSnapshot })}`);
+      }
+
+      await page.goto(`${spaUrl.toString()}?route=${encodeURIComponent("/eadgbe-frets/-1,12,12,9,10,-1")}`, { waitUntil: "domcontentloaded" });
+      const directFret = await waitForSpaReady(page, "/eadgbe-frets/-1,12,12,9,10,-1.html");
+      const directFretSnapshot = await waitForRoute(page, "/eadgbe-frets/-1,12,12,9,10,-1.html", (snapshot) => snapshot.fretEntries > 0 && snapshot.compatImages > 0);
+      if (!directFret.title.includes("Interactive Guitar Fretboard") || directFretSnapshot.fretEntries <= 0) {
+        throw new Error(`direct shell boot for fret route failed: ${JSON.stringify({ directFret, directFretSnapshot })}`);
+      }
+
+      await page.goto(`${spaUrl.toString()}?route=${encodeURIComponent("/p/7c/E-Major")}`, { waitUntil: "domcontentloaded" });
+      const directKey = await waitForSpaReady(page, "/p/7c/E-Major.html");
+      const directKeySnapshot = await waitForRoute(
+        page,
+        "/p/7c/E-Major.html",
+        (snapshot) => snapshot.sliderEntries > 0 && snapshot.sliderImageCount > 0 && snapshot.currentKeyText.includes("Key of E"),
+      );
+      if (
+        !directKey.title.includes("E Major")
+        || directKeySnapshot.sliderEntries <= 0
+        || directKeySnapshot.sliderImageCount <= 0
+        || !directKeySnapshot.currentKeyText.includes("Key of E")
+      ) {
+        throw new Error(`direct shell boot for key route failed: ${JSON.stringify({ directKey, directKeySnapshot })}`);
       }
 
       if (compatRequests.length > 0) {

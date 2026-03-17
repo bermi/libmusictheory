@@ -71,6 +71,23 @@ The docs bundle now exposes both:
 
 Core non-compat SVG generators in the docs bundle now share a common quality prelude. Exact harmonious compatibility generators remain frozen and are not visually restyled.
 
+## Harmonious SPA
+
+```bash
+zig build wasm-harmonious-spa
+python3 -m http.server --directory zig-out/wasm-harmonious-spa 8004
+```
+
+Open <http://localhost:8004/index.html>.
+
+The shell is now directly bootable through explicit route parameters on a plain static host:
+
+- <http://localhost:8004/index.html?route=/p/fb/C-Major>
+- <http://localhost:8004/index.html?route=/keyboard/C_3,E_3,G_3>
+- <http://localhost:8004/index.html?route=/eadgbe-frets/-1,12,12,9,10,-1>
+
+Internal page-family links are rewritten back through `index.html?route=...` so opening them in a new tab stays inside the single-entry shell instead of depending on direct `/p/...`, `/keyboard/...`, or `/eadgbe-frets/...` server routes.
+
 ## Project Completion Criteria
 
 The project is not visually complete until all 15 compatibility kinds pass Native RGBA Proof at `55%` and `200%`.

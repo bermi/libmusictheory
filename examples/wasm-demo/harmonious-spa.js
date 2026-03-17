@@ -1,6 +1,7 @@
 import { HARMONIOUS_SPA_MANIFEST } from "./harmonious-spa-manifest.js";
 
 const BUNDLE_BASE_URL = new URL("./", import.meta.url);
+const SHELL_ENTRY_ROUTE = new URL("./index.html", BUNDLE_BASE_URL).pathname;
 const PLACEHOLDER_IMAGE = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
 const REQUIRED_EXPORTS = [
   "memory",
@@ -184,6 +185,38 @@ function normalizePageRoute(route) {
   if (!normalized.startsWith("/")) normalized = `/${normalized}`;
   if (normalized === "/") return "/index.html";
   return normalized.replace(/\/+/g, "/");
+}
+
+function isShellPageRoute(route) {
+  const normalized = normalizePageRoute(route);
+  return normalized === "/index.html"
+    || normalized.startsWith("/p/")
+    || normalized === "/keyboard"
+    || normalized === "/keyboard/"
+    || normalized.startsWith("/keyboard/")
+    || normalized === "/eadgbe-frets"
+    || normalized === "/eadgbe-frets/"
+    || normalized.startsWith("/eadgbe-frets/");
+}
+
+function shellHrefForRoute(route) {
+  const normalized = normalizePageRoute(route);
+  if (normalized === "/index.html") return SHELL_ENTRY_ROUTE;
+  return `${SHELL_ENTRY_ROUTE}?route=${encodeURIComponent(normalized)}`;
+}
+
+function resolveShellNavigationRoute(rawValue, baseHref = window.location.href) {
+  if (!rawValue) return "/index.html";
+  try {
+    const resolved = new URL(String(rawValue), baseHref);
+    const routeParam = resolved.searchParams.get("route");
+    if (routeParam) {
+      return canonicalPageFetchRoute(normalizeSiteAttribute(routeParam));
+    }
+    return canonicalPageFetchRoute(normalizePageRoute(resolved.pathname));
+  } catch (_err) {
+    return canonicalPageFetchRoute(normalizePageRoute(rawValue));
+  }
 }
 
 function isCompatPath(pathname) {
@@ -490,7 +523,13 @@ function rewriteFetchedHtml(htmlText, route) {
 
 function rewriteDocument(doc, route) {
   doc.querySelectorAll("a[href]").forEach((anchor) => {
-    anchor.setAttribute("href", normalizeSiteAttribute(anchor.getAttribute("href")));
+    const normalizedHref = normalizeSiteAttribute(anchor.getAttribute("href"));
+    if (isShellPageRoute(normalizedHref)) {
+      anchor.setAttribute("data-lmt-shell-route", normalizePageRoute(normalizedHref));
+      anchor.setAttribute("href", shellHrefForRoute(normalizedHref));
+    } else {
+      anchor.setAttribute("href", normalizedHref);
+    }
   });
 
   doc.querySelectorAll("img[src]").forEach((img) => {
@@ -563,7 +602,8 @@ async function renderPageRoute(route) {
   document.body.className = bodyClass;
   document.body.innerHTML = doc.body.innerHTML;
   document.title = title.replace("&amp;", "&");
-  window.__lmtCurrentSliderUrlPath = normalizedRoute.replace(/\.html$/i, "");
+  window.__lmtCurrentPageUrlPath = normalizedRoute.replace(/\.html$/i, "");
+  window.__lmtCurrentSliderUrlPath = window.__lmtCurrentPageUrlPath;
 
   refreshCompatImages(document);
   executeInlineScripts(inlineScripts, normalizedRoute);
@@ -672,6 +712,17 @@ function routeRelativeTo(baseRoute, rawValue) {
     return normalizeSiteAttribute(`${resolved.pathname}${resolved.search}${resolved.hash}`);
   } catch (_err) {
     return normalizeSiteAttribute(String(rawValue));
+  }
+}
+
+function withTemporaryVisibleRoute(route, fn) {
+  const bareRoute = normalizePageRoute(route).replace(/\.html$/i, "");
+  const shellHref = shellHrefForRoute(bareRoute);
+  history.replaceState({ url: shellHref }, "Harmonious", bareRoute);
+  try {
+    return fn();
+  } finally {
+    history.replaceState({ url: shellHref }, "Harmonious", shellHref);
   }
 }
 
@@ -937,7 +988,7 @@ async function synchronizeKeyPageSliderOnce(route) {
     currentKeyIm.setAttribute("src", selfKeyIcon.getAttribute("src"));
   }
   current.textContent = spec.currentText;
-  currentHref.setAttribute("href", spec.currentRoute);
+  currentHref.setAttribute("href", shellHrefForRoute(spec.currentRoute));
 
   const html = await keySliderResponse(spec.searchRoute);
   only3.innerHTML = html;
@@ -1116,7 +1167,7 @@ function installRequestBridge() {
       : typeof maybeSuccess === "function"
         ? maybeSuccess
         : null;
-    const normalizedRoute = normalizePageRoute(new URL(String(request), window.location.href).pathname);
+    const normalizedRoute = resolveShellNavigationRoute(request, window.location.href);
     const handled = (
       normalizedRoute === "/random/"
       || normalizedRoute.startsWith("/search-key-tri/")
@@ -1152,7 +1203,8 @@ function installRequestBridge() {
           || normalizedRoute.startsWith("/keyboard/")
           || normalizedRoute.startsWith("/eadgbe-frets/")
         ) {
-          window.__lmtCurrentSliderUrlPath = canonicalPageFetchRoute(normalizedRoute).replace(/\.html$/i, "");
+          window.__lmtCurrentPageUrlPath = canonicalPageFetchRoute(normalizedRoute).replace(/\.html$/i, "");
+          window.__lmtCurrentSliderUrlPath = window.__lmtCurrentPageUrlPath;
         }
         if (success) {
           try {
@@ -1221,6 +1273,32 @@ function installSliderPathOverride() {
   window.HarmoniousClient.__lmtSliderPathOverrideInstalled = true;
 }
 
+function installKeyboardRouteOverride() {
+  if (!window.KeyboardClient || window.KeyboardClient.__lmtRouteOverrideInstalled) return;
+  const originalOnLoad = window.KeyboardClient.onLoad;
+  window.KeyboardClient.onLoad = function(...args) {
+    const currentRoute = String(window.__lmtCurrentPageUrlPath || "");
+    if (!currentRoute.startsWith("/keyboard/")) {
+      return originalOnLoad.apply(this, args);
+    }
+    return withTemporaryVisibleRoute(currentRoute, () => originalOnLoad.apply(this, args));
+  };
+  window.KeyboardClient.__lmtRouteOverrideInstalled = true;
+}
+
+function installFretRouteOverride() {
+  if (!window.FretsClient || window.FretsClient.__lmtRouteOverrideInstalled) return;
+  const originalOnLoad = window.FretsClient.onLoad;
+  window.FretsClient.onLoad = function(...args) {
+    const currentRoute = String(window.__lmtCurrentPageUrlPath || "");
+    if (!currentRoute.startsWith("/eadgbe-frets/")) {
+      return originalOnLoad.apply(this, args);
+    }
+    return withTemporaryVisibleRoute(currentRoute, () => originalOnLoad.apply(this, args));
+  };
+  window.FretsClient.__lmtRouteOverrideInstalled = true;
+}
+
 function loadRoute(route) {
   const normalizedRoute = canonicalPageFetchRoute(route);
   return new Promise((resolve, reject) => {
@@ -1249,8 +1327,10 @@ async function boot() {
   installCompatImageInterceptors();
   installRequestBridge();
   installSliderPathOverride();
+  installKeyboardRouteOverride();
+  installFretRouteOverride();
   window.HarmoniousClient.loadUrlBodyIntoBody = function(request) {
-    const resolvedRoute = normalizePageRoute(new URL(String(request), window.location.href).pathname);
+    const resolvedRoute = resolveShellNavigationRoute(request, window.location.href);
     renderPageRoute(resolvedRoute).catch((err) => {
       console.error(`AJAX request for URL '${request}' failed`);
       console.error(err?.stack || err?.message || String(err));
@@ -1259,7 +1339,8 @@ async function boot() {
   refreshCompatImages(document);
   window.HarmoniousClient.onLoad_OnePageLoadEver();
 
-  const initialRoute = canonicalPageFetchRoute(window.location.pathname || HARMONIOUS_SPA_MANIFEST.homeRoute || "/index.html");
+  const initialRoute = resolveShellNavigationRoute(window.location.href, window.location.href)
+    || canonicalPageFetchRoute(window.location.pathname || HARMONIOUS_SPA_MANIFEST.homeRoute || "/index.html");
   await loadRoute(initialRoute);
   state.ready = true;
   syncDebugState();
