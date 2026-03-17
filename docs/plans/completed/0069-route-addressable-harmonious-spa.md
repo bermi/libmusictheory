@@ -37,3 +37,25 @@ Make the single-entry Harmonious SPA addressable from a plain static host withou
 - `index.html?route=/eadgbe-frets/-1,12,12,9,10,-1` boots directly into the interactive fret route.
 - Representative key page direct-entry boots keep the slider synchronized.
 - `./verify.sh` passes.
+
+## Completion Status
+
+- Completed and verified:
+  - SPA shell boot now honors `index.html?route=...` for representative `/p/...`, `/keyboard/...`, `/eadgbe-frets/...`, and key-page routes
+  - internal page-family links are rewritten through the shell entry and tagged with `data-lmt-shell-route`
+  - keyboard and fretboard page-specific on-load code now receives the correct route semantics during direct shell boots
+  - SPA Playwright validation now covers direct shell entry for page, keyboard, fretboard, and key-slider-backed routes
+  - `./verify.sh` enforces the direct-entry guardrails
+
+## Implementation History (Point-in-Time)
+
+- Commit: `e56805f`
+- Date: `2026-03-17`
+- Shipped behavior:
+  - added direct route boot support through `index.html?route=...` in the Harmonious SPA shell
+  - rewrote internal page-family links back through the shell entry so new-tab and copied-link flows no longer depend on direct static `/p/...`, `/keyboard/...`, or `/eadgbe-frets/...` routes
+  - patched direct keyboard and fretboard shell boots so original page-specific client code sees the intended route during initialization
+  - expanded SPA Playwright coverage to enforce direct-entry boots for representative page, keyboard, fretboard, and key-slider routes
+- Verification commands:
+  - `node scripts/validate_harmonious_spa_playwright.mjs`
+  - `./verify.sh`
