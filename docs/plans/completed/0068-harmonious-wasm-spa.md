@@ -73,7 +73,7 @@ Build a single-entry SPA demo that reuses the original harmoniousapp.net content
 
 ## Implementation History (Point-in-Time)
 
-- Commit: `PENDING`
+- Commit: `e497e98`
 - Date: `2026-03-17`
 - Shipped behavior:
   - completed the harmonious SPA request bridge so the missing key-slider fragment/background endpoints are reconstructed locally
