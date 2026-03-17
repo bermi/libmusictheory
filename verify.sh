@@ -862,6 +862,9 @@ fi
 
 if [ -d "$ROOT_DIR/tmp/harmoniousapp.net" ] && [ -f "$ROOT_DIR/scripts/validate_harmonious_spa_playwright.mjs" ]; then
     if command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
+        check_cmd "cd '$ROOT_DIR' && rg -n 'search-key-tri|key-tri|sliderEntries|sliderImageCount|currentKeyText|keySliderVariant' scripts/validate_harmonious_spa_playwright.mjs examples/wasm-demo/harmonious-spa.js >/dev/null" "0068 harmonious wasm SPA guardrail (key-slider fragments and backgrounds are covered by runtime + playwright)"
+        check_cmd "cd '$ROOT_DIR' && rg -n 'fetchPagePayload|collectInlineBodyScripts\\(doc\\)|executeInlineScripts\\(inlineScripts, normalizedRoute\\)' examples/wasm-demo/harmonious-spa.js >/dev/null" "0068 harmonious wasm SPA guardrail (AJAX page routes re-run inline page scripts after body swaps)"
+        check_cmd "cd '$ROOT_DIR' && rg -n 'scheduleKeyPageSliderSynchronization|synchronizeKeyPageSliderOnce|keySliderInitialSpecForRoute' examples/wasm-demo/harmonious-spa.js >/dev/null" "0068 harmonious wasm SPA guardrail (key-page slider header and initial fragment are route-synchronized in the SPA bridge)"
         check_cmd "cd '$ROOT_DIR' && node scripts/validate_harmonious_spa_playwright.mjs 2>&1" "0068 harmonious wasm SPA playwright validation"
     else
         unverified "0068 harmonious wasm SPA playwright validation (node/npm/python3 missing)"

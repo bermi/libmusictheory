@@ -32,6 +32,17 @@ const COMPAT_DIR_PREFIXES = [
   "chord/",
   "vert-text-b2t-black/",
 ];
+const KEY_SLIDER_COLOR_INDEX = [2, 7, 0, 5, 10, 3, 8, 1, 6, 11, 4, 9];
+const KEY_TRIANGLE_PC_COLORS = "#00c #a4f #f0f #a16 #e02 #f91 #c81 #094 #161 #077 #0bb #28f".split(" ");
+const KEY_SLIDER_WHITELIST_COORDS = [
+  [0, 1, true, 3], [0, 2, false, 11], [0, 2, true, 8], [0, 3, false, 4], [0, 3, true, 1], [0, 4, false, 9], [0, 4, true, 6],
+  [1, 1, false, 2], [1, 2, true, 11], [1, 2, false, 7], [1, 3, true, 4], [1, 3, false, 0], [1, 4, true, 9], [1, 4, false, 5], [1, 5, true, 2],
+  [2, 1, true, 2], [2, 2, false, 10], [2, 2, true, 7], [2, 3, false, 3], [2, 3, true, 0], [2, 4, false, 8], [2, 4, true, 5], [2, 5, false, 1],
+  [3, 3, true, 3], [3, 4, true, 8],
+];
+const KEY_SLIDER_MAJOR_ROUTES = "/p/63/Cs-Major /p/63/Cs-Major /p/63/Cs-Major /p/63/Cs-Major /p/63/Cs-Major /p/82/Fs-Major /p/a0/B-Major /p/7c/E-Major /p/ad/A-Major /p/63/D-Major /p/d2/G-Major /p/fb/C-Major /p/ab/F-Major /p/a7/Bb-Major /p/c6/Eb-Major /p/eb/Ab-Major /p/1f/Db-Major /p/0b/Gb-Major /p/39/Cb-Major /p/39/Cb-Major /p/39/Cb-Major /p/39/Cb-Major".split(" ");
+const KEY_SLIDER_MINOR_ROUTES = "/p/dd/Cs-Minor /p/dd/Cs-Minor /p/dd/Cs-Minor /p/dd/Cs-Minor /p/dd/Cs-Minor /p/43/Fs-Minor /p/98/B-Minor /p/a5/E-Minor /p/f1/A-Minor /p/62/D-Minor /p/6e/G-Minor /p/4c/C-Minor /p/00/F-Minor /p/69/Bb-Minor /p/49/Eb-Minor /p/49/Ab-Minor /p/dd/Cs-Minor /p/43/Fs-Minor /p/98/B-Minor /p/98/B-Minor /p/98/B-Minor /p/98/B-Minor".split(" ");
+const KEY_SLIDER_ROUTE_SET = new Set([...KEY_SLIDER_MAJOR_ROUTES, ...KEY_SLIDER_MINOR_ROUTES]);
 
 const originalJqueryGet = window.jQuery?.get?.bind(window.jQuery);
 const originalElementSetAttribute = Element.prototype.setAttribute;
@@ -47,6 +58,9 @@ const state = {
   memory: null,
   compatIndex: new Map(),
   compatDataUrlCache: new Map(),
+  keyTriDataUrlCache: new Map(),
+  keySliderGroupCache: new Map(),
+  keySliderSyncSerial: 0,
   requestLog: [],
   compatReplacements: 0,
   ready: false,
@@ -198,6 +212,20 @@ function normalizeCompatPath(rawValue, baseHref = window.location.href) {
   return state.compatIndex.has(normalized) ? normalized : null;
 }
 
+function normalizeKeyTriPath(rawValue, baseHref = window.location.href) {
+  if (!rawValue) return null;
+  try {
+    const resolved = new URL(String(rawValue), baseHref);
+    const normalized = resolved.pathname.replace(/^\/+/, "");
+    if (!normalized.startsWith("key-tri/")) return null;
+    const stem = normalized.slice("key-tri/".length);
+    if (!/^(?:0|[1-9]\d*[bs]?),\d+$/.test(stem)) return null;
+    return `key-tri/${stem}`;
+  } catch (_err) {
+    return null;
+  }
+}
+
 function buildCompatIndex() {
   const arena = scratchArena();
   const imageNamePtr = arena.alloc(NAME_CAPACITY, 1);
@@ -229,29 +257,125 @@ function compatSvgDataUrl(normalizedPath) {
   return dataUrl;
 }
 
+function keyTriSpecFromPath(normalizedPath) {
+  const stem = normalizedPath.replace(/^key-tri\//, "");
+  const [token, heightText] = stem.split(",");
+  const height = Number.parseInt(heightText, 10);
+  if (!Number.isFinite(height) || height <= 0) {
+    throw new Error(`invalid key-tri height in ${normalizedPath}`);
+  }
+  return {
+    knum: parseKixToken(token),
+    height,
+  };
+}
+
+function keyTriPolygon(row, column, downTriangle, stride, rowHeight, corx) {
+  if (!downTriangle) {
+    let col = column;
+    if ((row + 1) % 2) {
+      col -= 0.5;
+    }
+    return [
+      [1 + corx + stride + col * stride, 1 + row * rowHeight],
+      [1 + corx + stride + (col + 0.5) * stride, 1 + (row + 1) * rowHeight],
+      [1 + corx + stride + (col - 0.5) * stride, 1 + (row + 1) * rowHeight],
+    ];
+  }
+  let col = column;
+  if (row % 2) {
+    col -= 0.5;
+  }
+  col -= 0.5;
+  return [
+    [1 + corx + stride + col * stride, 1 + row * rowHeight],
+    [1 + corx + stride + (col + 0.5) * stride, 1 + (row + 1) * rowHeight],
+    [1 + corx + stride + (col + 1.0) * stride, 1 + row * rowHeight],
+  ];
+}
+
+function keyTriSvgDataUrl(normalizedPath) {
+  const cached = state.keyTriDataUrlCache.get(normalizedPath);
+  if (cached) return cached;
+
+  const { knum, height } = keyTriSpecFromPath(normalizedPath);
+  const width = Math.ceil(height * 1400 / 694);
+  const stride = 138 * height / 480;
+  const rowHeight = stride * 0.5 * 1.732;
+  const rat = window.devicePixelRatio || 1;
+  let corx = 0;
+  if (rat < 2) corx = -stride * 0.25;
+  if (rat > 2.9 && rat < 3.1) corx = 0.08 * stride;
+  const colorOffset = KEY_SLIDER_COLOR_INDEX[((knum + 11 + 3) % 12 + 12) % 12] || 0;
+
+  const polygons = KEY_SLIDER_WHITELIST_COORDS.map(([row, column, downTriangle, relativeColor]) => {
+    const color = KEY_TRIANGLE_PC_COLORS[(colorOffset + relativeColor) % 12];
+    const points = keyTriPolygon(row, column, Boolean(downTriangle), stride, rowHeight, corx)
+      .map(([x, y]) => `${x.toFixed(3)},${y.toFixed(3)}`)
+      .join(" ");
+    return `<polygon points="${points}" fill="${color}" stroke="#ffffff" stroke-width="${Math.max(1, height / 190).toFixed(3)}" stroke-linejoin="round"/>`;
+  }).join("");
+
+  const svgText = [
+    `<?xml version="1.0" encoding="UTF-8"?>`,
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`,
+    `<rect width="${width}" height="${height}" fill="#eeeeee"/>`,
+    polygons,
+    `</svg>`,
+  ].join("");
+  const dataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgText)}`;
+  state.keyTriDataUrlCache.set(normalizedPath, dataUrl);
+  return dataUrl;
+}
+
 function setCompatDataset(img, normalizedPath) {
   originalElementSetAttribute.call(img, "data-lmt-compat-src", normalizedPath);
   originalElementSetAttribute.call(img, "data-lmt-image-source", "wasm-compat");
 }
 
+function setKeyTriDataset(img, normalizedPath) {
+  originalElementSetAttribute.call(img, "data-lmt-key-tri-src", normalizedPath);
+  originalElementSetAttribute.call(img, "data-lmt-image-source", "spa-key-tri");
+}
+
 function applyCompatImage(img, rawValue) {
   const normalizedPath = normalizeCompatPath(rawValue, img.baseURI || window.location.href);
-  if (!normalizedPath) return false;
+  if (normalizedPath) {
+    if (
+      img.getAttribute("data-lmt-compat-src") === normalizedPath
+      && img.getAttribute("data-lmt-image-source") === "wasm-compat"
+      && String(img.getAttribute("src") || "").startsWith("data:image/svg+xml")
+    ) {
+      return true;
+    }
+    const dataUrl = compatSvgDataUrl(normalizedPath);
+    setCompatDataset(img, normalizedPath);
+    if (imageSrcDescriptor?.set) {
+      imageSrcDescriptor.set.call(img, dataUrl);
+    } else {
+      originalElementSetAttribute.call(img, "src", dataUrl);
+    }
+    state.compatReplacements += 1;
+    syncDebugState();
+    return true;
+  }
+
+  const keyTriPath = normalizeKeyTriPath(rawValue, img.baseURI || window.location.href);
+  if (!keyTriPath) return false;
   if (
-    img.getAttribute("data-lmt-compat-src") === normalizedPath
-    && img.getAttribute("data-lmt-image-source") === "wasm-compat"
+    img.getAttribute("data-lmt-key-tri-src") === keyTriPath
+    && img.getAttribute("data-lmt-image-source") === "spa-key-tri"
     && String(img.getAttribute("src") || "").startsWith("data:image/svg+xml")
   ) {
     return true;
   }
-  const dataUrl = compatSvgDataUrl(normalizedPath);
-  setCompatDataset(img, normalizedPath);
+  const dataUrl = keyTriSvgDataUrl(keyTriPath);
+  setKeyTriDataset(img, keyTriPath);
   if (imageSrcDescriptor?.set) {
     imageSrcDescriptor.set.call(img, dataUrl);
   } else {
     originalElementSetAttribute.call(img, "src", dataUrl);
   }
-  state.compatReplacements += 1;
   syncDebugState();
   return true;
 }
@@ -326,6 +450,7 @@ function canonicalPageFetchRoute(route) {
   const normalized = normalizePageRoute(route);
   if (normalized === "/keyboard" || normalized === "/keyboard/") return "/keyboard/index.html";
   if (normalized === "/eadgbe-frets" || normalized === "/eadgbe-frets/") return "/eadgbe-frets/index.html";
+  if (normalized.startsWith("/p/") && !normalized.endsWith(".html")) return `${normalized}.html`;
   if (normalized.startsWith("/keyboard/") && !normalized.endsWith(".html")) return `${normalized}.html`;
   if (normalized.startsWith("/eadgbe-frets/") && !normalized.endsWith(".html")) return `${normalized}.html`;
   if (normalized === "/index.html") return normalized;
@@ -343,19 +468,24 @@ function normalizeSiteAttribute(rawHref) {
     const token = rawHref.slice("auto:".length);
     return autoRouteMap[token] || "/index.html";
   }
-  return String(rawHref)
+  const normalized = String(rawHref)
     .replace(/^https?:\/\/harmoniousapp\.net/i, "")
     .replace(/(^|\/)keyboard\/index\.html(?=([?#].*)?$)/i, "$1keyboard/")
     .replace(/(^|\/)eadgbe-frets\/index\.html(?=([?#].*)?$)/i, "$1eadgbe-frets/")
     .replace(/(^|\/)(keyboard\/[^?#]+)\.html(?=([?#].*)?$)/i, "$1$2")
     .replace(/(^|\/)(eadgbe-frets\/[^?#]+)\.html(?=([?#].*)?$)/i, "$1$2");
+  const pageMatch = normalized.match(/^([^?#]+)\.html((?:[?#].*)?)$/i);
+  if (pageMatch && KEY_SLIDER_ROUTE_SET.has(pageMatch[1])) {
+    return `${pageMatch[1]}${pageMatch[2] || ""}`;
+  }
+  return normalized;
 }
 
 function rewriteFetchedHtml(htmlText, route) {
   const parser = new DOMParser();
   const doc = parser.parseFromString(window.HarmoniousConfig.ServerStringReplacer(String(htmlText)), "text/html");
   rewriteDocument(doc, route);
-  return `<!doctype html>\n${doc.documentElement.outerHTML}`;
+  return serializeDocument(doc);
 }
 
 function rewriteDocument(doc, route) {
@@ -380,6 +510,10 @@ function parsePageDocument(htmlText, route) {
   const doc = parser.parseFromString(window.HarmoniousConfig.ServerStringReplacer(String(htmlText)), "text/html");
   rewriteDocument(doc, route);
   return doc;
+}
+
+function serializeDocument(doc) {
+  return `<!doctype html>\n${doc.documentElement.outerHTML}`;
 }
 
 function collectInlineBodyScripts(doc) {
@@ -429,9 +563,11 @@ async function renderPageRoute(route) {
   document.body.className = bodyClass;
   document.body.innerHTML = doc.body.innerHTML;
   document.title = title.replace("&amp;", "&");
+  window.__lmtCurrentSliderUrlPath = normalizedRoute.replace(/\.html$/i, "");
 
   refreshCompatImages(document);
   executeInlineScripts(inlineScripts, normalizedRoute);
+  await scheduleKeyPageSliderSynchronization(normalizedRoute);
   refreshCompatImages(document);
 
   state.lastRoute = normalizedRoute;
@@ -526,6 +662,312 @@ function buildIndexedEntries(candidateRefs) {
   return [...entryMap.values()];
 }
 
+function routeRelativeTo(baseRoute, rawValue) {
+  if (!rawValue) return "";
+  if (String(rawValue).startsWith("auto:")) {
+    return normalizeSiteAttribute(String(rawValue));
+  }
+  try {
+    const resolved = new URL(String(rawValue), new URL(baseRoute, window.location.origin));
+    return normalizeSiteAttribute(`${resolved.pathname}${resolved.search}${resolved.hash}`);
+  } catch (_err) {
+    return normalizeSiteAttribute(String(rawValue));
+  }
+}
+
+function normalizeLabelText(labelText) {
+  return String(labelText)
+    .replaceAll("\u266d", "b")
+    .replaceAll("\u266f", "#")
+    .replaceAll("\u00b0", "o")
+    .replaceAll(/\s+/g, " ")
+    .trim();
+}
+
+function parseKixToken(token) {
+  const raw = String(token || "").trim();
+  if (!raw || raw === "0") return 0;
+  if (raw.endsWith("s")) return -Number.parseInt(raw.slice(0, -1), 10);
+  if (raw.endsWith("b")) return Number.parseInt(raw.slice(0, -1), 10);
+  throw new Error(`invalid key-slider key token: ${token}`);
+}
+
+function sliderQueryToColumn(row, downTriangle, j) {
+  if (downTriangle) {
+    return row % 2 === 1 ? j + 1 : j;
+  }
+  return row % 2 === 0 ? j + 1 : j;
+}
+
+function sliderRelativeColorIndex(row, column, downTriangle) {
+  for (const one of KEY_SLIDER_WHITELIST_COORDS) {
+    if (one[0] === row && one[1] === column && Boolean(one[2]) === Boolean(downTriangle)) {
+      return one[3];
+    }
+  }
+  return null;
+}
+
+function sliderCurrentKeyRoute(knum, row) {
+  const majorMinorIndex = row > 1 ? 1 : 0;
+  const keyLinks = majorMinorIndex === 0 ? KEY_SLIDER_MAJOR_ROUTES : KEY_SLIDER_MINOR_ROUTES;
+  const index = Math.max(0, Math.min(keyLinks.length - 1, knum + 11));
+  return canonicalPageFetchRoute(keyLinks[index]);
+}
+
+function keySliderTokenFromIndex(index) {
+  const knum = index - 11;
+  if (knum < 0) return `${-knum}s`;
+  if (knum > 0) return `${knum}b`;
+  return "0";
+}
+
+function keySliderInitialSpecForRoute(route) {
+  const bareRoute = canonicalPageFetchRoute(route).replace(/\.html$/i, "");
+  if (bareRoute === "/p/a7/Keys") {
+    return {
+      bareRoute,
+      currentRoute: "/p/fb/C-Major",
+      searchRoute: "/search-key-tri/0,1,3,1",
+      currentText: "Key of C Major",
+    };
+  }
+
+  const majorIndex = KEY_SLIDER_MAJOR_ROUTES.indexOf(bareRoute);
+  if (majorIndex >= 0) {
+    return {
+      bareRoute,
+      currentRoute: bareRoute,
+      searchRoute: `/search-key-tri/${keySliderTokenFromIndex(majorIndex)},1,3,1`,
+      currentText: document.title.replace(/\s*-\s*Harmonious$/i, "").trim(),
+    };
+  }
+
+  const minorIndex = KEY_SLIDER_MINOR_ROUTES.indexOf(bareRoute);
+  if (minorIndex >= 0) {
+    return {
+      bareRoute,
+      currentRoute: bareRoute,
+      searchRoute: `/search-key-tri/${keySliderTokenFromIndex(minorIndex)},0,3,2`,
+      currentText: document.title.replace(/\s*-\s*Harmonious$/i, "").trim(),
+    };
+  }
+
+  return null;
+}
+
+function sliderAbsoluteNoteColor(knum, row, column, downTriangle) {
+  const relative = sliderRelativeColorIndex(row, column, downTriangle);
+  if (relative == null) return null;
+  const colorOffset = KEY_SLIDER_COLOR_INDEX[((knum + 11 + 3) % 12 + 12) % 12] || 0;
+  return (colorOffset + relative) % 12;
+}
+
+function parseSearchKeyTriRoute(route) {
+  const rest = route.replace(/^\/search-key-tri\//, "");
+  const parts = rest.split(",");
+  if (parts.length !== 4) return null;
+  const knum = parseKixToken(parts[0]);
+  const z = Number.parseInt(parts[1], 10);
+  const j = Number.parseInt(parts[2], 10);
+  const row = Number.parseInt(parts[3], 10);
+  if (![z, j, row].every((value) => Number.isFinite(value))) return null;
+  const downTriangle = z === 0;
+  const column = sliderQueryToColumn(row, downTriangle, j);
+  const keyRoute = sliderCurrentKeyRoute(knum, row);
+  const noteColor = sliderAbsoluteNoteColor(knum, row, column, downTriangle);
+  return {
+    knum,
+    row,
+    column,
+    downTriangle,
+    keyRoute,
+    noteColor,
+  };
+}
+
+function sliderGroupBucket(group) {
+  const firstTitle = normalizeLabelText(group.entries[0]?.titleText || "");
+  const joinedTitles = group.entries.map((entry) => normalizeLabelText(entry.titleText)).join(" | ");
+  const label = group.labelText;
+  if (/\b(?:min|dim)\b/i.test(firstTitle) || /^vii|iio|#vio/i.test(label) || /^i(?:$|[^A-Z])/.test(label)) return "down";
+  if (/\b(?:Maj|Dom|aug|Fr\. 6|Gr\. 6|N\.)\b/i.test(firstTitle)) return "up";
+  if (/\b(?:min|dim)\b/i.test(joinedTitles)) return "down";
+  if (/^V(?:\/|\b|\s*\()/.test(label) || /\+/.test(label) || /\((?:Fr\.|Gr\.|N\.|It\.)/.test(label)) return "up";
+  return "down";
+}
+
+function sliderGroupRank(group) {
+  const label = group.labelText;
+  if (/^[ivIV]+$/.test(label) || /^(?:i|I{1,3}|IV|V|VI|VII)$/.test(label)) return 0;
+  if (/^V(?:\/|\b|\s*\()/.test(label)) return 1;
+  if (/^vii/.test(label)) return 2;
+  return 3;
+}
+
+function sliderGroupSubtitle(group) {
+  const label = group.labelText;
+  if (/^V(?:\/|\b|\s*\()/.test(label)) return "Secondary Dominant";
+  if (/^vii/.test(label)) return "Leading-Tone Function";
+  if (/\((?:Fr\.|Gr\.|N\.|It\.)/.test(label) || /\+/.test(label)) return "Chromatic Function";
+  return "Diatonic Function";
+}
+
+async function keySliderGroupsForRoute(keyRoute) {
+  const cached = state.keySliderGroupCache.get(keyRoute);
+  if (cached) return cached;
+
+  const response = await fetch(routeToBundleContentUrl(keyRoute));
+  if (!response.ok) {
+    throw new Error(`Failed to fetch key page ${keyRoute}: ${response.status}`);
+  }
+  const rawText = await response.text();
+  const doc = new DOMParser().parseFromString(rawText, "text/html");
+  const groups = Array.from(doc.querySelectorAll("span.grouper.lhs.chord-type.page-t9key.func")).map((group) => {
+    const className = group.getAttribute("class") || "";
+    const noteColorMatch = className.match(/\bnoteColor(\d+)\b/);
+    const keyClassMatch = className.match(/\bpage-named-key-of-[^\s"]+/);
+    const labelNode = group.querySelector("div.link-label.above-line");
+    const labelHtml = labelNode?.innerHTML?.trim() || "";
+    const labelText = normalizeLabelText(labelNode?.textContent || "");
+    const entries = Array.from(group.querySelectorAll("div.smchord a.lhs.parent")).map((anchor) => {
+      const href = routeRelativeTo(keyRoute, anchor.getAttribute("href") || "");
+      const imgNode = anchor.querySelector("img.smicon");
+      const rawSrc = imgNode?.getAttribute("src") || "";
+      const compatRef = normalizeCompatPath(rawSrc, new URL(keyRoute, window.location.origin).toString());
+      const resolvedSrc = compatRef ? PLACEHOLDER_IMAGE : routeRelativeTo(keyRoute, rawSrc);
+      const titleNode = anchor.querySelector(".centery");
+      return {
+        href,
+        rawSrc,
+        compatRef,
+        resolvedSrc,
+        titleHtml: titleNode?.innerHTML?.trim() || "",
+        titleText: titleNode?.textContent?.trim() || "",
+      };
+    });
+    const parsed = {
+      className,
+      keyClass: keyClassMatch?.[0] || "",
+      noteColor: noteColorMatch ? Number.parseInt(noteColorMatch[1], 10) : -1,
+      labelHtml,
+      labelText,
+      entries,
+    };
+    parsed.bucket = sliderGroupBucket(parsed);
+    parsed.rank = sliderGroupRank(parsed);
+    return parsed;
+  }).filter((group) => group.noteColor >= 0 && group.labelText && group.entries.length > 0);
+
+  state.keySliderGroupCache.set(keyRoute, groups);
+  return groups;
+}
+
+function renderKeySliderCard(group) {
+  const keyClass = group.keyClass ? ` ${group.keyClass}` : "";
+  const baseClass = `lhs chord page-t9key func noteColor${group.noteColor}${keyClass}`;
+  const sliderEntries = group.entries.slice(0, 3).map((entry) => {
+    const img = entry.compatRef
+      ? `<img class="slider-icon2" src="${PLACEHOLDER_IMAGE}" data-lmt-compat-src="${htmlEscape(entry.compatRef)}" alt="">`
+      : entry.rawSrc
+        ? `<img class="slider-icon2" src="${htmlEscape(entry.resolvedSrc)}" alt="">`
+        : "";
+    return [
+      `  <div class="slider-entry">`,
+      `    <a href="${htmlEscape(entry.href)}">${img}</a><a href="${htmlEscape(entry.href)}" class="slider-text">${entry.titleHtml || htmlEscape(entry.titleText)}</a>`,
+      `  </div>`,
+    ].join("\n");
+  }).join("\n");
+
+  return [
+    `<span class="${baseClass} slider-info spa-slider-info">`,
+    `  <div class="${baseClass} link-label above-line lr-container"><span class="lr-item lr-bold lr-function">${group.labelHtml}</span><span class="link-label lr-item lr-function">${htmlEscape(sliderGroupSubtitle(group))}</span></div>`,
+    sliderEntries,
+    `</span>`,
+  ].join("\n");
+}
+
+function renderEmptyKeySliderCard(message) {
+  return [
+    `<span class="lhs chord page-t9key slider-info spa-slider-empty">`,
+    `  <div class="lhs chord page-t9key link-label above-line lr-container"><span class="lr-item lr-bold lr-function">Key Slider</span><span class="link-label lr-item lr-function">Local Reconstruction</span></div>`,
+    `  <div class="slider-entry"><span class="slider-text">${htmlEscape(message)}</span></div>`,
+    `</span>`,
+  ].join("\n");
+}
+
+async function keySliderResponse(route) {
+  const parsed = parseSearchKeyTriRoute(route);
+  if (!parsed) {
+    return renderEmptyKeySliderCard("Select a triangle to see related chords.");
+  }
+
+  const groups = await keySliderGroupsForRoute(parsed.keyRoute);
+  const noteColorGroups = groups
+    .filter((group) => group.noteColor === parsed.noteColor)
+    .sort((a, b) => a.rank - b.rank || a.labelText.localeCompare(b.labelText));
+
+  const bucket = parsed.downTriangle ? "down" : "up";
+  let selected = noteColorGroups.filter((group) => group.bucket === bucket);
+  if (!selected.length) {
+    selected = noteColorGroups;
+  }
+  selected = selected.slice(0, 3);
+
+  if (!selected.length) {
+    return renderEmptyKeySliderCard(`No local key-slider cards matched ${parsed.keyRoute}.`);
+  }
+
+  return selected.map((group) => renderKeySliderCard(group)).join("\n");
+}
+
+async function synchronizeKeyPageSliderOnce(route) {
+  const spec = keySliderInitialSpecForRoute(route);
+  if (!spec) return;
+
+  const current = document.getElementById("current");
+  const currentHref = document.getElementById("current-href");
+  const currentKeyIm = document.getElementById("current-key-im");
+  const only3 = document.querySelector(".only3");
+  const indicator = document.getElementById("indicator");
+  if (!current || !currentHref || !currentKeyIm || !only3 || !indicator) return;
+
+  const selfKeyIcon = document.querySelector(".rhs.t9key.entry.self img.keyicon, .lhs.t9key.entry.self img.keyicon");
+  if (selfKeyIcon?.getAttribute("src")) {
+    currentKeyIm.setAttribute("src", selfKeyIcon.getAttribute("src"));
+  }
+  current.textContent = spec.currentText;
+  currentHref.setAttribute("href", spec.currentRoute);
+
+  const html = await keySliderResponse(spec.searchRoute);
+  only3.innerHTML = html;
+  const num = only3.children.length;
+  only3.style.width = `${16 * Math.max(1, num)}rem`;
+  if (num === 1) indicator.classList.add("invisible");
+  else indicator.classList.remove("invisible");
+  refreshCompatImages(only3);
+}
+
+function scheduleKeyPageSliderSynchronization(route) {
+  const spec = keySliderInitialSpecForRoute(route);
+  if (!spec) return Promise.resolve();
+
+  state.keySliderSyncSerial += 1;
+  const syncSerial = state.keySliderSyncSerial;
+  const syncNow = async () => {
+    if (syncSerial !== state.keySliderSyncSerial) return;
+    await synchronizeKeyPageSliderOnce(route);
+  };
+
+  return syncNow().then(() => {
+    window.setTimeout(() => {
+      void syncNow().catch((err) => {
+        console.error(`key slider sync retry failed for ${route}: ${err?.stack || err?.message || err}`);
+      });
+    }, 900);
+  });
+}
+
 function parseSearchKeyboardRoute(route) {
   const rest = route.replace(/^\/search-keyboard\//, "");
   const parts = rest.split(",").filter(Boolean);
@@ -615,10 +1057,29 @@ async function fetchPageHtml(route) {
   return rewriteFetchedHtml(await response.text(), route);
 }
 
+async function fetchPagePayload(route) {
+  const response = await fetch(routeToBundleContentUrl(route));
+  if (!response.ok) {
+    throw new Error(`Failed to fetch local page ${route}: ${response.status}`);
+  }
+  const doc = parsePageDocument(await response.text(), route);
+  const inlineScripts = collectInlineBodyScripts(doc);
+  return {
+    html: serializeDocument(doc),
+    inlineScripts,
+  };
+}
+
 async function resolveBridgeResponse(route) {
   if (route === "/random/") {
     logRequest("random", route);
     return randomRouteResponse();
+  }
+  if (route.startsWith("/search-key-tri/")) {
+    logRequest("search-key-tri", route);
+    state.lastFragmentKind = "search-key-tri";
+    syncDebugState();
+    return keySliderResponse(route);
   }
   if (route.startsWith("/search-keyboard/")) {
     logRequest("search-keyboard", route);
@@ -639,7 +1100,7 @@ async function resolveBridgeResponse(route) {
     || route.startsWith("/eadgbe-frets/")
   ) {
     logRequest("page", route);
-    return fetchPageHtml(route);
+    return fetchPagePayload(route);
   }
   return null;
 }
@@ -658,6 +1119,7 @@ function installRequestBridge() {
     const normalizedRoute = normalizePageRoute(new URL(String(request), window.location.href).pathname);
     const handled = (
       normalizedRoute === "/random/"
+      || normalizedRoute.startsWith("/search-key-tri/")
       || normalizedRoute.startsWith("/search-keyboard/")
       || normalizedRoute.startsWith("/search-eadgbe/")
       || normalizedRoute === "/index.html"
@@ -673,9 +1135,28 @@ function installRequestBridge() {
     const deferred = window.jQuery.Deferred();
     resolveBridgeResponse(normalizedRoute)
       .then((payload) => {
+        let inlineScripts = null;
+        let responseBody = payload;
+        if (
+          normalizedRoute === "/index.html"
+          || normalizedRoute.startsWith("/p/")
+          || normalizedRoute.startsWith("/keyboard/")
+          || normalizedRoute.startsWith("/eadgbe-frets/")
+        ) {
+          inlineScripts = payload.inlineScripts || [];
+          responseBody = payload.html || "";
+        }
+        if (
+          normalizedRoute === "/index.html"
+          || normalizedRoute.startsWith("/p/")
+          || normalizedRoute.startsWith("/keyboard/")
+          || normalizedRoute.startsWith("/eadgbe-frets/")
+        ) {
+          window.__lmtCurrentSliderUrlPath = canonicalPageFetchRoute(normalizedRoute).replace(/\.html$/i, "");
+        }
         if (success) {
           try {
-            success(payload);
+            success(responseBody);
           } catch (err) {
             console.error(
               `SPA success callback failed for ${normalizedRoute}: ${err?.stack || err?.message || err}`,
@@ -684,18 +1165,26 @@ function installRequestBridge() {
             return;
           }
         }
-        deferred.resolve(payload);
+        deferred.resolve(responseBody);
         requestAnimationFrame(() => {
-          refreshCompatImages(document);
-          if (normalizedRoute === "/index.html" || normalizedRoute.startsWith("/p/") || normalizedRoute.startsWith("/keyboard/") || normalizedRoute.startsWith("/eadgbe-frets/")) {
-            state.lastRoute = normalizedRoute;
-            state.routeLoads += 1;
-            syncDebugState();
-            window.dispatchEvent(new CustomEvent("lmt-harmonious-spa-route-loaded", { detail: { route: normalizedRoute } }));
-          } else {
-            syncDebugState();
-            window.dispatchEvent(new CustomEvent("lmt-harmonious-spa-fragment-loaded", { detail: { route: normalizedRoute } }));
-          }
+          void (async () => {
+            if (inlineScripts?.length) {
+              executeInlineScripts(inlineScripts, normalizedRoute);
+            }
+            await scheduleKeyPageSliderSynchronization(normalizedRoute);
+            refreshCompatImages(document);
+            if (normalizedRoute === "/index.html" || normalizedRoute.startsWith("/p/") || normalizedRoute.startsWith("/keyboard/") || normalizedRoute.startsWith("/eadgbe-frets/")) {
+              state.lastRoute = normalizedRoute;
+              state.routeLoads += 1;
+              syncDebugState();
+              window.dispatchEvent(new CustomEvent("lmt-harmonious-spa-route-loaded", { detail: { route: normalizedRoute } }));
+            } else {
+              syncDebugState();
+              window.dispatchEvent(new CustomEvent("lmt-harmonious-spa-fragment-loaded", { detail: { route: normalizedRoute } }));
+            }
+          })().catch((err) => {
+            console.error(`SPA route finalization failed for ${normalizedRoute}: ${err?.stack || err?.message || err}`);
+          });
         });
       })
       .catch((err) => {
@@ -706,6 +1195,30 @@ function installRequestBridge() {
       });
     return deferred.promise();
   };
+}
+
+function installSliderPathOverride() {
+  if (!window.HarmoniousClient || window.HarmoniousClient.__lmtSliderPathOverrideInstalled) return;
+  window.HarmoniousClient.onSliderLoad = function(onKeyPage) {
+    console.log("onSliderLoad");
+    window.HarmoniousClient.sliderScroll = new IScroll(".iscroller3", {
+      eventPassthrough: true,
+      scrollX: true,
+      scrollY: false,
+      mouseWheel: true,
+      snap: true,
+      indicators: {
+        el: document.getElementById("indicator"),
+        resize: false,
+      },
+    });
+    let urlPath = null;
+    if (onKeyPage) {
+      urlPath = window.__lmtCurrentSliderUrlPath || document.location.pathname;
+    }
+    window.HarmoniousClient.keysSlider = new Slider("canvas", urlPath);
+  };
+  window.HarmoniousClient.__lmtSliderPathOverrideInstalled = true;
 }
 
 function loadRoute(route) {
@@ -735,6 +1248,7 @@ async function boot() {
   buildCompatIndex();
   installCompatImageInterceptors();
   installRequestBridge();
+  installSliderPathOverride();
   window.HarmoniousClient.loadUrlBodyIntoBody = function(request) {
     const resolvedRoute = normalizePageRoute(new URL(String(request), window.location.href).pathname);
     renderPageRoute(resolvedRoute).catch((err) => {

@@ -59,13 +59,27 @@ Build a single-entry SPA demo that reuses the original harmoniousapp.net content
 - Playwright passes for the SPA validation flow.
 - `./verify.sh` passes.
 
-## Current Status
+## Completion Status
 
-- Shipped and verified:
+- Completed and verified:
   - single-entry SPA shell bundle under `zig-out/wasm-harmonious-spa/`
   - local corpus/asset install and manifest generation
-  - wasm-backed compat image replacement for page content and search fragments
-  - local `auto:*`, `/random/`, `/search-keyboard/...`, and `/search-eadgbe/...` request bridge reconstruction
-  - Playwright-verified navigation across home, `/p/...`, `/keyboard/...`, `/eadgbe-frets/...`, and random routes
-- Remaining gap before this plan can move to completed:
-  - reconstruct `/search-key-tri/...` so the key-slider interaction works locally instead of falling back to a 404 from the missing original server endpoint
+  - wasm-backed compat image replacement for page content and reconstructed search fragments
+  - local `auto:*`, `/random/`, `/search-keyboard/...`, `/search-eadgbe/...`, and `/search-key-tri/...` request bridge reconstruction
+  - local `/key-tri/...` background reconstruction for the interactive key slider
+  - deterministic re-execution of page inline scripts after AJAX body swaps
+  - explicit route-synchronized key-page slider header and initial fragment stabilization inside the SPA bridge
+  - Playwright-verified navigation across home, `/p/...`, `/keyboard/...`, `/eadgbe-frets/...`, key-slider routes, and random routes
+
+## Implementation History (Point-in-Time)
+
+- Commit: `PENDING`
+- Date: `2026-03-17`
+- Shipped behavior:
+  - completed the harmonious SPA request bridge so the missing key-slider fragment/background endpoints are reconstructed locally
+  - stabilized AJAX page-route behavior by stripping inline page scripts from bridged HTML payloads and executing them exactly once in the SPA runtime
+  - added route-based key-page slider synchronization so navigation into key pages no longer leaves stale `C Major` header/fragment state behind
+  - verified the SPA via Playwright without network fetches for compatibility SVG roots or `/key-tri/` assets
+- Verification commands:
+  - `node scripts/validate_harmonious_spa_playwright.mjs`
+  - `./verify.sh`

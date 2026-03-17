@@ -15,6 +15,7 @@ const host = process.env.LMT_VALIDATION_HOST || "127.0.0.1";
 const timeoutMs = Number.parseInt(process.env.LMT_HARMONIOUS_SPA_TIMEOUT_MS || "300000", 10);
 const requestedPort = parsePort(process.env.LMT_VALIDATION_PORT || "");
 const compatRequestPattern = /\/(?:tmp\/harmoniousapp\.net\/)?(?:vert-text-black|even|scale|opc|oc|optc|eadgbe|center-square-text|wide-chord|chord-clipped|grand-chord|majmin|chord|vert-text-b2t-black)\//;
+const keyTriRequestPattern = /\/key-tri\//;
 
 function parsePort(raw) {
   if (raw == null || String(raw).trim() === "") return null;
@@ -149,6 +150,14 @@ async function waitForRoute(page, route, extraCheck) {
       title: document.title,
       keyboardEntries: document.querySelectorAll(".inside-search .entry").length,
       fretEntries: document.querySelectorAll(".inside-frets-search .entry").length,
+      sliderEntries: document.querySelectorAll(".only3 .slider-info").length,
+      sliderText: Array.from(document.querySelectorAll(".only3 .slider-info .slider-text, .only3 .slider-info .centery"))
+        .map((node) => node.textContent?.trim() || "")
+        .filter(Boolean)
+        .join(" | "),
+      sliderImageCount: Object.keys(window.HarmoniousClient?.SliderImages || {}).length,
+      currentKeyText: document.getElementById("current")?.textContent?.trim() || "",
+      currentKeyHref: document.getElementById("current-href")?.getAttribute("href") || "",
       compatImages: document.querySelectorAll("img[data-lmt-image-source='wasm-compat']").length,
       bodyText: document.body?.textContent || "",
       hrefs: Array.from(document.querySelectorAll("a[href]"), (node) => node.getAttribute("href")).filter(Boolean).slice(0, 50),
@@ -179,6 +188,7 @@ async function main() {
   const baseUrl = `http://${host}:${port}`;
   const spaUrl = new URL(`${baseUrl}/index.html`);
   const compatRequests = [];
+  const keyTriRequests = [];
 
   const cleanupServer = () => {
     if (!server.killed) server.kill("SIGTERM");
@@ -208,6 +218,9 @@ async function main() {
         if (compatRequestPattern.test(new URL(url).pathname)) {
           compatRequests.push(url);
         }
+        if (keyTriRequestPattern.test(new URL(url).pathname)) {
+          keyTriRequests.push(url);
+        }
       });
 
       await page.goto(spaUrl.toString(), { waitUntil: "domcontentloaded" });
@@ -225,9 +238,63 @@ async function main() {
       }
 
       await page.click('a[href="/p/a7/Keys.html"]');
-      const keysPage = await waitForRoute(page, "/p/a7/Keys.html", (snapshot) => snapshot.title.includes("Keys - Harmonious"));
+      const keysPage = await waitForRoute(
+        page,
+        "/p/a7/Keys.html",
+        (snapshot) => snapshot.title.includes("Keys - Harmonious") && snapshot.sliderEntries > 0 && snapshot.sliderImageCount > 0,
+      );
       if (!keysPage.title.includes("Keys - Harmonious")) {
         throw new Error(`keys page title mismatch: ${keysPage.title}`);
+      }
+      if (keysPage.sliderEntries <= 0) {
+        throw new Error(`keys slider fragment did not populate on initial route load: ${JSON.stringify(keysPage)}`);
+      }
+      if (keysPage.sliderImageCount <= 0) {
+        throw new Error(`keys slider background images did not load locally: ${JSON.stringify(keysPage)}`);
+      }
+
+      await page.evaluate(() => window.HarmoniousClient.fakeNavigateTo("/p/7c/E-Major"));
+      const eMajorPage = await waitForRoute(
+        page,
+        "/p/7c/E-Major",
+        (snapshot) => snapshot.title.includes("E Major")
+          && snapshot.currentKeyText.includes("Key of E")
+          && snapshot.currentKeyHref === "/p/7c/E-Major"
+          && snapshot.sliderEntries > 0
+          && snapshot.sliderImageCount > 0
+          && snapshot.sliderText.includes("E"),
+      );
+      if (
+        !eMajorPage.title.includes("E Major")
+        || !eMajorPage.currentKeyText.includes("Key of E")
+        || eMajorPage.currentKeyHref !== "/p/7c/E-Major"
+        || eMajorPage.sliderEntries <= 0
+        || eMajorPage.sliderImageCount <= 0
+        || !eMajorPage.sliderText.includes("E")
+      ) {
+        throw new Error(`E major key-slider state did not stabilize correctly: ${JSON.stringify(eMajorPage)}`);
+      }
+
+      const keySliderVariant = await page.evaluate(() => new Promise((resolve, reject) => {
+        window.jQuery.get("/search-key-tri/4s,0,3,2", (html) => resolve(String(html)))
+          .fail((err) => reject(new Error(`search-key-tri request failed: ${JSON.stringify(err)}`)));
+      }));
+      if (!/E(?:\s|<|&)/.test(keySliderVariant)) {
+        throw new Error(`search-key-tri variant did not resolve active-key content: ${keySliderVariant.slice(0, 500)}`);
+      }
+      await page.evaluate((html) => {
+        const only3 = document.querySelector(".only3");
+        if (!only3) throw new Error("missing .only3 scroller");
+        only3.innerHTML = html;
+        window.HarmoniousSPA?.refreshCompatImages?.();
+      }, keySliderVariant);
+      const variantSnapshot = await waitForRoute(
+        page,
+        "/p/7c/E-Major",
+        (snapshot) => snapshot.sliderEntries > 0 && /E\s+min|E\s+dim/i.test(snapshot.sliderText),
+      );
+      if (!/E\s+min|E\s+dim/i.test(variantSnapshot.sliderText)) {
+        throw new Error(`key-slider variant did not visibly change after local fragment injection: ${JSON.stringify(variantSnapshot)}`);
       }
 
       await page.evaluate(() => window.HarmoniousClient.fakeNavigateTo("/keyboard/C_3,E_3,G_3"));
@@ -251,6 +318,9 @@ async function main() {
 
       if (compatRequests.length > 0) {
         throw new Error(`compat svg files were fetched over the network instead of wasm generation: ${compatRequests.slice(0, 20).join(", ")}`);
+      }
+      if (keyTriRequests.length > 0) {
+        throw new Error(`key slider background images were fetched over the network instead of local reconstruction: ${keyTriRequests.slice(0, 20).join(", ")}`);
       }
 
       const finalState = await page.evaluate(() => window.__lmtHarmoniousSpa);
