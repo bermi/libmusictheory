@@ -53,6 +53,8 @@ This lane only accepts `native-rgba` candidate pixels generated inside Zig/WASM.
 
 That keeps the repo honest about which kinds are already direct drawing and which still depend on internal markup/SVG rasterization. Unsupported kinds remain visible as unsupported rows and fail automated validation.
 
+The displayed proof/parity bitmaps are not browser-smoothed placeholders. They are the actual Zig raster outputs, and the native raster backends now use coverage-based edge antialiasing so manual inspection is meaningful for circles, diagonals, and filled path edges.
+
 ## Full Interactive API Docs
 
 ```bash

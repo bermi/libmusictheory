@@ -800,6 +800,13 @@ else
     unverified "0030 raster backend guardrail (src/render/raster.zig missing)"
 fi
 
+if [ -f "$ROOT_DIR/src/bitmap_compat.zig" ] && [ -f "$ROOT_DIR/src/render/raster.zig" ]; then
+    check_cmd "cd '$ROOT_DIR' && rg -n \"AA_SUBPIXEL_GRID|blendCoverage|accumulateScanlineCoverage|intervalCoverage\" src/bitmap_compat.zig src/render/raster.zig >/dev/null" "0067 raster antialiasing guardrail (coverage-based edge helpers wired into Zig raster backends)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'test \"bitmap compat anti aliases primitive circle edge pixels\"|test \"bitmap compat anti aliases polygon fill edge pixels\"|test \"raster demo anti aliases curved and diagonal edges\"' src/bitmap_compat.zig src/tests/raster_test.zig >/dev/null" "0067 raster antialiasing guardrail (focused edge-quality tests present)"
+else
+    unverified "0067 raster antialiasing guardrail (bitmap_compat or render/raster missing)"
+fi
+
 if [ -d "$ROOT_DIR/tmp/harmoniousapp.net" ] && [ -f "$ROOT_DIR/scripts/validate_harmonious_visual_diff.mjs" ]; then
     if command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
         if bash -lc "cd '$ROOT_DIR' && node scripts/validate_harmonious_visual_diff.mjs --sample-per-kind 5 >/dev/null 2>&1"; then

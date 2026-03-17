@@ -67,10 +67,53 @@ fn blendPixel(dst: *[4]u8, src: [4]u8) void {
         const dst_c: u32 = dst[channel];
         const numer = src_c * src_a * 255 + dst_c * dst_a * (255 - src_a);
         const denom = out_a * 255;
-        dst[channel] = @as(u8, @intCast((numer + (denom / 2)) / denom));
+        const value = if (denom == 0) 0 else (numer + (denom / 2)) / denom;
+        dst[channel] = @as(u8, @intCast(@min(value, 255)));
     }
 
-    dst[3] = @as(u8, @intCast(out_a));
+    dst[3] = @as(u8, @intCast(@min(out_a, 255)));
+}
+
+fn clamp01(value: f64) f64 {
+    return std.math.clamp(value, 0.0, 1.0);
+}
+
+fn intervalCoverage(start: f64, end: f64, pixel_index: i32) f64 {
+    if (end <= start) return 0.0;
+    const pixel_start = @as(f64, @floatFromInt(pixel_index));
+    const pixel_end = pixel_start + 1.0;
+    return clamp01(@min(end, pixel_end) - @max(start, pixel_start));
+}
+
+fn rectCoverage(x0: f64, y0: f64, x1: f64, y1: f64, px: i32, py: i32) f64 {
+    return intervalCoverage(x0, x1, px) * intervalCoverage(y0, y1, py);
+}
+
+fn fillCoverageForDistance(dist: f64, radius: f64) f64 {
+    return clamp01(radius + 0.5 - dist);
+}
+
+fn annulusCoverageForDistance(dist: f64, inner_radius: f64, outer_radius: f64) f64 {
+    const outer = fillCoverageForDistance(dist, outer_radius);
+    const inner = if (inner_radius <= 0.0) 0.0 else fillCoverageForDistance(dist, inner_radius);
+    return clamp01(outer - inner);
+}
+
+fn scaledAlpha(alpha: u8, coverage: f64) u8 {
+    const scaled = @as(f64, @floatFromInt(alpha)) * clamp01(coverage);
+    return @as(u8, @intFromFloat(std.math.clamp(@floor(scaled + 0.5), 0.0, 255.0)));
+}
+
+fn blendCoverage(dst: *[4]u8, src: [4]u8, coverage: f64) void {
+    if (src[3] == 0 or coverage <= 0.0) return;
+    if (coverage >= 0.999999) {
+        blendPixel(dst, src);
+        return;
+    }
+    var adjusted = src;
+    adjusted[3] = scaledAlpha(src[3], coverage);
+    if (adjusted[3] == 0) return;
+    blendPixel(dst, adjusted);
 }
 
 fn pixelPtr(surface: *Surface, x: i32, y: i32) ?*[4]u8 {
@@ -89,19 +132,29 @@ fn drawRect(surface: *Surface, rect: ir.Rect) void {
 
     const fill = parseColor(rect.fill);
     const stroke = parseColor(rect.stroke);
-    const stroke_width = @as(i32, @intFromFloat(@max(1.0, @floor(parseNumber(rect.stroke_width orelse "1", 1.0)))));
+    const stroke_width = @max(1.0, parseNumber(rect.stroke_width orelse "1", 1.0));
+    const half_stroke = stroke_width / 2.0;
 
     var py: i32 = y;
     while (py < y + h) : (py += 1) {
         var px: i32 = x;
         while (px < x + w) : (px += 1) {
-            const is_border = px < x + stroke_width or px >= x + w - stroke_width or py < y + stroke_width or py >= y + h - stroke_width;
             if (pixelPtr(surface, px, py)) |dst| {
-                if (is_border and stroke[3] > 0) {
-                    blendPixel(dst, stroke);
-                } else if (fill[3] > 0) {
-                    blendPixel(dst, fill);
-                }
+                const fill_coverage = if (fill[3] > 0)
+                    rectCoverage(@floatFromInt(x), @floatFromInt(y), @floatFromInt(x + w), @floatFromInt(y + h), px, py)
+                else
+                    0.0;
+                const outer_coverage = if (stroke[3] > 0 and stroke_width > 0.0)
+                    rectCoverage(@as(f64, @floatFromInt(x)) - half_stroke, @as(f64, @floatFromInt(y)) - half_stroke, @as(f64, @floatFromInt(x + w)) + half_stroke, @as(f64, @floatFromInt(y + h)) + half_stroke, px, py)
+                else
+                    0.0;
+                const inner_coverage = if (stroke[3] > 0 and stroke_width > 0.0 and w > 0 and h > 0 and @as(f64, @floatFromInt(w)) > stroke_width and @as(f64, @floatFromInt(h)) > stroke_width)
+                    rectCoverage(@as(f64, @floatFromInt(x)) + half_stroke, @as(f64, @floatFromInt(y)) + half_stroke, @as(f64, @floatFromInt(x + w)) - half_stroke, @as(f64, @floatFromInt(y + h)) - half_stroke, px, py)
+                else
+                    0.0;
+                if (fill_coverage > 0.0) blendCoverage(dst, fill, fill_coverage);
+                const stroke_coverage = clamp01(outer_coverage - inner_coverage);
+                if (stroke_coverage > 0.0) blendCoverage(dst, stroke, stroke_coverage);
             }
         }
     }
@@ -132,12 +185,13 @@ fn drawCircle(surface: *Surface, circle: ir.Circle) void {
             const dist = @sqrt(dx * dx + dy * dy);
 
             if (pixelPtr(surface, px, py)) |dst| {
-                if (fill[3] > 0 and dist <= r) {
-                    blendPixel(dst, fill);
-                }
-                if (stroke[3] > 0 and dist >= r - half_stroke and dist <= r + half_stroke) {
-                    blendPixel(dst, stroke);
-                }
+                const fill_coverage = if (fill[3] > 0) fillCoverageForDistance(dist, r) else 0.0;
+                const stroke_coverage = if (stroke[3] > 0 and stroke_width > 0.0)
+                    annulusCoverageForDistance(dist, @max(0.0, r - half_stroke), r + half_stroke)
+                else
+                    0.0;
+                if (fill_coverage > 0.0) blendCoverage(dst, fill, fill_coverage);
+                if (stroke_coverage > 0.0) blendCoverage(dst, stroke, stroke_coverage);
             }
         }
     }
@@ -182,8 +236,9 @@ fn drawLine(surface: *Surface, line: ir.Line) void {
             const dy = fy - cy;
             const dist = @sqrt(dx * dx + dy * dy);
 
-            if (dist <= radius) {
-                if (pixelPtr(surface, px, py)) |dst| blendPixel(dst, color);
+            if (pixelPtr(surface, px, py)) |dst| {
+                const coverage = fillCoverageForDistance(dist, radius);
+                if (coverage > 0.0) blendCoverage(dst, color, coverage);
             }
         }
     }

@@ -26,6 +26,8 @@ const TAG_TRANSFORM_STACK_LIMIT: usize = 16;
 const OC_TEMPLATE_BUFFER_LIMIT: usize = 8 * 1024;
 const CHORD_COMPAT_SVG_BUFFER_LIMIT: usize = 64 * 1024;
 const GENERATED_COMPAT_SVG_BUFFER_LIMIT: usize = 512 * 1024;
+const AA_SUBPIXEL_GRID: u32 = 4;
+const AA_ROW_COVERAGE_LIMIT: usize = 8192;
 const SCALE_SOURCE_WIDTH: f64 = 363.0;
 const SCALE_SOURCE_HEIGHT: f64 = 113.0;
 const EVEN_SOURCE_WIDTH: u32 = 500;
@@ -1836,31 +1838,7 @@ fn collectScanIntersections(edges: []const Edge, y: f64, out: *[PATH_EDGE_LIMIT]
     return count;
 }
 
-fn fillScanlineRange(surface: *Surface, py: i32, x_start: f64, x_end: f64, fill: [4]u8) void {
-    if (fill[3] == 0 or x_end <= x_start) return;
-    const px0: i32 = @as(i32, @intFromFloat(@ceil(x_start - 0.5)));
-    const px1: i32 = @as(i32, @intFromFloat(@ceil(x_end - 0.5)));
-    var px = px0;
-    while (px < px1) : (px += 1) {
-        if (pixelPtr(surface, px, py)) |dst| blend(dst, fill);
-    }
-}
-
-fn fillScanlineRangeGradient(surface: *Surface, py: i32, x_start: f64, x_end: f64, gradient: LinearGradient, path_transform: Matrix) void {
-    if (x_end <= x_start) return;
-    const px0: i32 = @as(i32, @intFromFloat(@ceil(x_start - 0.5)));
-    const px1: i32 = @as(i32, @intFromFloat(@ceil(x_end - 0.5)));
-    var px = px0;
-    while (px < px1) : (px += 1) {
-        if (pixelPtr(surface, px, py)) |dst| {
-            const x = @as(f64, @floatFromInt(px)) + 0.5;
-            const y = @as(f64, @floatFromInt(py)) + 0.5;
-            blend(dst, sampleLinearGradient(gradient, path_transform, x, y));
-        }
-    }
-}
-
-fn fillEdges(surface: *Surface, edges: []const Edge, fill: [4]u8) void {
+fn fillEdgesHard(surface: *Surface, edges: []const Edge, fill: [4]u8) void {
     if (edges.len == 0 or fill[3] == 0) return;
     const bounds = edgeBounds(edges);
     const y0: i32 = @as(i32, @intFromFloat(@floor(bounds.min_y))) - 1;
@@ -1878,7 +1856,16 @@ fn fillEdges(surface: *Surface, edges: []const Edge, fill: [4]u8) void {
         var i: usize = 0;
         while (i < count) {
             const current_x = intersections[i].x;
-            if (winding != 0) fillScanlineRange(surface, py, prev_x, current_x, fill);
+            if (winding != 0) {
+                const px0 = @max(0, @as(i32, @intFromFloat(@floor(prev_x))));
+                const px1 = @min(@as(i32, @intCast(surface.width)), @as(i32, @intFromFloat(@ceil(current_x))));
+                var px = px0;
+                while (px < px1) : (px += 1) {
+                    const coverage = intervalCoverage(prev_x, current_x, px);
+                    if (coverage <= 0.0) continue;
+                    if (pixelPtr(surface, px, py)) |dst| blendCoverage(dst, fill, coverage);
+                }
+            }
 
             var delta_sum: i32 = 0;
             while (i < count and @abs(intersections[i].x - current_x) <= 0.0000001) : (i += 1) {
@@ -1890,7 +1877,52 @@ fn fillEdges(surface: *Surface, edges: []const Edge, fill: [4]u8) void {
     }
 }
 
-fn fillEdgesGradient(surface: *Surface, edges: []const Edge, gradient: LinearGradient, path_transform: Matrix) void {
+fn fillEdges(surface: *Surface, edges: []const Edge, fill: [4]u8) void {
+    if (edges.len == 0 or fill[3] == 0) return;
+    if (surface.width > AA_ROW_COVERAGE_LIMIT) {
+        fillEdgesHard(surface, edges, fill);
+        return;
+    }
+
+    const bounds = edgeBounds(edges);
+    const y0: i32 = @as(i32, @intFromFloat(@floor(bounds.min_y))) - 1;
+    const y1: i32 = @as(i32, @intFromFloat(@ceil(bounds.max_y))) + 1;
+    var intersections: [PATH_EDGE_LIMIT]ScanIntersection = undefined;
+    var row_coverage: [AA_ROW_COVERAGE_LIMIT]f64 = undefined;
+    const subpixel_grid_f64 = @as(f64, @floatFromInt(AA_SUBPIXEL_GRID));
+    const row_weight = 1.0 / subpixel_grid_f64;
+
+    var py = y0;
+    while (py <= y1) : (py += 1) {
+        @memset(row_coverage[0..surface.width], 0.0);
+
+        var sub_row: u32 = 0;
+        while (sub_row < AA_SUBPIXEL_GRID) : (sub_row += 1) {
+            const y = @as(f64, @floatFromInt(py)) + (@as(f64, @floatFromInt(sub_row)) + 0.5) / subpixel_grid_f64;
+            const count = collectScanIntersections(edges, y, &intersections);
+            if (count == 0) continue;
+
+            var winding: i32 = 0;
+            var prev_x: f64 = intersections[0].x;
+            var i: usize = 0;
+            while (i < count) {
+                const current_x = intersections[i].x;
+                if (winding != 0) accumulateScanlineCoverage(row_coverage[0..surface.width], prev_x, current_x, row_weight);
+
+                var delta_sum: i32 = 0;
+                while (i < count and @abs(intersections[i].x - current_x) <= 0.0000001) : (i += 1) {
+                    delta_sum += intersections[i].delta;
+                }
+                winding += delta_sum;
+                prev_x = current_x;
+            }
+        }
+
+        applyCoverageRow(surface, py, row_coverage[0..surface.width], fill);
+    }
+}
+
+fn fillEdgesGradientHard(surface: *Surface, edges: []const Edge, gradient: LinearGradient, path_transform: Matrix) void {
     if (edges.len == 0) return;
     const bounds = edgeBounds(edges);
     const y0: i32 = @as(i32, @intFromFloat(@floor(bounds.min_y))) - 1;
@@ -1908,7 +1940,20 @@ fn fillEdgesGradient(surface: *Surface, edges: []const Edge, gradient: LinearGra
         var i: usize = 0;
         while (i < count) {
             const current_x = intersections[i].x;
-            if (winding != 0) fillScanlineRangeGradient(surface, py, prev_x, current_x, gradient, path_transform);
+            if (winding != 0) {
+                const px0 = @max(0, @as(i32, @intFromFloat(@floor(prev_x))));
+                const px1 = @min(@as(i32, @intCast(surface.width)), @as(i32, @intFromFloat(@ceil(current_x))));
+                var px = px0;
+                while (px < px1) : (px += 1) {
+                    const coverage = intervalCoverage(prev_x, current_x, px);
+                    if (coverage <= 0.0) continue;
+                    if (pixelPtr(surface, px, py)) |dst| {
+                        const x = @as(f64, @floatFromInt(px)) + 0.5;
+                        const sample_y = @as(f64, @floatFromInt(py)) + 0.5;
+                        blendCoverage(dst, sampleLinearGradient(gradient, path_transform, x, sample_y), coverage);
+                    }
+                }
+            }
 
             var delta_sum: i32 = 0;
             while (i < count and @abs(intersections[i].x - current_x) <= 0.0000001) : (i += 1) {
@@ -1917,6 +1962,51 @@ fn fillEdgesGradient(surface: *Surface, edges: []const Edge, gradient: LinearGra
             winding += delta_sum;
             prev_x = current_x;
         }
+    }
+}
+
+fn fillEdgesGradient(surface: *Surface, edges: []const Edge, gradient: LinearGradient, path_transform: Matrix) void {
+    if (edges.len == 0) return;
+    if (surface.width > AA_ROW_COVERAGE_LIMIT) {
+        fillEdgesGradientHard(surface, edges, gradient, path_transform);
+        return;
+    }
+
+    const bounds = edgeBounds(edges);
+    const y0: i32 = @as(i32, @intFromFloat(@floor(bounds.min_y))) - 1;
+    const y1: i32 = @as(i32, @intFromFloat(@ceil(bounds.max_y))) + 1;
+    var intersections: [PATH_EDGE_LIMIT]ScanIntersection = undefined;
+    var row_coverage: [AA_ROW_COVERAGE_LIMIT]f64 = undefined;
+    const subpixel_grid_f64 = @as(f64, @floatFromInt(AA_SUBPIXEL_GRID));
+    const row_weight = 1.0 / subpixel_grid_f64;
+
+    var py = y0;
+    while (py <= y1) : (py += 1) {
+        @memset(row_coverage[0..surface.width], 0.0);
+
+        var sub_row: u32 = 0;
+        while (sub_row < AA_SUBPIXEL_GRID) : (sub_row += 1) {
+            const y = @as(f64, @floatFromInt(py)) + (@as(f64, @floatFromInt(sub_row)) + 0.5) / subpixel_grid_f64;
+            const count = collectScanIntersections(edges, y, &intersections);
+            if (count == 0) continue;
+
+            var winding: i32 = 0;
+            var prev_x: f64 = intersections[0].x;
+            var i: usize = 0;
+            while (i < count) {
+                const current_x = intersections[i].x;
+                if (winding != 0) accumulateScanlineCoverage(row_coverage[0..surface.width], prev_x, current_x, row_weight);
+
+                var delta_sum: i32 = 0;
+                while (i < count and @abs(intersections[i].x - current_x) <= 0.0000001) : (i += 1) {
+                    delta_sum += intersections[i].delta;
+                }
+                winding += delta_sum;
+                prev_x = current_x;
+            }
+        }
+
+        applyCoverageRowGradient(surface, py, row_coverage[0..surface.width], gradient, path_transform);
     }
 }
 
@@ -1953,6 +2043,86 @@ fn lerpColor(a: [4]u8, b: [4]u8, t: f64) [4]u8 {
 fn lerpChannel(a: u8, b: u8, t: f64) u8 {
     const value = @as(f64, @floatFromInt(a)) + (@as(f64, @floatFromInt(b)) - @as(f64, @floatFromInt(a))) * t;
     return @as(u8, @intFromFloat(std.math.clamp(@floor(value + 0.5), 0.0, 255.0)));
+}
+
+fn clamp01(value: f64) f64 {
+    return std.math.clamp(value, 0.0, 1.0);
+}
+
+fn intervalCoverage(start: f64, end: f64, pixel_index: i32) f64 {
+    if (end <= start) return 0.0;
+    const pixel_start = @as(f64, @floatFromInt(pixel_index));
+    const pixel_end = pixel_start + 1.0;
+    return clamp01(@min(end, pixel_end) - @max(start, pixel_start));
+}
+
+fn fillCoverageForDistance(dist: f64, radius: f64) f64 {
+    return clamp01(radius + 0.5 - dist);
+}
+
+fn annulusCoverageForDistance(dist: f64, inner_radius: f64, outer_radius: f64) f64 {
+    const outer = fillCoverageForDistance(dist, outer_radius);
+    const inner = if (inner_radius <= 0.0) 0.0 else fillCoverageForDistance(dist, inner_radius);
+    return clamp01(outer - inner);
+}
+
+fn rectCoverage(x0: f64, y0: f64, x1: f64, y1: f64, px: i32, py: i32) f64 {
+    return intervalCoverage(x0, x1, px) * intervalCoverage(y0, y1, py);
+}
+
+fn scaledAlpha(alpha: u8, coverage: f64) u8 {
+    const scaled = @as(f64, @floatFromInt(alpha)) * clamp01(coverage);
+    return @as(u8, @intFromFloat(std.math.clamp(@floor(scaled + 0.5), 0.0, 255.0)));
+}
+
+fn blendCoverage(dst: *[4]u8, src: [4]u8, coverage: f64) void {
+    if (src[3] == 0 or coverage <= 0.0) return;
+    if (coverage >= 0.999999) {
+        blend(dst, src);
+        return;
+    }
+
+    var adjusted = src;
+    adjusted[3] = scaledAlpha(src[3], coverage);
+    if (adjusted[3] == 0) return;
+    blend(dst, adjusted);
+}
+
+fn accumulateScanlineCoverage(row: []f64, x_start: f64, x_end: f64, row_weight: f64) void {
+    if (row_weight <= 0.0 or x_end <= x_start or row.len == 0) return;
+    const px0 = @max(0, @as(i32, @intFromFloat(@floor(x_start))));
+    const px1 = @min(@as(i32, @intCast(row.len)), @as(i32, @intFromFloat(@ceil(x_end))));
+    var px = px0;
+    while (px < px1) : (px += 1) {
+        const coverage = intervalCoverage(x_start, x_end, px) * row_weight;
+        if (coverage <= 0.0) continue;
+        const index: usize = @intCast(px);
+        row[index] = @min(1.0, row[index] + coverage);
+    }
+}
+
+fn applyCoverageRow(surface: *Surface, py: i32, row: []const f64, fill: [4]u8) void {
+    var px: usize = 0;
+    while (px < row.len) : (px += 1) {
+        const coverage = row[px];
+        if (coverage <= 0.0) continue;
+        if (pixelPtr(surface, @intCast(px), py)) |dst| {
+            blendCoverage(dst, fill, coverage);
+        }
+    }
+}
+
+fn applyCoverageRowGradient(surface: *Surface, py: i32, row: []const f64, gradient: LinearGradient, path_transform: Matrix) void {
+    var px: usize = 0;
+    while (px < row.len) : (px += 1) {
+        const coverage = row[px];
+        if (coverage <= 0.0) continue;
+        if (pixelPtr(surface, @intCast(px), py)) |dst| {
+            const x = @as(f64, @floatFromInt(px)) + 0.5;
+            const y = @as(f64, @floatFromInt(py)) + 0.5;
+            blendCoverage(dst, sampleLinearGradient(gradient, path_transform, x, y), coverage);
+        }
+    }
 }
 
 fn strokeEdges(surface: *Surface, edges: []const Edge, stroke: [4]u8, stroke_width: f64, dash_on: f64, dash_off: f64) void {
@@ -2011,9 +2181,8 @@ fn drawLineSegment(surface: *Surface, a: Point, b: Point, stroke: [4]u8, stroke_
                     .x = @as(f64, @floatFromInt(px)) + 0.5,
                     .y = @as(f64, @floatFromInt(py)) + 0.5,
                 };
-                if (distancePointToSegment(p, a, b) <= half) {
-                    blend(dst, stroke);
-                }
+                const coverage = fillCoverageForDistance(distancePointToSegment(p, a, b), half);
+                if (coverage > 0.0) blendCoverage(dst, stroke, coverage);
             }
         }
     }
@@ -2513,21 +2682,28 @@ fn drawRect(surface: *Surface, x: f64, y: f64, width: f64, height: f64, fill: [4
     const y0: i32 = @intFromFloat(@floor(y));
     const x1: i32 = @intFromFloat(@ceil(x + width));
     const y1: i32 = @intFromFloat(@ceil(y + height));
-    const border = @max(1.0, stroke_width);
+    const half_stroke = stroke_width / 2.0;
 
     var py = y0;
     while (py < y1) : (py += 1) {
         var px = x0;
         while (px < x1) : (px += 1) {
             if (pixelPtr(surface, px, py)) |dst| {
-                const dx = (@as(f64, @floatFromInt(px)) + 0.5) - x;
-                const dy = (@as(f64, @floatFromInt(py)) + 0.5) - y;
-                const is_border = dx < border or dy < border or dx >= width - border or dy >= height - border;
-                if (is_border and stroke[3] > 0) {
-                    blend(dst, stroke);
-                } else if (fill[3] > 0) {
-                    blend(dst, fill);
-                }
+                const fill_coverage = if (fill[3] > 0)
+                    rectCoverage(x, y, x + width, y + height, px, py)
+                else
+                    0.0;
+                const outer_coverage = if (stroke[3] > 0 and stroke_width > 0.0)
+                    rectCoverage(x - half_stroke, y - half_stroke, x + width + half_stroke, y + height + half_stroke, px, py)
+                else
+                    0.0;
+                const inner_coverage = if (stroke[3] > 0 and stroke_width > 0.0 and width > stroke_width and height > stroke_width)
+                    rectCoverage(x + half_stroke, y + half_stroke, x + width - half_stroke, y + height - half_stroke, px, py)
+                else
+                    0.0;
+                const stroke_coverage = clamp01(outer_coverage - inner_coverage);
+                if (fill_coverage > 0.0) blendCoverage(dst, fill, fill_coverage);
+                if (stroke_coverage > 0.0) blendCoverage(dst, stroke, stroke_coverage);
             }
         }
     }
@@ -2548,8 +2724,13 @@ fn drawCircle(surface: *Surface, cx: f64, cy: f64, r: f64, fill: [4]u8, stroke: 
             const dy = (@as(f64, @floatFromInt(py)) + 0.5) - cy;
             const dist = @sqrt(dx * dx + dy * dy);
             if (pixelPtr(surface, px, py)) |dst| {
-                if (fill[3] > 0 and dist <= r) blend(dst, fill);
-                if (stroke[3] > 0 and dist >= r - half_stroke and dist <= r + half_stroke) blend(dst, stroke);
+                const fill_coverage = if (fill[3] > 0) fillCoverageForDistance(dist, r) else 0.0;
+                const stroke_coverage = if (stroke[3] > 0 and stroke_width > 0.0)
+                    annulusCoverageForDistance(dist, @max(0.0, r - half_stroke), r + half_stroke)
+                else
+                    0.0;
+                if (fill_coverage > 0.0) blendCoverage(dst, fill, fill_coverage);
+                if (stroke_coverage > 0.0) blendCoverage(dst, stroke, stroke_coverage);
             }
         }
     }
@@ -2578,9 +2759,10 @@ fn blend(dst: *[4]u8, src: [4]u8) void {
         const dst_c: u32 = dst[channel];
         const numer = src_c * src_a * 255 + dst_c * dst_a * (255 - src_a);
         const denom = out_a * 255;
-        dst[channel] = @intCast((numer + (denom / 2)) / denom);
+        const value = if (denom == 0) 0 else (numer + (denom / 2)) / denom;
+        dst[channel] = @intCast(@min(value, 255));
     }
-    dst[3] = @intCast(out_a);
+    dst[3] = @intCast(@min(out_a, 255));
 }
 
 fn findKindIndex(kind_id: svg_compat.KindId) usize {
@@ -2616,6 +2798,44 @@ fn runScaledBitmapParity(kind_id: svg_compat.KindId, image_index: usize, scale_n
     const reference_len = try renderReferenceSvgRgbaScaled(kind_index, svg, scale_numerator, scale_denominator, reference);
     try std.testing.expectEqual(candidate_len, reference_len);
     try std.testing.expectEqualSlices(u8, candidate[0..candidate_len], reference[0..reference_len]);
+}
+
+fn countPartialAlphaPixels(pixels: []const u8) usize {
+    var count: usize = 0;
+    var index: usize = 0;
+    while (index + 3 < pixels.len) : (index += 4) {
+        const alpha = pixels[index + 3];
+        if (alpha > 0 and alpha < 255) count += 1;
+    }
+    return count;
+}
+
+test "bitmap compat anti aliases primitive circle edge pixels" {
+    var pixels: [32 * 32 * 4]u8 = [_]u8{0} ** (32 * 32 * 4);
+    var surface = Surface{
+        .pixels = &pixels,
+        .width = 32,
+        .height = 32,
+        .stride = 32 * 4,
+    };
+
+    clear(&surface, .{ 0, 0, 0, 0 });
+    drawCircle(&surface, 16.0, 16.0, 9.0, .{ 255, 0, 0, 255 }, .{ 0, 0, 0, 0 }, 0.0);
+    try std.testing.expect(countPartialAlphaPixels(&pixels) > 0);
+}
+
+test "bitmap compat anti aliases polygon fill edge pixels" {
+    var pixels: [32 * 32 * 4]u8 = [_]u8{0} ** (32 * 32 * 4);
+    var surface = Surface{
+        .pixels = &pixels,
+        .width = 32,
+        .height = 32,
+        .stride = 32 * 4,
+    };
+
+    clear(&surface, .{ 0, 0, 0, 0 });
+    try renderPathFill(&surface, "M 4 4 L 28 8 L 16 28 Z", Matrix{}, .{ 255, 0, 0, 255 });
+    try std.testing.expect(countPartialAlphaPixels(&pixels) > 0);
 }
 
 test "opc candidate render is deterministic at 55 and 200 percent" {

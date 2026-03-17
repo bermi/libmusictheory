@@ -10,6 +10,10 @@
   - shared font stacks
   - shared outline/stroke conventions for text
   - consistent non-scaling stroke behavior
+- Native RGBA proof/parity raster output uses coverage-based edge antialiasing in Zig:
+  - circles and stroked lines blend edge coverage instead of using hard thresholds
+  - polygon/path fills sample multiple sub-rows per pixel row and accumulate fractional coverage
+  - the browser pages display the actual Zig-generated bitmap; no CSS or canvas scaling trick is used to hide raster defects
 
 ## Why This Split Exists
 
@@ -26,3 +30,4 @@ Those obligations conflict if they share one visual contract. The fix is additiv
 - clearer label contrast on colored nodes
 - more stable stroke treatment when scaled in browsers and host UIs
 - one place to evolve shared SVG presentation rules
+- proof/parity bitmap previews no longer rely on staircase edges for circles, diagonals, and polygon fills
