@@ -39,7 +39,7 @@ Remove visibly jagged edges from the native RGBA validation surfaces by improvin
 
 ## Implementation History (Point-in-Time)
 
-- `<pending-finalization>` — 2026-03-17
+- `dc6c954` — 2026-03-17
 - Shipped behavior:
   - added coverage-based edge antialiasing helpers in `/Users/bermi/code/libmusictheory/src/bitmap_compat.zig` so native proof/parity raster output no longer relies on hard-threshold circles, lines, and polygon fills
   - applied the same coverage-based edge treatment to `/Users/bermi/code/libmusictheory/src/render/raster.zig` so the shared raster demo path follows the same quality discipline
