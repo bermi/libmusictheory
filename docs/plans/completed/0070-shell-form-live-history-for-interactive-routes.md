@@ -48,7 +48,7 @@ Keep interactive keyboard and fretboard edits on shell-form history entries so t
 
 ## Implementation History (Point-in-Time)
 
-- Commit: `PENDING`
+- Commit: `ecfff01`
 - Date: `2026-03-18`
 - Shipped behavior:
   - added shell-history normalization for interactive SPA routes so browser-visible URLs remain on `index.html?route=...` during keyboard and fretboard live edits
