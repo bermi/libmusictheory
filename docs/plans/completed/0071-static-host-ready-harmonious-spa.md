@@ -52,7 +52,7 @@ Make the Harmonious SPA bundle self-sufficient on plain static hosts by shipping
 
 ## Implementation History (Point-in-Time)
 
-- Commit: `PENDING`
+- Commit: `e3b1236`
 - Date: `2026-03-18`
 - Shipped behavior:
   - installed `404.html` into the harmonious SPA bundle and added a route-family fallback page that redirects raw static-host deep links back into `index.html?route=...`
