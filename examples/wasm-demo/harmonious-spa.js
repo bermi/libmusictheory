@@ -119,6 +119,12 @@ function setShellStatus(message, tone = "ready") {
   shell.classList.toggle("error", tone === "error");
 }
 
+function updateShellCanonical() {
+  const canonical = document.getElementById("spa-shell-canonical");
+  if (!canonical) return;
+  canonical.setAttribute("href", window.location.href);
+}
+
 function bytes() {
   return new Uint8Array(state.memory.buffer);
 }
@@ -621,6 +627,7 @@ async function renderPageRoute(route) {
   document.title = title.replace("&amp;", "&");
   window.__lmtCurrentPageUrlPath = normalizedRoute.replace(/\.html$/i, "");
   window.__lmtCurrentSliderUrlPath = window.__lmtCurrentPageUrlPath;
+  updateShellCanonical();
 
   refreshCompatImages(document);
   executeInlineScripts(inlineScripts, normalizedRoute);
@@ -814,11 +821,15 @@ function installShellHistoryOverride() {
 
   history.pushState = function(historyState, title, url) {
     const normalizedArgs = normalizeHistoryCall(historyState, title, url);
-    return state.rawHistoryPushState(...normalizedArgs);
+    const result = state.rawHistoryPushState(...normalizedArgs);
+    updateShellCanonical();
+    return result;
   };
   history.replaceState = function(historyState, title, url) {
     const normalizedArgs = normalizeHistoryCall(historyState, title, url);
-    return state.rawHistoryReplaceState(...normalizedArgs);
+    const result = state.rawHistoryReplaceState(...normalizedArgs);
+    updateShellCanonical();
+    return result;
   };
 }
 
@@ -1481,6 +1492,7 @@ async function boot() {
   };
   refreshCompatImages(document);
   window.HarmoniousClient.onLoad_OnePageLoadEver();
+  updateShellCanonical();
 
   const initialRoute = resolveShellNavigationRoute(window.location.href, window.location.href)
     || canonicalPageFetchRoute(window.location.pathname || HARMONIOUS_SPA_MANIFEST.homeRoute || "/index.html");

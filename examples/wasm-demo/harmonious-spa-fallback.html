@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex">
+    <meta name="description" content="Harmonious SPA static-host route recovery.">
+    <title>Harmonious SPA - Redirecting</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231c3840'/%3E%3Ccircle cx='24' cy='42' r='11' fill='%23f7f4ed'/%3E%3Crect x='33' y='13' width='7' height='29' rx='3.5' fill='%23f7f4ed'/%3E%3Crect x='38' y='13' width='14' height='6' rx='3' fill='%23f7f4ed'/%3E%3C/svg%3E">
+    <style>
+      :root {
+        color-scheme: light;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        box-sizing: border-box;
+        background: #f7f4ed;
+        color: #1c3840;
+        font-family: "Fira Sans Condensed", sans-serif;
+      }
+      main {
+        max-width: 42rem;
+        text-align: center;
+      }
+      p {
+        line-height: 1.45;
+      }
+      a {
+        color: #1c3840;
+      }
+    </style>
+    <script>
+      function rawRouteFallback(pathname) {
+        const families = ["/p/", "/keyboard/", "/eadgbe-frets/"];
+        for (const marker of families) {
+          const index = pathname.indexOf(marker);
+          if (index >= 0) {
+            return {
+              basePrefix: pathname.slice(0, index),
+              routePath: pathname.slice(index),
+            };
+          }
+        }
+        return null;
+      }
+
+      function fallbackRedirect() {
+        const locationValue = window.location;
+        const match = rawRouteFallback(locationValue.pathname);
+        if (!match) return null;
+        const shellTarget = `${match.basePrefix || ""}/index.html?route=${encodeURIComponent(`${match.routePath}${locationValue.search}${locationValue.hash}`)}`;
+        const redirectLink = document.getElementById("spa-fallback-link");
+        if (redirectLink) redirectLink.setAttribute("href", shellTarget);
+        window.location.replace(shellTarget);
+        return shellTarget;
+      }
+
+      window.__lmtFallbackRedirectTarget = fallbackRedirect();
+    </script>
+  </head>
+  <body>
+    <main>
+      <h1>Redirecting into the Harmonious SPA</h1>
+      <p>This static host served the SPA fallback page for a route-family URL. The bundle is redirecting to the canonical shell entry.</p>
+      <p><a id="spa-fallback-link" href="./index.html">Continue manually</a></p>
+    </main>
+  </body>
+</html>

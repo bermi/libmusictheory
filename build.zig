@@ -284,6 +284,11 @@ pub fn build(b: *std.Build) void {
         .prefix,
         "wasm-harmonious-spa/index.html",
     );
+    const install_harmonious_spa_fallback_html = b.addInstallFileWithDir(
+        b.path("examples/wasm-demo/harmonious-spa-fallback.html"),
+        .prefix,
+        "wasm-harmonious-spa/404.html",
+    );
     const install_harmonious_spa_js = b.addInstallFileWithDir(
         b.path("examples/wasm-demo/harmonious-spa.js"),
         .prefix,
@@ -294,6 +299,7 @@ pub fn build(b: *std.Build) void {
     wasm_harmonious_spa_step.dependOn(&wasm_docs_exe.step);
     wasm_harmonious_spa_step.dependOn(&install_harmonious_spa_wasm.step);
     wasm_harmonious_spa_step.dependOn(&install_harmonious_spa_html.step);
+    wasm_harmonious_spa_step.dependOn(&install_harmonious_spa_fallback_html.step);
     wasm_harmonious_spa_step.dependOn(&install_harmonious_spa_js.step);
 
     if (localDirExists("tmp/harmoniousapp.net")) {

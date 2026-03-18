@@ -90,6 +90,13 @@ Internal page-family links are rewritten back through `index.html?route=...` so 
 
 Interactive keyboard and fretboard edits now also keep the browser on shell-form history entries, so back/forward navigation stays inside the single-entry shell even after live selection changes.
 
+The SPA bundle is also static-host ready:
+
+- `zig-out/wasm-harmonious-spa/404.html` is installed for hosts that serve fallback HTML on unknown routes
+- raw `/p/...`, `/keyboard/...`, and `/eadgbe-frets/...` requests recover into `index.html?route=...`
+- the shell and fallback pages ship a built-in favicon, so the bundle does not need a separate `favicon.ico`
+- the shell keeps a canonical link synchronized to the visible shell-form URL
+
 ## Project Completion Criteria
 
 The project is not visually complete until all 15 compatibility kinds pass Native RGBA Proof at `55%` and `200%`.

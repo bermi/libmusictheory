@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 
 import fs from "node:fs";
+import http from "node:http";
 import net from "node:net";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { spawn, spawnSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,6 +18,22 @@ const requestedPort = parsePort(process.env.LMT_VALIDATION_PORT || "");
 const compatRequestPattern = /\/(?:tmp\/harmoniousapp\.net\/)?(?:vert-text-black|even|scale|opc|oc|optc|eadgbe|center-square-text|wide-chord|chord-clipped|grand-chord|majmin|chord|vert-text-b2t-black)\//;
 const keyTriRequestPattern = /\/key-tri\//;
 const shellHrefForRoute = (route) => `/index.html?route=${encodeURIComponent(route)}`;
+const fallbackRoutePattern = /^\/(?:p|keyboard|eadgbe-frets)\//;
+const mimeTypes = new Map([
+  [".css", "text/css; charset=utf-8"],
+  [".gif", "image/gif"],
+  [".html", "text/html; charset=utf-8"],
+  [".ico", "image/x-icon"],
+  [".jpg", "image/jpeg"],
+  [".jpeg", "image/jpeg"],
+  [".js", "application/javascript; charset=utf-8"],
+  [".json", "application/json; charset=utf-8"],
+  [".png", "image/png"],
+  [".svg", "image/svg+xml; charset=utf-8"],
+  [".wasm", "application/wasm"],
+  [".woff", "font/woff"],
+  [".woff2", "font/woff2"],
+]);
 
 function parsePort(raw) {
   if (raw == null || String(raw).trim() === "") return null;
@@ -108,17 +125,83 @@ async function waitForServer(url, deadlineMs) {
   throw new Error(`timed out waiting for server at ${url}`);
 }
 
+function decodePathname(pathname) {
+  try {
+    return decodeURIComponent(pathname);
+  } catch (_err) {
+    return pathname;
+  }
+}
+
+function contentTypeFor(filePath) {
+  return mimeTypes.get(path.extname(filePath).toLowerCase()) || "application/octet-stream";
+}
+
+function resolveStaticFile(pathname) {
+  const decodedPath = decodePathname(pathname);
+  const normalized = path.posix.normalize(decodedPath === "/" ? "/index.html" : decodedPath);
+  const relative = normalized.replace(/^\/+/, "");
+  const absolute = path.resolve(spaDir, relative);
+  if (!absolute.startsWith(spaDir)) return null;
+  if (fs.existsSync(absolute) && fs.statSync(absolute).isFile()) return absolute;
+  if (fs.existsSync(absolute) && fs.statSync(absolute).isDirectory()) {
+    const indexPath = path.join(absolute, "index.html");
+    if (fs.existsSync(indexPath) && fs.statSync(indexPath).isFile()) return indexPath;
+  }
+  return null;
+}
+
+function serveFile(res, statusCode, filePath, extraHeaders = {}) {
+  const body = fs.readFileSync(filePath);
+  res.writeHead(statusCode, {
+    "content-length": body.length,
+    "content-type": contentTypeFor(filePath),
+    ...extraHeaders,
+  });
+  res.end(body);
+}
+
 function startServer(port) {
-  const args = ["-m", "http.server", String(port), "--bind", host, "--directory", spaDir];
-  const child = spawn("python3", args, {
-    cwd: spaDir,
-    stdio: ["ignore", "pipe", "pipe"],
+  const fallbackFile = path.join(spaDir, "404.html");
+  const server = http.createServer((req, res) => {
+    const url = new URL(req.url || "/", `http://${host}:${port}`);
+    const filePath = resolveStaticFile(url.pathname);
+    if (filePath) {
+      serveFile(res, 200, filePath);
+      return;
+    }
+
+    if (fs.existsSync(fallbackFile) && fallbackRoutePattern.test(url.pathname)) {
+      serveFile(res, 404, fallbackFile, { "x-lmt-spa-fallback": "1" });
+      return;
+    }
+
+    if (fs.existsSync(fallbackFile)) {
+      serveFile(res, 404, fallbackFile, { "x-lmt-spa-fallback": "1" });
+      return;
+    }
+
+    const body = Buffer.from("Not found\n", "utf8");
+    res.writeHead(404, {
+      "content-length": body.length,
+      "content-type": "text/plain; charset=utf-8",
+    });
+    res.end(body);
   });
-  let stderr = "";
-  child.stderr.on("data", (chunk) => {
-    stderr += chunk.toString();
+
+  return new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(port, host, () => {
+      let closing = null;
+      resolve({
+        close: () => {
+          if (closing) return closing;
+          closing = new Promise((done, closeErr) => server.close((err) => (err ? closeErr(err) : done())));
+          return closing;
+        },
+      });
+    });
   });
-  return { child, stderrRef: () => stderr };
 }
 
 async function waitForSpaReady(page, expectedRoute = "/index.html") {
@@ -129,6 +212,8 @@ async function waitForSpaReady(page, expectedRoute = "/index.html") {
       title: document.title,
       home: !!document.querySelector(".main-home"),
       loadingText: document.getElementById("spa-shell-loading")?.textContent || "",
+      pathnameSearch: `${window.location.pathname}${window.location.search}`,
+      canonicalHref: document.getElementById("spa-shell-canonical")?.href || "",
     }));
     if (snapshot.state?.bootError) {
       throw new Error(`spa boot error: ${snapshot.state.bootError}`);
@@ -162,6 +247,8 @@ async function waitForRoute(page, route, extraCheck) {
       compatImages: document.querySelectorAll("img[data-lmt-image-source='wasm-compat']").length,
       bodyText: document.body?.textContent || "",
       hrefs: Array.from(document.querySelectorAll("a[href]"), (node) => node.getAttribute("href")).filter(Boolean).slice(0, 50),
+      pathnameSearch: `${window.location.pathname}${window.location.search}`,
+      canonicalHref: document.getElementById("spa-shell-canonical")?.href || "",
       expectedRoute,
     }), route);
     if (snapshot.state?.bootError) {
@@ -199,23 +286,24 @@ async function main() {
   }
 
   const port = await resolveValidationPort();
-  const { child: server, stderrRef } = startServer(port);
+  const server = await startServer(port);
   const baseUrl = `http://${host}:${port}`;
   const spaUrl = new URL(`${baseUrl}/index.html`);
   const compatRequests = [];
   const keyTriRequests = [];
+  const faviconRequests = [];
 
-  const cleanupServer = () => {
-    if (!server.killed) server.kill("SIGTERM");
+  const cleanupServer = async () => {
+    await server.close();
   };
-  process.on("exit", cleanupServer);
+  process.on("exit", () => {
+    void cleanupServer();
+  });
   process.on("SIGINT", () => {
-    cleanupServer();
-    process.exit(130);
+    void cleanupServer().finally(() => process.exit(130));
   });
   process.on("SIGTERM", () => {
-    cleanupServer();
-    process.exit(143);
+    void cleanupServer().finally(() => process.exit(143));
   });
 
   try {
@@ -230,11 +318,15 @@ async function main() {
       const page = await browser.newPage();
       page.on("request", (request) => {
         const url = request.url();
-        if (compatRequestPattern.test(new URL(url).pathname)) {
+        const pathname = new URL(url).pathname;
+        if (compatRequestPattern.test(pathname)) {
           compatRequests.push(url);
         }
-        if (keyTriRequestPattern.test(new URL(url).pathname)) {
+        if (keyTriRequestPattern.test(pathname)) {
           keyTriRequests.push(url);
+        }
+        if (pathname === "/favicon.ico") {
+          faviconRequests.push(url);
         }
       });
 
@@ -242,6 +334,9 @@ async function main() {
       const ready = await waitForSpaReady(page, "/index.html");
       if (!ready.home) {
         throw new Error(`home page did not render through SPA shell: ${JSON.stringify(ready)}`);
+      }
+      if (ready.pathnameSearch !== "/index.html" || ready.canonicalHref !== spaUrl.toString()) {
+        throw new Error(`home shell metadata mismatch: ${JSON.stringify(ready)}`);
       }
       const homeAutoLink = await page.evaluate(() => document.querySelector('a[data-lmt-shell-route="/p/a7/Keys.html"]')?.getAttribute("href") || null);
       if (homeAutoLink !== shellHrefForRoute("/p/a7/Keys.html")) {
@@ -504,11 +599,41 @@ async function main() {
         throw new Error(`direct shell boot for key route failed: ${JSON.stringify({ directKey, directKeySnapshot })}`);
       }
 
+      for (const [rawRoute, expectedRoute, extraCheck] of [
+        ["/p/fb/C-Major", "/p/fb/C-Major.html", (snapshot) => snapshot.title.includes("C Major")],
+        ["/keyboard/C_3,E_3,G_3", "/keyboard/C_3,E_3,G_3.html", (snapshot) => snapshot.keyboardEntries > 0],
+        ["/eadgbe-frets/-1,12,12,9,10,-1", "/eadgbe-frets/-1,12,12,9,10,-1.html", (snapshot) => snapshot.fretEntries > 0],
+      ]) {
+        const rawResponsePromise = page.waitForResponse((response) => {
+          const url = new URL(response.url());
+          return url.origin === baseUrl && url.pathname === rawRoute;
+        });
+        await page.goto(`${baseUrl}${rawRoute}`, { waitUntil: "domcontentloaded" });
+        const rawResponse = await rawResponsePromise;
+        if (rawResponse.status() !== 404 || rawResponse.headers()["x-lmt-spa-fallback"] !== "1") {
+          throw new Error(`raw route did not traverse SPA fallback: route=${rawRoute} status=${rawResponse.status()} headers=${JSON.stringify(rawResponse.headers())}`);
+        }
+        const shellUrl = new URL(shellHrefForRoute(rawRoute), baseUrl).toString();
+        const fallbackSnapshot = await waitForRoute(
+          page,
+          expectedRoute,
+          (snapshot) => snapshot.pathnameSearch === shellHrefForRoute(rawRoute)
+            && snapshot.canonicalHref === shellUrl
+            && extraCheck(snapshot),
+        );
+        if (fallbackSnapshot.pathnameSearch !== shellHrefForRoute(rawRoute) || fallbackSnapshot.canonicalHref !== shellUrl) {
+          throw new Error(`fallback shell metadata mismatch for ${rawRoute}: ${JSON.stringify(fallbackSnapshot)}`);
+        }
+      }
+
       if (compatRequests.length > 0) {
         throw new Error(`compat svg files were fetched over the network instead of wasm generation: ${compatRequests.slice(0, 20).join(", ")}`);
       }
       if (keyTriRequests.length > 0) {
         throw new Error(`key slider background images were fetched over the network instead of local reconstruction: ${keyTriRequests.slice(0, 20).join(", ")}`);
+      }
+      if (faviconRequests.length > 0) {
+        throw new Error(`favicon.ico was fetched over the network instead of using the built-in icon: ${faviconRequests.slice(0, 20).join(", ")}`);
       }
 
       const finalState = await page.evaluate(() => window.__lmtHarmoniousSpa);
@@ -523,12 +648,8 @@ async function main() {
       await browser.close();
     }
   } finally {
-    cleanupServer();
+    await cleanupServer();
     await delay(150);
-    const stderr = stderrRef().trim();
-    if (stderr.includes("Address already in use")) {
-      throw new Error(`failed to start local SPA server: ${stderr}`);
-    }
   }
 }
 

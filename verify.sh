@@ -421,6 +421,7 @@ fi
 if [ -d "$ROOT_DIR/tmp/harmoniousapp.net" ] && [ -f "$ROOT_DIR/examples/wasm-demo/harmonious-spa.html" ] && rg -Fq 'step("wasm-harmonious-spa"' "$ROOT_DIR/build.zig"; then
     check_cmd "cd '$ROOT_DIR' && zig build wasm-harmonious-spa 2>&1" "0068 harmonious wasm SPA bundle build"
     check_cmd "cd '$ROOT_DIR' && test -f zig-out/wasm-harmonious-spa/index.html && test -f zig-out/wasm-harmonious-spa/harmonious-spa.js && test -f zig-out/wasm-harmonious-spa/libmusictheory.wasm" "0068 harmonious wasm SPA bundle guardrail (shell html/js/wasm installed)"
+    check_cmd "cd '$ROOT_DIR' && test -f zig-out/wasm-harmonious-spa/404.html && rg -n 'rel=\"icon\"|spa-shell-canonical' zig-out/wasm-harmonious-spa/index.html zig-out/wasm-harmonious-spa/404.html >/dev/null" "0071 harmonious SPA bundle guardrail (404 fallback and shell metadata installed)"
     if command -v node >/dev/null 2>&1; then
         check_cmd "cd '$ROOT_DIR' && node scripts/check_wasm_exports.mjs --profile full_demo --wasm zig-out/wasm-harmonious-spa/libmusictheory.wasm" "0068 harmonious wasm SPA export guardrail (required full-demo exports are present)"
     else
@@ -861,15 +862,16 @@ else
 fi
 
 if [ -d "$ROOT_DIR/tmp/harmoniousapp.net" ] && [ -f "$ROOT_DIR/scripts/validate_harmonious_spa_playwright.mjs" ]; then
-    if command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
+    if command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1; then
         check_cmd "cd '$ROOT_DIR' && rg -n 'search-key-tri|key-tri|sliderEntries|sliderImageCount|currentKeyText|keySliderVariant' scripts/validate_harmonious_spa_playwright.mjs examples/wasm-demo/harmonious-spa.js >/dev/null" "0068 harmonious wasm SPA guardrail (key-slider fragments and backgrounds are covered by runtime + playwright)"
         check_cmd "cd '$ROOT_DIR' && rg -n 'fetchPagePayload|collectInlineBodyScripts\\(doc\\)|executeInlineScripts\\(inlineScripts, normalizedRoute\\)' examples/wasm-demo/harmonious-spa.js >/dev/null" "0068 harmonious wasm SPA guardrail (AJAX page routes re-run inline page scripts after body swaps)"
         check_cmd "cd '$ROOT_DIR' && rg -n 'scheduleKeyPageSliderSynchronization|synchronizeKeyPageSliderOnce|keySliderInitialSpecForRoute' examples/wasm-demo/harmonious-spa.js >/dev/null" "0068 harmonious wasm SPA guardrail (key-page slider header and initial fragment are route-synchronized in the SPA bridge)"
         check_cmd "cd '$ROOT_DIR' && rg -n 'resolveShellNavigationRoute|shellHrefForRoute|data-lmt-shell-route|\\?route=' examples/wasm-demo/harmonious-spa.js scripts/validate_harmonious_spa_playwright.mjs >/dev/null" "0069 harmonious SPA direct-entry guardrail (single-entry shell accepts route query boot and rewrites internal links through the shell)"
         check_cmd "cd '$ROOT_DIR' && rg -n 'installShellHistoryOverride|installKeyboardOnPopOverride|installFretOnPopOverride|keyboardUrlAfterEdit|fretUrlAfterEdit' examples/wasm-demo/harmonious-spa.js scripts/validate_harmonious_spa_playwright.mjs >/dev/null" "0070 harmonious SPA shell-history guardrail (interactive keyboard/fret edits persist shell-form URLs and patched on-pop semantics)"
+        check_cmd "cd '$ROOT_DIR' && rg -n '404.html|favicon|fallbackRedirect|rawRouteFallback|x-lmt-spa-fallback|canonicalHref' build.zig examples/wasm-demo/harmonious-spa.html examples/wasm-demo/harmonious-spa-fallback.html examples/wasm-demo/harmonious-spa.js scripts/validate_harmonious_spa_playwright.mjs >/dev/null" "0071 harmonious SPA static-host guardrail (404 fallback, favicon handling, canonical shell metadata, and raw-route recovery are wired end-to-end)"
         check_cmd "cd '$ROOT_DIR' && node scripts/validate_harmonious_spa_playwright.mjs 2>&1" "0068 harmonious wasm SPA playwright validation"
     else
-        unverified "0068 harmonious wasm SPA playwright validation (node/npm/python3 missing)"
+        unverified "0068 harmonious wasm SPA playwright validation (node/npm missing)"
     fi
 else
     unverified "0068 harmonious wasm SPA playwright validation (tmp/harmoniousapp.net or script missing)"
