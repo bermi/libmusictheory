@@ -69,6 +69,8 @@ const state = {
   lastRoute: null,
   lastFragmentKind: null,
   observer: null,
+  rawHistoryPushState: null,
+  rawHistoryReplaceState: null,
 };
 
 window.__lmtHarmoniousSpa = {
@@ -197,6 +199,21 @@ function isShellPageRoute(route) {
     || normalized === "/eadgbe-frets"
     || normalized === "/eadgbe-frets/"
     || normalized.startsWith("/eadgbe-frets/");
+}
+
+function barePageRoute(route) {
+  return normalizePageRoute(route).replace(/\.html$/i, "");
+}
+
+function interactiveRouteFamily(route) {
+  const bareRoute = barePageRoute(route);
+  if (bareRoute.startsWith("/keyboard/")) return "keyboard";
+  if (bareRoute.startsWith("/eadgbe-frets/")) return "frets";
+  return null;
+}
+
+function absoluteRouteUrl(route) {
+  return new URL(barePageRoute(route), window.location.origin).toString();
 }
 
 function shellHrefForRoute(route) {
@@ -715,15 +732,94 @@ function routeRelativeTo(baseRoute, rawValue) {
   }
 }
 
-function withTemporaryVisibleRoute(route, fn) {
-  const bareRoute = normalizePageRoute(route).replace(/\.html$/i, "");
-  const shellHref = shellHrefForRoute(bareRoute);
-  history.replaceState({ url: shellHref }, "Harmonious", bareRoute);
+function historyRestoreSnapshot() {
+  const href = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  return {
+    href: href || shellHrefForRoute("/index.html"),
+    state: history.state,
+  };
+}
+
+function rawHistoryReplaceState(historyState, title, url) {
+  const replaceState = state.rawHistoryReplaceState || history.replaceState.bind(history);
+  return replaceState(historyState, title, url);
+}
+
+function withTemporaryVisibleRoute(route, fn, restoreSnapshot = null) {
+  const bareRoute = barePageRoute(route);
+  const restore = restoreSnapshot || historyRestoreSnapshot();
+  rawHistoryReplaceState({ url: bareRoute }, "Harmonious", bareRoute);
   try {
     return fn();
   } finally {
-    history.replaceState({ url: shellHref }, "Harmonious", shellHref);
+    rawHistoryReplaceState(restore.state, "Harmonious", restore.href);
   }
+}
+
+function normalizedShellRouteFromValue(rawValue, baseHref = window.location.href) {
+  if (rawValue == null || rawValue === "") return null;
+  const normalized = resolveShellNavigationRoute(rawValue, baseHref);
+  return isShellPageRoute(normalized) ? barePageRoute(normalized) : null;
+}
+
+function syncInteractiveRouteState(route) {
+  const bareRoute = normalizedShellRouteFromValue(route);
+  if (!bareRoute || !interactiveRouteFamily(bareRoute)) return;
+  window.__lmtCurrentPageUrlPath = bareRoute;
+  state.lastRoute = canonicalPageFetchRoute(bareRoute);
+  syncDebugState();
+}
+
+function resolvePopTargetRoute(eventState, fallbackUrl) {
+  const primary = eventState && typeof eventState === "object"
+    ? (eventState.__lmtShellRoute || eventState.url)
+    : null;
+  return normalizedShellRouteFromValue(primary || fallbackUrl);
+}
+
+function normalizePopEventState(eventState, fallbackUrl) {
+  const targetRoute = resolvePopTargetRoute(eventState, fallbackUrl);
+  if (!targetRoute) {
+    if (!eventState || typeof eventState !== "object") return eventState;
+    return { ...eventState };
+  }
+  return {
+    ...(eventState && typeof eventState === "object" ? eventState : {}),
+    url: absoluteRouteUrl(targetRoute),
+    __lmtShellRoute: targetRoute,
+  };
+}
+
+function installShellHistoryOverride() {
+  if (state.rawHistoryPushState && state.rawHistoryReplaceState) return;
+  state.rawHistoryPushState = history.pushState.bind(history);
+  state.rawHistoryReplaceState = history.replaceState.bind(history);
+
+  function normalizeHistoryCall(historyState, title, url) {
+    const normalizedRoute = normalizedShellRouteFromValue(
+      url != null ? url : historyState && typeof historyState === "object" ? historyState.url : null,
+      window.location.href,
+    );
+    if (!normalizedRoute) {
+      return [historyState, title, url];
+    }
+    const nextState = {
+      ...(historyState && typeof historyState === "object" ? historyState : {}),
+      url: absoluteRouteUrl(normalizedRoute),
+      __lmtShellRoute: normalizedRoute,
+    };
+    syncInteractiveRouteState(normalizedRoute);
+    return [nextState, title, shellHrefForRoute(normalizedRoute)];
+  }
+
+  history.pushState = function(historyState, title, url) {
+    const normalizedArgs = normalizeHistoryCall(historyState, title, url);
+    return state.rawHistoryPushState(...normalizedArgs);
+  };
+  history.replaceState = function(historyState, title, url) {
+    const normalizedArgs = normalizeHistoryCall(historyState, title, url);
+    return state.rawHistoryReplaceState(...normalizedArgs);
+  };
 }
 
 function normalizeLabelText(labelText) {
@@ -1286,6 +1382,28 @@ function installKeyboardRouteOverride() {
   window.KeyboardClient.__lmtRouteOverrideInstalled = true;
 }
 
+function installKeyboardOnPopOverride() {
+  if (!window.KeyboardClient || window.KeyboardClient.__lmtOnPopOverrideInstalled) return;
+  const originalOnPop = window.KeyboardClient.onPop;
+  window.KeyboardClient.onPop = function(event, ...args) {
+    const currentRoute = normalizedShellRouteFromValue(window.__lmtCurrentPageUrlPath || state.lastRoute || "");
+    const currentFamily = interactiveRouteFamily(currentRoute || "");
+    if (currentFamily !== "keyboard") {
+      return originalOnPop.call(this, event, ...args);
+    }
+    const restoreSnapshot = historyRestoreSnapshot();
+    const normalizedState = normalizePopEventState(event?.state, this.firstUrl);
+    const targetRoute = resolvePopTargetRoute(normalizedState, this.firstUrl);
+    const normalizedEvent = { state: normalizedState };
+    const handled = withTemporaryVisibleRoute(currentRoute, () => originalOnPop.call(this, normalizedEvent, ...args), restoreSnapshot);
+    if (handled && interactiveRouteFamily(targetRoute || "") === "keyboard") {
+      syncInteractiveRouteState(targetRoute);
+    }
+    return handled;
+  };
+  window.KeyboardClient.__lmtOnPopOverrideInstalled = true;
+}
+
 function installFretRouteOverride() {
   if (!window.FretsClient || window.FretsClient.__lmtRouteOverrideInstalled) return;
   const originalOnLoad = window.FretsClient.onLoad;
@@ -1297,6 +1415,28 @@ function installFretRouteOverride() {
     return withTemporaryVisibleRoute(currentRoute, () => originalOnLoad.apply(this, args));
   };
   window.FretsClient.__lmtRouteOverrideInstalled = true;
+}
+
+function installFretOnPopOverride() {
+  if (!window.FretsClient || window.FretsClient.__lmtOnPopOverrideInstalled) return;
+  const originalOnPop = window.FretsClient.onPop;
+  window.FretsClient.onPop = function(event, ...args) {
+    const currentRoute = normalizedShellRouteFromValue(window.__lmtCurrentPageUrlPath || state.lastRoute || "");
+    const currentFamily = interactiveRouteFamily(currentRoute || "");
+    if (currentFamily !== "frets") {
+      return originalOnPop.call(this, event, ...args);
+    }
+    const restoreSnapshot = historyRestoreSnapshot();
+    const normalizedState = normalizePopEventState(event?.state, this.firstUrl);
+    const targetRoute = resolvePopTargetRoute(normalizedState, this.firstUrl);
+    const normalizedEvent = { state: normalizedState };
+    const handled = withTemporaryVisibleRoute(currentRoute, () => originalOnPop.call(this, normalizedEvent, ...args), restoreSnapshot);
+    if (handled && interactiveRouteFamily(targetRoute || "") === "frets") {
+      syncInteractiveRouteState(targetRoute);
+    }
+    return handled;
+  };
+  window.FretsClient.__lmtOnPopOverrideInstalled = true;
 }
 
 function loadRoute(route) {
@@ -1323,12 +1463,15 @@ async function boot() {
   verifyExports(state.wasm.exports);
   state.wasm = state.wasm.exports;
   state.memory = state.wasm.memory;
+  installShellHistoryOverride();
   buildCompatIndex();
   installCompatImageInterceptors();
   installRequestBridge();
   installSliderPathOverride();
   installKeyboardRouteOverride();
+  installKeyboardOnPopOverride();
   installFretRouteOverride();
+  installFretOnPopOverride();
   window.HarmoniousClient.loadUrlBodyIntoBody = function(request) {
     const resolvedRoute = resolveShellNavigationRoute(request, window.location.href);
     renderPageRoute(resolvedRoute).catch((err) => {

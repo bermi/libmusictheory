@@ -178,6 +178,20 @@ async function waitForRoute(page, route, extraCheck) {
   }
 }
 
+async function waitForPageValue(page, probe, description) {
+  const deadline = Date.now() + timeoutMs;
+  while (true) {
+    const snapshot = await probe();
+    if (snapshot?.ok) {
+      return snapshot;
+    }
+    if (Date.now() > deadline) {
+      throw new Error(`timed out waiting for ${description}; snapshot=${JSON.stringify(snapshot)}`);
+    }
+    await delay(250);
+  }
+}
+
 async function main() {
   const indexPath = path.join(spaDir, "index.html");
   if (!fs.existsSync(indexPath)) {
@@ -329,6 +343,75 @@ async function main() {
       if (!directKeyboard.title.includes("Keyboard") || directKeyboardSnapshot.keyboardEntries <= 0) {
         throw new Error(`direct shell boot for keyboard route failed: ${JSON.stringify({ directKeyboard, directKeyboardSnapshot })}`);
       }
+      const keyboardEditResult = await page.evaluate(() => {
+        const keyTarget = document.getElementById("key-over-59")
+          || document.getElementById("key-color-59")
+          || document.getElementById("key-59");
+        if (!keyTarget) {
+          throw new Error("missing keyboard target element for midi note 59");
+        }
+        window.KeyboardClient.onRectClick({ target: keyTarget });
+        const expectedKeyboardRouteAfterEdit = window.HarmoniousClient.PCS.makeNoteUrlStringFromMidinotes(
+          "/keyboard/",
+          window.KeyboardClient.preferAccid,
+          window.KeyboardClient.midinotes,
+        );
+        const keyboardUrlAfterEdit = `${window.location.pathname}${window.location.search}`;
+        return {
+          expectedKeyboardRouteAfterEdit,
+          keyboardRouteAfterEdit: window.__lmtCurrentPageUrlPath,
+          keyboardUrlAfterEdit,
+          keyboardMidinotesAfterEdit: [...window.KeyboardClient.midinotes],
+          keyboardSearchEntriesAfterEdit: document.querySelectorAll(".inside-search .entry").length,
+        };
+      });
+      const expectedKeyboardShellHref = shellHrefForRoute(keyboardEditResult.expectedKeyboardRouteAfterEdit);
+      if (keyboardEditResult.keyboardUrlAfterEdit !== expectedKeyboardShellHref) {
+        throw new Error(`keyboard live edit escaped shell-form URL: ${JSON.stringify(keyboardEditResult)}`);
+      }
+      await waitForPageValue(
+        page,
+        () => page.evaluate(({ expectedKeyboardRouteAfterEdit, expectedKeyboardShellHref }) => ({
+          ok: window.__lmtCurrentPageUrlPath === expectedKeyboardRouteAfterEdit
+            && `${window.location.pathname}${window.location.search}` === expectedKeyboardShellHref
+            && document.querySelectorAll(".inside-search .entry").length > 0,
+          route: window.__lmtCurrentPageUrlPath,
+          href: `${window.location.pathname}${window.location.search}`,
+          searchEntries: document.querySelectorAll(".inside-search .entry").length,
+          midinotes: window.KeyboardClient ? [...window.KeyboardClient.midinotes] : [],
+        }), { expectedKeyboardRouteAfterEdit: keyboardEditResult.expectedKeyboardRouteAfterEdit, expectedKeyboardShellHref }),
+        "keyboard live-edit shell-form URL",
+      );
+      await page.evaluate(() => history.back());
+      await waitForPageValue(
+        page,
+        () => page.evaluate(() => ({
+          ok: window.__lmtCurrentPageUrlPath === "/keyboard/C_3,E_3,G_3"
+            && `${window.location.pathname}${window.location.search}` === "/index.html?route=%2Fkeyboard%2FC_3%2CE_3%2CG_3"
+            && JSON.stringify(window.KeyboardClient ? [...window.KeyboardClient.midinotes] : []) === JSON.stringify([48, 52, 55]),
+          route: window.__lmtCurrentPageUrlPath,
+          href: `${window.location.pathname}${window.location.search}`,
+          midinotes: window.KeyboardClient ? [...window.KeyboardClient.midinotes] : [],
+        })),
+        "keyboard back navigation shell-form restore",
+      );
+      await page.evaluate(() => history.forward());
+      await waitForPageValue(
+        page,
+        () => page.evaluate(({ expectedKeyboardRouteAfterEdit, expectedKeyboardShellHref, expectedMidinotes }) => ({
+          ok: window.__lmtCurrentPageUrlPath === expectedKeyboardRouteAfterEdit
+            && `${window.location.pathname}${window.location.search}` === expectedKeyboardShellHref
+            && JSON.stringify(window.KeyboardClient ? [...window.KeyboardClient.midinotes] : []) === JSON.stringify(expectedMidinotes),
+          route: window.__lmtCurrentPageUrlPath,
+          href: `${window.location.pathname}${window.location.search}`,
+          midinotes: window.KeyboardClient ? [...window.KeyboardClient.midinotes] : [],
+        }), {
+          expectedKeyboardRouteAfterEdit: keyboardEditResult.expectedKeyboardRouteAfterEdit,
+          expectedKeyboardShellHref,
+          expectedMidinotes: keyboardEditResult.keyboardMidinotesAfterEdit,
+        }),
+        "keyboard forward navigation shell-form restore",
+      );
 
       await page.goto(`${spaUrl.toString()}?route=${encodeURIComponent("/eadgbe-frets/-1,12,12,9,10,-1")}`, { waitUntil: "domcontentloaded" });
       const directFret = await waitForSpaReady(page, "/eadgbe-frets/-1,12,12,9,10,-1.html");
@@ -336,6 +419,74 @@ async function main() {
       if (!directFret.title.includes("Interactive Guitar Fretboard") || directFretSnapshot.fretEntries <= 0) {
         throw new Error(`direct shell boot for fret route failed: ${JSON.stringify({ directFret, directFretSnapshot })}`);
       }
+      const fretEditResult = await page.evaluate(() => {
+        const fretTarget = document.getElementById("fret-rect-0-0")
+          || document.getElementById("fret-rect-0-1");
+        if (!fretTarget) {
+          throw new Error("missing fret target element for interactive mutation");
+        }
+        window.FretsClient.onRectClick({ target: fretTarget });
+        const expectedFretRouteAfterEdit = window.HarmoniousClient.PCS.makeFretsUrlStringFromFretsArray(
+          "/eadgbe-frets/",
+          window.FretsClient.fretsArray,
+          "TODO-multi-and-capo-settings",
+        );
+        const fretUrlAfterEdit = `${window.location.pathname}${window.location.search}`;
+        return {
+          expectedFretRouteAfterEdit,
+          fretRouteAfterEdit: window.__lmtCurrentPageUrlPath,
+          fretUrlAfterEdit,
+          fretArrayAfterEdit: JSON.parse(JSON.stringify(window.FretsClient.fretsArray)),
+          fretSearchEntriesAfterEdit: document.querySelectorAll(".inside-frets-search .entry").length,
+        };
+      });
+      const expectedFretShellHref = shellHrefForRoute(fretEditResult.expectedFretRouteAfterEdit);
+      if (fretEditResult.fretUrlAfterEdit !== expectedFretShellHref) {
+        throw new Error(`fret live edit escaped shell-form URL: ${JSON.stringify(fretEditResult)}`);
+      }
+      await waitForPageValue(
+        page,
+        () => page.evaluate(({ expectedFretRouteAfterEdit, expectedFretShellHref }) => ({
+          ok: window.__lmtCurrentPageUrlPath === expectedFretRouteAfterEdit
+            && `${window.location.pathname}${window.location.search}` === expectedFretShellHref
+            && document.querySelectorAll(".inside-frets-search .entry").length > 0,
+          route: window.__lmtCurrentPageUrlPath,
+          href: `${window.location.pathname}${window.location.search}`,
+          frets: window.FretsClient ? JSON.parse(JSON.stringify(window.FretsClient.fretsArray)) : [],
+          searchEntries: document.querySelectorAll(".inside-frets-search .entry").length,
+        }), { expectedFretRouteAfterEdit: fretEditResult.expectedFretRouteAfterEdit, expectedFretShellHref }),
+        "fret live-edit shell-form URL",
+      );
+      await page.evaluate(() => history.back());
+      await waitForPageValue(
+        page,
+        () => page.evaluate(() => ({
+          ok: window.__lmtCurrentPageUrlPath === "/eadgbe-frets/-1,12,12,9,10,-1"
+            && `${window.location.pathname}${window.location.search}` === "/index.html?route=%2Feadgbe-frets%2F-1%2C12%2C12%2C9%2C10%2C-1"
+            && JSON.stringify(window.FretsClient ? JSON.parse(JSON.stringify(window.FretsClient.fretsArray)) : []) === JSON.stringify([[], [12], [12], [9], [10], []]),
+          route: window.__lmtCurrentPageUrlPath,
+          href: `${window.location.pathname}${window.location.search}`,
+          frets: window.FretsClient ? JSON.parse(JSON.stringify(window.FretsClient.fretsArray)) : [],
+        })),
+        "fret back navigation shell-form restore",
+      );
+      await page.evaluate(() => history.forward());
+      await waitForPageValue(
+        page,
+        () => page.evaluate(({ expectedFretRouteAfterEdit, expectedFretShellHref, expectedFretArrayAfterEdit }) => ({
+          ok: window.__lmtCurrentPageUrlPath === expectedFretRouteAfterEdit
+            && `${window.location.pathname}${window.location.search}` === expectedFretShellHref
+            && JSON.stringify(window.FretsClient ? JSON.parse(JSON.stringify(window.FretsClient.fretsArray)) : []) === JSON.stringify(expectedFretArrayAfterEdit),
+          route: window.__lmtCurrentPageUrlPath,
+          href: `${window.location.pathname}${window.location.search}`,
+          frets: window.FretsClient ? JSON.parse(JSON.stringify(window.FretsClient.fretsArray)) : [],
+        }), {
+          expectedFretRouteAfterEdit: fretEditResult.expectedFretRouteAfterEdit,
+          expectedFretShellHref,
+          expectedFretArrayAfterEdit: fretEditResult.fretArrayAfterEdit,
+        }),
+        "fret forward navigation shell-form restore",
+      );
 
       await page.goto(`${spaUrl.toString()}?route=${encodeURIComponent("/p/7c/E-Major")}`, { waitUntil: "domcontentloaded" });
       const directKey = await waitForSpaReady(page, "/p/7c/E-Major.html");

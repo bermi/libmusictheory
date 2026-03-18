@@ -88,6 +88,8 @@ The shell is now directly bootable through explicit route parameters on a plain 
 
 Internal page-family links are rewritten back through `index.html?route=...` so opening them in a new tab stays inside the single-entry shell instead of depending on direct `/p/...`, `/keyboard/...`, or `/eadgbe-frets/...` server routes.
 
+Interactive keyboard and fretboard edits now also keep the browser on shell-form history entries, so back/forward navigation stays inside the single-entry shell even after live selection changes.
+
 ## Project Completion Criteria
 
 The project is not visually complete until all 15 compatibility kinds pass Native RGBA Proof at `55%` and `200%`.

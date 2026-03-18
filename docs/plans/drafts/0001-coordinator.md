@@ -11,7 +11,7 @@ Build `libmusictheory`, a Zig library exposing a C ABI that implements the compl
 
 - Draft: 0001
 - In progress: none
-- Completed: 0002, 0003, 0004, 0005, 0006, 0007, 0008, 0009, 0010, 0011, 0012, 0013, 0014, 0015, 0016, 0017, 0018, 0019, 0020, 0021, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0032, 0033, 0034, 0035, 0036, 0037, 0038, 0039, 0040, 0041, 0042, 0043, 0044, 0045, 0046, 0047, 0048, 0049, 0050, 0051, 0052, 0053, 0054, 0055, 0056, 0057, 0058, 0059, 0060, 0061, 0062, 0063, 0064, 0065, 0066, 0067, 0068, 0069
+- Completed: 0002, 0003, 0004, 0005, 0006, 0007, 0008, 0009, 0010, 0011, 0012, 0013, 0014, 0015, 0016, 0017, 0018, 0019, 0020, 0021, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0032, 0033, 0034, 0035, 0036, 0037, 0038, 0039, 0040, 0041, 0042, 0043, 0044, 0045, 0046, 0047, 0048, 0049, 0050, 0051, 0052, 0053, 0054, 0055, 0056, 0057, 0058, 0059, 0060, 0061, 0062, 0063, 0064, 0065, 0066, 0067, 0068, 0069, 0070
 
 ## Plan Dependencies (Execute in Order)
 
@@ -150,6 +150,8 @@ Build `libmusictheory`, a Zig library exposing a C ABI that implements the compl
 0068-harmonious-wasm-spa → single-entry harmonious SPA shell backed by wasm-generated compatibility images and a locally reconstructed request bridge
 0069-route-addressable-harmonious-spa → single-entry shell bootable through explicit `?route=...` deep links on plain static hosts
      ↓ depends on 0023, 0024, 0050, 0060, 0067
+0070-shell-form-live-history-for-interactive-routes → keep interactive keyboard/fret edits and back/forward history on shell-form `index.html?route=...` URLs
+     ↓ depends on 0068, 0069
 ```
 
 ## Dependency Graph (Visual)
@@ -315,6 +317,11 @@ Ship a single-entry SPA that reuses the original harmonious content/client stack
 Make the single-entry shell directly bootable through `index.html?route=...` and rewrite internal page-family links through the shell entry so static hosting does not depend on direct `/p/...`, `/keyboard/...`, or `/eadgbe-frets/...` server routes for new-tab and copied-link flows.
 
 **Deliverable**: a Playwright-verified shell that directly boots representative page, keyboard, fretboard, and key-slider routes through the single SPA entry.
+
+### Phase 7.9 (Completed Additive): Shell-Form Live History For Interactive Routes (Plan 0070)
+Keep keyboard and fretboard live edits on shell-form URLs so the SPA remains single-entry after interactive mutations, while preserving correct back/forward behavior.
+
+**Deliverable**: Playwright-verified live keyboard and fret edits that keep the browser on `index.html?route=...` and round-trip correctly through history navigation.
 
 ## Research Documents Index
 
