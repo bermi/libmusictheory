@@ -9,7 +9,7 @@ Build `libmusictheory`, a Zig library exposing a C ABI that implements the compl
 
 ## Lifecycle Status
 
-- Draft: 0001
+- Draft: 0001, 0073, 0074, 0075, 0076, 0077, 0078
 - In progress: none
 - Completed: 0002, 0003, 0004, 0005, 0006, 0007, 0008, 0009, 0010, 0011, 0012, 0013, 0014, 0015, 0016, 0017, 0018, 0019, 0020, 0021, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0032, 0033, 0034, 0035, 0036, 0037, 0038, 0039, 0040, 0041, 0042, 0043, 0044, 0045, 0046, 0047, 0048, 0049, 0050, 0051, 0052, 0053, 0054, 0055, 0056, 0057, 0058, 0059, 0060, 0061, 0062, 0063, 0064, 0065, 0066, 0067, 0068, 0069, 0070, 0071, 0072
 
@@ -156,6 +156,17 @@ Build `libmusictheory`, a Zig library exposing a C ABI that implements the compl
      ↓ depends on 0068, 0069, 0070
 0072-shell-form-fragment-links → rewrite locally reconstructed search and key-slider fragment links back through the SPA shell for copy/new-tab correctness
      ↓ depends on 0068, 0069, 0070, 0071
+0073-standalone-library-release-and-gallery-master → coordinate the standalone release surface, keeping Harmonious verification as internal regression infrastructure while promoting a clean public API, docs, and gallery
+0074-public-api-and-build-surface-split → separate standalone install/build surfaces from Harmonious compat/proof/demo surfaces
+     ↓ depends on 0073, 0020, 0050, 0063
+0075-harmonious-verification-quarantine → retain parity/proof/SPA tooling as internal verification lanes and document a reduced release path that does not depend on local Harmonious data
+     ↓ depends on 0073, 0074, 0024, 0060, 0072
+0076-root-readme-and-stable-api-contract → add the first real library-facing README, stable API boundaries, and documented memory/lifetime rules
+     ↓ depends on 0073, 0074
+0077-standalone-gallery-and-example-bundle → build a local-only creative gallery using public stable APIs only
+     ↓ depends on 0073, 0074, 0076, 0066
+0078-release-packaging-and-smoke-matrix → close the standalone release branch with release artifacts, smoke tests, versioning/changelog scaffolding, and a checklist
+     ↓ depends on 0074, 0075, 0076, 0077
 ```
 
 ## Dependency Graph (Visual)
@@ -337,6 +348,11 @@ Keep SPA-generated fragment links consistent with the shell URL model so search 
 
 **Deliverable**: Playwright-verified search and key-slider fragments whose generated page-route anchors use `index.html?route=...` plus `data-lmt-shell-route`, while non-page links remain unchanged.
 
+### Phase 8 (Planned): Standalone Release Surface And Gallery (Plans 0073-0078)
+Convert the current correctness-heavy branch into a clean standalone library release surface. Keep Harmonious parity/proof/SPA work in-repo as internal regression infrastructure, but stop letting it define the public product identity. Focus this phase on public API/build separation, root docs, a standalone gallery, and release packaging. Local serving is sufficient; no production rollout work belongs here.
+
+**Deliverable**: a standalone-facing library surface with a root README, stable API contract, public-vs-internal build/install separation, a verified local `wasm-gallery` bundle using only public APIs, and a release smoke/checklist layer that remains decoupled from Harmonious-specific tooling.
+
 ## Research Documents Index
 
 ### Theme Research
@@ -413,6 +429,8 @@ Key source files:
 10. All static data can be verified against site content
 11. All required harmoniousapp.net SVG kinds can be generated through library APIs and match reference SVG bytes exactly
 12. Any raster/visual diagnostic additions remain additive and must not weaken strict SVG parity gates
+13. The standalone release surface can be installed, documented, and smoke-tested without requiring local Harmonious capture data
+14. The repo ships a standalone gallery demonstrating creative public-API usage without depending on Harmonious-specific browser flows
 
 ## Verification Protocol
 
@@ -431,6 +449,7 @@ All of the following must pass before this plan is considered complete:
 - [ ] `./verify.sh` passes
 - [ ] All required sub-plans (0002–0028) completed and verified
 - [ ] If additive rendering track is adopted, sub-plans 0029–0031 completed and verified
+- [ ] If standalone release track is adopted, sub-plans 0073–0078 completed and verified
 - [ ] All 336 set classes verified against music21
 - [ ] All 17 modes verified
 - [ ] All ~100 chord types verified against tonal-ts
