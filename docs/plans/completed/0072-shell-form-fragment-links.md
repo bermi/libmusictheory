@@ -48,7 +48,7 @@ Make locally reconstructed fragment HTML honor the same shell URL contract as fu
 
 ## Implementation History (Point-in-Time)
 
-- Commit: `PENDING`
+- Commit: `1d80079`
 - Date: `2026-03-19`
 - Shipped behavior:
   - added shared shell-link attribute generation for locally rendered fragment HTML in the Harmonious SPA
