@@ -90,6 +90,8 @@ Internal page-family links are rewritten back through `index.html?route=...` so 
 
 Interactive keyboard and fretboard edits now also keep the browser on shell-form history entries, so back/forward navigation stays inside the single-entry shell even after live selection changes.
 
+Locally reconstructed search results and key-slider cards now follow the same rule: generated page-route anchors also use shell-form `index.html?route=...` URLs and carry `data-lmt-shell-route`, so copy/new-tab behavior stays consistent even inside fragment content.
+
 The SPA bundle is also static-host ready:
 
 - `zig-out/wasm-harmonious-spa/404.html` is installed for hosts that serve fallback HTML on unknown routes

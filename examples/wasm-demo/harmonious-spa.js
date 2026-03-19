@@ -657,6 +657,15 @@ function buildSearchEntry(route, label, thumbRef, priority = 0) {
   };
 }
 
+function shellAttrsForRoute(route) {
+  const rawRoute = String(route || "");
+  const normalizedRoute = normalizePageRoute(rawRoute);
+  if (isShellPageRoute(normalizedRoute)) {
+    return `href="${htmlEscape(shellHrefForRoute(normalizedRoute))}" data-lmt-shell-route="${htmlEscape(normalizedRoute)}"`;
+  }
+  return `href="${htmlEscape(rawRoute)}"`;
+}
+
 function renderSearchFragment(groupTitle, metaText, entries, emptyMessage) {
   if (!entries.length) {
     return [
@@ -678,7 +687,7 @@ function renderSearchFragment(groupTitle, metaText, entries, emptyMessage) {
       const excerpt = entry.excerpt ? `<div class="spa-search-excerpt">${htmlEscape(entry.excerpt)}</div>` : "";
       return [
         `  <div class="entry rhs parent">`,
-        `    <a class="rhs" href="${htmlEscape(entry.route)}">${thumb}${htmlEscape(entry.title)}</a>`,
+        `    <a class="rhs" ${shellAttrsForRoute(entry.route)}>${thumb}${htmlEscape(entry.title)}</a>`,
         `    ${excerpt}`,
         `  </div>`,
       ].join("\n");
@@ -1030,9 +1039,10 @@ function renderKeySliderCard(group) {
       : entry.rawSrc
         ? `<img class="slider-icon2" src="${htmlEscape(entry.resolvedSrc)}" alt="">`
         : "";
+    const linkAttrs = shellAttrsForRoute(entry.href);
     return [
       `  <div class="slider-entry">`,
-      `    <a href="${htmlEscape(entry.href)}">${img}</a><a href="${htmlEscape(entry.href)}" class="slider-text">${entry.titleHtml || htmlEscape(entry.titleText)}</a>`,
+      `    <a ${linkAttrs}>${img}</a><a ${linkAttrs} class="slider-text">${entry.titleHtml || htmlEscape(entry.titleText)}</a>`,
       `  </div>`,
     ].join("\n");
   }).join("\n");

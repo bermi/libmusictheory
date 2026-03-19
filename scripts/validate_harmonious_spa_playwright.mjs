@@ -19,6 +19,7 @@ const compatRequestPattern = /\/(?:tmp\/harmoniousapp\.net\/)?(?:vert-text-black
 const keyTriRequestPattern = /\/key-tri\//;
 const shellHrefForRoute = (route) => `/index.html?route=${encodeURIComponent(route)}`;
 const fallbackRoutePattern = /^\/(?:p|keyboard|eadgbe-frets)\//;
+const rawShellRoutePattern = /^\/(?:p|keyboard|eadgbe-frets)\//;
 const mimeTypes = new Map([
   [".css", "text/css; charset=utf-8"],
   [".gif", "image/gif"],
@@ -279,6 +280,32 @@ async function waitForPageValue(page, probe, description) {
   }
 }
 
+async function fragmentLinkSnapshot(page, selector) {
+  return page.evaluate((query) => Array.from(document.querySelectorAll(`${query} a[href]`), (node) => ({
+    href: node.getAttribute("href") || "",
+    shellRoute: node.getAttribute("data-lmt-shell-route") || "",
+    text: node.textContent?.trim() || "",
+  })), selector);
+}
+
+function assertShellFragmentLinks(links, label) {
+  if (!links.length) {
+    throw new Error(`${label} produced no links`);
+  }
+  const rawLinks = links.filter((link) => rawShellRoutePattern.test(link.href));
+  if (rawLinks.length > 0) {
+    throw new Error(`${label} leaked raw route hrefs: ${JSON.stringify(rawLinks.slice(0, 10))}`);
+  }
+  const shellLinks = links.filter((link) => link.shellRoute);
+  if (!shellLinks.length) {
+    throw new Error(`${label} did not expose any data-lmt-shell-route anchors: ${JSON.stringify(links.slice(0, 10))}`);
+  }
+  const mismatchedLinks = shellLinks.filter((link) => link.href !== shellHrefForRoute(link.shellRoute));
+  if (mismatchedLinks.length > 0) {
+    throw new Error(`${label} reported inconsistent shell-route anchors: ${JSON.stringify(mismatchedLinks.slice(0, 10))}`);
+  }
+}
+
 async function main() {
   const indexPath = path.join(spaDir, "index.html");
   if (!fs.existsSync(indexPath)) {
@@ -406,18 +433,24 @@ async function main() {
       if (!/E\s+min|E\s+dim/i.test(variantSnapshot.sliderText)) {
         throw new Error(`key-slider variant did not visibly change after local fragment injection: ${JSON.stringify(variantSnapshot)}`);
       }
+      const sliderCardShellHref = await fragmentLinkSnapshot(page, ".only3");
+      assertShellFragmentLinks(sliderCardShellHref, "key-slider fragment");
 
       await page.evaluate(() => window.HarmoniousClient.fakeNavigateTo("/keyboard/C_3,E_3,G_3"));
       const keyboardPage = await waitForRoute(page, "/keyboard/C_3,E_3,G_3.html", (snapshot) => snapshot.keyboardEntries > 0 && snapshot.compatImages > 0);
       if (keyboardPage.keyboardEntries <= 0) {
         throw new Error(`keyboard search pane did not populate: ${JSON.stringify(keyboardPage)}`);
       }
+      const keyboardSearchShellHref = await fragmentLinkSnapshot(page, ".inside-search");
+      assertShellFragmentLinks(keyboardSearchShellHref, "keyboard search fragment");
 
       await page.evaluate(() => window.HarmoniousClient.fakeNavigateTo("/eadgbe-frets/0,2,2,1,0,0"));
       const fretPage = await waitForRoute(page, "/eadgbe-frets/0,2,2,1,0,0.html", (snapshot) => snapshot.fretEntries > 0 && snapshot.compatImages > 0);
       if (fretPage.fretEntries <= 0) {
         throw new Error(`fret search pane did not populate: ${JSON.stringify(fretPage)}`);
       }
+      const fretSearchShellHref = await fragmentLinkSnapshot(page, ".inside-frets-search");
+      assertShellFragmentLinks(fretSearchShellHref, "fret search fragment");
 
       const beforeRandomRoute = await page.evaluate(() => window.__lmtHarmoniousSpa.lastRoute);
       await page.evaluate(() => window.HarmoniousClient.navigateRandomly());

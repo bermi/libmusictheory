@@ -11,7 +11,7 @@ Build `libmusictheory`, a Zig library exposing a C ABI that implements the compl
 
 - Draft: 0001
 - In progress: none
-- Completed: 0002, 0003, 0004, 0005, 0006, 0007, 0008, 0009, 0010, 0011, 0012, 0013, 0014, 0015, 0016, 0017, 0018, 0019, 0020, 0021, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0032, 0033, 0034, 0035, 0036, 0037, 0038, 0039, 0040, 0041, 0042, 0043, 0044, 0045, 0046, 0047, 0048, 0049, 0050, 0051, 0052, 0053, 0054, 0055, 0056, 0057, 0058, 0059, 0060, 0061, 0062, 0063, 0064, 0065, 0066, 0067, 0068, 0069, 0070, 0071
+- Completed: 0002, 0003, 0004, 0005, 0006, 0007, 0008, 0009, 0010, 0011, 0012, 0013, 0014, 0015, 0016, 0017, 0018, 0019, 0020, 0021, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0032, 0033, 0034, 0035, 0036, 0037, 0038, 0039, 0040, 0041, 0042, 0043, 0044, 0045, 0046, 0047, 0048, 0049, 0050, 0051, 0052, 0053, 0054, 0055, 0056, 0057, 0058, 0059, 0060, 0061, 0062, 0063, 0064, 0065, 0066, 0067, 0068, 0069, 0070, 0071, 0072
 
 ## Plan Dependencies (Execute in Order)
 
@@ -154,6 +154,8 @@ Build `libmusictheory`, a Zig library exposing a C ABI that implements the compl
      ↓ depends on 0068, 0069
 0071-static-host-ready-harmonious-spa → ship static-host `404.html` fallback recovery, synchronized shell canonical metadata, and favicon-clean bundle behavior
      ↓ depends on 0068, 0069, 0070
+0072-shell-form-fragment-links → rewrite locally reconstructed search and key-slider fragment links back through the SPA shell for copy/new-tab correctness
+     ↓ depends on 0068, 0069, 0070, 0071
 ```
 
 ## Dependency Graph (Visual)
@@ -329,6 +331,11 @@ Keep keyboard and fretboard live edits on shell-form URLs so the SPA remains sin
 Make the single-entry shell recover correctly on plain static hosts that serve `404.html` for unknown deep routes, while keeping the visible URL canonical on `index.html?route=...`.
 
 **Deliverable**: a static-host-ready SPA bundle with installed `404.html`, verified raw-route recovery into `index.html?route=...`, synchronized shell canonical metadata, and built-in favicon handling that avoids `favicon.ico` network noise.
+
+### Phase 7.11 (Completed Additive): Shell-Form Fragment Links (Plan 0072)
+Keep SPA-generated fragment links consistent with the shell URL model so search results and key-slider cards do not leak raw route URLs when opened in a new tab or copied from the DOM.
+
+**Deliverable**: Playwright-verified search and key-slider fragments whose generated page-route anchors use `index.html?route=...` plus `data-lmt-shell-route`, while non-page links remain unchanged.
 
 ## Research Documents Index
 
