@@ -55,7 +55,7 @@ Before implementation:
 
 ## Implementation History (Point-in-Time)
 
-- Commit: `<pending>`
+- Commit: `e34e1b50c195379a97de4d46625d2bd90e734c63`
 - Date: `2026-03-20`
 - Shipped behavior:
   - quarantined Harmonious parity/proof/SPA instructions into a dedicated internal doc
