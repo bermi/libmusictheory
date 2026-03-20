@@ -2,7 +2,7 @@
 
 > Dependencies: 0073, 0074
 
-Status: Draft
+Status: Completed
 
 ## Summary
 
@@ -49,3 +49,22 @@ Before implementation:
 - quickstart examples exist for native and browser usage
 - `./verify.sh` passes
 
+## Completion Status
+
+- Completed and verified:
+  - `/Users/bermi/code/libmusictheory/README.md` now exists as the library-facing entry point with explicit public/internal surface classification
+  - the root README now documents the stable API contract, return-value conventions, and memory/lifetime ownership rules
+  - the root README now includes quickstarts for C ABI, Zig source-based module usage, and the standalone browser/WASM docs bundle
+  - `/Users/bermi/code/libmusictheory/include/libmusictheory.h` now documents the stable public C ABI, caller-owned buffer expectations, string lifetime rules, and the experimental/internal surface split
+
+## Implementation History (Point-in-Time)
+
+- Commit: `<pending>`
+- Date: `2026-03-20`
+- Shipped behavior:
+  - added the first root README for standalone consumers instead of forcing them through Harmonious verification docs
+  - documented stable, experimental, and internal surfaces in both the root README and the public C header
+  - documented caller-owned buffer rules, string lifetime constraints, and the current browser/WASM entry point
+- Verification commands:
+  - `./verify.sh`
+  - `zig build verify`

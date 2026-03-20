@@ -8,6 +8,28 @@
 extern "C" {
 #endif
 
+/*
+ * Stable public C ABI for libmusictheory.
+ *
+ * Surface classes:
+ * - Stable public C ABI: declarations in this header, except those marked as
+ *   experimental.
+ * - Experimental APIs: lmt_raster_is_enabled and lmt_raster_demo_rgba.
+ * - Internal Harmonious verification/proof APIs: declarations in
+ *   libmusictheory_compat.h.
+ *
+ * Ownership and lifetime:
+ * - Caller-owned output buffers are required for list, fret-position, guide,
+ *   URL, SVG, and RGBA output APIs.
+ * - String-returning APIs return pointers into shared internal rotating
+ *   storage. Copy the bytes you need before another string-returning call.
+ *   Returned pointers must not be freed and are not thread-safe.
+ * - SVG writers return the total SVG length required. Passing buf = NULL and
+ *   buf_size = 0 is the supported size-query path for those APIs.
+ * - Count-returning APIs may be used as sizing passes where supported by the
+ *   specific function contract.
+ */
+
 typedef uint16_t lmt_pitch_class_set;
 typedef uint8_t lmt_pitch_class;
 typedef uint8_t lmt_midi_note;
@@ -112,6 +134,8 @@ uint32_t lmt_svg_clock_optc(lmt_pitch_class_set set, char *buf, uint32_t buf_siz
 uint32_t lmt_svg_fret(const int8_t *frets, char *buf, uint32_t buf_size);
 uint32_t lmt_svg_fret_n(const int8_t *frets, uint32_t string_count, uint32_t window_start, uint32_t visible_frets, char *buf, uint32_t buf_size);
 uint32_t lmt_svg_chord_staff(lmt_chord_type type, lmt_pitch_class root, char *buf, uint32_t buf_size);
+
+/* Experimental APIs: useful for demos and renderer work, not yet stable ABI. */
 uint32_t lmt_raster_is_enabled(void);
 uint32_t lmt_raster_demo_rgba(uint32_t width, uint32_t height, uint8_t *out_rgba, uint32_t out_rgba_size);
 

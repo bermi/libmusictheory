@@ -609,6 +609,20 @@ else
     unverified "0074 public api split guardrail (compat header split not yet implemented)"
 fi
 
+if [ -f "$ROOT_DIR/README.md" ]; then
+    check_cmd "cd '$ROOT_DIR' && rg -n '^# libmusictheory$|^## Stable API Contract$|^## Memory And Lifetime$|^## Quickstart \\(C ABI\\)$|^## Quickstart \\(Zig\\)$|^## Quickstart \\(Browser/WASM\\)$|^## Public vs Internal Surfaces$' README.md" "0076 root readme guardrail (library-facing README sections present)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'stable public surface|experimental|internal|libmusictheory_compat\\.h|wasm-docs|wasm-demo|wasm-scaled-render-parity|wasm-native-rgba-proof|wasm-harmonious-spa' README.md" "0076 root readme guardrail (surface classification and bundle boundaries documented)"
+    check_cmd "cd '$ROOT_DIR' && ! rg -n 'copy this file|save this file' README.md" "0076 root readme guardrail (standalone docs stay user-facing, not editor-instruction driven)"
+else
+    unverified "0076 root readme guardrail (root README.md not yet implemented)"
+fi
+
+if [ -f "$ROOT_DIR/include/libmusictheory.h" ]; then
+    check_cmd "cd '$ROOT_DIR' && rg -n 'Stable public C ABI|Ownership and lifetime|Caller-owned output buffers|String-returning APIs|Experimental APIs|Internal Harmonious verification/proof APIs' include/libmusictheory.h" "0076 public header contract guardrail (stable/experimental/internal and lifetime rules documented)"
+else
+    unverified "0076 public header contract guardrail (public header missing)"
+fi
+
 if [ -f "$ROOT_DIR/examples/wasm-demo/scaled-render-parity.html" ] && rg -Fq 'step("wasm-scaled-render-parity"' "$ROOT_DIR/build.zig"; then
     check_cmd "cd '$ROOT_DIR' && zig build wasm-scaled-render-parity 2>&1" "0059 scaled render parity bundle build"
     check_cmd "cd '$ROOT_DIR' && ! rg -n \"\\.scale\\(|transform:\\s*scale|style\\.transform\" examples/wasm-demo/scaled-render-parity.js" "0059 scaled render parity anti-cheat guardrail (no css/post-bitmap scaling shortcut)"
