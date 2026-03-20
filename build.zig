@@ -149,6 +149,7 @@ pub fn build(b: *std.Build) void {
 
     b.installArtifact(shared_lib);
     static_lib.installHeader(b.path("include/libmusictheory.h"), "libmusictheory.h");
+    static_lib.installHeader(b.path("include/libmusictheory_compat.h"), "libmusictheory_compat.h");
 
     // ── WASM demo artifact + assets ─────────────────────────────
     const wasm_target = b.resolveTargetQuery(.{
@@ -206,7 +207,7 @@ pub fn build(b: *std.Build) void {
         "wasm-demo/app.js",
     );
 
-    const wasm_demo_step = b.step("wasm-demo", "Build WebAssembly interactive demo");
+    const wasm_demo_step = b.step("wasm-demo", "Build internal exact SVG parity validation bundle");
     wasm_demo_step.dependOn(&wasm_exe.step);
     wasm_demo_step.dependOn(&install_wasm.step);
     wasm_demo_step.dependOn(&install_validation_html.step);
@@ -264,7 +265,7 @@ pub fn build(b: *std.Build) void {
         "wasm-docs/validation.js",
     );
 
-    const wasm_docs_step = b.step("wasm-docs", "Build WebAssembly full interactive docs bundle");
+    const wasm_docs_step = b.step("wasm-docs", "Build WebAssembly standalone interactive docs bundle");
     wasm_docs_step.dependOn(&wasm_docs_exe.step);
     wasm_docs_step.dependOn(&install_docs_wasm.step);
     wasm_docs_step.dependOn(&install_docs_index.step);
@@ -295,7 +296,7 @@ pub fn build(b: *std.Build) void {
         "wasm-harmonious-spa/harmonious-spa.js",
     );
 
-    const wasm_harmonious_spa_step = b.step("wasm-harmonious-spa", "Build harmoniousapp.net SPA shell backed by libmusictheory WASM");
+    const wasm_harmonious_spa_step = b.step("wasm-harmonious-spa", "Build internal harmoniousapp.net SPA verification shell");
     wasm_harmonious_spa_step.dependOn(&wasm_docs_exe.step);
     wasm_harmonious_spa_step.dependOn(&install_harmonious_spa_wasm.step);
     wasm_harmonious_spa_step.dependOn(&install_harmonious_spa_html.step);
@@ -373,7 +374,7 @@ pub fn build(b: *std.Build) void {
         "wasm-scaled-render-parity/styles.css",
     );
 
-    const wasm_scaled_render_parity_step = b.step("wasm-scaled-render-parity", "Build WebAssembly scaled render parity bundle");
+    const wasm_scaled_render_parity_step = b.step("wasm-scaled-render-parity", "Build internal scaled render parity verification bundle");
     wasm_scaled_render_parity_step.dependOn(&wasm_render_compare_exe.step);
     wasm_scaled_render_parity_step.dependOn(&install_scaled_render_parity_wasm.step);
     wasm_scaled_render_parity_step.dependOn(&install_scaled_render_parity_html.step);
@@ -408,7 +409,7 @@ pub fn build(b: *std.Build) void {
         "wasm-native-rgba-proof/styles.css",
     );
 
-    const wasm_native_rgba_proof_step = b.step("wasm-native-rgba-proof", "Build WebAssembly native RGBA proof bundle");
+    const wasm_native_rgba_proof_step = b.step("wasm-native-rgba-proof", "Build internal native RGBA proof verification bundle");
     wasm_native_rgba_proof_step.dependOn(&wasm_render_compare_exe.step);
     wasm_native_rgba_proof_step.dependOn(&install_native_rgba_proof_wasm.step);
     wasm_native_rgba_proof_step.dependOn(&install_native_rgba_proof_html.step);
@@ -457,9 +458,39 @@ pub fn build(b: *std.Build) void {
 
     const run_c_smoke_shared = b.addRunArtifact(c_smoke_shared);
 
+    const c_compat_smoke_static = b.addExecutable(.{
+        .name = "c_api_compat_smoke_static",
+        .target = target,
+        .optimize = optimize,
+    });
+    c_compat_smoke_static.linkLibC();
+    c_compat_smoke_static.addIncludePath(b.path("include"));
+    c_compat_smoke_static.addCSourceFile(.{
+        .file = b.path("examples/c/compat_smoke.c"),
+    });
+    c_compat_smoke_static.linkLibrary(static_lib);
+
+    const run_c_compat_smoke_static = b.addRunArtifact(c_compat_smoke_static);
+
+    const c_compat_smoke_shared = b.addExecutable(.{
+        .name = "c_api_compat_smoke_shared",
+        .target = target,
+        .optimize = optimize,
+    });
+    c_compat_smoke_shared.linkLibC();
+    c_compat_smoke_shared.addIncludePath(b.path("include"));
+    c_compat_smoke_shared.addCSourceFile(.{
+        .file = b.path("examples/c/compat_smoke.c"),
+    });
+    c_compat_smoke_shared.linkLibrary(shared_lib);
+
+    const run_c_compat_smoke_shared = b.addRunArtifact(c_compat_smoke_shared);
+
     const c_smoke_step = b.step("c-smoke", "Run C ABI smoke tests");
     c_smoke_step.dependOn(&run_c_smoke_static.step);
     c_smoke_step.dependOn(&run_c_smoke_shared.step);
+    c_smoke_step.dependOn(&run_c_compat_smoke_static.step);
+    c_smoke_step.dependOn(&run_c_compat_smoke_shared.step);
 
     // ── Format check ────────────────────────────────────────────
     const fmt = b.addFmt(.{
@@ -475,5 +506,7 @@ pub fn build(b: *std.Build) void {
     verify_step.dependOn(&run_tests.step);
     verify_step.dependOn(&run_c_smoke_static.step);
     verify_step.dependOn(&run_c_smoke_shared.step);
+    verify_step.dependOn(&run_c_compat_smoke_static.step);
+    verify_step.dependOn(&run_c_compat_smoke_shared.step);
     verify_step.dependOn(&fmt.step);
 }

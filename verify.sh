@@ -596,6 +596,19 @@ else
     unverified "0063 generic fret semantic ABI guardrail (header or c api missing)"
 fi
 
+if [ -f "$ROOT_DIR/include/libmusictheory_compat.h" ]; then
+    check_cmd "cd '$ROOT_DIR' && ! rg -n \"lmt_bitmap_proof_scale_numerator|lmt_bitmap_compat_|lmt_wasm_scratch_ptr|lmt_wasm_scratch_size|lmt_svg_compat_\" include/libmusictheory.h" "0074 public api split guardrail (public header excludes compat/proof symbols)"
+    check_cmd "cd '$ROOT_DIR' && rg -n \"#include \\\"libmusictheory\\.h\\\"|lmt_bitmap_proof_scale_numerator|lmt_bitmap_compat_|lmt_wasm_scratch_ptr|lmt_wasm_scratch_size|lmt_svg_compat_\" include/libmusictheory_compat.h" "0074 public api split guardrail (compat header carries separated compat/proof symbols)"
+    check_cmd "cd '$ROOT_DIR' && rg -n \"libmusictheory_compat\\.h|internal exact SVG parity validation bundle|internal scaled render parity verification bundle|internal native RGBA proof verification bundle|internal harmoniousapp\\.net SPA verification shell|standalone interactive docs bundle\" build.zig" "0074 build surface split guardrail (compat header install and public/internal target labeling wired)"
+    if [ -f "$ROOT_DIR/examples/c/compat_smoke.c" ]; then
+        check_cmd "cd '$ROOT_DIR' && rg -n \"libmusictheory_compat\\.h|lmt_svg_compat_kind_count|lmt_bitmap_proof_scale_numerator\" examples/c/compat_smoke.c build.zig" "0074 compat header smoke guardrail (separate compat include exercised in C smoke path)"
+    else
+        unverified "0074 compat header smoke guardrail (examples/c/compat_smoke.c not yet implemented)"
+    fi
+else
+    unverified "0074 public api split guardrail (compat header split not yet implemented)"
+fi
+
 if [ -f "$ROOT_DIR/examples/wasm-demo/scaled-render-parity.html" ] && rg -Fq 'step("wasm-scaled-render-parity"' "$ROOT_DIR/build.zig"; then
     check_cmd "cd '$ROOT_DIR' && zig build wasm-scaled-render-parity 2>&1" "0059 scaled render parity bundle build"
     check_cmd "cd '$ROOT_DIR' && ! rg -n \"\\.scale\\(|transform:\\s*scale|style\\.transform\" examples/wasm-demo/scaled-render-parity.js" "0059 scaled render parity anti-cheat guardrail (no css/post-bitmap scaling shortcut)"

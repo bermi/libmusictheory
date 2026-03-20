@@ -1,5 +1,15 @@
 # WASM Browser Bundles
 
+This directory now contains two kinds of browser surfaces:
+
+- standalone/public:
+  - `wasm-docs`
+- internal verification/regression:
+  - `wasm-demo`
+  - `wasm-scaled-render-parity`
+  - `wasm-native-rgba-proof`
+  - `wasm-harmonious-spa`
+
 ## Exact SVG Parity
 
 ```bash
@@ -8,6 +18,8 @@ python3 -m http.server --directory zig-out/wasm-demo 8000
 ```
 
 Validation page: <http://localhost:8000/validation.html>.
+
+This is an internal verification bundle, not the primary standalone release surface.
 
 If `tmp/harmoniousapp.net/` exists locally, the reference SVG tree is mirrored into:
 
@@ -64,6 +76,8 @@ python3 -m http.server --directory zig-out/wasm-docs 8001
 
 Open <http://localhost:8001/index.html>.
 
+This is the primary standalone/public browser bundle today.
+
 The docs bundle now exposes both:
 
 - six-string compatibility wrappers such as `lmt_svg_fret`
@@ -79,6 +93,8 @@ python3 -m http.server --directory zig-out/wasm-harmonious-spa 8004
 ```
 
 Open <http://localhost:8004/index.html>.
+
+This is an internal local regression shell that replays the Harmonious site structure against `libmusictheory`.
 
 The shell is now directly bootable through explicit route parameters on a plain static host:
 

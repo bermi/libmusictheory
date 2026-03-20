@@ -5,6 +5,7 @@ const pcs = @import("../pitch_class_set.zig");
 
 const c = @cImport({
     @cInclude("libmusictheory.h");
+    @cInclude("libmusictheory_compat.h");
 });
 
 const LmtKeyContext = extern struct {
