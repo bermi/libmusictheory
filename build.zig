@@ -53,6 +53,36 @@ const full_demo_export_symbols = [_][]const u8{
     "lmt_svg_compat_generate",
 };
 
+const gallery_export_symbols = [_][]const u8{
+    "lmt_pcs_from_list",
+    "lmt_pcs_to_list",
+    "lmt_pcs_cardinality",
+    "lmt_pcs_transpose",
+    "lmt_pcs_invert",
+    "lmt_pcs_complement",
+    "lmt_prime_form",
+    "lmt_forte_prime",
+    "lmt_is_cluster_free",
+    "lmt_evenness_distance",
+    "lmt_scale",
+    "lmt_mode",
+    "lmt_spell_note",
+    "lmt_spell_note_parts",
+    "lmt_chord",
+    "lmt_chord_name",
+    "lmt_roman_numeral",
+    "lmt_roman_numeral_parts",
+    "lmt_fret_to_midi_n",
+    "lmt_midi_to_fret_positions_n",
+    "lmt_generate_voicings_n",
+    "lmt_pitch_class_guide_n",
+    "lmt_frets_to_url_n",
+    "lmt_url_to_frets_n",
+    "lmt_svg_clock_optc",
+    "lmt_svg_fret_n",
+    "lmt_svg_chord_staff",
+};
+
 const render_compare_export_symbols = [_][]const u8{
     "lmt_wasm_scratch_ptr",
     "lmt_wasm_scratch_size",
@@ -274,6 +304,51 @@ pub fn build(b: *std.Build) void {
     wasm_docs_step.dependOn(&install_docs_validation_html.step);
     wasm_docs_step.dependOn(&install_docs_validation_js.step);
     maybeInstallDirectory(b, wasm_docs_step, "tmp/harmoniousapp.net", "wasm-docs/tmp/harmoniousapp.net");
+
+    const wasm_gallery_mod = b.createModule(.{
+        .root_source_file = b.path("src/root.zig"),
+        .target = wasm_target,
+        .optimize = .ReleaseSmall,
+    });
+    const wasm_gallery_build_options = b.addOptions();
+    wasm_gallery_build_options.addOption(bool, "enable_raster_backend", false);
+    wasm_gallery_build_options.addOption(bool, "enable_harmonious_generic_fallbacks", false);
+    wasm_gallery_mod.addOptions("build_options", wasm_gallery_build_options);
+    wasm_gallery_mod.export_symbol_names = &gallery_export_symbols;
+
+    const wasm_gallery_exe = b.addExecutable(.{
+        .name = "libmusictheory_gallery",
+        .root_module = wasm_gallery_mod,
+    });
+    configureWasmExe(wasm_gallery_exe);
+
+    const install_gallery_wasm = b.addInstallFileWithDir(
+        wasm_gallery_exe.getEmittedBin(),
+        .prefix,
+        "wasm-gallery/libmusictheory.wasm",
+    );
+    const install_gallery_index = b.addInstallFileWithDir(
+        b.path("examples/wasm-gallery/index.html"),
+        .prefix,
+        "wasm-gallery/index.html",
+    );
+    const install_gallery_js = b.addInstallFileWithDir(
+        b.path("examples/wasm-gallery/gallery.js"),
+        .prefix,
+        "wasm-gallery/gallery.js",
+    );
+    const install_gallery_styles = b.addInstallFileWithDir(
+        b.path("examples/wasm-gallery/styles.css"),
+        .prefix,
+        "wasm-gallery/styles.css",
+    );
+
+    const wasm_gallery_step = b.step("wasm-gallery", "Build WebAssembly standalone gallery bundle");
+    wasm_gallery_step.dependOn(&wasm_gallery_exe.step);
+    wasm_gallery_step.dependOn(&install_gallery_wasm.step);
+    wasm_gallery_step.dependOn(&install_gallery_index.step);
+    wasm_gallery_step.dependOn(&install_gallery_js.step);
+    wasm_gallery_step.dependOn(&install_gallery_styles.step);
 
     const install_harmonious_spa_wasm = b.addInstallFileWithDir(
         wasm_docs_exe.getEmittedBin(),

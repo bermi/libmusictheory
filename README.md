@@ -19,6 +19,7 @@ The stable public surface is intentionally smaller than the full repository.
   - `/Users/bermi/code/libmusictheory/src/root.zig` for core Zig consumers
   - `zig build`, `zig build test`, `zig build verify`
   - `zig build wasm-docs` as the standalone browser bundle
+  - `zig build wasm-gallery` as the standalone creative example bundle
 - Experimental surface:
   - `lmt_raster_is_enabled`
   - `lmt_raster_demo_rgba`
@@ -146,7 +147,7 @@ The stable Zig-facing namespaces are the core theory and rendering modules expor
 
 ## Quickstart (Browser/WASM)
 
-The public browser-facing entry today is the standalone docs bundle:
+The public browser-facing entries today are the standalone docs bundle and the standalone gallery bundle.
 
 ```bash
 cd /Users/bermi/code/libmusictheory
@@ -155,6 +156,16 @@ python3 -m http.server --directory /Users/bermi/code/libmusictheory/zig-out/wasm
 ```
 
 Open [http://localhost:8001/index.html](http://localhost:8001/index.html).
+
+For a gallery that uses only the stable public APIs:
+
+```bash
+cd /Users/bermi/code/libmusictheory
+zig build wasm-gallery
+python3 -m http.server --directory /Users/bermi/code/libmusictheory/zig-out/wasm-gallery 8002
+```
+
+Open [http://localhost:8002/index.html](http://localhost:8002/index.html).
 
 If you want to call exports directly from JavaScript, start with scalar APIs that do not require manual buffer setup:
 

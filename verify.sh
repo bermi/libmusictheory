@@ -631,6 +631,26 @@ else
     unverified "0075 doc quarantine guardrail (root README or docs/internal/harmonious-regression.md missing)"
 fi
 
+if [ -f "$ROOT_DIR/examples/wasm-gallery/index.html" ] && rg -Fq 'step("wasm-gallery"' "$ROOT_DIR/build.zig"; then
+    check_cmd "cd '$ROOT_DIR' && zig build wasm-gallery 2>&1" "0077 standalone gallery bundle build"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'standalone gallery bundle|wasm-gallery/index.html|wasm-gallery/gallery.js|wasm-gallery/styles.css' build.zig" "0077 standalone gallery guardrail (bundle install and target wiring present)"
+    check_cmd "cd '$ROOT_DIR' && ! rg -n 'validation\\.js|render-compare-common\\.js|harmonious-spa\\.js|lmt_svg_compat_|lmt_bitmap_compat_|lmt_wasm_scratch_ptr|lmt_wasm_scratch_size|tmp/harmoniousapp\\.net' examples/wasm-gallery scripts/validate_wasm_gallery_playwright.mjs -g '!zig-out/**'" "0077 standalone gallery guardrail (gallery sources stay on public APIs and do not import compat-only paths)"
+    check_cmd "cd '$ROOT_DIR' && rg -n '__lmtGallerySummary|lmt_pcs_from_list|lmt_mode|lmt_chord_name|lmt_svg_clock_optc|lmt_svg_fret_n|lmt_generate_voicings_n' examples/wasm-gallery/gallery.js scripts/validate_wasm_gallery_playwright.mjs >/dev/null" "0077 standalone gallery guardrail (public-api gallery scenes and summary object are wired)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'wasm-gallery|gallery' README.md" "0077 standalone gallery guardrail (root readme mentions gallery bundle)"
+    if [ -f "$ROOT_DIR/scripts/check_wasm_exports.mjs" ] && command -v node >/dev/null 2>&1; then
+        check_cmd "cd '$ROOT_DIR' && test -f zig-out/wasm-gallery/libmusictheory.wasm && node scripts/check_wasm_exports.mjs --profile gallery --wasm zig-out/wasm-gallery/libmusictheory.wasm" "0077 standalone gallery export guardrail (public gallery exports are present)"
+    else
+        unverified "0077 standalone gallery export guardrail (scripts/check_wasm_exports.mjs or node missing)"
+    fi
+    if [ -f "$ROOT_DIR/scripts/validate_wasm_gallery_playwright.mjs" ] && command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
+        check_cmd "cd '$ROOT_DIR' && node scripts/validate_wasm_gallery_playwright.mjs 2>&1" "0077 standalone gallery playwright smoke validation"
+    else
+        unverified "0077 standalone gallery playwright smoke validation (script or runtime missing)"
+    fi
+else
+    unverified "0077 standalone gallery bundle build (gallery target not yet implemented)"
+fi
+
 if [ -f "$ROOT_DIR/examples/wasm-demo/scaled-render-parity.html" ] && rg -Fq 'step("wasm-scaled-render-parity"' "$ROOT_DIR/build.zig"; then
     check_cmd "cd '$ROOT_DIR' && zig build wasm-scaled-render-parity 2>&1" "0059 scaled render parity bundle build"
     check_cmd "cd '$ROOT_DIR' && ! rg -n \"\\.scale\\(|transform:\\s*scale|style\\.transform\" examples/wasm-demo/scaled-render-parity.js" "0059 scaled render parity anti-cheat guardrail (no css/post-bitmap scaling shortcut)"
