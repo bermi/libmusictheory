@@ -58,7 +58,7 @@ Before implementation:
 
 ## Implementation History (Point-in-Time)
 
-- Commit: `<pending>`
+- Commit: `f7dd375f0ca7fe046e553491a6c060378805a001`
 - Date: `2026-03-20`
 - Shipped behavior:
   - split the installed C header surface into standalone vs compatibility/proof concerns
