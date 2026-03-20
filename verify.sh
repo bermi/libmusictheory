@@ -5,6 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT_DIR"
 
 FAIL=0
+RELEASE_SURFACE_SMOKE_OK=0
 
 section() {
     echo ""
@@ -651,6 +652,29 @@ else
     unverified "0077 standalone gallery bundle build (gallery target not yet implemented)"
 fi
 
+if [ -f "$ROOT_DIR/docs/plans/in_progress/0078-release-packaging-and-smoke-matrix.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0078-release-packaging-and-smoke-matrix.md" ]; then
+    check_cmd "cd '$ROOT_DIR' && test -f VERSION && test -f CHANGELOG.md && test -f RELEASE_CHECKLIST.md && test -f docs/release/artifacts.md && test -f docs/release/smoke-matrix.md && test -f docs/release/versioning.md && test -f scripts/release_smoke.sh" "0078 release packaging guardrail (docs, scaffolds, and smoke script present)"
+    check_cmd "cd '$ROOT_DIR' && rg -n '^# Release Artifacts$|^## Public Native Artifacts$|^## Public Browser Artifacts$|^## Internal Artifacts Still Present In Repo$|^## Build Targets$' docs/release/artifacts.md >/dev/null && rg -n '^# Release Smoke Matrix$|^## Canonical Smoke Command$|^## Required Smoke Lanes$|^## Optional Extended Regression$' docs/release/smoke-matrix.md >/dev/null && rg -n '^# Release Versioning$|^## Version Source$|^## Changelog Policy$|^## Compatibility Rules$|^## Tag Shape$' docs/release/versioning.md >/dev/null && rg -n '^# Changelog$|^## \\[Unreleased\\]$|^## \\[0\\.1\\.0\\] - TBD$' CHANGELOG.md >/dev/null && rg -n '^# Release Checklist$|^## Scope Freeze$|^## Verification$|^## Artifacts$|^## Versioning And Notes$|^## Tagging$' RELEASE_CHECKLIST.md >/dev/null" "0078 release packaging guardrail (artifact, smoke, changelog, versioning, and checklist docs structured)"
+    if command -v python3 >/dev/null 2>&1; then
+        check_cmd "cd '$ROOT_DIR' && python3 -c \"from pathlib import Path; import re, sys; value = Path('VERSION').read_text(encoding='utf-8').strip(); print(value); sys.exit(0 if re.fullmatch(r'[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?', value) else 1)\"" "0078 release packaging guardrail (VERSION is semver-like)"
+    else
+        unverified "0078 release packaging guardrail (VERSION is semver-like) (python3 missing)"
+    fi
+    check_cmd "cd '$ROOT_DIR' && rg -n 'docs/release/artifacts\\.md|docs/release/smoke-matrix\\.md|docs/release/versioning\\.md|RELEASE_CHECKLIST\\.md|CHANGELOG\\.md|VERSION' README.md >/dev/null" "0078 release packaging guardrail (root readme points to release docs)"
+    if command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
+        if bash -lc "cd '$ROOT_DIR' && bash scripts/release_smoke.sh 2>&1"; then
+            pass "0078 standalone release smoke matrix"
+            RELEASE_SURFACE_SMOKE_OK=1
+        else
+            fail "0078 standalone release smoke matrix"
+        fi
+    else
+        unverified "0078 standalone release smoke matrix (node/npm/python3 missing)"
+    fi
+else
+    unverified "0078 release packaging guardrail (plan not yet started)"
+fi
+
 if [ -f "$ROOT_DIR/examples/wasm-demo/scaled-render-parity.html" ] && rg -Fq 'step("wasm-scaled-render-parity"' "$ROOT_DIR/build.zig"; then
     check_cmd "cd '$ROOT_DIR' && zig build wasm-scaled-render-parity 2>&1" "0059 scaled render parity bundle build"
     check_cmd "cd '$ROOT_DIR' && ! rg -n \"\\.scale\\(|transform:\\s*scale|style\\.transform\" examples/wasm-demo/scaled-render-parity.js" "0059 scaled render parity anti-cheat guardrail (no css/post-bitmap scaling shortcut)"
@@ -1000,7 +1024,7 @@ fi
 # ───────────────────────────────────────────
 section "Summary"
 
-if [ "$FAIL" -eq 0 ] && [ -f "$ROOT_DIR/README.md" ] && [ -f "$ROOT_DIR/include/libmusictheory.h" ] && [ -f "$ROOT_DIR/zig-out/wasm-docs/index.html" ] && [ -f "$ROOT_DIR/zig-out/wasm-docs/libmusictheory.wasm" ]; then
+if [ "$RELEASE_SURFACE_SMOKE_OK" -eq 1 ]; then
     echo "  RELEASE_SURFACE_SMOKE=yes"
 else
     echo "  RELEASE_SURFACE_SMOKE=no"

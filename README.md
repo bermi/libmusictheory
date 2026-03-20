@@ -185,5 +185,11 @@ Low-level browser buffer management is still evolving. The standalone contract t
 
 - `/Users/bermi/code/libmusictheory/docs/research/`
 - `/Users/bermi/code/libmusictheory/docs/architecture/graphs.md`
+- `/Users/bermi/code/libmusictheory/docs/release/artifacts.md`
+- `/Users/bermi/code/libmusictheory/docs/release/smoke-matrix.md`
+- `/Users/bermi/code/libmusictheory/docs/release/versioning.md`
+- `/Users/bermi/code/libmusictheory/RELEASE_CHECKLIST.md`
+- `/Users/bermi/code/libmusictheory/CHANGELOG.md`
+- `/Users/bermi/code/libmusictheory/VERSION`
 - `/Users/bermi/code/libmusictheory/docs/internal/harmonious-regression.md`
 - `/Users/bermi/code/libmusictheory/examples/wasm-demo/README.md`
