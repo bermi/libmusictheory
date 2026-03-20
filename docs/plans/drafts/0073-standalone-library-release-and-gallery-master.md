@@ -65,6 +65,126 @@ The branch remains mergeable only if:
 - exact SVG parity stays green
 - native RGBA proof stays green
 
+## Recovered Planning Notes
+
+This draft restores the richer coordination detail from the original release-phase planning. The plan remains a draft because the phase is not fully closed while `0078` is still only planned.
+
+### Public Release Story
+
+The standalone branch should communicate a clean library story:
+
+- `libmusictheory` is a reusable theory and rendering library
+- Harmonious parity/proof work is the internal correctness harness
+- the public user journey should start from:
+  - `/Users/bermi/code/libmusictheory/README.md`
+  - `zig build wasm-docs`
+  - `zig build wasm-gallery`
+- the public install story should center on:
+  - `/Users/bermi/code/libmusictheory/include/libmusictheory.h`
+  - native static/shared install artifacts
+  - public browser/WASM bundles
+
+### Internal Infrastructure Story
+
+The following remain in-repo and must stay green, but should not define the release identity:
+
+- exact SVG parity
+- scaled render parity
+- native RGBA proof
+- Harmonious SPA shell
+- local corpus-dependent regression bundles and docs
+
+### Target Public Surfaces
+
+At release-close, the public-facing surfaces should be:
+
+- standalone C ABI:
+  - `/Users/bermi/code/libmusictheory/include/libmusictheory.h`
+- standalone docs bundle:
+  - `zig build wasm-docs`
+- standalone gallery bundle:
+  - `zig build wasm-gallery`
+- native install outputs:
+  - `zig build`
+  - `zig build c-smoke`
+
+The following should remain clearly internal:
+
+- `/Users/bermi/code/libmusictheory/include/libmusictheory_compat.h`
+- `zig build wasm-demo`
+- `zig build wasm-scaled-render-parity`
+- `zig build wasm-native-rgba-proof`
+- `zig build wasm-harmonious-spa`
+
+### Release-Quality Constraints
+
+The standalone release phase is only honest if all of the following are true:
+
+- public headers do not force consumers to learn Harmonious compatibility concepts
+- public docs do not rely on local `tmp/harmoniousapp.net` data
+- gallery scenes use only public APIs
+- internal regression tracks remain available and green
+- release-oriented smoke verification is separate from the full local regression harness
+
+### Phase Gates
+
+#### Gate 1 — Surface Separation
+
+Satisfied by `0074`:
+
+- public vs compat header split
+- standalone vs internal build-target labeling
+- public install story independent of local Harmonious data
+
+#### Gate 2 — Story Separation
+
+Satisfied by `0075` and `0076`:
+
+- root docs tell a library story first
+- Harmonious tooling is documented as internal infrastructure
+- stable/experimental/internal API boundaries are explicit
+
+#### Gate 3 — Public Demonstration
+
+Satisfied by `0077`:
+
+- a creative gallery exists
+- gallery uses only public APIs
+- gallery is separately smoke-tested
+
+#### Gate 4 — Release Closure
+
+Still owned by `0078`:
+
+- release artifact set
+- versioning/changelog scaffold
+- release checklist
+- explicit standalone release smoke matrix
+
+### Execution Order
+
+The intended execution order for this phase is:
+
+1. `0074` public API and build surface split
+2. `0076` root README and stable API contract
+3. `0077` standalone gallery and example bundle
+4. `0075` Harmonious verification quarantine
+5. `0078` release packaging and smoke matrix
+
+That order keeps the library surface clean before polishing the outward-facing gallery and release workflow.
+
+### Current Point-in-Time Status
+
+As of this restored draft state:
+
+- `0074` is completed
+- `0075` is completed
+- `0076` is completed
+- `0077` is completed
+- `0078` is restored as a draft after the reverted implementation pass
+
+So the master plan is functionally in its final closure stage, but not yet complete.
+
 ## Workstreams
 
 ### 1. Public API And Build Surface Split
@@ -97,6 +217,15 @@ Plan: `0078`
 
 Close the release branch with packaging, versioning, smoke tests, and a release checklist that validates the standalone surface separately from the Harmonious verification harness.
 
+## Completion Criteria For The Master Phase
+
+`0073` should only be considered complete when:
+
+- `0074`, `0075`, `0076`, `0077`, and `0078` are all completed
+- the root standalone story is coherent without referencing Harmonious first
+- `./verify.sh` reports a passing standalone release smoke path
+- the full Harmonious regression infrastructure still passes when local data is available
+
 ## Target End State
 
 At the end of this phase, the repo should have:
@@ -122,4 +251,3 @@ At the end of this phase, the repo should have:
 - gallery examples are local, verified, and use only public APIs
 - the internal verification tracks remain intact and green
 - `./verify.sh` passes
-
