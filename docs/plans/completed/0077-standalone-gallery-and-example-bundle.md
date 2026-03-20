@@ -66,7 +66,7 @@ Before implementation:
 
 ## Implementation History (Point-in-Time)
 
-- Commit: `TO_FILL`
+- Commit: `2530cb5`
 - Date: `2026-03-20`
 - Shipped behavior:
   - shipped a local-only `wasm-gallery` bundle that demonstrates four public-API scenes: pitch-class constellation analysis, key-degree bloom, chord identity/staff views, and parametric fretboard exploration
