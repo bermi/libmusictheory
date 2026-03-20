@@ -59,7 +59,7 @@ Before implementation:
 
 ## Implementation History (Point-in-Time)
 
-- Commit: `<pending>`
+- Commit: `59776b6a2465caef2f5d0d46709ae3b65520ef67`
 - Date: `2026-03-20`
 - Shipped behavior:
   - added the first root README for standalone consumers instead of forcing them through Harmonious verification docs
