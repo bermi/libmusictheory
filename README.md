@@ -33,6 +33,8 @@ The stable public surface is intentionally smaller than the full repository.
 
 If you are integrating the library into your own app, start with `libmusictheory.h` or the core Zig modules. Treat the compat/proof surface as regression infrastructure, not product API.
 
+The internal regression infrastructure is documented separately in `/Users/bermi/code/libmusictheory/docs/internal/harmonious-regression.md`.
+
 ## Stable API Contract
 
 This repository now has an explicit stable public surface.
@@ -172,4 +174,5 @@ Low-level browser buffer management is still evolving. The standalone contract t
 
 - `/Users/bermi/code/libmusictheory/docs/research/`
 - `/Users/bermi/code/libmusictheory/docs/architecture/graphs.md`
+- `/Users/bermi/code/libmusictheory/docs/internal/harmonious-regression.md`
 - `/Users/bermi/code/libmusictheory/examples/wasm-demo/README.md`

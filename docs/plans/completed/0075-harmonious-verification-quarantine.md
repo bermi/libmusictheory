@@ -2,7 +2,7 @@
 
 > Dependencies: 0073, 0074, 0024, 0060, 0072
 
-Status: Draft
+Status: Completed
 
 ## Summary
 
@@ -45,3 +45,22 @@ Before implementation:
 - full regression verification remains available when local data is present
 - `./verify.sh` passes
 
+## Completion Status
+
+- Completed and verified:
+  - `/Users/bermi/code/libmusictheory/docs/internal/harmonious-regression.md` now centralizes the exact-parity, scaled-parity, native-proof, and SPA lanes as internal regression infrastructure
+  - `/Users/bermi/code/libmusictheory/README.md` now points standalone consumers to the public surface first and links the Harmonious material as internal-only follow-up
+  - `/Users/bermi/code/libmusictheory/examples/wasm-demo/README.md` now opens by classifying the directory as regression/documentation infrastructure instead of product-facing docs
+  - `/Users/bermi/code/libmusictheory/verify.sh` now reports `RELEASE_SURFACE_SMOKE=yes|no` separately from `HARMONIOUS_EXTENDED_REGRESSION=enabled|skipped`
+
+## Implementation History (Point-in-Time)
+
+- Commit: `<pending>`
+- Date: `2026-03-20`
+- Shipped behavior:
+  - quarantined Harmonious parity/proof/SPA instructions into a dedicated internal doc
+  - kept the full regression machinery runnable without letting it define the standalone library story
+  - made `./verify.sh` explicitly distinguish standalone release smoke from optional extended Harmonious regression
+- Verification commands:
+  - `./verify.sh`
+  - `zig build verify`

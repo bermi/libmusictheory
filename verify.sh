@@ -623,6 +623,14 @@ else
     unverified "0076 public header contract guardrail (public header missing)"
 fi
 
+if [ -f "$ROOT_DIR/README.md" ] && [ -f "$ROOT_DIR/docs/internal/harmonious-regression.md" ]; then
+    check_cmd "cd '$ROOT_DIR' && ! sed -n '1,20p' README.md | rg -qi 'harmonious|validation|parity|proof'" "0075 public docs guardrail (root README opens with standalone library story, not Harmonious verification framing)"
+    check_cmd "cd '$ROOT_DIR' && rg -n '^# Harmonious Regression Infrastructure$|^## Exact SVG Parity$|^## Scaled Render Parity$|^## Native RGBA Proof$|^## Harmonious SPA$|^## Reduced Release Smoke$' docs/internal/harmonious-regression.md" "0075 internal regression doc guardrail (internal Harmonious tooling documented in a dedicated internal doc)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'internal regression infrastructure|tmp/harmoniousapp.net|release smoke|extended Harmonious regression|optional local data' README.md docs/internal/harmonious-regression.md examples/wasm-demo/README.md" "0075 doc quarantine guardrail (release vs internal verification split is documented)"
+else
+    unverified "0075 doc quarantine guardrail (root README or docs/internal/harmonious-regression.md missing)"
+fi
+
 if [ -f "$ROOT_DIR/examples/wasm-demo/scaled-render-parity.html" ] && rg -Fq 'step("wasm-scaled-render-parity"' "$ROOT_DIR/build.zig"; then
     check_cmd "cd '$ROOT_DIR' && zig build wasm-scaled-render-parity 2>&1" "0059 scaled render parity bundle build"
     check_cmd "cd '$ROOT_DIR' && ! rg -n \"\\.scale\\(|transform:\\s*scale|style\\.transform\" examples/wasm-demo/scaled-render-parity.js" "0059 scaled render parity anti-cheat guardrail (no css/post-bitmap scaling shortcut)"
@@ -971,6 +979,18 @@ fi
 # Summary
 # ───────────────────────────────────────────
 section "Summary"
+
+if [ "$FAIL" -eq 0 ] && [ -f "$ROOT_DIR/README.md" ] && [ -f "$ROOT_DIR/include/libmusictheory.h" ] && [ -f "$ROOT_DIR/zig-out/wasm-docs/index.html" ] && [ -f "$ROOT_DIR/zig-out/wasm-docs/libmusictheory.wasm" ]; then
+    echo "  RELEASE_SURFACE_SMOKE=yes"
+else
+    echo "  RELEASE_SURFACE_SMOKE=no"
+fi
+
+if [ -d "$ROOT_DIR/tmp/harmoniousapp.net" ]; then
+    echo "  HARMONIOUS_EXTENDED_REGRESSION=enabled"
+else
+    echo "  HARMONIOUS_EXTENDED_REGRESSION=skipped"
+fi
 
 if [ -f "$ROOT_DIR/scripts/validate_harmonious_native_rgba_proof_playwright.mjs" ] && command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
     if bash -lc "cd '$ROOT_DIR' && node scripts/validate_harmonious_native_rgba_proof_playwright.mjs --sample-per-kind 5 --kinds vert-text-black,even,scale,opc,oc,optc,eadgbe,center-square-text,wide-chord,chord-clipped,grand-chord,majmin/modes,majmin/scales,chord,vert-text-b2t-black --scales 55:100,200:100 >/dev/null 2>&1"; then

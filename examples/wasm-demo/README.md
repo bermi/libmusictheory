@@ -1,5 +1,15 @@
 # WASM Browser Bundles
 
+This directory documents internal regression infrastructure and the standalone docs bundle.
+
+For the standalone library entry point, start with:
+
+- `/Users/bermi/code/libmusictheory/README.md`
+
+For the dedicated internal regression overview, use:
+
+- `/Users/bermi/code/libmusictheory/docs/internal/harmonious-regression.md`
+
 This directory now contains two kinds of browser surfaces:
 
 - standalone/public:
