@@ -1,0 +1,39 @@
+# Release Artifacts
+
+## Public Release Artifacts
+
+The standalone release surface is composed of:
+
+- native install outputs from `zig build`
+  - `zig-out/include/libmusictheory.h`
+  - `zig-out/lib/*`
+- standalone docs bundle from `zig build wasm-docs`
+  - `zig-out/wasm-docs/index.html`
+  - `zig-out/wasm-docs/libmusictheory.wasm`
+  - `zig-out/wasm-docs/app.js`
+  - `zig-out/wasm-docs/styles.css`
+- standalone gallery bundle from `zig build wasm-gallery`
+  - `zig-out/wasm-gallery/index.html`
+  - `zig-out/wasm-gallery/libmusictheory.wasm`
+  - `zig-out/wasm-gallery/gallery.js`
+  - `zig-out/wasm-gallery/styles.css`
+
+## Public Headers
+
+- stable public header:
+  - `include/libmusictheory.h`
+- internal compatibility header:
+  - `include/libmusictheory_compat.h`
+
+Only `libmusictheory.h` is part of the standalone public contract.
+
+## Internal Verification Artifacts
+
+These remain in-repo but are not part of the standalone release artifact story:
+
+- `zig-out/wasm-demo`
+- `zig-out/wasm-scaled-render-parity`
+- `zig-out/wasm-native-rgba-proof`
+- `zig-out/wasm-harmonious-spa`
+
+They are retained as internal regression infrastructure.

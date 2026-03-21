@@ -167,6 +167,24 @@ python3 -m http.server --directory /Users/bermi/code/libmusictheory/zig-out/wasm
 
 Open [http://localhost:8002/index.html](http://localhost:8002/index.html).
 
+## Release Readiness
+
+The standalone release scaffold is documented here:
+
+- `/Users/bermi/code/libmusictheory/RELEASE_CHECKLIST.md`
+- `/Users/bermi/code/libmusictheory/docs/release/artifacts.md`
+- `/Users/bermi/code/libmusictheory/docs/release/smoke-matrix.md`
+- `/Users/bermi/code/libmusictheory/docs/release/versioning.md`
+
+To run the standalone release smoke path directly:
+
+```bash
+cd /Users/bermi/code/libmusictheory
+./scripts/release_smoke.sh
+```
+
+This smoke path validates only the standalone surfaces: native build, C ABI smoke, `wasm-docs`, and `wasm-gallery`.
+
 If you want to call exports directly from JavaScript, start with scalar APIs that do not require manual buffer setup:
 
 ```html

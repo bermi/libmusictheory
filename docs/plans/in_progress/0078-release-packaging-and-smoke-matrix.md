@@ -2,7 +2,7 @@
 
 > Dependencies: 0074, 0075, 0076, 0077
 
-Status: Draft
+Status: In Progress
 
 ## Summary
 
@@ -105,6 +105,17 @@ When this plan is implemented:
 
 - update `/Users/bermi/code/libmusictheory/README.md` to point to the release docs and checklist
 - keep the standalone story separate from the internal Harmonious regression story
+
+## Current Execution Notes
+
+This plan is now actively in progress.
+
+The first implementation slice is required to:
+
+- move this plan into `docs/plans/in_progress/`
+- add the release scaffold files
+- add `scripts/release_smoke.sh`
+- update `./verify.sh` so release artifacts and the standalone smoke matrix become programmatic gates
 
 ## Exit Criteria
 

@@ -5,6 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT_DIR"
 
 FAIL=0
+RELEASE_SURFACE_SMOKE_STATUS="no"
 
 section() {
     echo ""
@@ -75,6 +76,42 @@ if [ -d "$ROOT_DIR/include" ]; then
     pass "include/ directory exists"
 else
     fail "include/ directory missing"
+fi
+
+# ───────────────────────────────────────────
+# Section 1.5: Release Packaging
+# ───────────────────────────────────────────
+section "Release Packaging"
+
+RELEASE_ARTIFACT_FILES=(
+    "VERSION"
+    "CHANGELOG.md"
+    "RELEASE_CHECKLIST.md"
+    "docs/release/artifacts.md"
+    "docs/release/smoke-matrix.md"
+    "docs/release/versioning.md"
+    "scripts/release_smoke.sh"
+)
+
+for path in "${RELEASE_ARTIFACT_FILES[@]}"; do
+    if [ -f "$ROOT_DIR/$path" ]; then
+        pass "$path"
+    else
+        fail "$path missing"
+    fi
+done
+
+if [ -f "$ROOT_DIR/VERSION" ]; then
+    check_cmd "cd '$ROOT_DIR' && rg -n '^[0-9]+\\.[0-9]+\\.[0-9]+([-.][0-9A-Za-z]+(\\.[0-9A-Za-z]+)*)?$' VERSION" "0078 release version guardrail (VERSION uses semver-style format)"
+else
+    unverified "0078 release version guardrail (VERSION missing)"
+fi
+
+if [ -f "$ROOT_DIR/scripts/release_smoke.sh" ]; then
+    check_cmd "cd '$ROOT_DIR' && test -x scripts/release_smoke.sh" "0078 release smoke guardrail (script is executable)"
+    check_cmd "cd '$ROOT_DIR' && ! rg -n 'tmp/harmoniousapp\\.net|validate_harmonious_|wasm-demo|wasm-scaled-render-parity|wasm-native-rgba-proof|wasm-harmonious-spa' scripts/release_smoke.sh" "0078 release smoke guardrail (script stays on standalone surfaces and does not depend on local harmonious data)"
+else
+    unverified "0078 release smoke guardrail (script not yet implemented)"
 fi
 
 # ───────────────────────────────────────────
@@ -613,6 +650,7 @@ if [ -f "$ROOT_DIR/README.md" ]; then
     check_cmd "cd '$ROOT_DIR' && rg -n '^# libmusictheory$|^## Stable API Contract$|^## Memory And Lifetime$|^## Quickstart \\(C ABI\\)$|^## Quickstart \\(Zig\\)$|^## Quickstart \\(Browser/WASM\\)$|^## Public vs Internal Surfaces$' README.md" "0076 root readme guardrail (library-facing README sections present)"
     check_cmd "cd '$ROOT_DIR' && rg -n 'stable public surface|experimental|internal|libmusictheory_compat\\.h|wasm-docs|wasm-demo|wasm-scaled-render-parity|wasm-native-rgba-proof|wasm-harmonious-spa' README.md" "0076 root readme guardrail (surface classification and bundle boundaries documented)"
     check_cmd "cd '$ROOT_DIR' && ! rg -n 'copy this file|save this file' README.md" "0076 root readme guardrail (standalone docs stay user-facing, not editor-instruction driven)"
+    check_cmd "cd '$ROOT_DIR' && rg -n '^## Release Readiness$|RELEASE_CHECKLIST\\.md|docs/release/smoke-matrix\\.md|scripts/release_smoke\\.sh' README.md" "0078 release readme guardrail (release docs and smoke path are linked)"
 else
     unverified "0076 root readme guardrail (root README.md not yet implemented)"
 fi
@@ -649,6 +687,15 @@ if [ -f "$ROOT_DIR/examples/wasm-gallery/index.html" ] && rg -Fq 'step("wasm-gal
     fi
 else
     unverified "0077 standalone gallery bundle build (gallery target not yet implemented)"
+fi
+
+if [ -f "$ROOT_DIR/scripts/release_smoke.sh" ]; then
+    check_cmd "cd '$ROOT_DIR' && ./scripts/release_smoke.sh 2>&1" "0078 standalone release smoke matrix"
+    if bash -lc "cd '$ROOT_DIR' && ./scripts/release_smoke.sh >/dev/null 2>&1"; then
+        RELEASE_SURFACE_SMOKE_STATUS="yes"
+    fi
+else
+    unverified "0078 standalone release smoke matrix (script not yet implemented)"
 fi
 
 if [ -f "$ROOT_DIR/examples/wasm-demo/scaled-render-parity.html" ] && rg -Fq 'step("wasm-scaled-render-parity"' "$ROOT_DIR/build.zig"; then
@@ -1000,11 +1047,7 @@ fi
 # ───────────────────────────────────────────
 section "Summary"
 
-if [ "$FAIL" -eq 0 ] && [ -f "$ROOT_DIR/README.md" ] && [ -f "$ROOT_DIR/include/libmusictheory.h" ] && [ -f "$ROOT_DIR/zig-out/wasm-docs/index.html" ] && [ -f "$ROOT_DIR/zig-out/wasm-docs/libmusictheory.wasm" ]; then
-    echo "  RELEASE_SURFACE_SMOKE=yes"
-else
-    echo "  RELEASE_SURFACE_SMOKE=no"
-fi
+echo "  RELEASE_SURFACE_SMOKE=$RELEASE_SURFACE_SMOKE_STATUS"
 
 if [ -d "$ROOT_DIR/tmp/harmoniousapp.net" ]; then
     echo "  HARMONIOUS_EXTENDED_REGRESSION=enabled"
