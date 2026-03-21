@@ -186,6 +186,7 @@ The standalone release scaffold is documented here:
 
 - `/Users/bermi/code/libmusictheory/RELEASE_CHECKLIST.md`
 - `/Users/bermi/code/libmusictheory/docs/release/artifacts.md`
+- `/Users/bermi/code/libmusictheory/docs/release/gallery-capture.md`
 - `/Users/bermi/code/libmusictheory/docs/release/smoke-matrix.md`
 - `/Users/bermi/code/libmusictheory/docs/release/versioning.md`
 
@@ -197,6 +198,15 @@ cd /Users/bermi/code/libmusictheory
 ```
 
 This smoke path validates only the standalone surfaces: native build, C ABI smoke, `wasm-docs`, and `wasm-gallery`.
+
+To regenerate the release-candidate gallery screenshots locally:
+
+```bash
+cd /Users/bermi/code/libmusictheory
+node /Users/bermi/code/libmusictheory/scripts/capture_wasm_gallery_screenshots.mjs
+```
+
+This writes deterministic captures to `/Users/bermi/code/libmusictheory/zig-out/wasm-gallery-captures/`.
 
 If you want to call exports directly from JavaScript, start with scalar APIs that do not require manual buffer setup:
 

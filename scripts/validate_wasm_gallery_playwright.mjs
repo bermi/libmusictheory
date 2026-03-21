@@ -66,6 +66,7 @@ async function main() {
             manifestLoaded: finalSnapshot.summary.manifestLoaded,
             sceneCount: finalSnapshot.summary.sceneCount,
             scenes: finalSnapshot.summary.scenes,
+            previewMetrics: finalSnapshot.previewMetrics,
             degreeCards: finalSnapshot.degreeCards,
             progressionCards: finalSnapshot.progressionCards,
             compareChips: finalSnapshot.compareChips,

@@ -17,15 +17,34 @@
             Six curated scenes built on the stable public API only. No Harmonious compatibility
             helpers, no verification shims, no corpus mirroring.
           </p>
+          <div class="hero-badges" aria-label="Gallery qualities">
+            <span class="hero-badge">Public API only</span>
+            <span class="hero-badge">Parametric rendering</span>
+            <span class="hero-badge">Reproducible screenshots</span>
+          </div>
         </div>
         <div class="hero-actions">
           <button id="shuffle-scenes" class="accent-button" type="button">Shuffle Presets</button>
+          <div class="hero-metrics" aria-label="Gallery metrics">
+            <article class="hero-metric">
+              <strong>6</strong>
+              <span>Curated scenes</span>
+            </article>
+            <article class="hero-metric">
+              <strong>WASM</strong>
+              <span>Standalone bundle</span>
+            </article>
+            <article class="hero-metric">
+              <strong>SVG</strong>
+              <span>Large vector previews</span>
+            </article>
+          </div>
           <p id="status" class="status-text">Initializing gallery...</p>
         </div>
       </header>
 
       <main class="gallery-grid">
-        <section class="panel reveal scene-card" id="scene-set">
+        <section class="panel reveal scene-card" id="scene-set" data-gallery-scene="set">
           <div class="scene-head">
             <div>
               <p class="eyebrow">Set Observatory</p>
@@ -53,7 +72,7 @@
           </div>
         </section>
 
-        <section class="panel reveal scene-card" id="scene-key">
+        <section class="panel reveal scene-card" id="scene-key" data-gallery-scene="key">
           <div class="scene-head">
             <div>
               <p class="eyebrow">Key Bloom</p>
@@ -92,7 +111,7 @@
           </div>
         </section>
 
-        <section class="panel reveal scene-card" id="scene-chord">
+        <section class="panel reveal scene-card" id="scene-chord" data-gallery-scene="chord">
           <div class="scene-head">
             <div>
               <p class="eyebrow">Chord Atelier</p>
@@ -148,7 +167,7 @@
           </div>
         </section>
 
-        <section class="panel reveal scene-card" id="scene-progression">
+        <section class="panel reveal scene-card" id="scene-progression" data-gallery-scene="progression">
           <div class="scene-head">
             <div>
               <p class="eyebrow">Progression Drift</p>
@@ -177,7 +196,7 @@
           </div>
         </section>
 
-        <section class="panel reveal scene-card" id="scene-compare">
+        <section class="panel reveal scene-card" id="scene-compare" data-gallery-scene="compare">
           <div class="scene-head">
             <div>
               <p class="eyebrow">Constellation Delta</p>
@@ -218,7 +237,7 @@
           </div>
         </section>
 
-        <section class="panel reveal scene-card" id="scene-fret">
+        <section class="panel reveal scene-card" id="scene-fret" data-gallery-scene="fret">
           <div class="scene-head">
             <div>
               <p class="eyebrow">Fret Atlas</p>

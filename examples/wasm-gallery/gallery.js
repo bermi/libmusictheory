@@ -251,13 +251,66 @@ function svgString(arena, renderFn, ...args) {
   return readCString(bufPtr);
 }
 
-function normalizeSvgPreview(host, maxHeight = 280) {
+function normalizeSvgPreview(host, options = {}) {
+  const {
+    maxHeight = 320,
+    squareWidth = 320,
+    mediumWidth = 480,
+    wideWidth = 720,
+    ultraWideWidth = 920,
+    padXRatio = 0.08,
+    padYRatio = 0.12,
+    minPad = 6,
+  } = options;
   const svgs = host.querySelectorAll("svg");
   for (const svg of svgs) {
     svg.style.display = "block";
     svg.style.maxWidth = "100%";
     svg.style.maxHeight = `${maxHeight}px`;
     svg.style.height = "auto";
+    if (!svg.dataset.originalViewBox) {
+      const originalViewBox = svg.getAttribute("viewBox");
+      if (originalViewBox) svg.dataset.originalViewBox = originalViewBox;
+    }
+
+    try {
+      const bbox = svg.getBBox();
+      if (!Number.isFinite(bbox.width) || !Number.isFinite(bbox.height) || bbox.width <= 0 || bbox.height <= 0) {
+        svg.dataset.previewNormalized = "0";
+        continue;
+      }
+
+      const aspect = bbox.width / bbox.height;
+      const availableWidth = Math.max(180, host.clientWidth - 32);
+      let targetWidth = mediumWidth;
+      if (aspect <= 1.15) {
+        targetWidth = squareWidth;
+      } else if (aspect <= 2.4) {
+        targetWidth = mediumWidth;
+      } else if (aspect <= 4.4) {
+        targetWidth = wideWidth;
+      } else {
+        targetWidth = ultraWideWidth;
+      }
+
+      const padX = Math.max(minPad, bbox.width * padXRatio);
+      const padY = Math.max(minPad, bbox.height * padYRatio);
+      svg.style.width = `${Math.min(availableWidth, targetWidth)}px`;
+      svg.setAttribute(
+        "viewBox",
+        [
+          (bbox.x - padX).toFixed(2),
+          (bbox.y - padY).toFixed(2),
+          (bbox.width + padX * 2).toFixed(2),
+          (bbox.height + padY * 2).toFixed(2),
+        ].join(" "),
+      );
+      svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+      svg.dataset.previewNormalized = "1";
+      svg.dataset.previewAspect = aspect.toFixed(3);
+    } catch (_error) {
+      svg.dataset.previewNormalized = "0";
+    }
   }
 }
 
@@ -494,7 +547,7 @@ function renderSetScene() {
       `chord reading: ${chordName}`,
     ].join("\n");
     setClockEl.innerHTML = svg;
-    normalizeSvgPreview(setClockEl, 260);
+    normalizeSvgPreview(setClockEl, { maxHeight: 420, squareWidth: 420, mediumWidth: 520 });
     updateSummaryScene("set", {
       selectedCount: pcsList.length,
       setHex: `0x${setValue.toString(16).padStart(3, "0")}`,
@@ -524,7 +577,7 @@ function renderKeyScene() {
     setChipRow(keyNotesEl, orbit.names);
     keyDegreesEl.innerHTML = degreeCards.join("");
     keyClockEl.innerHTML = svgString(arena, wasm.lmt_svg_clock_optc, orbit.setValue);
-    normalizeSvgPreview(keyClockEl, 280);
+    normalizeSvgPreview(keyClockEl, { maxHeight: 440, squareWidth: 440, mediumWidth: 560 });
 
     updateSummaryScene("key", {
       tonic: noteName(tonic),
@@ -565,9 +618,9 @@ function renderChordScene() {
     setChipRow(chordNotesEl, orderedNotes);
 
     chordClockEl.innerHTML = svgString(arena, wasm.lmt_svg_clock_optc, chordSet);
-    normalizeSvgPreview(chordClockEl, 260);
+    normalizeSvgPreview(chordClockEl, { maxHeight: 360, squareWidth: 320, mediumWidth: 380 });
     chordStaffEl.innerHTML = svgString(arena, wasm.lmt_svg_chord_staff, chordType, root);
-    normalizeSvgPreview(chordStaffEl, 180);
+    normalizeSvgPreview(chordStaffEl, { maxHeight: 280, squareWidth: 520, mediumWidth: 680, wideWidth: 860, ultraWideWidth: 980, padXRatio: 0.1, padYRatio: 0.16 });
 
     updateSummaryScene("chord", {
       root: noteName(root),
@@ -622,8 +675,8 @@ function renderProgressionScene() {
     progressionCardsEl.innerHTML = cards.join("");
     progressionClockEl.innerHTML = svgString(arena, wasm.lmt_svg_clock_optc, unionSet);
     progressionNotesEl.innerHTML = unionNotes.map((note) => `<span class="chip">${escapeHtml(note)}</span>`).join("");
-    normalizeSvgPreview(progressionCardsEl, 110);
-    normalizeSvgPreview(progressionClockEl, 240);
+    normalizeSvgPreview(progressionCardsEl, { maxHeight: 132, squareWidth: 124, mediumWidth: 132, wideWidth: 146, ultraWideWidth: 146, padXRatio: 0.14, padYRatio: 0.18 });
+    normalizeSvgPreview(progressionClockEl, { maxHeight: 340, squareWidth: 320, mediumWidth: 460 });
 
     updateSummaryScene("progression", {
       tonic: noteName(preset.tonic),
@@ -655,9 +708,9 @@ function renderCompareScene() {
     compareLeftClockEl.innerHTML = svgString(arena, wasm.lmt_svg_clock_optc, leftSet);
     compareOverlapClockEl.innerHTML = svgString(arena, wasm.lmt_svg_clock_optc, overlapSet);
     compareRightClockEl.innerHTML = svgString(arena, wasm.lmt_svg_clock_optc, rightSet);
-    normalizeSvgPreview(compareLeftClockEl, 180);
-    normalizeSvgPreview(compareOverlapClockEl, 180);
-    normalizeSvgPreview(compareRightClockEl, 180);
+    normalizeSvgPreview(compareLeftClockEl, { maxHeight: 260, squareWidth: 260, mediumWidth: 280 });
+    normalizeSvgPreview(compareOverlapClockEl, { maxHeight: 260, squareWidth: 260, mediumWidth: 280 });
+    normalizeSvgPreview(compareRightClockEl, { maxHeight: 260, squareWidth: 260, mediumWidth: 280 });
 
     compareSummaryEl.textContent = [
       `left: 0x${leftSet.toString(16).padStart(3, "0")}`,
@@ -776,7 +829,7 @@ function renderFretScene() {
     }
 
     fretSvgEl.innerHTML = svgString(arena, wasm.lmt_svg_fret_n, fretsPtr, frets.length, windowStart, visibleFrets);
-    normalizeSvgPreview(fretSvgEl, 280);
+    normalizeSvgPreview(fretSvgEl, { maxHeight: 420, squareWidth: 360, mediumWidth: 520, wideWidth: 680, ultraWideWidth: 760, padXRatio: 0.12, padYRatio: 0.18 });
     setChipRow(
       fretNotesEl,
       selected.map((one) => `s${one.string + 1}:f${one.fret} ${noteName(one.pc)} (${one.midi})`),

@@ -32,4 +32,7 @@ node scripts/check_wasm_exports.mjs --profile gallery --wasm zig-out/wasm-galler
 step "gallery playwright smoke"
 node scripts/validate_wasm_gallery_playwright.mjs
 
+step "gallery screenshot capture"
+node scripts/capture_wasm_gallery_screenshots.mjs
+
 echo "RELEASE_SMOKE=yes"
