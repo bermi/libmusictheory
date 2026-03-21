@@ -164,6 +164,28 @@ async function waitForRenderedOutputs(page) {
       clockBounds: document.querySelector("#svg-clock svg")?.getBoundingClientRect?.() || null,
       fretBounds: document.querySelector("#svg-fret svg")?.getBoundingClientRect?.() || null,
       staffBounds: document.querySelector("#svg-staff svg")?.getBoundingClientRect?.() || null,
+      staffFeatures: (() => {
+        const svg = document.querySelector("#svg-staff svg");
+        if (!svg) {
+          return {
+            clefCount: 0,
+            noteheadCount: 0,
+            sharedStemCount: 0,
+            noteColumnSpan: Number.POSITIVE_INFINITY,
+          };
+        }
+        const noteXs = Array.from(svg.querySelectorAll(".notehead.chord-notehead"), (node) =>
+          Number.parseFloat(node.getAttribute("cx") || "0"),
+        ).filter((value) => Number.isFinite(value));
+        const minX = noteXs.length > 0 ? Math.min(...noteXs) : 0;
+        const maxX = noteXs.length > 0 ? Math.max(...noteXs) : 0;
+        return {
+          clefCount: svg.querySelectorAll(".clef").length,
+          noteheadCount: noteXs.length,
+          sharedStemCount: svg.querySelectorAll(".cluster-stem").length,
+          noteColumnSpan: noteXs.length > 0 ? maxX - minX : Number.POSITIVE_INFINITY,
+        };
+      })(),
       status: document.getElementById("status")?.textContent || "",
     }));
 
@@ -194,6 +216,10 @@ async function waitForRenderedOutputs(page) {
       snapshot.clockBounds &&
       snapshot.fretBounds &&
       snapshot.staffBounds &&
+      snapshot.staffFeatures.clefCount >= 1 &&
+      snapshot.staffFeatures.noteheadCount >= 3 &&
+      snapshot.staffFeatures.sharedStemCount === 1 &&
+      snapshot.staffFeatures.noteColumnSpan <= 12 &&
       visibleBoundsOk(snapshot);
 
     if (ready) return;
@@ -281,8 +307,8 @@ function visibleBoundsOk(snapshot) {
     snapshot.clockBounds.height >= 100 &&
     snapshot.fretBounds.width >= 150 &&
     snapshot.fretBounds.height >= 150 &&
-    snapshot.staffBounds.width >= 240 &&
-    snapshot.staffBounds.height >= 70
+    snapshot.staffBounds.width >= 220 &&
+    snapshot.staffBounds.height >= 120
   );
 }
 

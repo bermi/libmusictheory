@@ -985,7 +985,7 @@ fi
 
 if [ -f "$ROOT_DIR/scripts/validate_wasm_docs_playwright.mjs" ]; then
     if command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
-        check_cmd "cd '$ROOT_DIR' && rg -n \"All sections rendered successfully\\.|run-all|visibleBounds\" examples/wasm-demo/app.js scripts/validate_wasm_docs_playwright.mjs >/dev/null" "0064 wasm docs run-all guardrail (explicit success status and visible render assertions wired)"
+        check_cmd "cd '$ROOT_DIR' && rg -n \"All sections rendered successfully\\.|run-all|visibleBounds|staffFeatures|sharedStemCount|noteColumnSpan\" examples/wasm-demo/app.js scripts/validate_wasm_docs_playwright.mjs >/dev/null" "0064 wasm docs run-all guardrail (explicit success status and visible staff render assertions wired)"
         check_cmd "cd '$ROOT_DIR' && node scripts/validate_wasm_docs_playwright.mjs 2>&1" "0050 wasm full docs playwright run-all validation"
     else
         unverified "0050 wasm full docs playwright smoke validation (node/npm/python3 missing)"
