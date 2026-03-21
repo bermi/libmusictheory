@@ -5,6 +5,11 @@ const GUIDE_DOT_BYTES = 8;
 const decoder = new TextDecoder();
 const encoder = new TextEncoder();
 const CUSTOM_PRESET_VALUE = "custom";
+const captureMode = new URLSearchParams(window.location.search).get("capture") === "1";
+
+if (captureMode) {
+  document.documentElement.dataset.captureMode = "1";
+}
 
 const REQUIRED_EXPORTS = [
   "memory",

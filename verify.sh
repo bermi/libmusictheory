@@ -699,6 +699,19 @@ else
     unverified "0080 gallery curation guardrail (preset manifest not yet implemented)"
 fi
 
+if [ -f "$ROOT_DIR/scripts/capture_wasm_gallery_screenshots.mjs" ] && [ -f "$ROOT_DIR/docs/release/gallery-capture.md" ]; then
+    check_cmd "cd '$ROOT_DIR' && rg -n 'gallery-capture\\.md|capture_wasm_gallery_screenshots\\.mjs|\\?capture=1' docs/release/gallery-capture.md scripts/capture_wasm_gallery_screenshots.mjs examples/wasm-gallery/gallery.js examples/wasm-gallery/index.html >/dev/null" "0081 gallery capture guardrail (docs, script, and capture route wiring are present)"
+    check_cmd "cd '$ROOT_DIR' && ! rg -n 'tmp/harmoniousapp\\.net|wasm-demo|wasm-scaled-render-parity|wasm-native-rgba-proof|harmonious-spa|libmusictheory_compat\\.h|lmt_svg_compat_|lmt_bitmap_compat_' scripts/capture_wasm_gallery_screenshots.mjs docs/release/gallery-capture.md" "0081 gallery capture guardrail (capture pipeline stays on standalone public surfaces)"
+    if command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
+        check_cmd "cd '$ROOT_DIR' && node scripts/capture_wasm_gallery_screenshots.mjs 2>&1" "0081 gallery screenshot capture verification"
+        check_cmd "cd '$ROOT_DIR' && test -f zig-out/wasm-gallery-captures/gallery-overview.png && test -f zig-out/wasm-gallery-captures/gallery-hero.png && test -f zig-out/wasm-gallery-captures/scene-set.png && test -f zig-out/wasm-gallery-captures/scene-key.png && test -f zig-out/wasm-gallery-captures/scene-chord.png && test -f zig-out/wasm-gallery-captures/scene-progression.png && test -f zig-out/wasm-gallery-captures/scene-compare.png && test -f zig-out/wasm-gallery-captures/scene-fret.png && test -f zig-out/wasm-gallery-captures/captures.json" "0081 gallery screenshot capture guardrail (expected capture artifacts generated)"
+    else
+        unverified "0081 gallery screenshot capture verification (script or runtime missing)"
+    fi
+else
+    unverified "0081 gallery capture guardrail (docs or capture script not yet implemented)"
+fi
+
 if [ -f "$ROOT_DIR/scripts/release_smoke.sh" ]; then
     check_cmd "cd '$ROOT_DIR' && ./scripts/release_smoke.sh 2>&1" "0078 standalone release smoke matrix"
     if bash -lc "cd '$ROOT_DIR' && ./scripts/release_smoke.sh >/dev/null 2>&1"; then
