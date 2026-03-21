@@ -2,7 +2,7 @@
 
 > Dependencies: 0074, 0075, 0076, 0077
 
-Status: In Progress
+Status: Completed
 
 ## Summary
 
@@ -106,17 +106,6 @@ When this plan is implemented:
 - update `/Users/bermi/code/libmusictheory/README.md` to point to the release docs and checklist
 - keep the standalone story separate from the internal Harmonious regression story
 
-## Current Execution Notes
-
-This plan is now actively in progress.
-
-The first implementation slice is required to:
-
-- move this plan into `docs/plans/in_progress/`
-- add the release scaffold files
-- add `scripts/release_smoke.sh`
-- update `./verify.sh` so release artifacts and the standalone smoke matrix become programmatic gates
-
 ## Exit Criteria
 
 - release artifact list is documented
@@ -124,3 +113,28 @@ The first implementation slice is required to:
 - release checklist exists
 - versioning/changelog scaffolding exists
 - `./verify.sh` passes
+
+## Completion Status
+
+- Completed and verified:
+  - added `/Users/bermi/code/libmusictheory/VERSION`
+  - added `/Users/bermi/code/libmusictheory/CHANGELOG.md`
+  - added `/Users/bermi/code/libmusictheory/RELEASE_CHECKLIST.md`
+  - added `/Users/bermi/code/libmusictheory/docs/release/artifacts.md`
+  - added `/Users/bermi/code/libmusictheory/docs/release/smoke-matrix.md`
+  - added `/Users/bermi/code/libmusictheory/docs/release/versioning.md`
+  - added `/Users/bermi/code/libmusictheory/scripts/release_smoke.sh`
+  - updated `/Users/bermi/code/libmusictheory/README.md` to wire the release docs and smoke command
+  - updated `/Users/bermi/code/libmusictheory/verify.sh` so release packaging artifacts and the standalone smoke path are first-class gates
+
+## Implementation History (Point-in-Time)
+
+- Commit: `de79cbb`
+- Date: `2026-03-21`
+- Shipped behavior:
+  - introduced the standalone release scaffold with versioning, changelog, checklist, and dedicated release documentation
+  - added `scripts/release_smoke.sh` to validate the standalone public surfaces only: native build, C ABI smoke, `wasm-docs`, and `wasm-gallery`
+  - replaced the old coarse `RELEASE_SURFACE_SMOKE` summary heuristic with a real release-smoke execution path in `./verify.sh`
+- Verification commands:
+  - `./scripts/release_smoke.sh`
+  - `./verify.sh`
