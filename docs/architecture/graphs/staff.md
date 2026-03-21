@@ -16,7 +16,7 @@ Kinds covered:
 
 - Compatibility-first deterministic emitters for exact harmoniousapp parity.
 - Note parsing, key signature logic, and base layout are algorithmic.
-- The core public/docs renderer in `src/svg/staff.zig` now uses spelled-note staff placement, vector accidental glyphs, and explicit notehead/stem/ledger styling instead of text placeholder accidentals and semitone-only y mapping.
+- The core public/docs renderer in `src/svg/staff.zig` now uses spelled-note staff placement, vector accidental glyphs, algorithmic treble/bass clefs, simultaneous chord clusters with shared stems, second-interval notehead displacement, and explicit notehead/stem/ledger styling instead of text placeholder accidentals and semitone-only y mapping.
 - Remaining parity support includes compact patch/shim datasets for historical numeric/string edge cases.
 
 ## Alternative Programmatic Approaches Studied
@@ -47,7 +47,8 @@ Backend mapping:
 
 1. Remove remaining per-case patch/shim dependencies in chord/scale compat paths.
 2. Model accidental placement and collision as rule-based solver only.
-3. Keep parity fixtures to validate serializer/output identity while reducing data tables.
+3. Raise the public renderer toward engraving-quality spacing while keeping it distinct from the exact compat surface.
+4. Keep parity fixtures to validate serializer/output identity while reducing data tables.
 
 ## Samples
 

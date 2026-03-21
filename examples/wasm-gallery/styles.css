@@ -333,7 +333,7 @@ select {
 }
 
 .staff-frame svg {
-  max-height: 260px;
+  max-height: 320px;
 }
 
 .compact-frame {
@@ -359,7 +359,7 @@ select {
 }
 
 #scene-chord .staff-frame {
-  min-height: 320px;
+  min-height: 360px;
 }
 
 .output-block {

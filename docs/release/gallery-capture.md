@@ -35,6 +35,10 @@ Artifacts produced:
   - parity/proof bundles
   - compat-only APIs
 - the capture script must fail if required screenshots are missing or unexpectedly small
+- the gallery validator must fail if the chord staff capture loses its notation features:
+  - no clef
+  - no shared chord stem
+  - no simultaneous chord cluster
 
 ## Verification
 

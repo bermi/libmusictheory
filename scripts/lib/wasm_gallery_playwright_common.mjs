@@ -166,6 +166,35 @@ export async function waitForGalleryReady(page) {
           };
         },
       ),
+      staffFeatures: (() => {
+        const svg = document.querySelector("#chord-staff svg");
+        if (!svg) {
+          return {
+            clefCount: 0,
+            noteheadCount: 0,
+            sharedStemCount: 0,
+            noteColumnSpan: Number.POSITIVE_INFINITY,
+            distinctNoteColumns: 0,
+            simultaneousCluster: false,
+            barlineCount: 0,
+          };
+        }
+        const noteXs = Array.from(svg.querySelectorAll(".notehead.chord-notehead"), (node) =>
+          Number.parseFloat(node.getAttribute("cx") || "0"),
+        ).filter((value) => Number.isFinite(value));
+        const roundedColumns = new Set(noteXs.map((value) => value.toFixed(2)));
+        const minX = noteXs.length > 0 ? Math.min(...noteXs) : 0;
+        const maxX = noteXs.length > 0 ? Math.max(...noteXs) : 0;
+        return {
+          clefCount: svg.querySelectorAll(".clef").length,
+          noteheadCount: noteXs.length,
+          sharedStemCount: svg.querySelectorAll(".cluster-stem").length,
+          noteColumnSpan: noteXs.length > 0 ? maxX - minX : Number.POSITIVE_INFINITY,
+          distinctNoteColumns: roundedColumns.size,
+          simultaneousCluster: noteXs.length >= 2 && maxX - minX <= 12,
+          barlineCount: svg.querySelectorAll(".staff-barline").length,
+        };
+      })(),
     }));
 
     if (snapshot.status.includes("Failed to initialize gallery")) {
@@ -210,15 +239,21 @@ export async function waitForGalleryReady(page) {
       snapshot.previewMetrics.find((metric) => metric.host === "key-clock")?.height >= 360 &&
       snapshot.previewMetrics.find((metric) => metric.host === "chord-clock")?.width >= 240 &&
       snapshot.previewMetrics.find((metric) => metric.host === "chord-clock")?.height >= 240 &&
-      snapshot.previewMetrics.find((metric) => metric.host === "chord-staff")?.width >= 520 &&
-      snapshot.previewMetrics.find((metric) => metric.host === "chord-staff")?.height >= 140 &&
+      snapshot.previewMetrics.find((metric) => metric.host === "chord-staff")?.width >= 620 &&
+      snapshot.previewMetrics.find((metric) => metric.host === "chord-staff")?.height >= 180 &&
       snapshot.previewMetrics.find((metric) => metric.host === "progression-clock")?.width >= 300 &&
       snapshot.previewMetrics.find((metric) => metric.host === "progression-clock")?.height >= 250 &&
       snapshot.previewMetrics.find((metric) => metric.host === "compare-left-clock")?.width >= 220 &&
       snapshot.previewMetrics.find((metric) => metric.host === "compare-overlap-clock")?.width >= 220 &&
       snapshot.previewMetrics.find((metric) => metric.host === "compare-right-clock")?.width >= 220 &&
       snapshot.previewMetrics.find((metric) => metric.host === "fret-svg")?.width >= 360 &&
-      snapshot.previewMetrics.find((metric) => metric.host === "fret-svg")?.height >= 300;
+      snapshot.previewMetrics.find((metric) => metric.host === "fret-svg")?.height >= 300 &&
+      snapshot.staffFeatures.clefCount >= 1 &&
+      snapshot.staffFeatures.noteheadCount >= 3 &&
+      snapshot.staffFeatures.sharedStemCount === 1 &&
+      snapshot.staffFeatures.simultaneousCluster === true &&
+      snapshot.staffFeatures.noteColumnSpan <= 12 &&
+      snapshot.staffFeatures.barlineCount >= 1;
 
     if (ready) return snapshot;
     if (Date.now() > deadline) {

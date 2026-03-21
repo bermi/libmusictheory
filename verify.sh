@@ -713,6 +713,13 @@ else
     unverified "0081 gallery capture guardrail (docs or capture script not yet implemented)"
 fi
 
+if [ -f "$ROOT_DIR/src/svg/staff.zig" ] && [ -f "$ROOT_DIR/scripts/validate_wasm_gallery_playwright.mjs" ]; then
+    check_cmd "cd '$ROOT_DIR' && rg -n 'staffFeatures|clefCount|sharedStemCount|noteColumnSpan|simultaneousCluster' scripts/validate_wasm_gallery_playwright.mjs scripts/lib/wasm_gallery_playwright_common.mjs examples/wasm-gallery/gallery.js >/dev/null" "0083 staff quality guardrail (gallery validator requires staff feature checks)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'class=\\\\\"clef clef-|class=\\\\\"cluster-stem|class=\\\\\"chord-notehead' src/svg/staff.zig src/tests/svg_staff_test.zig >/dev/null" "0083 staff quality guardrail (public staff renderer and tests expose clef/cluster structure)"
+else
+    unverified "0083 staff quality guardrail (staff renderer or gallery validator missing)"
+fi
+
 if [ -f "$ROOT_DIR/scripts/release_smoke.sh" ]; then
     check_cmd "cd '$ROOT_DIR' && ./scripts/release_smoke.sh 2>&1" "0078 standalone release smoke matrix"
     if bash -lc "cd '$ROOT_DIR' && ./scripts/release_smoke.sh >/dev/null 2>&1"; then

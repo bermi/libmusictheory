@@ -1,7 +1,7 @@
 # 0079 — Release Candidate Gallery Polish Master
 
 > Dependencies: 0073, 0078
-> Follow-up: 0080-0082
+> Follow-up: 0080-0083
 
 Status: Draft
 
@@ -95,6 +95,18 @@ Scope:
 - promote `CHANGELOG.md` from scaffold to real release notes
 - tighten `RELEASE_CHECKLIST.md` for the first candidate cut
 - add a short release-candidate evaluation guide for local reviewers
+
+### 4. Core Staff Renderer Correction
+
+Plan: `0083`
+
+Correct the public chord/staff rendering so release-candidate gallery captures depend on actual notation quality, not just screenshot framing.
+
+Scope:
+
+- simultaneous chord clustering instead of left-to-right note sequencing
+- public clef glyphs and shared-stem layout
+- gallery validation tied to notation features
 
 ## Exit Criteria
 

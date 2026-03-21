@@ -156,4 +156,12 @@ The interactive API docs use the core Zig staff renderer in `src/svg/staff.zig`,
 - emits vector accidental glyphs for note accidentals and key signatures instead of literal `#`, `b`, or `n` text placeholders
 - emits noteheads, stems, ledger lines, and staff lines with explicit SVG classes plus `shape-rendering="geometricPrecision"`
 
+As of 2026-03-21 the public renderer also:
+
+- renders single-staff chords as simultaneous vertical clusters instead of a short left-to-right note sequence
+- emits algorithmic treble and bass clef glyphs in the public SVG surface
+- uses a shared cluster stem for chord rendering
+- displaces second-interval noteheads algorithmically to avoid collisions
+- exposes those notation features through stable SVG classes so gallery screenshot verification can assert real notation structure instead of only image size
+
 This renderer is intended to be a clean, lightweight algorithmic notation surface for the public API docs. Exact byte-for-byte harmonious parity for `scale`, `chord`, and `grand-chord` remains the responsibility of the dedicated compatibility renderers.

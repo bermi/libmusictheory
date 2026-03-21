@@ -314,6 +314,39 @@ function normalizeSvgPreview(host, options = {}) {
   }
 }
 
+function inspectStaffSvg(svg) {
+  if (!svg) {
+    return {
+      clefCount: 0,
+      noteheadCount: 0,
+      sharedStemCount: 0,
+      noteColumnSpan: Infinity,
+      distinctNoteColumns: 0,
+      simultaneousCluster: false,
+      barlineCount: 0,
+    };
+  }
+
+  const noteXs = Array.from(svg.querySelectorAll(".notehead.chord-notehead"), (node) =>
+    Number.parseFloat(node.getAttribute("cx") || "0"),
+  ).filter((value) => Number.isFinite(value));
+
+  const roundedColumns = new Set(noteXs.map((value) => value.toFixed(2)));
+  const minX = noteXs.length > 0 ? Math.min(...noteXs) : 0;
+  const maxX = noteXs.length > 0 ? Math.max(...noteXs) : 0;
+  const noteColumnSpan = noteXs.length > 0 ? maxX - minX : Infinity;
+
+  return {
+    clefCount: svg.querySelectorAll(".clef").length,
+    noteheadCount: noteXs.length,
+    sharedStemCount: svg.querySelectorAll(".cluster-stem").length,
+    noteColumnSpan,
+    distinctNoteColumns: roundedColumns.size,
+    simultaneousCluster: noteXs.length >= 2 && noteColumnSpan <= 12,
+    barlineCount: svg.querySelectorAll(".staff-barline").length,
+  };
+}
+
 function updateSummaryScene(name, data) {
   gallerySummary.scenes[name] = { ...data, rendered: true };
 }
@@ -620,13 +653,15 @@ function renderChordScene() {
     chordClockEl.innerHTML = svgString(arena, wasm.lmt_svg_clock_optc, chordSet);
     normalizeSvgPreview(chordClockEl, { maxHeight: 360, squareWidth: 320, mediumWidth: 380 });
     chordStaffEl.innerHTML = svgString(arena, wasm.lmt_svg_chord_staff, chordType, root);
-    normalizeSvgPreview(chordStaffEl, { maxHeight: 280, squareWidth: 520, mediumWidth: 680, wideWidth: 860, ultraWideWidth: 980, padXRatio: 0.1, padYRatio: 0.16 });
+    normalizeSvgPreview(chordStaffEl, { maxHeight: 320, squareWidth: 620, mediumWidth: 780, wideWidth: 920, ultraWideWidth: 1040, padXRatio: 0.05, padYRatio: 0.12 });
+    const staffFeatures = inspectStaffSvg(chordStaffEl.querySelector("svg"));
 
     updateSummaryScene("chord", {
       root: noteName(root),
       chordName,
       roman,
       inKey,
+      staffFeatures,
     });
   } finally {
     arena.release();

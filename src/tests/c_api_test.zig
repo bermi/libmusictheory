@@ -233,7 +233,9 @@ test "c abi svg generators" {
     try testing.expect(len3 > 0);
     try testing.expect(std.mem.startsWith(u8, svg_buf[0..4], "<svg"));
     try testing.expect(std.mem.indexOf(u8, svg_buf[0..len3], "shape-rendering=\"geometricPrecision\"") != null);
-    try testing.expect(std.mem.indexOf(u8, svg_buf[0..len3], "class=\"notehead\"") != null);
+    try testing.expect(std.mem.indexOf(u8, svg_buf[0..len3], "class=\"clef clef-treble\"") != null);
+    try testing.expect(std.mem.indexOf(u8, svg_buf[0..len3], "class=\"notehead chord-notehead\"") != null);
+    try testing.expect(std.mem.indexOf(u8, svg_buf[0..len3], "class=\"stem cluster-stem\"") != null);
 }
 
 test "c abi raster generators" {

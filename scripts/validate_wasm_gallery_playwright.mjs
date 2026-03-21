@@ -67,6 +67,7 @@ async function main() {
             sceneCount: finalSnapshot.summary.sceneCount,
             scenes: finalSnapshot.summary.scenes,
             previewMetrics: finalSnapshot.previewMetrics,
+            staffFeatures: finalSnapshot.staffFeatures,
             degreeCards: finalSnapshot.degreeCards,
             progressionCards: finalSnapshot.progressionCards,
             compareChips: finalSnapshot.compareChips,
