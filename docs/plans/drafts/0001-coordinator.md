@@ -9,7 +9,7 @@ Build `libmusictheory`, a Zig library exposing a C ABI that implements the compl
 
 ## Lifecycle Status
 
-- Draft: 0001
+- Draft: 0001, 0079, 0080, 0081, 0082
 - In progress: none
 - Completed: 0002, 0003, 0004, 0005, 0006, 0007, 0008, 0009, 0010, 0011, 0012, 0013, 0014, 0015, 0016, 0017, 0018, 0019, 0020, 0021, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0032, 0033, 0034, 0035, 0036, 0037, 0038, 0039, 0040, 0041, 0042, 0043, 0044, 0045, 0046, 0047, 0048, 0049, 0050, 0051, 0052, 0053, 0054, 0055, 0056, 0057, 0058, 0059, 0060, 0061, 0062, 0063, 0064, 0065, 0066, 0067, 0068, 0069, 0070, 0071, 0072, 0073, 0074, 0075, 0076, 0077, 0078
 
@@ -167,6 +167,13 @@ Build `libmusictheory`, a Zig library exposing a C ABI that implements the compl
      ↓ depends on 0073, 0074, 0076, 0066
 0078-release-packaging-and-smoke-matrix → close the standalone release branch with release artifacts, smoke tests, versioning/changelog scaffolding, and a checklist
      ↓ depends on 0074, 0075, 0076, 0077
+0079-release-candidate-gallery-polish-master → coordinate post-release-candidate gallery expansion, presentation polish, and first release-candidate materials
+0080-gallery-scene-expansion-and-curation → expand and curate the public standalone gallery using only stable APIs
+     ↓ depends on 0077, 0078, 0079
+0081-gallery-presentation-and-capture-pipeline → make the gallery presentable and reproducibly capturable for release-candidate review
+     ↓ depends on 0077, 0079
+0082-first-release-candidate-cut → turn the release scaffold into a real first release-candidate cut with reviewer guidance
+     ↓ depends on 0078, 0079
 ```
 
 ## Dependency Graph (Visual)
@@ -352,6 +359,12 @@ Keep SPA-generated fragment links consistent with the shell URL model so search 
 Convert the current correctness-heavy branch into a clean standalone library release surface. Keep Harmonious parity/proof/SPA work in-repo as internal regression infrastructure, but stop letting it define the public product identity. Focus this phase on public API/build separation, root docs, a standalone gallery, and release packaging. Local serving is sufficient; no production rollout work belongs here.
 
 **Deliverable**: a standalone-facing library surface with a root README, stable API contract, public-vs-internal build/install separation, a verified local `wasm-gallery` bundle using only public APIs, and a release smoke/checklist layer that remains decoupled from Harmonious-specific tooling.
+
+## Phase 0079-0082 — Release Candidate Gallery Polish
+
+The standalone surface is now structurally clean. The next phase is to make it presentable as a release candidate by expanding the gallery, improving its presentation, adding a reproducible capture pipeline, and converting the release scaffold into a real first candidate cut.
+
+**Deliverable**: a polished standalone gallery with stronger curated scenes, reproducible local screenshots/captures, and a first release-candidate package/story that still stays strictly independent from Harmonious-specific regression infrastructure.
 
 ## Research Documents Index
 
