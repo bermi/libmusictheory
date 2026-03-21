@@ -3,7 +3,7 @@
 > Dependencies: 0020, 0050, 0060, 0072
 > Follow-up: 0074-0078
 
-Status: Draft
+Status: Completed
 
 ## Objective
 
@@ -67,7 +67,7 @@ The branch remains mergeable only if:
 
 ## Recovered Planning Notes
 
-This draft restores the richer coordination detail from the original release-phase planning. The plan remains a draft because the phase is not fully closed while `0078` is still only planned.
+This master phase is now closed. The richer coordination detail restored from the original release-phase planning is retained here as the authoritative summary of what the branch needed to become a standalone library surface.
 
 ### Public Release Story
 
@@ -154,7 +154,7 @@ Satisfied by `0077`:
 
 #### Gate 4 — Release Closure
 
-Still owned by `0078`:
+Satisfied by `0078`:
 
 - release artifact set
 - versioning/changelog scaffold
@@ -175,15 +175,13 @@ That order keeps the library surface clean before polishing the outward-facing g
 
 ### Current Point-in-Time Status
 
-As of this restored draft state:
+At completion:
 
 - `0074` is completed
 - `0075` is completed
 - `0076` is completed
 - `0077` is completed
-- `0078` is restored as a draft after the reverted implementation pass
-
-So the master plan is functionally in its final closure stage, but not yet complete.
+- `0078` is completed
 
 ## Workstreams
 
@@ -251,3 +249,24 @@ At the end of this phase, the repo should have:
 - gallery examples are local, verified, and use only public APIs
 - the internal verification tracks remain intact and green
 - `./verify.sh` passes
+
+## Completion Status
+
+- Completed and verified:
+  - separated the standalone public surface from Harmonious compatibility/proof APIs and targets
+  - documented the standalone library contract in `/Users/bermi/code/libmusictheory/README.md`
+  - shipped the public `wasm-gallery` bundle on stable APIs only
+  - quarantined Harmonious parity/proof/SPA tooling as internal regression infrastructure
+  - added release scaffolding, versioning docs, checklist, and a standalone `scripts/release_smoke.sh`
+
+## Implementation History (Point-in-Time)
+
+- Commit: `b3e9c7e`
+- Date: `2026-03-21`
+- Shipped behavior:
+  - closed the standalone-release phase by completing `0074` through `0078`, leaving the repo with a clean public API/build surface, root README, public gallery bundle, release artifact scaffolding, and a standalone release smoke matrix
+  - kept Harmonious parity/proof/SPA work in-repo as internal regression infrastructure rather than the public product identity
+  - made `./verify.sh` report a real standalone `RELEASE_SURFACE_SMOKE=yes` based on the executable release smoke path
+- Verification commands:
+  - `./scripts/release_smoke.sh`
+  - `./verify.sh`
