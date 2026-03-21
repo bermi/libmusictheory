@@ -127,11 +127,19 @@ async function waitForGalleryReady(page) {
       keySvg: document.querySelector("#key-clock svg")?.outerHTML || "",
       chordSvg: document.querySelector("#chord-clock svg")?.outerHTML || "",
       staffSvg: document.querySelector("#chord-staff svg")?.outerHTML || "",
+      progressionSvg: document.querySelector("#progression-clock svg")?.outerHTML || "",
+      compareLeftSvg: document.querySelector("#compare-left-clock svg")?.outerHTML || "",
+      compareOverlapSvg: document.querySelector("#compare-overlap-clock svg")?.outerHTML || "",
+      compareRightSvg: document.querySelector("#compare-right-clock svg")?.outerHTML || "",
       fretSvg: document.querySelector("#fret-svg svg")?.outerHTML || "",
       degreeCards: document.querySelectorAll("#key-degrees .degree-card").length,
       noteChips: document.querySelectorAll("#key-notes .chip").length,
       voicingPills: document.querySelectorAll("#fret-voicings .pill").length,
+      progressionCards: document.querySelectorAll("#progression-cards .progression-card").length,
+      compareChips: document.querySelectorAll("#compare-chips .chip, #compare-chips .pill").length,
       toggleCount: document.querySelectorAll("#pcs-toggle-grid .pc-toggle").length,
+      sceneCardCount: document.querySelectorAll(".scene-card").length,
+      presetSelectCount: document.querySelectorAll("select[id$='-preset']").length,
     }));
 
     if (snapshot.status.includes("Failed to initialize gallery")) {
@@ -141,21 +149,33 @@ async function waitForGalleryReady(page) {
     const summary = snapshot.summary;
     const ready =
       summary?.ready === true &&
+      summary?.manifestLoaded === true &&
+      summary?.sceneCount >= 6 &&
       Array.isArray(summary?.errors) &&
       summary.errors.length === 0 &&
       summary.scenes?.set?.rendered &&
       summary.scenes?.key?.rendered &&
       summary.scenes?.chord?.rendered &&
+      summary.scenes?.progression?.rendered &&
+      summary.scenes?.compare?.rendered &&
       summary.scenes?.fret?.rendered &&
       snapshot.clockSvg.includes("<svg") &&
       snapshot.keySvg.includes("<svg") &&
       snapshot.chordSvg.includes("<svg") &&
       snapshot.staffSvg.includes("<svg") &&
+      snapshot.progressionSvg.includes("<svg") &&
+      snapshot.compareLeftSvg.includes("<svg") &&
+      snapshot.compareOverlapSvg.includes("<svg") &&
+      snapshot.compareRightSvg.includes("<svg") &&
       snapshot.fretSvg.includes("<svg") &&
       snapshot.degreeCards >= 7 &&
       snapshot.noteChips >= 7 &&
       snapshot.voicingPills >= 1 &&
-      snapshot.toggleCount === 12;
+      snapshot.progressionCards >= 4 &&
+      snapshot.compareChips >= 4 &&
+      snapshot.toggleCount === 12 &&
+      snapshot.sceneCardCount >= 6 &&
+      snapshot.presetSelectCount >= 6;
 
     if (ready) return snapshot;
     if (Date.now() > deadline) {
@@ -211,6 +231,8 @@ async function main() {
       await page.click("#render-set");
       await page.click("#render-key");
       await page.click("#render-chord");
+      await page.click("#render-progression");
+      await page.click("#render-compare");
       await page.click("#render-fret");
       const finalSnapshot = await waitForGalleryReady(page);
 
@@ -218,8 +240,12 @@ async function main() {
         JSON.stringify(
           {
             status: finalSnapshot.status,
+            manifestLoaded: finalSnapshot.summary.manifestLoaded,
+            sceneCount: finalSnapshot.summary.sceneCount,
             scenes: finalSnapshot.summary.scenes,
             degreeCards: finalSnapshot.degreeCards,
+            progressionCards: finalSnapshot.progressionCards,
+            compareChips: finalSnapshot.compareChips,
             voicingPills: finalSnapshot.voicingPills,
           },
           null,

@@ -1,10 +1,10 @@
 const NOTE_NAMES = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
-const MODE_IONIAN = 0;
 const MODE_AEOLIAN = 5;
 const SCALE_DIATONIC = 0;
 const GUIDE_DOT_BYTES = 8;
 const decoder = new TextDecoder();
 const encoder = new TextEncoder();
+const CUSTOM_PRESET_VALUE = "custom";
 
 const REQUIRED_EXPORTS = [
   "memory",
@@ -37,80 +37,15 @@ const REQUIRED_EXPORTS = [
   "lmt_svg_chord_staff",
 ];
 
-const setPresets = [
-  [0, 4, 7],
-  [0, 2, 4, 7, 9],
-  [0, 1, 4, 6, 8],
-  [0, 2, 5, 7, 10],
-  [0, 3, 6, 9],
-  [0, 1, 5, 6],
-  [0, 3, 5, 8, 10],
-  [0, 2, 3, 7, 9],
-];
-
-const keyPresets = [
-  { tonic: 0, quality: 0 },
-  { tonic: 7, quality: 0 },
-  { tonic: 2, quality: 0 },
-  { tonic: 9, quality: 1 },
-  { tonic: 4, quality: 1 },
-  { tonic: 10, quality: 1 },
-];
-
-const chordPresets = [
-  { root: 0, type: 0, keyTonic: 0, keyQuality: 0 },
-  { root: 9, type: 1, keyTonic: 0, keyQuality: 0 },
-  { root: 11, type: 2, keyTonic: 0, keyQuality: 0 },
-  { root: 5, type: 0, keyTonic: 0, keyQuality: 0 },
-  { root: 2, type: 1, keyTonic: 9, keyQuality: 1 },
-  { root: 8, type: 3, keyTonic: 8, keyQuality: 1 },
-];
-
-const fretPresets = [
-  {
-    tuning: [40, 45, 50, 55, 59, 64],
-    frets: [-1, 3, 2, 0, 1, 0],
-    windowStart: 0,
-    visibleFrets: 5,
-    maxFret: 12,
-    maxSpan: 4,
-  },
-  {
-    tuning: [67, 60, 64, 69],
-    frets: [0, 0, 0, 3],
-    windowStart: 0,
-    visibleFrets: 5,
-    maxFret: 12,
-    maxSpan: 4,
-  },
-  {
-    tuning: [28, 33, 38, 43],
-    frets: [3, 2, 0, 0],
-    windowStart: 0,
-    visibleFrets: 5,
-    maxFret: 12,
-    maxSpan: 4,
-  },
-  {
-    tuning: [55, 62, 69, 76],
-    frets: [0, 2, 3, 2],
-    windowStart: 0,
-    visibleFrets: 5,
-    maxFret: 12,
-    maxSpan: 5,
-  },
-  {
-    tuning: [35, 40, 45, 50, 55, 59, 64],
-    frets: [-1, 3, 2, 0, 1, 0, -1],
-    windowStart: 0,
-    visibleFrets: 5,
-    maxFret: 12,
-    maxSpan: 4,
-  },
-];
-
 const statusEl = document.getElementById("status");
 const pcsToggleGrid = document.getElementById("pcs-toggle-grid");
+
+const setPresetEl = document.getElementById("set-preset");
+const keyPresetEl = document.getElementById("key-preset");
+const chordPresetEl = document.getElementById("chord-preset");
+const progressionPresetEl = document.getElementById("progression-preset");
+const comparePresetEl = document.getElementById("compare-preset");
+const fretPresetEl = document.getElementById("fret-preset");
 
 const keyTonicEl = document.getElementById("key-tonic");
 const keyQualityEl = document.getElementById("key-quality");
@@ -125,6 +60,13 @@ const fretVisibleFretsEl = document.getElementById("fret-visible-frets");
 const fretMaxFretEl = document.getElementById("fret-max-fret");
 const fretMaxSpanEl = document.getElementById("fret-max-span");
 
+const setCaptionEl = document.getElementById("set-caption");
+const keyCaptionEl = document.getElementById("key-caption");
+const chordCaptionEl = document.getElementById("chord-caption");
+const progressionCaptionEl = document.getElementById("progression-caption");
+const compareCaptionEl = document.getElementById("compare-caption");
+const fretCaptionEl = document.getElementById("fret-caption");
+
 const setSummaryEl = document.getElementById("set-summary");
 const setClockEl = document.getElementById("set-clock");
 const keyNotesEl = document.getElementById("key-notes");
@@ -134,6 +76,15 @@ const chordSummaryEl = document.getElementById("chord-summary");
 const chordNotesEl = document.getElementById("chord-notes");
 const chordClockEl = document.getElementById("chord-clock");
 const chordStaffEl = document.getElementById("chord-staff");
+const progressionSummaryEl = document.getElementById("progression-summary");
+const progressionCardsEl = document.getElementById("progression-cards");
+const progressionClockEl = document.getElementById("progression-clock");
+const progressionNotesEl = document.getElementById("progression-notes");
+const compareLeftClockEl = document.getElementById("compare-left-clock");
+const compareOverlapClockEl = document.getElementById("compare-overlap-clock");
+const compareRightClockEl = document.getElementById("compare-right-clock");
+const compareSummaryEl = document.getElementById("compare-summary");
+const compareChipsEl = document.getElementById("compare-chips");
 const fretSvgEl = document.getElementById("fret-svg");
 const fretSummaryEl = document.getElementById("fret-summary");
 const fretNotesEl = document.getElementById("fret-notes");
@@ -141,9 +92,12 @@ const fretVoicingsEl = document.getElementById("fret-voicings");
 
 let wasm = null;
 let memory = null;
+let manifest = null;
 let currentSetPreset = 0;
 let currentKeyPreset = 0;
 let currentChordPreset = 0;
+let currentProgressionPreset = 0;
+let currentComparePreset = 0;
 let currentFretPreset = 0;
 let jsScratchBase = 0;
 let jsScratchTop = 0;
@@ -151,11 +105,15 @@ let jsScratchLimit = 0;
 
 const gallerySummary = {
   ready: false,
+  manifestLoaded: false,
+  sceneCount: 0,
   errors: [],
   scenes: {
     set: {},
     key: {},
     chord: {},
+    progression: {},
+    compare: {},
     fret: {},
   },
 };
@@ -289,12 +247,13 @@ function svgString(arena, renderFn, ...args) {
 }
 
 function normalizeSvgPreview(host, maxHeight = 280) {
-  const svg = host.querySelector("svg");
-  if (!svg) return;
-  svg.style.display = "block";
-  svg.style.maxWidth = "100%";
-  svg.style.maxHeight = `${maxHeight}px`;
-  svg.style.height = "auto";
+  const svgs = host.querySelectorAll("svg");
+  for (const svg of svgs) {
+    svg.style.display = "block";
+    svg.style.maxWidth = "100%";
+    svg.style.maxHeight = `${maxHeight}px`;
+    svg.style.height = "auto";
+  }
 }
 
 function updateSummaryScene(name, data) {
@@ -302,69 +261,197 @@ function updateSummaryScene(name, data) {
 }
 
 function setChipRow(target, items, klass = "chip") {
-  target.innerHTML = items.map((one) => `<span class="${klass}">${one}</span>`).join("");
+  target.innerHTML = items.map((one) => `<span class="${klass}">${escapeHtml(one)}</span>`).join("");
 }
 
 function createNoteSelectors(select) {
   select.innerHTML = NOTE_NAMES.map((name, index) => `<option value="${index}">${name}</option>`).join("");
 }
 
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function friendlyChordName(name) {
+  return !name || name === "Unknown" ? "set-class color" : name;
+}
+
+function manifestList(key) {
+  const value = manifest?.[key];
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new Error(`Preset manifest entry missing or empty: ${key}`);
+  }
+  return value;
+}
+
+async function loadManifest() {
+  const response = await fetch("./gallery-presets.json");
+  if (!response.ok) {
+    throw new Error(`Failed to fetch gallery-presets.json: ${response.status}`);
+  }
+  const loaded = await response.json();
+  const requiredLists = ["setPresets", "keyPresets", "chordPresets", "progressionPresets", "comparePresets", "fretPresets"];
+  for (const key of requiredLists) {
+    if (!Array.isArray(loaded[key]) || loaded[key].length === 0) {
+      throw new Error(`Invalid gallery manifest: ${key}`);
+    }
+  }
+  if (!loaded.meta || Number(loaded.meta.sceneCount) < 6) {
+    throw new Error("Invalid gallery manifest: meta.sceneCount must be >= 6");
+  }
+  return loaded;
+}
+
+function populatePresetSelect(select, presets) {
+  const options = [`<option value="${CUSTOM_PRESET_VALUE}">Custom</option>`];
+  presets.forEach((preset, index) => {
+    options.push(`<option value="${index}">${escapeHtml(preset.label)}</option>`);
+  });
+  select.innerHTML = options.join("");
+}
+
+function setPresetSelection(select, index) {
+  select.value = String(index);
+}
+
+function markPresetCustom(select, captionEl, noun) {
+  select.value = CUSTOM_PRESET_VALUE;
+  captionEl.textContent = `Custom — manual ${noun} selection using only the stable public API.`;
+}
+
+function updateSceneCaption(captionEl, preset) {
+  captionEl.textContent = `${preset.label} — ${preset.story}`;
+}
+
 function buildToggleGrid() {
   pcsToggleGrid.innerHTML = NOTE_NAMES.map(
-    (name, pc) =>
-      `<button class="pc-toggle" data-pc="${pc}" type="button" aria-pressed="false">${name}</button>`,
+    (name, pc) => `<button class="pc-toggle" data-pc="${pc}" type="button" aria-pressed="false">${name}</button>`,
   ).join("");
   pcsToggleGrid.addEventListener("click", (event) => {
     const button = event.target.closest(".pc-toggle");
     if (!button) return;
     button.classList.toggle("is-active");
     button.setAttribute("aria-pressed", button.classList.contains("is-active") ? "true" : "false");
+    markPresetCustom(setPresetEl, setCaptionEl, "pitch-class");
     renderSetScene();
   });
 }
 
 function applySetPreset(index) {
-  currentSetPreset = index % setPresets.length;
-  const active = new Set(setPresets[currentSetPreset]);
+  const presets = manifestList("setPresets");
+  currentSetPreset = index % presets.length;
+  const preset = presets[currentSetPreset];
+  const active = new Set(preset.pcs);
   for (const button of pcsToggleGrid.querySelectorAll(".pc-toggle")) {
     const pc = Number.parseInt(button.dataset.pc, 10);
     const isActive = active.has(pc);
     button.classList.toggle("is-active", isActive);
     button.setAttribute("aria-pressed", isActive ? "true" : "false");
   }
+  setPresetSelection(setPresetEl, currentSetPreset);
+  updateSceneCaption(setCaptionEl, preset);
 }
 
 function applyKeyPreset(index) {
-  currentKeyPreset = index % keyPresets.length;
-  const preset = keyPresets[currentKeyPreset];
+  const presets = manifestList("keyPresets");
+  currentKeyPreset = index % presets.length;
+  const preset = presets[currentKeyPreset];
   keyTonicEl.value = String(preset.tonic);
   keyQualityEl.value = String(preset.quality);
+  setPresetSelection(keyPresetEl, currentKeyPreset);
+  updateSceneCaption(keyCaptionEl, preset);
 }
 
 function applyChordPreset(index) {
-  currentChordPreset = index % chordPresets.length;
-  const preset = chordPresets[currentChordPreset];
+  const presets = manifestList("chordPresets");
+  currentChordPreset = index % presets.length;
+  const preset = presets[currentChordPreset];
   chordRootEl.value = String(preset.root);
   chordTypeEl.value = String(preset.type);
   chordKeyTonicEl.value = String(preset.keyTonic);
   chordKeyQualityEl.value = String(preset.keyQuality);
+  setPresetSelection(chordPresetEl, currentChordPreset);
+  updateSceneCaption(chordCaptionEl, preset);
+}
+
+function applyProgressionPreset(index) {
+  const presets = manifestList("progressionPresets");
+  currentProgressionPreset = index % presets.length;
+  const preset = presets[currentProgressionPreset];
+  setPresetSelection(progressionPresetEl, currentProgressionPreset);
+  updateSceneCaption(progressionCaptionEl, preset);
+}
+
+function applyComparePreset(index) {
+  const presets = manifestList("comparePresets");
+  currentComparePreset = index % presets.length;
+  const preset = presets[currentComparePreset];
+  setPresetSelection(comparePresetEl, currentComparePreset);
+  updateSceneCaption(compareCaptionEl, preset);
 }
 
 function applyFretPreset(index) {
-  currentFretPreset = index % fretPresets.length;
-  const preset = fretPresets[currentFretPreset];
+  const presets = manifestList("fretPresets");
+  currentFretPreset = index % presets.length;
+  const preset = presets[currentFretPreset];
   fretTuningEl.value = preset.tuning.join(",");
   fretFretsEl.value = preset.frets.join(",");
   fretWindowStartEl.value = String(preset.windowStart);
   fretVisibleFretsEl.value = String(preset.visibleFrets);
   fretMaxFretEl.value = String(preset.maxFret);
   fretMaxSpanEl.value = String(preset.maxSpan);
+  setPresetSelection(fretPresetEl, currentFretPreset);
+  updateSceneCaption(fretCaptionEl, preset);
 }
 
 function currentSetList() {
   return Array.from(pcsToggleGrid.querySelectorAll(".pc-toggle.is-active"), (button) =>
     Number.parseInt(button.dataset.pc, 10),
   ).sort((a, b) => a - b);
+}
+
+function buildScaleOrbit(tonic, quality) {
+  const setValue = quality === 0 ? wasm.lmt_scale(SCALE_DIATONIC, tonic) : wasm.lmt_mode(MODE_AEOLIAN, tonic);
+  const ordered = orderedMembersFromSet(setValue, tonic);
+  const names = ordered.map((pc) => spellNote(pc, tonic, quality));
+  return { tonic, quality, setValue, ordered, names };
+}
+
+function buildTriadFromDegree(arena, orbit, degreeIndex) {
+  const pcsList = [
+    orbit.ordered[degreeIndex % orbit.ordered.length],
+    orbit.ordered[(degreeIndex + 2) % orbit.ordered.length],
+    orbit.ordered[(degreeIndex + 4) % orbit.ordered.length],
+  ];
+  const setValue = pcsFromList(arena, pcsList);
+  return {
+    degreeIndex,
+    pcsList,
+    setValue,
+    roman: readCString(wasm.lmt_roman_numeral_parts(setValue, orbit.tonic, orbit.quality)),
+    chordName: friendlyChordName(readCString(wasm.lmt_chord_name(setValue))),
+    noteNames: pcsList.map((pc) => spellNote(pc, orbit.tonic, orbit.quality)),
+  };
+}
+
+function describeRelation(leftSet, rightSet) {
+  let transposeMatch = null;
+  let inversionMatch = null;
+  const inverted = wasm.lmt_pcs_invert(leftSet);
+  for (let t = 0; t < 12; t += 1) {
+    if (transposeMatch == null && wasm.lmt_pcs_transpose(leftSet, t) === rightSet) {
+      transposeMatch = t;
+    }
+    if (inversionMatch == null && wasm.lmt_pcs_transpose(inverted, t) === rightSet) {
+      inversionMatch = t;
+    }
+  }
+  return { transposeMatch, inversionMatch };
 }
 
 function renderSetScene() {
@@ -386,7 +473,7 @@ function renderSetScene() {
     const fortePrime = wasm.lmt_forte_prime(setValue);
     const clusterFree = wasm.lmt_is_cluster_free(setValue) === 1;
     const evenness = wasm.lmt_evenness_distance(setValue);
-    const chordName = readCString(wasm.lmt_chord_name(setValue));
+    const chordName = friendlyChordName(readCString(wasm.lmt_chord_name(setValue)));
     const svg = svgString(arena, wasm.lmt_svg_clock_optc, setValue);
 
     setSummaryEl.textContent = [
@@ -399,7 +486,7 @@ function renderSetScene() {
       `complement: ${JSON.stringify(pcsToList(arena, complement))}`,
       `cluster-free: ${clusterFree ? "yes" : "no"}`,
       `evenness distance: ${evenness.toFixed(6)}`,
-      `chord reading: ${chordName || "no canonical triadic label"}`,
+      `chord reading: ${chordName}`,
     ].join("\n");
     setClockEl.innerHTML = svg;
     normalizeSvgPreview(setClockEl, 260);
@@ -419,36 +506,25 @@ function renderKeyScene() {
   try {
     const tonic = Number.parseInt(keyTonicEl.value, 10);
     const quality = Number.parseInt(keyQualityEl.value, 10);
-    const majorScale = wasm.lmt_scale(SCALE_DIATONIC, tonic);
-    const modeSet = quality === 0 ? majorScale : wasm.lmt_mode(MODE_AEOLIAN, tonic);
-    const ordered = orderedMembersFromSet(modeSet, tonic);
-    const noteNames = ordered.map((pc) => spellNote(pc, tonic, quality));
+    const orbit = buildScaleOrbit(tonic, quality);
     const degreeCards = [];
 
-    for (let i = 0; i < ordered.length; i += 1) {
-      const triadList = [
-        ordered[i],
-        ordered[(i + 2) % ordered.length],
-        ordered[(i + 4) % ordered.length],
-      ];
-      const triad = pcsFromList(arena, triadList);
-      const roman = readCString(wasm.lmt_roman_numeral_parts(triad, tonic, quality));
-      const chordName = readCString(wasm.lmt_chord_name(triad));
-      const triadNotes = triadList.map((pc) => spellNote(pc, tonic, quality)).join(" · ");
+    for (let i = 0; i < orbit.ordered.length; i += 1) {
+      const triad = buildTriadFromDegree(arena, orbit, i);
       degreeCards.push(
-        `<article class="degree-card"><strong>${roman}</strong><div>${chordName || "set-class chord"}</div><div>${triadNotes}</div></article>`,
+        `<article class="degree-card"><strong>${escapeHtml(triad.roman)}</strong><div>${escapeHtml(triad.chordName)}</div><div>${escapeHtml(triad.noteNames.join(" · "))}</div></article>`,
       );
     }
 
-    setChipRow(keyNotesEl, noteNames);
+    setChipRow(keyNotesEl, orbit.names);
     keyDegreesEl.innerHTML = degreeCards.join("");
-    keyClockEl.innerHTML = svgString(arena, wasm.lmt_svg_clock_optc, modeSet);
+    keyClockEl.innerHTML = svgString(arena, wasm.lmt_svg_clock_optc, orbit.setValue);
     normalizeSvgPreview(keyClockEl, 280);
 
     updateSummaryScene("key", {
       tonic: noteName(tonic),
       quality: quality === 0 ? "major" : "minor",
-      noteCount: ordered.length,
+      noteCount: orbit.ordered.length,
       degrees: degreeCards.length,
     });
   } finally {
@@ -466,11 +542,11 @@ function renderChordScene() {
 
     const chordSet = wasm.lmt_chord(chordType, root);
     const orderedNotes = orderedMembersFromSet(chordSet, root).map((pc) => spellNote(pc, keyTonic, keyQuality));
-    const chordName = readCString(wasm.lmt_chord_name(chordSet));
+    const chordName = friendlyChordName(readCString(wasm.lmt_chord_name(chordSet)));
     const roman = readCString(wasm.lmt_roman_numeral_parts(chordSet, keyTonic, keyQuality));
     const prime = wasm.lmt_prime_form(chordSet);
     const fortePrime = wasm.lmt_forte_prime(chordSet);
-    const keySet = keyQuality === 0 ? wasm.lmt_scale(SCALE_DIATONIC, keyTonic) : wasm.lmt_mode(MODE_AEOLIAN, keyTonic);
+    const keySet = buildScaleOrbit(keyTonic, keyQuality).setValue;
     const inKey = (chordSet & keySet) === chordSet;
 
     chordSummaryEl.textContent = [
@@ -493,6 +569,113 @@ function renderChordScene() {
       chordName,
       roman,
       inKey,
+    });
+  } finally {
+    arena.release();
+  }
+}
+
+function renderProgressionScene() {
+  const presets = manifestList("progressionPresets");
+  const preset = presets[currentProgressionPreset];
+  const arena = new ScratchArena();
+  try {
+    const orbit = buildScaleOrbit(preset.tonic, preset.quality);
+    const cards = [];
+    let unionSet = 0;
+    let previousSet = null;
+    let strongestLink = 0;
+
+    for (const degreeIndex of preset.degrees) {
+      const triad = buildTriadFromDegree(arena, orbit, degreeIndex);
+      const sharedSet = previousSet == null ? triad.setValue : previousSet & triad.setValue;
+      const sharedCount = previousSet == null ? 0 : wasm.lmt_pcs_cardinality(sharedSet);
+      strongestLink = Math.max(strongestLink, sharedCount);
+      unionSet |= triad.setValue;
+      cards.push(`
+        <article class="progression-card">
+          <div>
+            <strong>${escapeHtml(triad.roman)}</strong>
+            <div class="progression-title">${escapeHtml(triad.chordName)}</div>
+            <div class="progression-notes">${escapeHtml(triad.noteNames.join(" · "))}</div>
+            <div class="progression-shared">${previousSet == null ? "entry chord" : `shared with previous: ${sharedCount}`}</div>
+          </div>
+          <div class="mini-clock">${svgString(arena, wasm.lmt_svg_clock_optc, triad.setValue)}</div>
+        </article>
+      `);
+      previousSet = triad.setValue;
+    }
+
+    const unionNotes = orderedMembersFromSet(unionSet, preset.tonic).map((pc) => spellNote(pc, preset.tonic, preset.quality));
+    progressionSummaryEl.textContent = [
+      `key center: ${noteName(preset.tonic)} ${preset.quality === 0 ? "major" : "minor"}`,
+      `steps: ${preset.degrees.map((degree) => degree + 1).join(" → ")}`,
+      `unique pitch classes: ${wasm.lmt_pcs_cardinality(unionSet)}`,
+      `strongest shared-tone link: ${strongestLink}`,
+      `union set: 0x${unionSet.toString(16).padStart(3, "0")}`,
+    ].join("\n");
+    progressionCardsEl.innerHTML = cards.join("");
+    progressionClockEl.innerHTML = svgString(arena, wasm.lmt_svg_clock_optc, unionSet);
+    progressionNotesEl.innerHTML = unionNotes.map((note) => `<span class="chip">${escapeHtml(note)}</span>`).join("");
+    normalizeSvgPreview(progressionCardsEl, 110);
+    normalizeSvgPreview(progressionClockEl, 240);
+
+    updateSummaryScene("progression", {
+      tonic: noteName(preset.tonic),
+      quality: preset.quality === 0 ? "major" : "minor",
+      steps: preset.degrees.length,
+      unionCardinality: wasm.lmt_pcs_cardinality(unionSet),
+      strongestLink,
+    });
+  } finally {
+    arena.release();
+  }
+}
+
+function renderCompareScene() {
+  const presets = manifestList("comparePresets");
+  const preset = presets[currentComparePreset];
+  const arena = new ScratchArena();
+  try {
+    const leftSet = pcsFromList(arena, preset.left);
+    const rightSet = pcsFromList(arena, preset.right);
+    const overlapSet = leftSet & rightSet;
+    const unionSet = leftSet | rightSet;
+    const relation = describeRelation(leftSet, rightSet);
+    const leftNotes = pcsToList(arena, leftSet).map(noteName);
+    const rightNotes = pcsToList(arena, rightSet).map(noteName);
+    const overlapNotes = pcsToList(arena, overlapSet).map(noteName);
+    const unionNotes = pcsToList(arena, unionSet).map(noteName);
+
+    compareLeftClockEl.innerHTML = svgString(arena, wasm.lmt_svg_clock_optc, leftSet);
+    compareOverlapClockEl.innerHTML = svgString(arena, wasm.lmt_svg_clock_optc, overlapSet);
+    compareRightClockEl.innerHTML = svgString(arena, wasm.lmt_svg_clock_optc, rightSet);
+    normalizeSvgPreview(compareLeftClockEl, 180);
+    normalizeSvgPreview(compareOverlapClockEl, 180);
+    normalizeSvgPreview(compareRightClockEl, 180);
+
+    compareSummaryEl.textContent = [
+      `left: 0x${leftSet.toString(16).padStart(3, "0")}`,
+      `right: 0x${rightSet.toString(16).padStart(3, "0")}`,
+      `shared tones: ${wasm.lmt_pcs_cardinality(overlapSet)}${overlapNotes.length > 0 ? ` -> ${overlapNotes.join(", ")}` : ""}`,
+      `union size: ${wasm.lmt_pcs_cardinality(unionSet)}`,
+      `transpose relation: ${relation.transposeMatch == null ? "none" : `T${relation.transposeMatch}`}`,
+      `inversion relation: ${relation.inversionMatch == null ? "none" : `I+T${relation.inversionMatch}`}`,
+    ].join("\n");
+
+    compareChipsEl.innerHTML = [
+      ...leftNotes.map((note) => `<span class="chip left-chip">L · ${escapeHtml(note)}</span>`),
+      ...overlapNotes.map((note) => `<span class="chip overlap-chip">∩ · ${escapeHtml(note)}</span>`),
+      ...rightNotes.filter((note) => !overlapNotes.includes(note)).map((note) => `<span class="chip right-chip">R · ${escapeHtml(note)}</span>`),
+      `<span class="pill">Union: ${escapeHtml(unionNotes.join(" · "))}</span>`,
+    ].join("");
+
+    updateSummaryScene("compare", {
+      leftCardinality: wasm.lmt_pcs_cardinality(leftSet),
+      rightCardinality: wasm.lmt_pcs_cardinality(rightSet),
+      sharedCardinality: wasm.lmt_pcs_cardinality(overlapSet),
+      transposeMatch: relation.transposeMatch,
+      inversionMatch: relation.inversionMatch,
     });
   } finally {
     arena.release();
@@ -523,12 +706,7 @@ function renderFretScene() {
       const fret = frets[stringIndex];
       if (fret < 0) continue;
       const midi = wasm.lmt_fret_to_midi_n(stringIndex, fret, tuningPtr, tuning.length);
-      selected.push({
-        string: stringIndex,
-        fret,
-        midi,
-        pc: midi % 12,
-      });
+      selected.push({ string: stringIndex, fret, midi, pc: midi % 12 });
     }
 
     const uniquePcs = [...new Set(selected.map((one) => one.pc))];
@@ -567,9 +745,7 @@ function renderFretScene() {
     const guidePreview = [];
     for (let index = 0; index < Math.min(guideCount, 6); index += 1) {
       const offset = index * GUIDE_DOT_BYTES;
-      guidePreview.push(
-        `s${guideView.getUint8(offset) + 1}:f${guideView.getUint8(offset + 1)} ${noteName(guideView.getUint8(offset + 2))}`,
-      );
+      guidePreview.push(`s${guideView.getUint8(offset) + 1}:f${guideView.getUint8(offset + 1)} ${noteName(guideView.getUint8(offset + 2))}`);
     }
 
     let bassPositions = [];
@@ -583,28 +759,15 @@ function renderFretScene() {
     }
 
     let voicings = [];
+    let rowCount = 0;
     if (chordSet !== 0) {
       const rowCap = 48;
       const voicingPtr = arena.alloc(rowCap * tuning.length, 1);
-      const rowCount = wasm.lmt_generate_voicings_n(chordSet, tuningPtr, tuning.length, maxFret, maxSpan, voicingPtr, rowCap);
-      voicings = [];
+      rowCount = wasm.lmt_generate_voicings_n(chordSet, tuningPtr, tuning.length, maxFret, maxSpan, voicingPtr, rowCap);
       for (let row = 0; row < Math.min(rowCount, 8); row += 1) {
         const start = voicingPtr + row * tuning.length;
         voicings.push(Array.from(i8().subarray(start, start + tuning.length)).join(","));
       }
-      updateSummaryScene("fret", {
-        tuningCount: tuning.length,
-        selectedCount: selected.length,
-        voicingCount: rowCount,
-        url: fretUrl,
-      });
-    } else {
-      updateSummaryScene("fret", {
-        tuningCount: tuning.length,
-        selectedCount: 0,
-        voicingCount: 0,
-        url: fretUrl,
-      });
     }
 
     fretSvgEl.innerHTML = svgString(arena, wasm.lmt_svg_fret_n, fretsPtr, frets.length, windowStart, visibleFrets);
@@ -623,6 +786,13 @@ function renderFretScene() {
       `lowest note positions: ${bassPositions.length > 0 ? bassPositions.join(", ") : "n/a"}`,
       `generated voicings shown: ${voicings.length}`,
     ].join("\n");
+
+    updateSummaryScene("fret", {
+      tuningCount: tuning.length,
+      selectedCount: selected.length,
+      voicingCount: rowCount,
+      url: fretUrl,
+    });
   } finally {
     arena.release();
   }
@@ -634,6 +804,8 @@ function renderAll() {
     ["set", renderSetScene],
     ["key", renderKeyScene],
     ["chord", renderChordScene],
+    ["progression", renderProgressionScene],
+    ["compare", renderCompareScene],
     ["fret", renderFretScene],
   ];
 
@@ -648,6 +820,7 @@ function renderAll() {
     }
   }
 
+  gallerySummary.sceneCount = document.querySelectorAll(".scene-card").length;
   if (errors.length > 0) {
     gallerySummary.ready = false;
     setStatus(`Gallery render completed with ${errors.length} error(s): ${errors.join("; ")}`, "error");
@@ -655,13 +828,30 @@ function renderAll() {
   }
 
   gallerySummary.ready = true;
-  setStatus("Gallery ready. Public API scenes rendered successfully.");
+  setStatus("Gallery ready. Curated public API scenes rendered successfully.");
 }
 
 function wireSceneEvents() {
-  document.getElementById("render-set").addEventListener("click", renderSetScene);
-  document.getElementById("render-key").addEventListener("click", renderKeyScene);
-  document.getElementById("render-chord").addEventListener("click", renderChordScene);
+  document.getElementById("render-set").addEventListener("click", () => {
+    renderSetScene();
+    setStatus("Set Observatory refreshed.");
+  });
+  document.getElementById("render-key").addEventListener("click", () => {
+    renderKeyScene();
+    setStatus("Key Bloom refreshed.");
+  });
+  document.getElementById("render-chord").addEventListener("click", () => {
+    renderChordScene();
+    setStatus("Chord Atelier refreshed.");
+  });
+  document.getElementById("render-progression").addEventListener("click", () => {
+    renderProgressionScene();
+    setStatus("Progression Drift refreshed.");
+  });
+  document.getElementById("render-compare").addEventListener("click", () => {
+    renderCompareScene();
+    setStatus("Constellation Delta refreshed.");
+  });
   document.getElementById("render-fret").addEventListener("click", () => {
     try {
       renderFretScene();
@@ -673,12 +863,50 @@ function wireSceneEvents() {
     }
   });
 
-  [keyTonicEl, keyQualityEl].forEach((node) => node.addEventListener("change", renderKeyScene));
+  setPresetEl.addEventListener("change", () => {
+    if (setPresetEl.value === CUSTOM_PRESET_VALUE) return;
+    applySetPreset(Number.parseInt(setPresetEl.value, 10));
+    renderSetScene();
+  });
+  keyPresetEl.addEventListener("change", () => {
+    if (keyPresetEl.value === CUSTOM_PRESET_VALUE) return;
+    applyKeyPreset(Number.parseInt(keyPresetEl.value, 10));
+    renderKeyScene();
+  });
+  chordPresetEl.addEventListener("change", () => {
+    if (chordPresetEl.value === CUSTOM_PRESET_VALUE) return;
+    applyChordPreset(Number.parseInt(chordPresetEl.value, 10));
+    renderChordScene();
+  });
+  progressionPresetEl.addEventListener("change", () => {
+    if (progressionPresetEl.value === CUSTOM_PRESET_VALUE) return;
+    applyProgressionPreset(Number.parseInt(progressionPresetEl.value, 10));
+    renderProgressionScene();
+  });
+  comparePresetEl.addEventListener("change", () => {
+    if (comparePresetEl.value === CUSTOM_PRESET_VALUE) return;
+    applyComparePreset(Number.parseInt(comparePresetEl.value, 10));
+    renderCompareScene();
+  });
+  fretPresetEl.addEventListener("change", () => {
+    if (fretPresetEl.value === CUSTOM_PRESET_VALUE) return;
+    applyFretPreset(Number.parseInt(fretPresetEl.value, 10));
+    renderFretScene();
+  });
+
+  [keyTonicEl, keyQualityEl].forEach((node) => node.addEventListener("change", () => {
+    markPresetCustom(keyPresetEl, keyCaptionEl, "key");
+    renderKeyScene();
+  }));
   [chordRootEl, chordTypeEl, chordKeyTonicEl, chordKeyQualityEl].forEach((node) =>
-    node.addEventListener("change", renderChordScene),
+    node.addEventListener("change", () => {
+      markPresetCustom(chordPresetEl, chordCaptionEl, "chord");
+      renderChordScene();
+    }),
   );
   [fretTuningEl, fretFretsEl, fretWindowStartEl, fretVisibleFretsEl, fretMaxFretEl, fretMaxSpanEl].forEach((node) =>
     node.addEventListener("change", () => {
+      markPresetCustom(fretPresetEl, fretCaptionEl, "fretboard");
       try {
         renderFretScene();
       } catch (error) {
@@ -688,13 +916,17 @@ function wireSceneEvents() {
   );
 
   document.getElementById("shuffle-scenes").addEventListener("click", () => {
-    currentSetPreset = (currentSetPreset + 1) % setPresets.length;
-    currentKeyPreset = (currentKeyPreset + 1) % keyPresets.length;
-    currentChordPreset = (currentChordPreset + 1) % chordPresets.length;
-    currentFretPreset = (currentFretPreset + 1) % fretPresets.length;
+    currentSetPreset = (currentSetPreset + 1) % manifestList("setPresets").length;
+    currentKeyPreset = (currentKeyPreset + 1) % manifestList("keyPresets").length;
+    currentChordPreset = (currentChordPreset + 1) % manifestList("chordPresets").length;
+    currentProgressionPreset = (currentProgressionPreset + 1) % manifestList("progressionPresets").length;
+    currentComparePreset = (currentComparePreset + 1) % manifestList("comparePresets").length;
+    currentFretPreset = (currentFretPreset + 1) % manifestList("fretPresets").length;
     applySetPreset(currentSetPreset);
     applyKeyPreset(currentKeyPreset);
     applyChordPreset(currentChordPreset);
+    applyProgressionPreset(currentProgressionPreset);
+    applyComparePreset(currentComparePreset);
     applyFretPreset(currentFretPreset);
     renderAll();
   });
@@ -732,16 +964,27 @@ function initializeUi() {
   createNoteSelectors(chordRootEl);
   createNoteSelectors(chordKeyTonicEl);
   buildToggleGrid();
+  populatePresetSelect(setPresetEl, manifestList("setPresets"));
+  populatePresetSelect(keyPresetEl, manifestList("keyPresets"));
+  populatePresetSelect(chordPresetEl, manifestList("chordPresets"));
+  populatePresetSelect(progressionPresetEl, manifestList("progressionPresets"));
+  populatePresetSelect(comparePresetEl, manifestList("comparePresets"));
+  populatePresetSelect(fretPresetEl, manifestList("fretPresets"));
   applySetPreset(0);
   applyKeyPreset(0);
   applyChordPreset(0);
+  applyProgressionPreset(0);
+  applyComparePreset(0);
   applyFretPreset(0);
   wireSceneEvents();
+  gallerySummary.sceneCount = Number(manifest.meta.sceneCount);
 }
 
 async function main() {
-  initializeUi();
   try {
+    manifest = await loadManifest();
+    gallerySummary.manifestLoaded = true;
+    initializeUi();
     const instance = await instantiateWasm();
     verifyExports(instance.exports);
     wasm = instance.exports;

@@ -342,6 +342,11 @@ pub fn build(b: *std.Build) void {
         .prefix,
         "wasm-gallery/styles.css",
     );
+    const install_gallery_presets = b.addInstallFileWithDir(
+        b.path("examples/wasm-gallery/gallery-presets.json"),
+        .prefix,
+        "wasm-gallery/gallery-presets.json",
+    );
 
     const wasm_gallery_step = b.step("wasm-gallery", "Build WebAssembly standalone gallery bundle");
     wasm_gallery_step.dependOn(&wasm_gallery_exe.step);
@@ -349,6 +354,7 @@ pub fn build(b: *std.Build) void {
     wasm_gallery_step.dependOn(&install_gallery_index.step);
     wasm_gallery_step.dependOn(&install_gallery_js.step);
     wasm_gallery_step.dependOn(&install_gallery_styles.step);
+    wasm_gallery_step.dependOn(&install_gallery_presets.step);
 
     const install_harmonious_spa_wasm = b.addInstallFileWithDir(
         wasm_docs_exe.getEmittedBin(),

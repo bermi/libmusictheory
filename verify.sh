@@ -689,6 +689,16 @@ else
     unverified "0077 standalone gallery bundle build (gallery target not yet implemented)"
 fi
 
+if [ -f "$ROOT_DIR/examples/wasm-gallery/gallery-presets.json" ]; then
+    check_cmd "cd '$ROOT_DIR' && test \"$(rg -o '<section class=\"panel reveal scene-card\"' examples/wasm-gallery/index.html | wc -l | tr -d ' ')\" -ge 6" "0080 gallery curation guardrail (minimum standalone scene count is >= 6)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'gallery-presets\\.json|manifestLoaded|progression|compare|sceneCount' examples/wasm-gallery/gallery.js scripts/validate_wasm_gallery_playwright.mjs build.zig examples/wasm-gallery/index.html >/dev/null" "0080 gallery curation guardrail (preset manifest, new scenes, and summary wiring are present)"
+    check_cmd "cd '$ROOT_DIR' && test -f zig-out/wasm-gallery/gallery-presets.json" "0080 gallery curation guardrail (preset manifest installs into wasm-gallery output)"
+    check_cmd "cd '$ROOT_DIR' && python3 -c \"import json, pathlib; data=json.loads(pathlib.Path('examples/wasm-gallery/gallery-presets.json').read_text()); assert data['meta']['sceneCount'] >= 6; assert len(data['progressionPresets']) >= 4; assert len(data['comparePresets']) >= 4; assert len(data['setPresets']) >= 4; assert len(data['fretPresets']) >= 4\"" "0080 gallery curation guardrail (preset manifest has curated multi-scene coverage)"
+    check_cmd "cd '$ROOT_DIR' && rg -n '^## Gallery Scenes$|Set Observatory|Key Bloom|Chord Atelier|Progression Drift|Constellation Delta|Fret Atlas' README.md" "0080 gallery curation guardrail (root readme explains the gallery scenes)"
+else
+    unverified "0080 gallery curation guardrail (preset manifest not yet implemented)"
+fi
+
 if [ -f "$ROOT_DIR/scripts/release_smoke.sh" ]; then
     check_cmd "cd '$ROOT_DIR' && ./scripts/release_smoke.sh 2>&1" "0078 standalone release smoke matrix"
     if bash -lc "cd '$ROOT_DIR' && ./scripts/release_smoke.sh >/dev/null 2>&1"; then

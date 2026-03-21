@@ -1,0 +1,234 @@
+{
+  "meta": {
+    "sceneCount": 6,
+    "version": 1
+  },
+  "setPresets": [
+    {
+      "label": "Major triad spark",
+      "story": "Start from the clearest triadic silhouette and inspect how little data already suggests tonal identity.",
+      "pcs": [0, 4, 7]
+    },
+    {
+      "label": "Dorian lantern",
+      "story": "A minor color with a bright sixth shows how small set moves can keep a stable center while changing atmosphere.",
+      "pcs": [0, 2, 3, 5, 7, 9, 10]
+    },
+    {
+      "label": "Whole-tone drift",
+      "story": "Maximal evenness flattens hierarchy and makes the clock feel rotational rather than directional.",
+      "pcs": [0, 2, 4, 6, 8, 10]
+    },
+    {
+      "label": "Acoustic hinge",
+      "story": "The raised fourth and lowered seventh create a bridge between diatonic brightness and dominant pressure.",
+      "pcs": [0, 2, 4, 6, 7, 9, 10]
+    },
+    {
+      "label": "Cluster pressure",
+      "story": "Dense adjacency stresses interval color and makes complement and inversion visibly more dramatic.",
+      "pcs": [0, 1, 2, 5, 6]
+    },
+    {
+      "label": "Open fifth lattice",
+      "story": "Wide interval spacing keeps the set sparse but still structurally legible under transposition and inversion.",
+      "pcs": [0, 2, 7, 9]
+    }
+  ],
+  "keyPresets": [
+    {
+      "label": "C major hub",
+      "story": "A neutral starting orbit for checking diatonic triads and functional balance.",
+      "tonic": 0,
+      "quality": 0
+    },
+    {
+      "label": "G major lift",
+      "story": "A sharp-side major key that still stays visually light and easy to scan.",
+      "tonic": 7,
+      "quality": 0
+    },
+    {
+      "label": "D major engine",
+      "story": "Dominant weight becomes obvious when the second and leading tone keep pushing upward.",
+      "tonic": 2,
+      "quality": 0
+    },
+    {
+      "label": "A minor gravity",
+      "story": "The aeolian baseline keeps the same pitch resources as C major but redistributes tonal pull.",
+      "tonic": 9,
+      "quality": 1
+    },
+    {
+      "label": "E minor glass",
+      "story": "Relative minor color with a darker center and familiar dominant behavior.",
+      "tonic": 4,
+      "quality": 1
+    },
+    {
+      "label": "Bb minor fog",
+      "story": "Flat-side minor keys make spelling and triad labeling visibly more charged.",
+      "tonic": 10,
+      "quality": 1
+    }
+  ],
+  "chordPresets": [
+    {
+      "label": "C major anchor",
+      "story": "Triadic stability in the clearest key context.",
+      "root": 0,
+      "type": 0,
+      "keyTonic": 0,
+      "keyQuality": 0
+    },
+    {
+      "label": "A minor hinge",
+      "story": "The relative minor keeps shared material while shifting function.",
+      "root": 9,
+      "type": 1,
+      "keyTonic": 0,
+      "keyQuality": 0
+    },
+    {
+      "label": "Leading-tone fracture",
+      "story": "Diminished sonority shows the unstable edge of the key orbit.",
+      "root": 11,
+      "type": 2,
+      "keyTonic": 0,
+      "keyQuality": 0
+    },
+    {
+      "label": "F major window",
+      "story": "Subdominant color widens the field without leaving the key.",
+      "root": 5,
+      "type": 0,
+      "keyTonic": 0,
+      "keyQuality": 0
+    },
+    {
+      "label": "D minor film cue",
+      "story": "A minor diatonic center that still reads strongly inside a larger tonal frame.",
+      "root": 2,
+      "type": 1,
+      "keyTonic": 9,
+      "keyQuality": 1
+    },
+    {
+      "label": "Ab augmented flare",
+      "story": "Augmented symmetry is useful precisely because it breaks ordinary key belonging.",
+      "root": 8,
+      "type": 3,
+      "keyTonic": 8,
+      "keyQuality": 1
+    }
+  ],
+  "progressionPresets": [
+    {
+      "label": "Bright return",
+      "story": "I–V–vi–IV keeps pop-forward common tones while rotating the bass through a wide emotional arc.",
+      "tonic": 0,
+      "quality": 0,
+      "degrees": [0, 4, 5, 3]
+    },
+    {
+      "label": "Dominant lantern",
+      "story": "ii–V–I–vi shows functional pull before the deceptive turn softens the landing.",
+      "tonic": 7,
+      "quality": 0,
+      "degrees": [1, 4, 0, 5]
+    },
+    {
+      "label": "Aeolian walk",
+      "story": "i–VI–III–VII keeps the mode natural and lets shared tones do most of the connective work.",
+      "tonic": 9,
+      "quality": 1,
+      "degrees": [0, 5, 2, 6]
+    },
+    {
+      "label": "Minor ascent",
+      "story": "i–iv–v–ii keeps the center dark but creates a strong forward contour through upper voices.",
+      "tonic": 2,
+      "quality": 1,
+      "degrees": [0, 3, 4, 1]
+    }
+  ],
+  "comparePresets": [
+    {
+      "label": "Major to minor",
+      "story": "Lowering one scale degree changes the story while keeping two tones fixed.",
+      "left": [0, 4, 7],
+      "right": [0, 3, 7]
+    },
+    {
+      "label": "Whole-tone vs diminished",
+      "story": "Two highly regular sets can feel radically different once overlap and transpositional closure are exposed.",
+      "left": [0, 2, 4, 6, 8, 10],
+      "right": [0, 3, 6, 9]
+    },
+    {
+      "label": "Acoustic vs diatonic",
+      "story": "A raised fourth and lowered seventh transform the same tonic into a different gravitational field.",
+      "left": [0, 2, 4, 6, 7, 9, 10],
+      "right": [0, 2, 4, 5, 7, 9, 11]
+    },
+    {
+      "label": "Cluster vs lattice",
+      "story": "Density and spacing become measurable once overlap, union, and transposition are shown together.",
+      "left": [0, 1, 2, 3],
+      "right": [0, 2, 7, 9]
+    }
+  ],
+  "fretPresets": [
+    {
+      "label": "Open C gravity",
+      "story": "A familiar six-string voicing is the baseline for comparing new tunings and span limits.",
+      "tuning": [40, 45, 50, 55, 59, 64],
+      "frets": [-1, 3, 2, 0, 1, 0],
+      "windowStart": 0,
+      "visibleFrets": 5,
+      "maxFret": 12,
+      "maxSpan": 4
+    },
+    {
+      "label": "Mandolin close voicing",
+      "story": "A compact four-string layout shows the generic renderer is not tied to guitar-shaped assumptions.",
+      "tuning": [67, 60, 64, 69],
+      "frets": [0, 0, 0, 3],
+      "windowStart": 0,
+      "visibleFrets": 5,
+      "maxFret": 12,
+      "maxSpan": 4
+    },
+    {
+      "label": "Bass pedal frame",
+      "story": "Lower register tunings make the same pitch-class logic feel more architectural.",
+      "tuning": [28, 33, 38, 43],
+      "frets": [3, 2, 0, 0],
+      "windowStart": 0,
+      "visibleFrets": 5,
+      "maxFret": 12,
+      "maxSpan": 4
+    },
+    {
+      "label": "Violin-shell harmony",
+      "story": "Fourths and fifths reveal how little of the renderer is really instrument-specific.",
+      "tuning": [55, 62, 69, 76],
+      "frets": [0, 2, 3, 2],
+      "windowStart": 0,
+      "visibleFrets": 5,
+      "maxFret": 12,
+      "maxSpan": 5
+    },
+    {
+      "label": "Seven-string shadow",
+      "story": "An extended tuning proves the public fret API can scale beyond six strings without changing concepts.",
+      "tuning": [35, 40, 45, 50, 55, 59, 64],
+      "frets": [-1, 3, 2, 0, 1, 0, -1],
+      "windowStart": 0,
+      "visibleFrets": 5,
+      "maxFret": 12,
+      "maxSpan": 4
+    }
+  ]
+}

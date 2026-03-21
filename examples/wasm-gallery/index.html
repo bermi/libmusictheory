@@ -14,8 +14,8 @@
           <p class="eyebrow">Standalone Gallery</p>
           <h1>libmusictheory as a creative instrument.</h1>
           <p class="hero-text">
-            Four scenes built on the stable public API only. No Harmonious compatibility helpers,
-            no verification shims, no corpus mirroring.
+            Six curated scenes built on the stable public API only. No Harmonious compatibility
+            helpers, no verification shims, no corpus mirroring.
           </p>
         </div>
         <div class="hero-actions">
@@ -32,6 +32,13 @@
               <h2>Pitch-class constellations</h2>
             </div>
             <button id="render-set" class="ghost-button" type="button">Recompute</button>
+          </div>
+          <p id="set-caption" class="scene-caption"></p>
+          <div class="control-row">
+            <label>
+              <span>Preset</span>
+              <select id="set-preset"></select>
+            </label>
           </div>
           <div class="toggle-grid" id="pcs-toggle-grid" aria-label="Pitch classes"></div>
           <div class="scene-grid scene-grid-wide">
@@ -54,7 +61,12 @@
             </div>
             <button id="render-key" class="ghost-button" type="button">Refresh Key</button>
           </div>
+          <p id="key-caption" class="scene-caption"></p>
           <div class="control-row">
+            <label>
+              <span>Preset</span>
+              <select id="key-preset"></select>
+            </label>
             <label>
               <span>Tonic</span>
               <select id="key-tonic"></select>
@@ -88,7 +100,12 @@
             </div>
             <button id="render-chord" class="ghost-button" type="button">Refresh Chord</button>
           </div>
+          <p id="chord-caption" class="scene-caption"></p>
           <div class="control-row">
+            <label>
+              <span>Preset</span>
+              <select id="chord-preset"></select>
+            </label>
             <label>
               <span>Root</span>
               <select id="chord-root"></select>
@@ -131,6 +148,76 @@
           </div>
         </section>
 
+        <section class="panel reveal scene-card" id="scene-progression">
+          <div class="scene-head">
+            <div>
+              <p class="eyebrow">Progression Drift</p>
+              <h2>Cadences as moving set-fields</h2>
+            </div>
+            <button id="render-progression" class="ghost-button" type="button">Refresh Progression</button>
+          </div>
+          <p id="progression-caption" class="scene-caption"></p>
+          <div class="control-row">
+            <label>
+              <span>Preset</span>
+              <select id="progression-preset"></select>
+            </label>
+          </div>
+          <div class="scene-grid scene-grid-wide">
+            <div class="note-card">
+              <h3>Cadence Map</h3>
+              <pre id="progression-summary" class="mono output-block"></pre>
+              <div id="progression-cards" class="progression-grid"></div>
+            </div>
+            <div class="art-card">
+              <h3>Union Clock</h3>
+              <div id="progression-clock" class="svg-frame"></div>
+              <div id="progression-notes" class="chip-row"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel reveal scene-card" id="scene-compare">
+          <div class="scene-head">
+            <div>
+              <p class="eyebrow">Constellation Delta</p>
+              <h2>Comparing two pitch-class worlds</h2>
+            </div>
+            <button id="render-compare" class="ghost-button" type="button">Refresh Comparison</button>
+          </div>
+          <p id="compare-caption" class="scene-caption"></p>
+          <div class="control-row">
+            <label>
+              <span>Preset</span>
+              <select id="compare-preset"></select>
+            </label>
+          </div>
+          <div class="scene-grid scene-grid-triple">
+            <div class="art-card">
+              <h3>Left Set</h3>
+              <div id="compare-left-clock" class="svg-frame compact-frame"></div>
+            </div>
+            <div class="art-card">
+              <h3>Shared Core</h3>
+              <div id="compare-overlap-clock" class="svg-frame compact-frame"></div>
+            </div>
+            <div class="art-card">
+              <h3>Right Set</h3>
+              <div id="compare-right-clock" class="svg-frame compact-frame"></div>
+            </div>
+          </div>
+          <div class="scene-grid scene-grid-wide compare-grid-bottom">
+            <div class="note-card">
+              <h3>Relationship</h3>
+              <pre id="compare-summary" class="mono output-block"></pre>
+            </div>
+            <div class="note-card">
+              <h3>Pitch Material</h3>
+              <div id="compare-chips" class="chip-row compare-chips"></div>
+            </div>
+          </div>
+        </section>
+
         <section class="panel reveal scene-card" id="scene-fret">
           <div class="scene-head">
             <div>
@@ -139,7 +226,12 @@
             </div>
             <button id="render-fret" class="ghost-button" type="button">Refresh Fretboard</button>
           </div>
+          <p id="fret-caption" class="scene-caption"></p>
           <div class="control-row control-row-tight">
+            <label>
+              <span>Preset</span>
+              <select id="fret-preset"></select>
+            </label>
             <label class="wide-field">
               <span>Tuning (MIDI csv)</span>
               <input id="fret-tuning" type="text" value="40,45,50,55,59,64" />

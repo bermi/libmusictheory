@@ -167,6 +167,19 @@ python3 -m http.server --directory /Users/bermi/code/libmusictheory/zig-out/wasm
 
 Open [http://localhost:8002/index.html](http://localhost:8002/index.html).
 
+## Gallery Scenes
+
+The standalone gallery is intentionally curated around concrete musical-discovery workflows:
+
+- `Set Observatory`: inspect a pitch-class set as a constellation with prime-form, complement, inversion, and evenness context
+- `Key Bloom`: watch one tonic generate a full diatonic orbit and its triadic degree field
+- `Chord Atelier`: read one sonority simultaneously as set, chord label, roman numeral, clock, and staff image
+- `Progression Drift`: treat cadences as moving set-fields and track shared tones across a progression
+- `Constellation Delta`: compare two pitch-class worlds by overlap, union, and transpositional relation
+- `Fret Atlas`: explore the same pitch logic across arbitrary tunings and string counts
+
+These scenes are driven by the authored preset manifest at `/Users/bermi/code/libmusictheory/examples/wasm-gallery/gallery-presets.json`.
+
 ## Release Readiness
 
 The standalone release scaffold is documented here:
