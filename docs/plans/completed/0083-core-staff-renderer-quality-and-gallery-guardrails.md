@@ -67,7 +67,7 @@ Before renderer changes are considered complete:
 
 ## Implementation History (Point-in-Time)
 
-- Commit hash: `db37d77`
+- Commit hash: `e32e11c`
 - Date: 2026-03-21
 - Shipped behavior:
   - replaced the public core staff renderer with simultaneous chord clustering, shared stems, and algorithmic clef glyphs
