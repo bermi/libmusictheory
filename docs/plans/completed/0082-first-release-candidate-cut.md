@@ -31,7 +31,7 @@ Before implementation:
 
 ## Implementation History (Point-in-Time)
 
-- Commit hash: `PENDING`
+- Commit hash: `bf3bd63`
 - Date: 2026-03-22
 - Shipped behavior:
   - cut the first standalone release-candidate target as `0.1.0-rc.1` in `/Users/bermi/code/libmusictheory/VERSION`
