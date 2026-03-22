@@ -1,0 +1,84 @@
+# Release Candidate Reviewer Guide
+
+Target: `0.1.0-rc.1`
+
+This guide is for local review of the standalone `libmusictheory` release candidate.
+
+## What To Review
+
+Review only the standalone surfaces:
+
+- native build outputs from `zig build`
+- the public C ABI in `/Users/bermi/code/libmusictheory/include/libmusictheory.h`
+- the standalone docs bundle from `zig build wasm-docs`
+- the standalone gallery bundle from `zig build wasm-gallery`
+
+Do not use internal Harmonious validation/proof bundles for release-candidate signoff.
+
+## Quick Smoke Path
+
+Run:
+
+```bash
+cd /Users/bermi/code/libmusictheory
+./scripts/release_smoke.sh
+```
+
+Expected summary:
+
+- native build succeeds
+- C smoke succeeds
+- docs bundle export and browser smoke succeed
+- gallery bundle export and browser smoke succeed
+- gallery screenshot capture succeeds
+
+## Gallery Review
+
+Run:
+
+```bash
+cd /Users/bermi/code/libmusictheory
+zig build wasm-gallery
+python3 -m http.server --directory /Users/bermi/code/libmusictheory/zig-out/wasm-gallery 8002
+```
+
+Open [http://localhost:8002/index.html](http://localhost:8002/index.html).
+
+Review points:
+
+- hero and scene cards load without layout breakage
+- clock scenes are large, centered, and crisp
+- chord/staff scenes show proper clef opening, simultaneous cluster layout, and readable accidentals
+- fret scenes are centered and remain legible across arbitrary tuning/string-count examples
+
+Optional deterministic screenshot regeneration:
+
+```bash
+cd /Users/bermi/code/libmusictheory
+node /Users/bermi/code/libmusictheory/scripts/capture_wasm_gallery_screenshots.mjs
+```
+
+Inspect:
+
+- `/Users/bermi/code/libmusictheory/zig-out/wasm-gallery-captures/gallery-overview.png`
+- `/Users/bermi/code/libmusictheory/zig-out/wasm-gallery-captures/gallery-hero.png`
+- `/Users/bermi/code/libmusictheory/zig-out/wasm-gallery-captures/scene-chord.png`
+- `/Users/bermi/code/libmusictheory/zig-out/wasm-gallery-captures/scene-fret.png`
+
+## Public API Review
+
+Run:
+
+```bash
+cd /Users/bermi/code/libmusictheory
+zig build
+zig build c-smoke
+zig build wasm-docs
+```
+
+Check:
+
+- `/Users/bermi/code/libmusictheory/zig-out/include/libmusictheory.h` is installed
+- `/Users/bermi/code/libmusictheory/zig-out/lib/` contains native library artifacts
+- `/Users/bermi/code/libmusictheory/examples/wasm-gallery/` uses only public APIs
+- release docs do not require local Harmonious reference data

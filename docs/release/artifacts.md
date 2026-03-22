@@ -30,6 +30,10 @@ Release-candidate gallery screenshots are reproducible local review artifacts, n
   - `scene-*.png`
   - `captures.json`
 
+Reviewer instructions live in:
+
+- `/Users/bermi/code/libmusictheory/docs/release/reviewer-guide.md`
+
 ## Public Headers
 
 - stable public header:
@@ -38,14 +42,3 @@ Release-candidate gallery screenshots are reproducible local review artifacts, n
   - `include/libmusictheory_compat.h`
 
 Only `libmusictheory.h` is part of the standalone public contract.
-
-## Internal Verification Artifacts
-
-These remain in-repo but are not part of the standalone release artifact story:
-
-- `zig-out/wasm-demo`
-- `zig-out/wasm-scaled-render-parity`
-- `zig-out/wasm-native-rgba-proof`
-- `zig-out/wasm-harmonious-spa`
-
-They are retained as internal regression infrastructure.

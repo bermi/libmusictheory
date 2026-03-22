@@ -1,6 +1,6 @@
 # Release Smoke Matrix
 
-The standalone release smoke path verifies the public library surface without depending on local `tmp/harmoniousapp.net` data.
+The standalone release smoke path verifies the public library surface without depending on local Harmonious reference data.
 
 | Surface | Command | Expected Result |
 | --- | --- | --- |

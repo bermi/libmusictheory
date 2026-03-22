@@ -113,7 +113,7 @@ if [ -f "$ROOT_DIR/docs/plans/in_progress/0082-first-release-candidate-cut.md" ]
     check_cmd "cd '$ROOT_DIR' && ! rg -n '^## \\[Unreleased\\]$' CHANGELOG.md && rg -n '^## \\[[0-9]+\\.[0-9]+\\.[0-9]+-rc\\.[0-9]+\\] - [0-9]{4}-[0-9]{2}-[0-9]{2}$' CHANGELOG.md" "0082 release-candidate guardrail (CHANGELOG has a dated rc entry and no unreleased-only scaffold)"
     check_cmd "cd '$ROOT_DIR' && rg -n '^## Reviewer Evaluation$|docs/release/reviewer-guide\\.md|0\\.1\\.0-rc\\.1|rc reviewer|release candidate' RELEASE_CHECKLIST.md" "0082 release-candidate guardrail (checklist is upgraded for rc review)"
     check_cmd "cd '$ROOT_DIR' && rg -n '^# Release Candidate Reviewer Guide$|^## What To Review$|^## Quick Smoke Path$|^## Gallery Review$|^## Public API Review$' docs/release/reviewer-guide.md" "0082 release-candidate guardrail (reviewer guide exists with concrete evaluation steps)"
-    check_cmd "cd '$ROOT_DIR' && ! rg -n 'tmp/harmoniousapp\\.net|wasm-demo|wasm-scaled-render-parity|wasm-native-rgba-proof|wasm-harmonious-spa|validate_harmonious_' docs/release README.md -g '!docs/internal/**' -g '!examples/wasm-demo/**'" "0082 release-candidate guardrail (public release docs stay independent from Harmonious-local tooling)"
+    check_cmd "cd '$ROOT_DIR' && ! rg -n 'tmp/harmoniousapp\\.net|wasm-demo|wasm-scaled-render-parity|wasm-native-rgba-proof|wasm-harmonious-spa|validate_harmonious_' docs/release" "0082 release-candidate guardrail (public release docs stay independent from Harmonious-local tooling)"
 fi
 
 if [ -f "$ROOT_DIR/scripts/release_smoke.sh" ]; then

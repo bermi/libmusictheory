@@ -1,5 +1,7 @@
 # Release Checklist
 
+Target release candidate: `0.1.0-rc.1`
+
 ## Preconditions
 
 - `./verify.sh` passes
@@ -12,6 +14,7 @@
 - update `VERSION`
 - review `docs/release/versioning.md`
 - add a changelog entry in `CHANGELOG.md`
+- confirm `VERSION` is the intended `-rc.N` target and not a `-dev` placeholder
 
 ## Native Surface
 
@@ -33,8 +36,15 @@
 
 - review `README.md`
 - review `docs/release/artifacts.md`
+- review `docs/release/reviewer-guide.md`
 - review `docs/release/smoke-matrix.md`
 - review `docs/release/versioning.md`
+
+## Reviewer Evaluation
+
+- hand the reviewer `/Users/bermi/code/libmusictheory/docs/release/reviewer-guide.md`
+- confirm the reviewer path uses only `zig build`, `wasm-docs`, `wasm-gallery`, and release capture commands
+- confirm no review step depends on local `tmp/harmoniousapp.net` data
 
 ## Internal Regression Status
 
