@@ -658,7 +658,7 @@ export fn lmt_svg_chord_staff(chord_kind: u8, root: u8, buf: [*c]u8, buf_size: u
 
     const k = key.Key.init(root_pc, .major);
 
-    var svg_buf: [8192]u8 = undefined;
+    var svg_buf: [16384]u8 = undefined;
     const svg = svg_staff.renderChordStaff(notes[0..count], k, &svg_buf);
     return copySvgOut(svg, buf, buf_size);
 }

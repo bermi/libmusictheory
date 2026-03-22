@@ -32,6 +32,8 @@ test "staff svg dimensions and notation structure" {
     try testing.expect(std.mem.indexOf(u8, chord_svg, "height=\"126\"") != null);
     try testing.expect(std.mem.indexOf(u8, chord_svg, "shape-rendering=\"geometricPrecision\"") != null);
     try testing.expect(std.mem.indexOf(u8, chord_svg, "class=\"clef clef-treble\"") != null);
+    try testing.expect(std.mem.indexOf(u8, chord_svg, "class=\"clef-glyph\"") != null);
+    try testing.expect(std.mem.indexOf(u8, chord_svg, "clef-stroke") == null);
     try testing.expectEqual(@as(usize, 3), std.mem.count(u8, chord_svg, "class=\"notehead chord-notehead\""));
     try testing.expectEqual(@as(usize, 1), std.mem.count(u8, chord_svg, "class=\"stem cluster-stem\""));
 

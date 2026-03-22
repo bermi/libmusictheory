@@ -50,10 +50,12 @@ const REQUIRED_EXPORTS = [
   "lmt_svg_chord_staff",
 ];
 
-const SCRATCH_BASE = 1 << 20;
 const C_STRING_CAPACITY = 64 * 1024;
 const GUIDE_DOT_BYTES = 8;
 const encoder = new TextEncoder();
+let jsScratchBase = 0;
+let jsScratchTop = 0;
+let jsScratchLimit = 0;
 
 function setStatus(message, tone = "ready") {
   statusEl.textContent = message;
@@ -84,16 +86,32 @@ function executeSection(label, fn, onError = null) {
 
 class ScratchArena {
   constructor() {
-    this.ptr = SCRATCH_BASE;
-    ensureMemory(this.ptr + 64 * 1024);
+    if (jsScratchBase === 0) {
+      jsScratchBase = memory.buffer.byteLength;
+      ensureMemory(jsScratchBase + 64 * 1024);
+      jsScratchTop = jsScratchBase;
+      jsScratchLimit = memory.buffer.byteLength;
+    }
+    this.mark = jsScratchTop;
   }
 
   alloc(size, align = 1) {
-    this.ptr = Math.ceil(this.ptr / align) * align;
-    const out = this.ptr;
-    this.ptr += size;
-    ensureMemory(this.ptr + 1);
+    const mask = align - 1;
+    let next = jsScratchTop;
+    if (mask > 0) {
+      next = (next + mask) & ~mask;
+    }
+    if (next + size > jsScratchLimit) {
+      ensureMemory(next + size + 65536);
+      jsScratchLimit = memory.buffer.byteLength;
+    }
+    const out = next;
+    jsScratchTop = next + size;
     return out;
+  }
+
+  release() {
+    jsScratchTop = this.mark;
   }
 }
 
@@ -191,57 +209,68 @@ function packKeyContext(tonic, quality) {
 function setToList(setValue) {
   ensureWasmLoaded();
   const arena = new ScratchArena();
-  const outPtr = arena.alloc(12, 1);
-  const count = wasm.lmt_pcs_to_list(setValue, outPtr);
-  return Array.from(u8().subarray(outPtr, outPtr + count));
+  try {
+    const outPtr = arena.alloc(12, 1);
+    const count = wasm.lmt_pcs_to_list(setValue, outPtr);
+    return Array.from(u8().subarray(outPtr, outPtr + count));
+  } finally {
+    arena.release();
+  }
 }
 
 function runPcsApis() {
   ensureWasmLoaded();
   currentMainSet = 0;
   const arena = new ScratchArena();
+  try {
+    const mainList = parseCsvIntegers(document.getElementById("pcs-main").value, 0, 11);
+    const subsetList = parseCsvIntegers(document.getElementById("pcs-subset").value, 0, 11);
+    const transpose = getNumberInput("pcs-transpose") & 0xff;
 
-  const mainList = parseCsvIntegers(document.getElementById("pcs-main").value, 0, 11);
-  const subsetList = parseCsvIntegers(document.getElementById("pcs-subset").value, 0, 11);
-  const transpose = getNumberInput("pcs-transpose") & 0xff;
+    const mainPtr = writeU8Array(arena, mainList);
+    const subsetPtr = writeU8Array(arena, subsetList);
 
-  const mainPtr = writeU8Array(arena, mainList);
-  const subsetPtr = writeU8Array(arena, subsetList);
+    const mainSet = wasm.lmt_pcs_from_list(mainPtr, mainList.length);
+    const subsetSet = wasm.lmt_pcs_from_list(subsetPtr, subsetList.length);
+    currentMainSet = mainSet;
 
-  const mainSet = wasm.lmt_pcs_from_list(mainPtr, mainList.length);
-  const subsetSet = wasm.lmt_pcs_from_list(subsetPtr, subsetList.length);
-  currentMainSet = mainSet;
+    const outListPtr = arena.alloc(12, 1);
+    const outCount = wasm.lmt_pcs_to_list(mainSet, outListPtr);
+    const roundTripList = Array.from(u8().subarray(outListPtr, outListPtr + outCount));
 
-  const outListPtr = arena.alloc(12, 1);
-  const outCount = wasm.lmt_pcs_to_list(mainSet, outListPtr);
-  const roundTripList = Array.from(u8().subarray(outListPtr, outListPtr + outCount));
+    const cardinality = wasm.lmt_pcs_cardinality(mainSet);
+    const transposed = wasm.lmt_pcs_transpose(mainSet, transpose);
+    const inverted = wasm.lmt_pcs_invert(mainSet);
+    const complement = wasm.lmt_pcs_complement(mainSet);
+    const isSubset = !!wasm.lmt_pcs_is_subset(subsetSet, mainSet);
 
-  const cardinality = wasm.lmt_pcs_cardinality(mainSet);
-  const transposed = wasm.lmt_pcs_transpose(mainSet, transpose);
-  const inverted = wasm.lmt_pcs_invert(mainSet);
-  const complement = wasm.lmt_pcs_complement(mainSet);
-  const isSubset = !!wasm.lmt_pcs_is_subset(subsetSet, mainSet);
-
-  outPcs.textContent = [
-    `lmt_pcs_from_list(main): ${setToHex(mainSet)} ${JSON.stringify(setToList(mainSet))}`,
-    `lmt_pcs_from_list(subset): ${setToHex(subsetSet)} ${JSON.stringify(setToList(subsetSet))}`,
-    `lmt_pcs_to_list(main): ${JSON.stringify(roundTripList)}`,
-    `lmt_pcs_cardinality(main): ${cardinality}`,
-    `lmt_pcs_transpose(main, ${transpose}): ${setToHex(transposed)} ${JSON.stringify(setToList(transposed))}`,
-    `lmt_pcs_invert(main): ${setToHex(inverted)} ${JSON.stringify(setToList(inverted))}`,
-    `lmt_pcs_complement(main): ${setToHex(complement)} ${JSON.stringify(setToList(complement))}`,
-    `lmt_pcs_is_subset(subset, main): ${isSubset}`,
-  ].join("\n");
+    outPcs.textContent = [
+      `lmt_pcs_from_list(main): ${setToHex(mainSet)} ${JSON.stringify(setToList(mainSet))}`,
+      `lmt_pcs_from_list(subset): ${setToHex(subsetSet)} ${JSON.stringify(setToList(subsetSet))}`,
+      `lmt_pcs_to_list(main): ${JSON.stringify(roundTripList)}`,
+      `lmt_pcs_cardinality(main): ${cardinality}`,
+      `lmt_pcs_transpose(main, ${transpose}): ${setToHex(transposed)} ${JSON.stringify(setToList(transposed))}`,
+      `lmt_pcs_invert(main): ${setToHex(inverted)} ${JSON.stringify(setToList(inverted))}`,
+      `lmt_pcs_complement(main): ${setToHex(complement)} ${JSON.stringify(setToList(complement))}`,
+      `lmt_pcs_is_subset(subset, main): ${isSubset}`,
+    ].join("\n");
+  } finally {
+    arena.release();
+  }
 }
 
 function resolveMainSet() {
   if (currentMainSet !== 0) return currentMainSet;
 
   const arena = new ScratchArena();
-  const mainList = parseCsvIntegers(document.getElementById("pcs-main").value, 0, 11);
-  const mainPtr = writeU8Array(arena, mainList);
-  currentMainSet = wasm.lmt_pcs_from_list(mainPtr, mainList.length);
-  return currentMainSet;
+  try {
+    const mainList = parseCsvIntegers(document.getElementById("pcs-main").value, 0, 11);
+    const mainPtr = writeU8Array(arena, mainList);
+    currentMainSet = wasm.lmt_pcs_from_list(mainPtr, mainList.length);
+    return currentMainSet;
+  } finally {
+    arena.release();
+  }
 }
 
 function runClassificationApis() {
@@ -313,179 +342,185 @@ function runChordApis() {
 function runGuitarApis() {
   ensureWasmLoaded();
   const arena = new ScratchArena();
-
-  const tuningValues = parseCsvIntegers(document.getElementById("guitar-tuning").value, 0, 127);
-  if (tuningValues.length === 0) {
-    throw new Error("Tuning must include at least one MIDI note");
-  }
-  const stringValue = getNumberInput("guitar-string");
-  const fretValue = getNumberInput("guitar-fret");
-  const midiValue = getNumberInput("guitar-midi");
-  const maxFret = getNumberInput("guitar-max-fret");
-  const maxSpan = getNumberInput("guitar-max-span");
-  const guideMinFret = getNumberInput("guitar-guide-min-fret");
-  const guideMaxFret = getNumberInput("guitar-guide-max-fret");
-  const chordSet = resolveMainSet();
-  const fretValues = parseCsvIntegers(document.getElementById("svg-frets").value, -1, 127);
-
-  const tuningPtr = writeU8Array(arena, tuningValues);
-
-  const fretToMidiGeneric = wasm.lmt_fret_to_midi_n(stringValue, fretValue, tuningPtr, tuningValues.length);
-  const fretToMidiCompat = tuningValues.length === 6 ? wasm.lmt_fret_to_midi(stringValue, fretValue, tuningPtr) : null;
-
-  const outPosPtr = arena.alloc(Math.max(1, tuningValues.length) * 2, 1);
-  const posCount = wasm.lmt_midi_to_fret_positions_n(midiValue, tuningPtr, tuningValues.length, outPosPtr, tuningValues.length);
-  const compatPosCount = tuningValues.length === 6 ? wasm.lmt_midi_to_fret_positions(midiValue, tuningPtr, outPosPtr) : null;
-
-  const positions = [];
-  const bytes = u8();
-  for (let i = 0; i < posCount; i += 1) {
-    positions.push({
-      string: bytes[outPosPtr + i * 2],
-      fret: bytes[outPosPtr + i * 2 + 1],
-    });
-  }
-
-  const voicingRowCap = 64;
-  const voicingPtr = arena.alloc(voicingRowCap * tuningValues.length, 1);
-  const voicingCount = wasm.lmt_generate_voicings_n(
-    chordSet,
-    tuningPtr,
-    tuningValues.length,
-    maxFret,
-    maxSpan,
-    voicingPtr,
-    voicingRowCap,
-  );
-  const previewVoicings = [];
-  const fretBytes = i8();
-  for (let row = 0; row < Math.min(voicingCount, 5); row += 1) {
-    const start = voicingPtr + row * tuningValues.length;
-    previewVoicings.push(Array.from(fretBytes.subarray(start, start + tuningValues.length)));
-  }
-
-  const selectedPositions = [];
-  for (let stringIndex = 0; stringIndex < Math.min(fretValues.length, tuningValues.length); stringIndex += 1) {
-    const selectedFret = fretValues[stringIndex];
-    if (selectedFret >= 0) {
-      selectedPositions.push({ string: stringIndex, fret: selectedFret });
+  try {
+    const tuningValues = parseCsvIntegers(document.getElementById("guitar-tuning").value, 0, 127);
+    if (tuningValues.length === 0) {
+      throw new Error("Tuning must include at least one MIDI note");
     }
-  }
-  const selectedPtr = arena.alloc(Math.max(1, selectedPositions.length) * 2, 1);
-  for (let index = 0; index < selectedPositions.length; index += 1) {
-    bytes[selectedPtr + index * 2] = selectedPositions[index].string;
-    bytes[selectedPtr + index * 2 + 1] = selectedPositions[index].fret;
-  }
+    const stringValue = getNumberInput("guitar-string");
+    const fretValue = getNumberInput("guitar-fret");
+    const midiValue = getNumberInput("guitar-midi");
+    const maxFret = getNumberInput("guitar-max-fret");
+    const maxSpan = getNumberInput("guitar-max-span");
+    const guideMinFret = getNumberInput("guitar-guide-min-fret");
+    const guideMaxFret = getNumberInput("guitar-guide-max-fret");
+    const chordSet = resolveMainSet();
+    const fretValues = parseCsvIntegers(document.getElementById("svg-frets").value, -1, 127);
 
-  const guideCap = 64;
-  const guidePtr = arena.alloc(guideCap * GUIDE_DOT_BYTES, 4);
-  const guideCount = wasm.lmt_pitch_class_guide_n(
-    selectedPtr,
-    selectedPositions.length,
-    guideMinFret,
-    guideMaxFret,
-    tuningPtr,
-    tuningValues.length,
-    guidePtr,
-    guideCap,
-  );
-  const guideView = new DataView(memory.buffer, guidePtr, Math.min(guideCount, guideCap) * GUIDE_DOT_BYTES);
-  const guideDots = [];
-  for (let index = 0; index < Math.min(guideCount, 8); index += 1) {
-    const offset = index * GUIDE_DOT_BYTES;
-    guideDots.push({
-      string: guideView.getUint8(offset),
-      fret: guideView.getUint8(offset + 1),
-      pitch_class: guideView.getUint8(offset + 2),
-      opacity: Number(guideView.getFloat32(offset + 4, true).toFixed(3)),
-    });
+    const tuningPtr = writeU8Array(arena, tuningValues);
+
+    const fretToMidiGeneric = wasm.lmt_fret_to_midi_n(stringValue, fretValue, tuningPtr, tuningValues.length);
+    const fretToMidiCompat = tuningValues.length === 6 ? wasm.lmt_fret_to_midi(stringValue, fretValue, tuningPtr) : null;
+
+    const outPosPtr = arena.alloc(Math.max(1, tuningValues.length) * 2, 1);
+    const posCount = wasm.lmt_midi_to_fret_positions_n(midiValue, tuningPtr, tuningValues.length, outPosPtr, tuningValues.length);
+    const compatPosCount = tuningValues.length === 6 ? wasm.lmt_midi_to_fret_positions(midiValue, tuningPtr, outPosPtr) : null;
+
+    const positions = [];
+    const bytes = u8();
+    for (let i = 0; i < posCount; i += 1) {
+      positions.push({
+        string: bytes[outPosPtr + i * 2],
+        fret: bytes[outPosPtr + i * 2 + 1],
+      });
+    }
+
+    const voicingRowCap = 64;
+    const voicingPtr = arena.alloc(voicingRowCap * tuningValues.length, 1);
+    const voicingCount = wasm.lmt_generate_voicings_n(
+      chordSet,
+      tuningPtr,
+      tuningValues.length,
+      maxFret,
+      maxSpan,
+      voicingPtr,
+      voicingRowCap,
+    );
+    const previewVoicings = [];
+    const fretBytes = i8();
+    for (let row = 0; row < Math.min(voicingCount, 5); row += 1) {
+      const start = voicingPtr + row * tuningValues.length;
+      previewVoicings.push(Array.from(fretBytes.subarray(start, start + tuningValues.length)));
+    }
+
+    const selectedPositions = [];
+    for (let stringIndex = 0; stringIndex < Math.min(fretValues.length, tuningValues.length); stringIndex += 1) {
+      const selectedFret = fretValues[stringIndex];
+      if (selectedFret >= 0) {
+        selectedPositions.push({ string: stringIndex, fret: selectedFret });
+      }
+    }
+    const selectedPtr = arena.alloc(Math.max(1, selectedPositions.length) * 2, 1);
+    for (let index = 0; index < selectedPositions.length; index += 1) {
+      bytes[selectedPtr + index * 2] = selectedPositions[index].string;
+      bytes[selectedPtr + index * 2 + 1] = selectedPositions[index].fret;
+    }
+
+    const guideCap = 64;
+    const guidePtr = arena.alloc(guideCap * GUIDE_DOT_BYTES, 4);
+    const guideCount = wasm.lmt_pitch_class_guide_n(
+      selectedPtr,
+      selectedPositions.length,
+      guideMinFret,
+      guideMaxFret,
+      tuningPtr,
+      tuningValues.length,
+      guidePtr,
+      guideCap,
+    );
+    const guideView = new DataView(memory.buffer, guidePtr, Math.min(guideCount, guideCap) * GUIDE_DOT_BYTES);
+    const guideDots = [];
+    for (let index = 0; index < Math.min(guideCount, 8); index += 1) {
+      const offset = index * GUIDE_DOT_BYTES;
+      guideDots.push({
+        string: guideView.getUint8(offset),
+        fret: guideView.getUint8(offset + 1),
+        pitch_class: guideView.getUint8(offset + 2),
+        opacity: Number(guideView.getFloat32(offset + 4, true).toFixed(3)),
+      });
+    }
+
+    const urlBufPtr = arena.alloc(256, 1);
+    const fretsPtr = writeI8Array(arena, fretValues);
+    const urlLength = wasm.lmt_frets_to_url_n(fretsPtr, fretValues.length, urlBufPtr, 256);
+    const fretUrl = urlLength > 0 || fretValues.length === 0 ? readCString(urlBufPtr) : "<buffer-too-small>";
+    const urlPtr = writeCString(arena, fretUrl);
+    const parsedFretsPtr = arena.alloc(Math.max(1, fretValues.length), 1);
+    const parsedCount = wasm.lmt_url_to_frets_n(urlPtr, parsedFretsPtr, fretValues.length);
+    const parsedFrets = Array.from(i8().subarray(parsedFretsPtr, parsedFretsPtr + Math.min(parsedCount, fretValues.length)));
+
+    const lines = [
+      `lmt_fret_to_midi_n(string=${stringValue}, fret=${fretValue}, tuning_count=${tuningValues.length}): ${fretToMidiGeneric}`,
+      `lmt_midi_to_fret_positions_n(note=${midiValue}, tuning_count=${tuningValues.length}): ${JSON.stringify(positions)}`,
+      `lmt_generate_voicings_n(chord_set=${setToHex(chordSet)}, tuning_count=${tuningValues.length}, max_fret=${maxFret}, max_span=${maxSpan}): rows=${voicingCount}, preview=${JSON.stringify(previewVoicings)}`,
+      `lmt_pitch_class_guide_n(selected=${JSON.stringify(selectedPositions)}, fret_range=${guideMinFret}-${guideMaxFret}, tuning_count=${tuningValues.length}): rows=${guideCount}, preview=${JSON.stringify(guideDots)}`,
+      `lmt_frets_to_url_n(fret_count=${fretValues.length}): ${fretUrl}`,
+      `lmt_url_to_frets_n(url): ${JSON.stringify(parsedFrets)}`,
+    ];
+    if (fretToMidiCompat !== null && compatPosCount !== null) {
+      lines.push(`compat wrapper lmt_fret_to_midi(...): ${fretToMidiCompat}`);
+      lines.push(`compat wrapper lmt_midi_to_fret_positions(...): ${compatPosCount} positions`);
+    }
+
+    outGuitar.textContent = lines.join("\n");
+  } finally {
+    arena.release();
   }
-
-  const urlBufPtr = arena.alloc(256, 1);
-  const fretsPtr = writeI8Array(arena, fretValues);
-  const urlLength = wasm.lmt_frets_to_url_n(fretsPtr, fretValues.length, urlBufPtr, 256);
-  const fretUrl = urlLength > 0 || fretValues.length === 0 ? readCString(urlBufPtr) : "<buffer-too-small>";
-  const urlPtr = writeCString(arena, fretUrl);
-  const parsedFretsPtr = arena.alloc(Math.max(1, fretValues.length), 1);
-  const parsedCount = wasm.lmt_url_to_frets_n(urlPtr, parsedFretsPtr, fretValues.length);
-  const parsedFrets = Array.from(i8().subarray(parsedFretsPtr, parsedFretsPtr + Math.min(parsedCount, fretValues.length)));
-
-  const lines = [
-    `lmt_fret_to_midi_n(string=${stringValue}, fret=${fretValue}, tuning_count=${tuningValues.length}): ${fretToMidiGeneric}`,
-    `lmt_midi_to_fret_positions_n(note=${midiValue}, tuning_count=${tuningValues.length}): ${JSON.stringify(positions)}`,
-    `lmt_generate_voicings_n(chord_set=${setToHex(chordSet)}, tuning_count=${tuningValues.length}, max_fret=${maxFret}, max_span=${maxSpan}): rows=${voicingCount}, preview=${JSON.stringify(previewVoicings)}`,
-    `lmt_pitch_class_guide_n(selected=${JSON.stringify(selectedPositions)}, fret_range=${guideMinFret}-${guideMaxFret}, tuning_count=${tuningValues.length}): rows=${guideCount}, preview=${JSON.stringify(guideDots)}`,
-    `lmt_frets_to_url_n(fret_count=${fretValues.length}): ${fretUrl}`,
-    `lmt_url_to_frets_n(url): ${JSON.stringify(parsedFrets)}`,
-  ];
-  if (fretToMidiCompat !== null && compatPosCount !== null) {
-    lines.push(`compat wrapper lmt_fret_to_midi(...): ${fretToMidiCompat}`);
-    lines.push(`compat wrapper lmt_midi_to_fret_positions(...): ${compatPosCount} positions`);
-  }
-
-  outGuitar.textContent = lines.join("\n");
 }
 
 function runSvgApis() {
   ensureWasmLoaded();
   const arena = new ScratchArena();
+  try {
+    const mainSet = resolveMainSet();
+    const chordType = getSelectValue("chord-type");
+    const chordRoot = getNumberInput("chord-root");
+    const fretValues = parseCsvIntegers(document.getElementById("svg-frets").value, -1, 127);
+    if (fretValues.length === 0) {
+      throw new Error("Fret diagram must include at least one string");
+    }
+    const tuningValues = parseCsvIntegers(document.getElementById("guitar-tuning").value, 0, 127);
+    const tuningPtr = writeU8Array(arena, tuningValues);
+    const windowStart = getNumberInput("svg-window-start");
+    const visibleFrets = getNumberInput("svg-visible-frets");
+    const fretMidiNotes = fretValues
+      .map((fret, stringIndex) => (fret < 0 || stringIndex >= tuningValues.length ? null : wasm.lmt_fret_to_midi_n(stringIndex, fret, tuningPtr, tuningValues.length)))
+      .filter((value) => value !== null);
+    const staffMidiNotes = canonicalChordStaffMidiNotes(chordType, chordRoot);
+    const aligned = tuningValues.length === fretValues.length && arraysEqual(fretMidiNotes, staffMidiNotes);
 
-  const mainSet = resolveMainSet();
-  const chordType = getSelectValue("chord-type");
-  const chordRoot = getNumberInput("chord-root");
-  const fretValues = parseCsvIntegers(document.getElementById("svg-frets").value, -1, 127);
-  if (fretValues.length === 0) {
-    throw new Error("Fret diagram must include at least one string");
+    const svgBufPtr = arena.alloc(C_STRING_CAPACITY, 1);
+
+    const clockLen = wasm.lmt_svg_clock_optc(mainSet, svgBufPtr, C_STRING_CAPACITY);
+    const clockSvg = readCString(svgBufPtr);
+
+    const fretsPtr = writeI8Array(arena, fretValues);
+    const fretLen = wasm.lmt_svg_fret_n(fretsPtr, fretValues.length, windowStart, visibleFrets, svgBufPtr, C_STRING_CAPACITY);
+    const fretSvg = readCString(svgBufPtr);
+    const compatFretLen = fretValues.length === 6 ? wasm.lmt_svg_fret(fretsPtr, svgBufPtr, C_STRING_CAPACITY) : null;
+
+    const staffLen = wasm.lmt_svg_chord_staff(chordType, chordRoot, svgBufPtr, C_STRING_CAPACITY);
+    const staffSvg = readCString(svgBufPtr);
+
+    const lines = [
+      `lmt_svg_clock_optc bytes: ${clockLen}`,
+      `lmt_svg_fret_n bytes: ${fretLen}`,
+      `lmt_svg_chord_staff bytes: ${staffLen}`,
+      `string_count: ${fretValues.length}`,
+      `window_start: ${windowStart}`,
+      `visible_frets: ${visibleFrets}`,
+      `fret voicing midi: ${JSON.stringify(fretMidiNotes)}`,
+      `chord staff midi: ${JSON.stringify(staffMidiNotes)}`,
+      `aligned: ${aligned ? "yes" : "no"}`,
+    ];
+    if (compatFretLen !== null) {
+      lines.push(`compat wrapper lmt_svg_fret bytes: ${compatFretLen}`);
+    }
+    if (tuningValues.length !== fretValues.length) {
+      lines.push("note: tuning/fret counts differ, so MIDI alignment is semantic-only for overlapping strings");
+    }
+    outSvgMeta.textContent = lines.join("\n");
+
+    svgClockHost.innerHTML = clockSvg;
+    svgFretHost.innerHTML = fretSvg;
+    svgStaffHost.innerHTML = staffSvg;
+
+    normalizeSvgPreview(svgClockHost);
+    normalizeSvgPreview(svgFretHost);
+    normalizeSvgPreview(svgStaffHost);
+  } finally {
+    arena.release();
   }
-  const tuningValues = parseCsvIntegers(document.getElementById("guitar-tuning").value, 0, 127);
-  const tuningPtr = writeU8Array(arena, tuningValues);
-  const windowStart = getNumberInput("svg-window-start");
-  const visibleFrets = getNumberInput("svg-visible-frets");
-  const fretMidiNotes = fretValues
-    .map((fret, stringIndex) => (fret < 0 || stringIndex >= tuningValues.length ? null : wasm.lmt_fret_to_midi_n(stringIndex, fret, tuningPtr, tuningValues.length)))
-    .filter((value) => value !== null);
-  const staffMidiNotes = canonicalChordStaffMidiNotes(chordType, chordRoot);
-  const aligned = tuningValues.length === fretValues.length && arraysEqual(fretMidiNotes, staffMidiNotes);
-
-  const svgBufPtr = arena.alloc(C_STRING_CAPACITY, 1);
-
-  const clockLen = wasm.lmt_svg_clock_optc(mainSet, svgBufPtr, C_STRING_CAPACITY);
-  const clockSvg = readCString(svgBufPtr);
-
-  const fretsPtr = writeI8Array(arena, fretValues);
-  const fretLen = wasm.lmt_svg_fret_n(fretsPtr, fretValues.length, windowStart, visibleFrets, svgBufPtr, C_STRING_CAPACITY);
-  const fretSvg = readCString(svgBufPtr);
-  const compatFretLen = fretValues.length === 6 ? wasm.lmt_svg_fret(fretsPtr, svgBufPtr, C_STRING_CAPACITY) : null;
-
-  const staffLen = wasm.lmt_svg_chord_staff(chordType, chordRoot, svgBufPtr, C_STRING_CAPACITY);
-  const staffSvg = readCString(svgBufPtr);
-
-  const lines = [
-    `lmt_svg_clock_optc bytes: ${clockLen}`,
-    `lmt_svg_fret_n bytes: ${fretLen}`,
-    `lmt_svg_chord_staff bytes: ${staffLen}`,
-    `string_count: ${fretValues.length}`,
-    `window_start: ${windowStart}`,
-    `visible_frets: ${visibleFrets}`,
-    `fret voicing midi: ${JSON.stringify(fretMidiNotes)}`,
-    `chord staff midi: ${JSON.stringify(staffMidiNotes)}`,
-    `aligned: ${aligned ? "yes" : "no"}`,
-  ];
-  if (compatFretLen !== null) {
-    lines.push(`compat wrapper lmt_svg_fret bytes: ${compatFretLen}`);
-  }
-  if (tuningValues.length !== fretValues.length) {
-    lines.push("note: tuning/fret counts differ, so MIDI alignment is semantic-only for overlapping strings");
-  }
-  outSvgMeta.textContent = lines.join("\n");
-
-  svgClockHost.innerHTML = clockSvg;
-  svgFretHost.innerHTML = fretSvg;
-  svgStaffHost.innerHTML = staffSvg;
-
-  normalizeSvgPreview(svgClockHost);
-  normalizeSvgPreview(svgFretHost);
-  normalizeSvgPreview(svgStaffHost);
 }
 
 function canonicalChordStaffMidiNotes(chordType, chordRoot) {

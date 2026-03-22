@@ -211,7 +211,7 @@ test "c abi guitar functions" {
 }
 
 test "c abi svg generators" {
-    var svg_buf: [8192]u8 = [_]u8{0} ** 8192;
+    var svg_buf: [16384]u8 = [_]u8{0} ** 16384;
     const c_major = lmt_chord(c.LMT_CHORD_MAJOR, 0);
 
     const len1 = lmt_svg_clock_optc(c_major, @ptrCast(&svg_buf), @intCast(svg_buf.len));
@@ -229,13 +229,24 @@ test "c abi svg generators" {
     try testing.expect(len2n > 0);
     try testing.expect(std.mem.indexOf(u8, svg_buf[0..len2n], "cx=\"80.00\" cy=\"57.50\"") != null);
 
-    const len3 = lmt_svg_chord_staff(c.LMT_CHORD_MAJOR, 0, @ptrCast(&svg_buf), @intCast(svg_buf.len));
-    try testing.expect(len3 > 0);
-    try testing.expect(std.mem.startsWith(u8, svg_buf[0..4], "<svg"));
-    try testing.expect(std.mem.indexOf(u8, svg_buf[0..len3], "shape-rendering=\"geometricPrecision\"") != null);
-    try testing.expect(std.mem.indexOf(u8, svg_buf[0..len3], "class=\"clef clef-treble\"") != null);
-    try testing.expect(std.mem.indexOf(u8, svg_buf[0..len3], "class=\"notehead chord-notehead\"") != null);
-    try testing.expect(std.mem.indexOf(u8, svg_buf[0..len3], "class=\"stem cluster-stem\"") != null);
+    const chord_staff_cases = [_]struct {
+        chord_kind: u8,
+        root: u8,
+    }{
+        .{ .chord_kind = c.LMT_CHORD_MAJOR, .root = 0 },
+        .{ .chord_kind = c.LMT_CHORD_MINOR, .root = 9 },
+        .{ .chord_kind = c.LMT_CHORD_DIMINISHED, .root = 11 },
+        .{ .chord_kind = c.LMT_CHORD_AUGMENTED, .root = 8 },
+    };
+    for (chord_staff_cases) |case| {
+        const len3 = lmt_svg_chord_staff(case.chord_kind, case.root, @ptrCast(&svg_buf), @intCast(svg_buf.len));
+        try testing.expect(len3 > 0);
+        try testing.expect(std.mem.startsWith(u8, svg_buf[0..4], "<svg"));
+        try testing.expect(std.mem.indexOf(u8, svg_buf[0..len3], "shape-rendering=\"geometricPrecision\"") != null);
+        try testing.expect(std.mem.indexOf(u8, svg_buf[0..len3], "class=\"clef clef-treble\"") != null);
+        try testing.expect(std.mem.count(u8, svg_buf[0..len3], "class=\"notehead chord-notehead\"") >= 3);
+        try testing.expect(std.mem.indexOf(u8, svg_buf[0..len3], "class=\"stem cluster-stem\"") != null);
+    }
 }
 
 test "c abi raster generators" {

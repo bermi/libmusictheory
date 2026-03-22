@@ -720,6 +720,13 @@ else
     unverified "0083 staff quality guardrail (staff renderer or gallery validator missing)"
 fi
 
+if [ -f "$ROOT_DIR/src/svg/staff.zig" ]; then
+    check_cmd "cd '$ROOT_DIR' && rg -n 'TREBLE_CLEF_PATH_D|BASS_CLEF_PATH_D|class=\\\\\"clef-glyph' src/svg/staff.zig src/tests/svg_staff_test.zig >/dev/null" "0084 clef glyph guardrail (public renderer uses named clef glyph paths)"
+    check_cmd "cd '$ROOT_DIR' && ! rg -n 'clef-stroke|clef-hole|M 12 -52 C 2 -52' src/svg/staff.zig >/dev/null" "0084 clef glyph guardrail (placeholder clef spline removed)"
+else
+    unverified "0084 clef glyph guardrail (staff renderer missing)"
+fi
+
 if [ -f "$ROOT_DIR/scripts/release_smoke.sh" ]; then
     check_cmd "cd '$ROOT_DIR' && ./scripts/release_smoke.sh 2>&1" "0078 standalone release smoke matrix"
     if bash -lc "cd '$ROOT_DIR' && ./scripts/release_smoke.sh >/dev/null 2>&1"; then
