@@ -37,7 +37,7 @@ Before implementation is complete:
 
 ## Implementation History (Point-in-Time)
 
-- Commit hash: `PENDING`
+- Commit hash: `186b136`
 - Date: 2026-03-22
 - Shipped behavior:
   - replaced the public placeholder treble and bass clefs in `/Users/bermi/code/libmusictheory/src/svg/staff.zig` with compat-derived glyph outlines anchored against the staff instead of the previous hand-drawn spline
