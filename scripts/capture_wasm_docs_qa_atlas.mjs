@@ -176,13 +176,16 @@ async function main() {
       };
       fs.writeFileSync(path.join(outputDir, "qa-atlas.json"), `${JSON.stringify(manifest, null, 2)}\n`);
 
-      if ((summary.atlas?.cardCount || 0) < 25) {
-        throw new Error(`qa atlas captured too few cards: ${summary.atlas?.cardCount || 0}`);
+      if ((summary.atlas?.imageMethodCount || 0) !== 4) {
+        throw new Error(`qa atlas captured wrong image method count: ${summary.atlas?.imageMethodCount || 0}`);
       }
-      if ((summary.atlas?.svgCount || 0) < 3) {
-        throw new Error(`qa atlas captured too few svg panels: ${summary.atlas?.svgCount || 0}`);
+      if ((summary.atlas?.svgCount || 0) !== 4) {
+        throw new Error(`qa atlas captured wrong svg panel count: ${summary.atlas?.svgCount || 0}`);
       }
-      if (size.width < 2000 || size.height < 5000) {
+      if ((summary.atlas?.renderedImageCount || 0) !== 4) {
+        throw new Error(`qa atlas captured missing image rows: ${summary.atlas?.renderedImageCount || 0}/4 rendered`);
+      }
+      if (size.width < 2200 || size.height < 2600) {
         throw new Error(`qa atlas image unexpectedly small: ${size.width}x${size.height}`);
       }
 

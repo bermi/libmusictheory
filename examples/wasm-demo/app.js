@@ -8,6 +8,7 @@ const outGuitar = document.getElementById("out-guitar");
 const outSvgMeta = document.getElementById("out-svg-meta");
 
 const svgClockHost = document.getElementById("svg-clock");
+const svgFretCompatHost = document.getElementById("svg-fret-compat");
 const svgFretHost = document.getElementById("svg-fret");
 const svgStaffHost = document.getElementById("svg-staff");
 
@@ -70,6 +71,7 @@ function renderSectionError(label, target, err) {
 
 function clearSvgHosts() {
   svgClockHost.innerHTML = "";
+  svgFretCompatHost.innerHTML = "";
   svgFretHost.innerHTML = "";
   svgStaffHost.innerHTML = "";
 }
@@ -485,15 +487,17 @@ function runSvgApis() {
     const clockSvg = readCString(svgBufPtr);
 
     const fretsPtr = writeI8Array(arena, fretValues);
+    const compatFretLen = fretValues.length === 6 ? wasm.lmt_svg_fret(fretsPtr, svgBufPtr, C_STRING_CAPACITY) : null;
+    const compatFretSvg = compatFretLen !== null ? readCString(svgBufPtr) : "";
     const fretLen = wasm.lmt_svg_fret_n(fretsPtr, fretValues.length, windowStart, visibleFrets, svgBufPtr, C_STRING_CAPACITY);
     const fretSvg = readCString(svgBufPtr);
-    const compatFretLen = fretValues.length === 6 ? wasm.lmt_svg_fret(fretsPtr, svgBufPtr, C_STRING_CAPACITY) : null;
 
     const staffLen = wasm.lmt_svg_chord_staff(chordType, chordRoot, svgBufPtr, C_STRING_CAPACITY);
     const staffSvg = readCString(svgBufPtr);
 
     const lines = [
       `lmt_svg_clock_optc bytes: ${clockLen}`,
+      compatFretLen !== null ? `lmt_svg_fret bytes: ${compatFretLen}` : `lmt_svg_fret bytes: unavailable for string_count=${fretValues.length}`,
       `lmt_svg_fret_n bytes: ${fretLen}`,
       `lmt_svg_chord_staff bytes: ${staffLen}`,
       `string_count: ${fretValues.length}`,
@@ -503,19 +507,18 @@ function runSvgApis() {
       `chord staff midi: ${JSON.stringify(staffMidiNotes)}`,
       `aligned: ${aligned ? "yes" : "no"}`,
     ];
-    if (compatFretLen !== null) {
-      lines.push(`compat wrapper lmt_svg_fret bytes: ${compatFretLen}`);
-    }
     if (tuningValues.length !== fretValues.length) {
       lines.push("note: tuning/fret counts differ, so MIDI alignment is semantic-only for overlapping strings");
     }
     outSvgMeta.textContent = lines.join("\n");
 
     svgClockHost.innerHTML = clockSvg;
+    svgFretCompatHost.innerHTML = compatFretSvg;
     svgFretHost.innerHTML = fretSvg;
     svgStaffHost.innerHTML = staffSvg;
 
     normalizeSvgPreview(svgClockHost);
+    normalizeSvgPreview(svgFretCompatHost);
     normalizeSvgPreview(svgFretHost);
     normalizeSvgPreview(svgStaffHost);
   } finally {

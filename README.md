@@ -157,7 +157,7 @@ python3 -m http.server --directory /Users/bermi/code/libmusictheory/zig-out/wasm
 
 Open [http://localhost:8001/index.html](http://localhost:8001/index.html).
 
-For a single-image QA atlas covering all public docs method outputs:
+For a single-image QA atlas covering the public image-producing docs methods:
 
 ```bash
 cd /Users/bermi/code/libmusictheory

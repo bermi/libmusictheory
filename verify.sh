@@ -127,6 +127,7 @@ fi
 if [ -f "$ROOT_DIR/docs/plans/in_progress/0087-public-api-polish-and-review-fixes.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0087-public-api-polish-and-review-fixes.md" ]; then
     check_cmd "cd '$ROOT_DIR' && rg -n 'qa-atlas\\.html|qa-atlas\\.js|qa-atlas\\.css|capture_wasm_docs_qa_atlas\\.mjs' build.zig verify.sh README.md docs/release/reviewer-guide.md >/dev/null" "0087 qa atlas guardrail (build, docs, and capture wiring are present)"
     check_cmd "cd '$ROOT_DIR' && ! rg -n 'tmp/harmoniousapp\\.net|validate_harmonious_|libmusictheory_compat\\.h|lmt_svg_compat_|lmt_bitmap_compat_' examples/wasm-demo/qa-atlas.js scripts/capture_wasm_docs_qa_atlas.mjs" "0087 qa atlas guardrail (atlas stays on standalone public docs outputs)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'lmt_svg_clock_optc|lmt_svg_fret\\b|lmt_svg_fret_n|lmt_svg_chord_staff' examples/wasm-demo/index.html examples/wasm-demo/app.js examples/wasm-demo/qa-atlas.js >/dev/null" "0087 qa atlas guardrail (all public docs image methods are rendered and atlas-covered)"
     check_cmd "cd '$ROOT_DIR' && node scripts/capture_wasm_docs_qa_atlas.mjs 2>&1" "0087 qa atlas capture verification"
     check_cmd "cd '$ROOT_DIR' && test -f zig-out/wasm-docs-qa/qa-atlas.png && test -f zig-out/wasm-docs-qa/qa-atlas.json" "0087 qa atlas capture guardrail (deterministic artifacts generated)"
 fi
