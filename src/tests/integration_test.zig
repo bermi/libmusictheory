@@ -54,7 +54,7 @@ test "caged positions cover all 12 roots with valid shape metadata" {
 }
 
 test "svg integration emits valid wrappers" {
-    var buf: [8192]u8 = undefined;
+    var buf: [32768]u8 = undefined;
 
     const clock_svg = svg_clock.renderOPC(pcs.C_MAJOR_TRIAD, &buf);
     try testing.expect(std.mem.startsWith(u8, clock_svg, "<svg"));

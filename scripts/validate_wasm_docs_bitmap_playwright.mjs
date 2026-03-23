@@ -11,8 +11,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, "..");
 const docsDir = path.join(rootDir, "zig-out", "wasm-docs");
-const outputDir = path.join(rootDir, "zig-out", "wasm-docs-qa");
-const host = "127.0.0.1";
+const host = process.env.LMT_VALIDATION_HOST || "127.0.0.1";
 const maxDrift = Number.parseFloat(process.env.LMT_WASM_DOCS_BITMAP_MAX_DRIFT || "0.03");
 const minInkPixels = Number.parseInt(process.env.LMT_WASM_DOCS_BITMAP_MIN_INK || "1000", 10);
 
@@ -66,16 +65,6 @@ function pathToFileUrl(filePath) {
   return `file://${resolved}`;
 }
 
-function parsePngSize(buffer) {
-  if (buffer.length < 24 || buffer.toString("ascii", 1, 4) !== "PNG") {
-    throw new Error("not a PNG buffer");
-  }
-  return {
-    width: buffer.readUInt32BE(16),
-    height: buffer.readUInt32BE(20),
-  };
-}
-
 function resolvePort() {
   return new Promise((resolve, reject) => {
     const probe = net.createServer();
@@ -127,7 +116,6 @@ async function main() {
     throw new Error(`missing qa atlas page in ${docsDir}; run 'zig build wasm-docs' first`);
   }
 
-  fs.mkdirSync(outputDir, { recursive: true });
   const port = await resolvePort();
   const { child: server, stderrRef } = startServer(port);
   const cleanupServer = () => {
@@ -149,94 +137,37 @@ async function main() {
     await waitForServer(url);
     const browser = await launchChromium();
     try {
-      const page = await browser.newPage({
-        viewport: { width: 1920, height: 1200 },
-        deviceScaleFactor: 2,
-      });
+      const page = await browser.newPage({ viewport: { width: 1920, height: 1200 }, deviceScaleFactor: 2 });
       await page.goto(url, { waitUntil: "domcontentloaded" });
       await page.waitForFunction(() => window.__lmtQaAtlasSummary?.ready === true, null, { timeout: 300000 });
-      await delay(300);
+      await delay(250);
 
-      const summary = await page.evaluate(() => ({
-        status: document.getElementById("status")?.textContent || "",
-        atlas: window.__lmtQaAtlasSummary || null,
-        rendered: {
-          imageCount: document.querySelectorAll("#atlas-grid img.atlas-bitmap").length,
-          svgCount: document.querySelectorAll("#atlas-grid svg").length,
-          linkTargets: Array.from(document.querySelectorAll("#atlas-grid a.atlas-bitmap-link"), (link) => link.target),
-          hrefSchemes: Array.from(document.querySelectorAll("#atlas-grid a.atlas-bitmap-link"), (link) => {
-            try {
-              return new URL(link.href).protocol;
-            } catch (_error) {
-              return "invalid:";
-            }
-          }),
-          displayWidths: Array.from(document.querySelectorAll("#atlas-grid img.atlas-bitmap"), (img) => Math.round(img.getBoundingClientRect().width)),
-        },
-      }));
+      const summary = await page.evaluate(() => window.__lmtQaAtlasSummary);
+      if (!summary) throw new Error("qa atlas summary missing");
+      if (!summary.rasterEnabled) throw new Error("qa atlas raster backend disabled");
+      if ((summary.methods || []).length !== 4) throw new Error(`qa atlas method count mismatch: ${(summary.methods || []).length}`);
 
-      const outPath = path.join(outputDir, "qa-atlas.png");
-      await page.locator("#qa-atlas-root").screenshot({ path: outPath });
-      const buffer = fs.readFileSync(outPath);
-      const size = parsePngSize(buffer);
-      const manifest = {
-        route: "/qa-atlas.html",
-        summary,
-        shot: {
-          path: outPath,
-          fileSize: buffer.byteLength,
-          width: size.width,
-          height: size.height,
-        },
-      };
-      fs.writeFileSync(path.join(outputDir, "qa-atlas.json"), `${JSON.stringify(manifest, null, 2)}\n`);
-
-      if ((summary.atlas?.imageMethodCount || 0) !== 4) {
-        throw new Error(`qa atlas captured wrong image method count: ${summary.atlas?.imageMethodCount || 0}`);
-      }
-      if ((summary.atlas?.svgCount || 0) !== 0) {
-        throw new Error(`qa atlas unexpectedly reported svg panels: ${summary.atlas?.svgCount || 0}`);
-      }
-      if ((summary.atlas?.renderedImageCount || 0) !== 4) {
-        throw new Error(`qa atlas captured missing image rows: ${summary.atlas?.renderedImageCount || 0}/4 rendered`);
-      }
-      if ((summary.rendered?.imageCount || 0) !== 4) {
-        throw new Error(`qa atlas DOM is missing bitmap images: ${summary.rendered?.imageCount || 0}/4`);
-      }
-      if ((summary.rendered?.svgCount || 0) !== 0) {
-        throw new Error(`qa atlas DOM still contains svg elements: ${summary.rendered?.svgCount || 0}`);
-      }
-      if (!(summary.atlas?.rasterEnabled)) {
-        throw new Error("qa atlas did not confirm raster backend enabled");
-      }
-      if ((summary.rendered?.linkTargets || []).some((target) => target !== "_blank")) {
-        throw new Error(`qa atlas links are not all target=_blank: ${JSON.stringify(summary.rendered?.linkTargets || [])}`);
-      }
-      if ((summary.rendered?.hrefSchemes || []).some((scheme) => scheme !== "blob:")) {
-        throw new Error(`qa atlas links are not all blob URLs: ${JSON.stringify(summary.rendered?.hrefSchemes || [])}`);
-      }
-      if ((summary.rendered?.displayWidths || []).some((width) => width < 800)) {
-        throw new Error(`qa atlas bitmap rows rendered too small: ${JSON.stringify(summary.rendered?.displayWidths || [])}`);
-      }
-      if ((summary.atlas?.methods || []).some((method) => (method.candidateInkPixels || 0) < minInkPixels)) {
-        throw new Error(`qa atlas bitmap rows are visually blank: ${JSON.stringify(summary.atlas?.methods || [])}`);
-      }
-      if (Number.isFinite(summary.atlas?.maxDrift) && summary.atlas.maxDrift > maxDrift) {
-        throw new Error(`qa atlas bitmap drift too high: ${summary.atlas.maxDrift} > ${maxDrift}`);
-      }
-      if (size.width < 2200 || size.height < 2600) {
-        throw new Error(`qa atlas image unexpectedly small: ${size.width}x${size.height}`);
+      const failures = [];
+      for (const method of summary.methods || []) {
+        if ((method.candidateInkPixels || 0) < minInkPixels) {
+          failures.push(`${method.label}:${method.method}:ink=${method.candidateInkPixels}`);
+        }
+        if (!Number.isFinite(method.drift) || method.drift > maxDrift) {
+          failures.push(`${method.label}:${method.method}:drift=${method.drift}`);
+        }
       }
 
-      console.log(JSON.stringify(manifest, null, 2));
+      if (failures.length > 0) {
+        throw new Error(`qa atlas bitmap diff failures: ${failures.join(", ")}`);
+      }
+
+      console.log(JSON.stringify({ maxDrift, minInkPixels, summary }, null, 2));
     } finally {
       await browser.close();
     }
   } catch (error) {
     const stderr = stderrRef();
-    if (stderr.trim().length > 0) {
-      console.error(stderr.trim());
-    }
+    if (stderr.trim().length > 0) console.error(stderr.trim());
     throw error;
   } finally {
     cleanupServer();

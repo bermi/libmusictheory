@@ -4,6 +4,7 @@ const pcs = @import("../pitch_class_set.zig");
 const cluster = @import("../cluster.zig");
 const set_class = @import("../set_class.zig");
 const svg_quality = @import("quality.zig");
+const text_misc = @import("text_misc.zig");
 
 const TAU = std.math.pi * 2.0;
 
@@ -61,15 +62,16 @@ pub fn renderOPTC(set: pcs.PitchClassSet, prime_label: []const u8, buf: []u8) []
     const w = stream.writer();
 
     const cluster_info = cluster.getClusters(set);
+    var label_path_buf: [8 * 1024]u8 = undefined;
+    const label_path = text_misc.horizontalPathData(prime_label, &label_path_buf);
 
     svg_quality.writeSvgPrelude(w, "70", "70", "-7 -7 114 114",
         \\.optc-ring,.optc-node{vector-effect:non-scaling-stroke}
         \\.optc-ring{fill:none;stroke:black;stroke-width:2}
         \\.optc-node{stroke:black;stroke-width:3}
-        \\.optc-center{font-size:16px;fill:black}
         \\
     ) catch unreachable;
-    w.writeAll("<circle class=\"optc-ring\" cx=\"50.00\" cy=\"50.00\" r=\"20\" />\n") catch unreachable;
+    w.writeAll("<circle class=\"optc-ring\" cx=\"50.00\" cy=\"50.00\" r=\"20\" fill=\"none\" stroke=\"black\" stroke-width=\"2\" />\n") catch unreachable;
 
     var pc: u4 = 0;
     while (pc < 12) : (pc += 1) {
@@ -86,12 +88,22 @@ pub fn renderOPTC(set: pcs.PitchClassSet, prime_label: []const u8, buf: []u8) []
             "black";
 
         w.print(
-            "<circle class=\"optc-node\" cx=\"{d:.2}\" cy=\"{d:.2}\" r=\"10\" fill=\"{s}\" />\n",
+            "<circle class=\"optc-node\" cx=\"{d:.2}\" cy=\"{d:.2}\" r=\"10\" stroke=\"black\" stroke-width=\"3\" fill=\"{s}\" />\n",
             .{ p.x, p.y, fill },
         ) catch unreachable;
     }
 
-    w.print("<text class=\"label-serif inverse-outline optc-center\" x=\"50\" y=\"55\" text-anchor=\"middle\">{s}</text>\n", .{prime_label}) catch unreachable;
+    if (label_path) |horizontal| {
+        const scale = 0.68;
+        const label_x = 50.0 - @as(f64, horizontal.width) * scale / 2.0;
+        const label_y = 45.0;
+        w.print(
+            "<g transform=\"translate({d:.3},{d:.3}) scale({d:.3})\"><path fill=\"#111\" d=\"{s}\" /></g>\n",
+            .{ label_x, label_y, scale, horizontal.d },
+        ) catch unreachable;
+    } else {
+        w.print("<text x=\"50\" y=\"55\" text-anchor=\"middle\" fill=\"#111\" font-size=\"16\">{s}</text>\n", .{prime_label}) catch unreachable;
+    }
     w.writeAll("</svg>\n") catch unreachable;
 
     return buf[0..stream.pos];

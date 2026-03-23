@@ -22,7 +22,7 @@ test "dot positions and open muted markers" {
     var buf: [8192]u8 = undefined;
     const svg = fret.renderFretDiagram(voicing, &buf);
 
-    const dot = "<circle class=\"dot\" cx=\"32.00\" cy=\"57.50\" r=\"4.35\" />";
+    const dot = "<circle class=\"dot\" cx=\"32.00\" cy=\"57.50\" r=\"4.35\" fill=\"#111\" />";
     try testing.expect(std.mem.indexOf(u8, svg, dot) != null);
 
     try testing.expect(std.mem.indexOf(u8, svg, "class=\"marker-open\"") != null);

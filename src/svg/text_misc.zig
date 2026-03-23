@@ -137,6 +137,49 @@ pub fn verticalPathData(text: []const u8, bottom_to_top: bool, buf: []u8) ?[]con
     return buildVerticalPath(text, bottom_to_top, buf);
 }
 
+pub const HorizontalPath = struct {
+    d: []const u8,
+    width: f32,
+};
+
+fn horizontalAdvance(ch: u8) i32 {
+    return switch (ch) {
+        '1' => 85_000,
+        '-' => 95_000,
+        'Z' => 118_000,
+        else => 112_000,
+    };
+}
+
+pub fn horizontalPathData(text: []const u8, buf: []u8) ?HorizontalPath {
+    if (text.len == 0 or text.len > 64) return null;
+
+    var stream = std.io.fixedBufferStream(buf);
+    const writer = stream.writer();
+    var cursor_x: i32 = 0;
+    var i: usize = 0;
+    while (i < text.len) : (i += 1) {
+        const symbol = findSymbol(text[i]) orelse return null;
+        for (symbol.parts) |part| {
+            if (part.primitive_index >= primitives.PRIMITIVES.len) return null;
+            const primitive = primitives.PRIMITIVES[part.primitive_index];
+            const x = cursor_x + part.dx;
+
+            writer.writeByte('M') catch return null;
+            writeScaledCoord(writer, x) catch return null;
+            writer.writeByte(',') catch return null;
+            writeScaledCoord(writer, part.dy) catch return null;
+            writer.writeAll(primitive.body) catch return null;
+        }
+        cursor_x += horizontalAdvance(text[i]);
+    }
+
+    return .{
+        .d = buf[0..stream.pos],
+        .width = @as(f32, @floatFromInt(cursor_x)) / 10_000.0,
+    };
+}
+
 pub fn centerSquarePathData(glyph: []const u8) ?[]const u8 {
     return findCenterTemplate(glyph);
 }

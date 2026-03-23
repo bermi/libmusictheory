@@ -4,11 +4,19 @@ const summaryMethodsEl = document.getElementById("summary-methods");
 const sourceFrame = document.getElementById("qa-source");
 
 const BITMAP_REVIEW_WIDTH = 1200;
+const textDecoder = new TextDecoder();
 const BITMAP_TARGETS = {
   lmt_svg_clock_optc: { width: BITMAP_REVIEW_WIDTH, height: 1200 },
   lmt_svg_fret: { width: BITMAP_REVIEW_WIDTH, height: 1200 },
   lmt_svg_fret_n: { width: BITMAP_REVIEW_WIDTH, height: 1200 },
   lmt_svg_chord_staff: { width: BITMAP_REVIEW_WIDTH, height: 420 },
+};
+
+const ATLAS_SAMPLES = {
+  lmt_svg_clock_optc: { pcsMain: [0, 4, 7] },
+  lmt_svg_fret: { frets: [0, 2, 2, 1, 0, 0] },
+  lmt_svg_fret_n: { frets: [2, 0, 1, 0], stringCount: 4, windowStart: 0, visibleFrets: 4 },
+  lmt_svg_chord_staff: { chordType: 0, chordRoot: 0 },
 };
 
 const IMAGE_METHODS = [
@@ -59,6 +67,29 @@ function collectDefaults(sourceDoc) {
   };
 }
 
+function atlasSampleForMethod(method, defaults) {
+  switch (method) {
+    case "lmt_svg_clock_optc":
+      return { pcsMain: ATLAS_SAMPLES[method].pcsMain.slice() };
+    case "lmt_svg_fret":
+      return { svgFrets: ATLAS_SAMPLES[method].frets.slice() };
+    case "lmt_svg_fret_n":
+      return {
+        svgFrets: ATLAS_SAMPLES[method].frets.slice(),
+        windowStart: ATLAS_SAMPLES[method].windowStart,
+        visibleFrets: ATLAS_SAMPLES[method].visibleFrets,
+        stringCount: ATLAS_SAMPLES[method].stringCount,
+      };
+    case "lmt_svg_chord_staff":
+      return {
+        chordType: ATLAS_SAMPLES[method].chordType,
+        chordRoot: ATLAS_SAMPLES[method].chordRoot,
+      };
+    default:
+      return defaults;
+  }
+}
+
 function createScratchArena(wasm, memory) {
   const base = wasm.lmt_wasm_scratch_ptr();
   const size = wasm.lmt_wasm_scratch_size();
@@ -102,6 +133,10 @@ function copyRgba(memory, ptr, byteLength) {
   return new Uint8ClampedArray(new Uint8Array(memory.buffer, ptr, byteLength));
 }
 
+function readUtf8(memory, ptr, byteLength) {
+  return textDecoder.decode(new Uint8Array(memory.buffer, ptr, byteLength));
+}
+
 async function bitmapUrlFromRgba(rgba, width, height) {
   const canvas = document.createElement("canvas");
   canvas.width = width;
@@ -115,6 +150,51 @@ async function bitmapUrlFromRgba(rgba, width, height) {
     }, "image/png");
   });
   return URL.createObjectURL(blob);
+}
+
+async function rasterizeSvgMarkup(svgMarkup, width, height) {
+  const blob = new Blob([svgMarkup], { type: "image/svg+xml;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  try {
+    const image = new Image();
+    image.decoding = "sync";
+    const loaded = new Promise((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = () => reject(new Error("failed to rasterize SVG reference"));
+    });
+    image.src = url;
+    await loaded;
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(image, 0, 0, width, height);
+    return ctx.getImageData(0, 0, width, height).data;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+function compareRgba(candidate, reference) {
+  const len = Math.min(candidate.length, reference.length);
+  let totalDiff = 0;
+  let changedPixels = 0;
+  let candidateInk = 0;
+  for (let i = 0; i < len; i += 4) {
+    let pixelChanged = false;
+    for (let channel = 0; channel < 4; channel += 1) {
+      const diff = Math.abs(candidate[i + channel] - reference[i + channel]);
+      totalDiff += diff;
+      if (diff > 8) pixelChanged = true;
+    }
+    if (pixelChanged) changedPixels += 1;
+    if (candidate[i + 3] > 0) candidateInk += 1;
+  }
+  return {
+    drift: len > 0 ? totalDiff / (len * 255) : 1,
+    changedPixels,
+    candidateInkPixels: candidateInk,
+  };
 }
 
 function buildMainSet(wasm, arena, values) {
@@ -159,7 +239,7 @@ function renderFretNBitmap(wasm, memory, arena, defaults) {
   const rgbaPtr = arena.alloc(rgbaBytes, 4);
   const written = wasm.lmt_bitmap_fret_n_rgba(
     fretsPtr,
-    defaults.svgFrets.length,
+    defaults.stringCount ?? defaults.svgFrets.length,
     defaults.windowStart,
     defaults.visibleFrets,
     dims.width,
@@ -190,6 +270,74 @@ function renderChordStaffBitmap(wasm, memory, arena, defaults) {
   };
 }
 
+function renderSvgString(entry, wasm, memory, defaults) {
+  const arena = createScratchArena(wasm, memory);
+  let total = 0;
+  switch (entry.method) {
+    case "lmt_svg_clock_optc": {
+      const mainSet = buildMainSet(wasm, arena, defaults.pcsMain);
+      total = wasm.lmt_svg_clock_optc(mainSet, 0, 0);
+      break;
+    }
+    case "lmt_svg_fret": {
+      const fretsPtr = writeI8Array(arena, defaults.svgFrets);
+      total = wasm.lmt_svg_fret(fretsPtr, 0, 0);
+      break;
+    }
+    case "lmt_svg_fret_n": {
+      const fretsPtr = writeI8Array(arena, defaults.svgFrets);
+      total = wasm.lmt_svg_fret_n(
+        fretsPtr,
+        defaults.stringCount ?? defaults.svgFrets.length,
+        defaults.windowStart,
+        defaults.visibleFrets,
+        0,
+        0,
+      );
+      break;
+    }
+    case "lmt_svg_chord_staff":
+      total = wasm.lmt_svg_chord_staff(defaults.chordType, defaults.chordRoot, 0, 0);
+      break;
+    default:
+      throw new Error(`unsupported svg method ${entry.method}`);
+  }
+  if (total <= 0) throw new Error(`${entry.method} returned empty SVG`);
+  const svgPtr = arena.alloc(total + 1, 1);
+  let written = 0;
+  switch (entry.method) {
+    case "lmt_svg_clock_optc": {
+      const mainSet = buildMainSet(wasm, arena, defaults.pcsMain);
+      written = wasm.lmt_svg_clock_optc(mainSet, svgPtr, total + 1);
+      break;
+    }
+    case "lmt_svg_fret": {
+      const fretsPtr = writeI8Array(arena, defaults.svgFrets);
+      written = wasm.lmt_svg_fret(fretsPtr, svgPtr, total + 1);
+      break;
+    }
+    case "lmt_svg_fret_n": {
+      const fretsPtr = writeI8Array(arena, defaults.svgFrets);
+      written = wasm.lmt_svg_fret_n(
+        fretsPtr,
+        defaults.stringCount ?? defaults.svgFrets.length,
+        defaults.windowStart,
+        defaults.visibleFrets,
+        svgPtr,
+        total + 1,
+      );
+      break;
+    }
+    case "lmt_svg_chord_staff":
+      written = wasm.lmt_svg_chord_staff(defaults.chordType, defaults.chordRoot, svgPtr, total + 1);
+      break;
+    default:
+      break;
+  }
+  if (written !== total) throw new Error(`${entry.method} wrote ${written}/${total} SVG bytes`);
+  return readUtf8(memory, svgPtr, total);
+}
+
 async function renderBitmapCard(entry, wasm, memory, defaults) {
   const arena = createScratchArena(wasm, memory);
   let rendered;
@@ -210,6 +358,9 @@ async function renderBitmapCard(entry, wasm, memory, defaults) {
       throw new Error(`unsupported image method ${entry.method}`);
   }
   const pngUrl = await bitmapUrlFromRgba(rendered.rgba, rendered.width, rendered.height);
+  const svgMarkup = renderSvgString(entry, wasm, memory, defaults);
+  const referenceRgba = await rasterizeSvgMarkup(svgMarkup, rendered.width, rendered.height);
+  const comparison = compareRgba(rendered.rgba, referenceRgba);
   return {
     ...entry,
     rendered: true,
@@ -217,6 +368,7 @@ async function renderBitmapCard(entry, wasm, memory, defaults) {
     bitmapWidth: rendered.width,
     bitmapHeight: rendered.height,
     meta: rendered.meta,
+    comparison,
   };
 }
 
@@ -265,7 +417,7 @@ function renderVisualCard(card, index) {
 
   const meta = document.createElement("p");
   meta.className = "atlas-meta";
-  meta.textContent = `${card.meta} | open=png`;
+  meta.textContent = `${card.meta} | drift=${card.comparison.drift.toFixed(8)} | changed=${card.comparison.changedPixels} | ink=${card.comparison.candidateInkPixels} | open=png`;
   article.append(meta);
 
   return article;
@@ -303,7 +455,7 @@ async function buildAtlas() {
   const defaults = collectDefaults(sourceDoc);
   const cards = [];
   for (const entry of IMAGE_METHODS) {
-    cards.push(await renderBitmapCard(entry, wasm, memory, defaults));
+    cards.push(await renderBitmapCard(entry, wasm, memory, atlasSampleForMethod(entry.method, defaults)));
   }
 
   atlasGrid.innerHTML = "";
@@ -312,6 +464,7 @@ async function buildAtlas() {
   });
 
   const imageWidths = Array.from(atlasGrid.querySelectorAll(".atlas-bitmap"), (img) => Math.round(img.getBoundingClientRect().width));
+  const maxDrift = Math.max(...cards.map((card) => card.comparison.drift));
   summaryMethodsEl.textContent = String(cards.length);
   window.__lmtQaAtlasSummary = {
     ready: true,
@@ -321,6 +474,7 @@ async function buildAtlas() {
     renderedImageCount: cards.length,
     rasterEnabled: true,
     displayWidths: imageWidths,
+    maxDrift,
     methods: cards.map((card, index) => ({
       label: labelForIndex(index),
       method: card.method,
@@ -329,6 +483,9 @@ async function buildAtlas() {
       rendered: true,
       bitmapWidth: card.bitmapWidth,
       bitmapHeight: card.bitmapHeight,
+      drift: card.comparison.drift,
+      changedPixels: card.comparison.changedPixels,
+      candidateInkPixels: card.comparison.candidateInkPixels,
     })),
   };
   setStatus(`QA atlas ready with ${cards.length} labeled bitmap image methods.`);

@@ -351,7 +351,7 @@ fn drawChordCluster(writer: anytype, cluster: *const ChordClusterLayout) void {
     }
 
     writer.print(
-        "<line class=\"stem cluster-stem\" x1=\"{d:.2}\" y1=\"{d:.2}\" x2=\"{d:.2}\" y2=\"{d:.2}\" />\n",
+        "<line class=\"stem cluster-stem\" x1=\"{d:.2}\" y1=\"{d:.2}\" x2=\"{d:.2}\" y2=\"{d:.2}\" stroke=\"#111\" stroke-width=\"1.5\" stroke-linecap=\"round\" />\n",
         .{ cluster.stem_x, cluster.stem_start_y, cluster.stem_x, cluster.stem_end_y },
     ) catch unreachable;
 
@@ -369,9 +369,9 @@ fn drawSingleStaffNote(writer: anytype, x: f32, note: SpelledStaffNote, notehead
 
     const stem_up = y >= 60.0;
     if (stem_up) {
-        writer.print("<line class=\"stem {s}\" x1=\"{d:.2}\" y1=\"{d:.2}\" x2=\"{d:.2}\" y2=\"{d:.2}\" />\n", .{ stem_class, x + 4.8, y - 0.6, x + 4.8, y - 29.0 }) catch unreachable;
+        writer.print("<line class=\"stem {s}\" x1=\"{d:.2}\" y1=\"{d:.2}\" x2=\"{d:.2}\" y2=\"{d:.2}\" stroke=\"#111\" stroke-width=\"1.4\" stroke-linecap=\"round\" />\n", .{ stem_class, x + 4.8, y - 0.6, x + 4.8, y - 29.0 }) catch unreachable;
     } else {
-        writer.print("<line class=\"stem {s}\" x1=\"{d:.2}\" y1=\"{d:.2}\" x2=\"{d:.2}\" y2=\"{d:.2}\" />\n", .{ stem_class, x - 4.8, y + 0.6, x - 4.8, y + 29.0 }) catch unreachable;
+        writer.print("<line class=\"stem {s}\" x1=\"{d:.2}\" y1=\"{d:.2}\" x2=\"{d:.2}\" y2=\"{d:.2}\" stroke=\"#111\" stroke-width=\"1.4\" stroke-linecap=\"round\" />\n", .{ stem_class, x - 4.8, y + 0.6, x - 4.8, y + 29.0 }) catch unreachable;
     }
 }
 
@@ -379,22 +379,22 @@ fn drawStaffLines(writer: anytype, x0: f32, x1: f32, top_y: f32) void {
     var i: u3 = 0;
     while (i < 5) : (i += 1) {
         const y = top_y + @as(f32, @floatFromInt(i)) * staff_line_gap;
-        writer.print("<line class=\"staff-line\" x1=\"{d:.2}\" y1=\"{d:.2}\" x2=\"{d:.2}\" y2=\"{d:.2}\" />\n", .{ x0, y, x1, y }) catch unreachable;
+        writer.print("<line class=\"staff-line\" x1=\"{d:.2}\" y1=\"{d:.2}\" x2=\"{d:.2}\" y2=\"{d:.2}\" stroke=\"#171717\" stroke-width=\"1.2\" stroke-linecap=\"round\" />\n", .{ x0, y, x1, y }) catch unreachable;
     }
 }
 
 fn drawEndBarline(writer: anytype, x: f32, top_y: f32) void {
-    writer.print("<line class=\"staff-barline\" x1=\"{d:.2}\" y1=\"{d:.2}\" x2=\"{d:.2}\" y2=\"{d:.2}\" />\n", .{ x, top_y, x, top_y + 4.0 * staff_line_gap }) catch unreachable;
+    writer.print("<line class=\"staff-barline\" x1=\"{d:.2}\" y1=\"{d:.2}\" x2=\"{d:.2}\" y2=\"{d:.2}\" stroke=\"#171717\" stroke-width=\"1.2\" stroke-linecap=\"round\" />\n", .{ x, top_y, x, top_y + 4.0 * staff_line_gap }) catch unreachable;
 }
 
 fn drawStaffConnector(writer: anytype, x: f32, top_y: f32, bottom_top_y: f32) void {
-    writer.print("<line class=\"staff-connector\" x1=\"{d:.2}\" y1=\"{d:.2}\" x2=\"{d:.2}\" y2=\"{d:.2}\" />\n", .{ x, top_y, x, bottom_top_y + 4.0 * staff_line_gap }) catch unreachable;
+    writer.print("<line class=\"staff-connector\" x1=\"{d:.2}\" y1=\"{d:.2}\" x2=\"{d:.2}\" y2=\"{d:.2}\" stroke=\"#171717\" stroke-width=\"1.2\" stroke-linecap=\"round\" />\n", .{ x, top_y, x, bottom_top_y + 4.0 * staff_line_gap }) catch unreachable;
 }
 
 fn drawGrandBrace(writer: anytype, x: f32, top_y: f32, bottom_y: f32) void {
     const mid = (top_y + bottom_y) / 2.0;
     writer.print(
-        "<path class=\"staff-brace\" d=\"M {d:.2} {d:.2} C {d:.2} {d:.2}, {d:.2} {d:.2}, {d:.2} {d:.2}\" />\n",
+        "<path class=\"staff-brace\" d=\"M {d:.2} {d:.2} C {d:.2} {d:.2}, {d:.2} {d:.2}, {d:.2} {d:.2}\" fill=\"none\" stroke=\"#111\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n",
         .{
             x + 10.0, top_y,
             x - 2.0,  top_y + 10.0,
@@ -403,7 +403,7 @@ fn drawGrandBrace(writer: anytype, x: f32, top_y: f32, bottom_y: f32) void {
         },
     ) catch unreachable;
     writer.print(
-        "<path class=\"staff-brace\" d=\"M {d:.2} {d:.2} C {d:.2} {d:.2}, {d:.2} {d:.2}, {d:.2} {d:.2}\" />\n",
+        "<path class=\"staff-brace\" d=\"M {d:.2} {d:.2} C {d:.2} {d:.2}, {d:.2} {d:.2}, {d:.2} {d:.2}\" fill=\"none\" stroke=\"#111\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n",
         .{
             x + 10.0, mid,
             x - 2.0,  mid + 12.0,
@@ -428,7 +428,7 @@ fn drawClef(writer: anytype, clef: Clef, x: f32, top_y: f32) void {
     };
 
     writer.print(
-        "<g class=\"clef clef-{s}\" transform=\"translate({d:.2},{d:.2})\"><path class=\"clef-glyph\" d=\"{s}\" /></g>\n",
+        "<g class=\"clef clef-{s}\" transform=\"translate({d:.2},{d:.2})\"><path class=\"clef-glyph\" d=\"{s}\" fill=\"#111\" stroke=\"none\" /></g>\n",
         .{ @tagName(clef), x - ref_x, top_y - ref_top_y, path_d },
     ) catch unreachable;
 }
@@ -453,13 +453,13 @@ fn drawAccidentalGlyph(writer: anytype, kind: AccidentalGlyph, x: f32, y: f32) v
     writer.print("<g class=\"accidental accidental-{s}\" transform=\"translate({d:.2},{d:.2})\">", .{ accidentalClass(kind), x, y }) catch unreachable;
     switch (kind) {
         .sharp => {
-            writer.writeAll("<line x1=\"1\" y1=\"-10\" x2=\"-1\" y2=\"10\" /><line x1=\"7\" y1=\"-10\" x2=\"5\" y2=\"10\" /><line x1=\"-2\" y1=\"-3\" x2=\"8\" y2=\"-5\" /><line x1=\"-1\" y1=\"4\" x2=\"9\" y2=\"2\" />") catch unreachable;
+            writer.writeAll("<line x1=\"1\" y1=\"-10\" x2=\"-1\" y2=\"10\" stroke=\"#111\" stroke-width=\"1.25\" stroke-linecap=\"round\" stroke-linejoin=\"round\" /><line x1=\"7\" y1=\"-10\" x2=\"5\" y2=\"10\" stroke=\"#111\" stroke-width=\"1.25\" stroke-linecap=\"round\" stroke-linejoin=\"round\" /><line x1=\"-2\" y1=\"-3\" x2=\"8\" y2=\"-5\" stroke=\"#111\" stroke-width=\"1.25\" stroke-linecap=\"round\" stroke-linejoin=\"round\" /><line x1=\"-1\" y1=\"4\" x2=\"9\" y2=\"2\" stroke=\"#111\" stroke-width=\"1.25\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />") catch unreachable;
         },
         .flat => {
-            writer.writeAll("<path d=\"M0 -10 L0 9 C0 9 5.5 5.5 5.5 1.2 C5.5 -3.6 1.6 -5.2 0 -3.4\" />") catch unreachable;
+            writer.writeAll("<path d=\"M0 -10 L0 9 C0 9 5.5 5.5 5.5 1.2 C5.5 -3.6 1.6 -5.2 0 -3.4\" fill=\"none\" stroke=\"#111\" stroke-width=\"1.25\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />") catch unreachable;
         },
         .natural => {
-            writer.writeAll("<line x1=\"0\" y1=\"-10\" x2=\"0\" y2=\"8\" /><line x1=\"6\" y1=\"-7\" x2=\"6\" y2=\"11\" /><line x1=\"0\" y1=\"-1\" x2=\"6\" y2=\"-3\" /><line x1=\"0\" y1=\"6\" x2=\"6\" y2=\"4\" />") catch unreachable;
+            writer.writeAll("<line x1=\"0\" y1=\"-10\" x2=\"0\" y2=\"8\" stroke=\"#111\" stroke-width=\"1.25\" stroke-linecap=\"round\" stroke-linejoin=\"round\" /><line x1=\"6\" y1=\"-7\" x2=\"6\" y2=\"11\" stroke=\"#111\" stroke-width=\"1.25\" stroke-linecap=\"round\" stroke-linejoin=\"round\" /><line x1=\"0\" y1=\"-1\" x2=\"6\" y2=\"-3\" stroke=\"#111\" stroke-width=\"1.25\" stroke-linecap=\"round\" stroke-linejoin=\"round\" /><line x1=\"0\" y1=\"6\" x2=\"6\" y2=\"4\" stroke=\"#111\" stroke-width=\"1.25\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />") catch unreachable;
         },
         .none => {},
     }
@@ -479,17 +479,17 @@ fn drawLedgerLines(writer: anytype, x: f32, y: f32, position: StaffPosition) voi
     var i: u8 = 0;
     while (i < position.ledger_lines_above) : (i += 1) {
         const ly = y - @as(f32, @floatFromInt((i * 2) + 2)) * staff_step_gap;
-        writer.print("<line class=\"ledger-line\" x1=\"{d:.2}\" y1=\"{d:.2}\" x2=\"{d:.2}\" y2=\"{d:.2}\" />\n", .{ x - 8.8, ly, x + 8.8, ly }) catch unreachable;
+        writer.print("<line class=\"ledger-line\" x1=\"{d:.2}\" y1=\"{d:.2}\" x2=\"{d:.2}\" y2=\"{d:.2}\" stroke=\"#171717\" stroke-width=\"1.4\" stroke-linecap=\"round\" />\n", .{ x - 8.8, ly, x + 8.8, ly }) catch unreachable;
     }
     i = 0;
     while (i < position.ledger_lines_below) : (i += 1) {
         const ly = y + @as(f32, @floatFromInt((i * 2) + 2)) * staff_step_gap;
-        writer.print("<line class=\"ledger-line\" x1=\"{d:.2}\" y1=\"{d:.2}\" x2=\"{d:.2}\" y2=\"{d:.2}\" />\n", .{ x - 8.8, ly, x + 8.8, ly }) catch unreachable;
+        writer.print("<line class=\"ledger-line\" x1=\"{d:.2}\" y1=\"{d:.2}\" x2=\"{d:.2}\" y2=\"{d:.2}\" stroke=\"#171717\" stroke-width=\"1.4\" stroke-linecap=\"round\" />\n", .{ x - 8.8, ly, x + 8.8, ly }) catch unreachable;
     }
 }
 
 fn drawNotehead(writer: anytype, x: f32, y: f32, extra_class: []const u8) void {
-    writer.print("<ellipse class=\"notehead {s}\" cx=\"{d:.2}\" cy=\"{d:.2}\" rx=\"6.0\" ry=\"4.35\" transform=\"rotate(-20 {d:.2} {d:.2})\" />\n", .{ extra_class, x, y, x, y }) catch unreachable;
+    writer.print("<ellipse class=\"notehead {s}\" cx=\"{d:.2}\" cy=\"{d:.2}\" rx=\"6.0\" ry=\"4.35\" transform=\"rotate(-20 {d:.2} {d:.2})\" fill=\"#111\" stroke=\"#111\" stroke-width=\"0.7\" />\n", .{ extra_class, x, y, x, y }) catch unreachable;
 }
 
 fn writeSvgPrelude(writer: anytype, width: comptime_int, height: []const u8, view_box: []const u8) void {

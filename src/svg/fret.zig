@@ -79,7 +79,7 @@ pub fn renderDiagram(spec: DiagramSpec, buf: []u8) []u8 {
             const ufret = @as(u32, @intCast(fret));
             if (ufret <= window.start or ufret > window.end) continue;
             const y = dotY(ufret, window);
-            w.print("<circle class=\"dot\" cx=\"{d:.2}\" cy=\"{d:.2}\" r=\"4.35\" />\n", .{ x, y }) catch unreachable;
+            w.print("<circle class=\"dot\" cx=\"{d:.2}\" cy=\"{d:.2}\" r=\"4.35\" fill=\"#111\" />\n", .{ x, y }) catch unreachable;
         }
     }
 
@@ -89,7 +89,7 @@ pub fn renderDiagram(spec: DiagramSpec, buf: []u8) []u8 {
             const x0 = stringX(barre.low_string, spec.frets.len) - 4.0;
             const x1 = stringX(barre.high_string, spec.frets.len) + 4.0;
             const width = x1 - x0;
-            w.print("<rect class=\"barre\" x=\"{d:.2}\" y=\"{d:.2}\" width=\"{d:.2}\" height=\"8.7\" rx=\"4.35\" />\n", .{ x0, y - 4.35, width }) catch unreachable;
+            w.print("<rect class=\"barre\" x=\"{d:.2}\" y=\"{d:.2}\" width=\"{d:.2}\" height=\"8.7\" rx=\"4.35\" fill=\"#111\" />\n", .{ x0, y - 4.35, width }) catch unreachable;
         }
     }
 
@@ -183,7 +183,7 @@ fn drawGrid(writer: anytype, string_count: usize, window: GenericFretWindow) voi
     var string: usize = 0;
     while (string < string_count) : (string += 1) {
         const x = stringX(string, string_count);
-        writer.print("<line class=\"string\" x1=\"{d:.2}\" y1=\"20\" x2=\"{d:.2}\" y2=\"{d:.2}\" />\n", .{ x, x, gridBottom(window) }) catch unreachable;
+        writer.print("<line class=\"string\" x1=\"{d:.2}\" y1=\"20\" x2=\"{d:.2}\" y2=\"{d:.2}\" stroke=\"#171717\" stroke-width=\"1.1\" stroke-linecap=\"round\" />\n", .{ x, x, gridBottom(window) }) catch unreachable;
     }
 
     const line_count = window.end - window.start;
@@ -191,7 +191,8 @@ fn drawGrid(writer: anytype, string_count: usize, window: GenericFretWindow) voi
     while (i <= line_count) : (i += 1) {
         const y = GRID_TOP + @as(f32, @floatFromInt(i)) * FRET_SPACING;
         const klass = if (window.start == 0 and i == 0) "nut" else "fret";
-        writer.print("<line class=\"{s}\" x1=\"20\" y1=\"{d:.2}\" x2=\"80\" y2=\"{d:.2}\" />\n", .{ klass, y, y }) catch unreachable;
+        const stroke_width: f32 = if (window.start == 0 and i == 0) 3.6 else 1.35;
+        writer.print("<line class=\"{s}\" x1=\"20\" y1=\"{d:.2}\" x2=\"80\" y2=\"{d:.2}\" stroke=\"#171717\" stroke-width=\"{d:.2}\" stroke-linecap=\"round\" />\n", .{ klass, y, y, stroke_width }) catch unreachable;
     }
 
     if (window.start > 0) {
@@ -201,12 +202,12 @@ fn drawGrid(writer: anytype, string_count: usize, window: GenericFretWindow) voi
 }
 
 fn drawOpenMarker(writer: anytype, x: f32) void {
-    writer.print("<circle class=\"marker-open\" cx=\"{d:.2}\" cy=\"{d:.2}\" r=\"4.3\" />\n", .{ x, MARKER_Y }) catch unreachable;
+    writer.print("<circle class=\"marker-open\" cx=\"{d:.2}\" cy=\"{d:.2}\" r=\"4.3\" fill=\"#fff\" stroke=\"#111\" stroke-width=\"1.7\" />\n", .{ x, MARKER_Y }) catch unreachable;
 }
 
 fn drawMutedMarker(writer: anytype, x: f32) void {
-    writer.print("<line class=\"marker-muted\" x1=\"{d:.2}\" y1=\"{d:.2}\" x2=\"{d:.2}\" y2=\"{d:.2}\" />\n", .{ x - 3.6, MARKER_Y - 3.6, x + 3.6, MARKER_Y + 3.6 }) catch unreachable;
-    writer.print("<line class=\"marker-muted\" x1=\"{d:.2}\" y1=\"{d:.2}\" x2=\"{d:.2}\" y2=\"{d:.2}\" />\n", .{ x - 3.6, MARKER_Y + 3.6, x + 3.6, MARKER_Y - 3.6 }) catch unreachable;
+    writer.print("<line class=\"marker-muted\" x1=\"{d:.2}\" y1=\"{d:.2}\" x2=\"{d:.2}\" y2=\"{d:.2}\" stroke=\"#111\" stroke-width=\"1.9\" stroke-linecap=\"round\" />\n", .{ x - 3.6, MARKER_Y - 3.6, x + 3.6, MARKER_Y + 3.6 }) catch unreachable;
+    writer.print("<line class=\"marker-muted\" x1=\"{d:.2}\" y1=\"{d:.2}\" x2=\"{d:.2}\" y2=\"{d:.2}\" stroke=\"#111\" stroke-width=\"1.9\" stroke-linecap=\"round\" />\n", .{ x - 3.6, MARKER_Y + 3.6, x + 3.6, MARKER_Y - 3.6 }) catch unreachable;
 }
 
 fn stringX(string: usize, string_count: usize) f32 {

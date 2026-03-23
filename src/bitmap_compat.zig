@@ -117,7 +117,7 @@ pub fn renderSvgMarkupRgba(width: u32, height: u32, svg: []const u8, out_rgba: [
         .stride = width * 4,
     };
     clear(&surface, .{ 255, 255, 255, 255 });
-    try renderSvgDocument(&surface, svg);
+    try renderSvgDocumentExtended(&surface, svg);
     return @as(usize, @intCast(required));
 }
 
@@ -740,14 +740,14 @@ fn renderMarkupExtended(surface: *Surface, svg: []const u8, root: Matrix, gradie
         const tag_text = svg[tag.start..tag.end];
 
         if (tag.close) {
-            if (std.mem.eql(u8, tag.name, "svg") or std.mem.eql(u8, tag.name, "g") or std.mem.eql(u8, tag.name, "a") or std.mem.eql(u8, tag.name, "defs") or std.mem.eql(u8, tag.name, "linearGradient")) {
+            if (std.mem.eql(u8, tag.name, "svg") or std.mem.eql(u8, tag.name, "g") or std.mem.eql(u8, tag.name, "a") or std.mem.eql(u8, tag.name, "defs") or std.mem.eql(u8, tag.name, "linearGradient") or std.mem.eql(u8, tag.name, "style")) {
                 if (depth > 1) depth -= 1;
             }
             continue;
         }
 
         const current = stack[depth - 1];
-        if (std.mem.eql(u8, tag.name, "svg") or std.mem.eql(u8, tag.name, "g") or std.mem.eql(u8, tag.name, "a") or std.mem.eql(u8, tag.name, "defs") or std.mem.eql(u8, tag.name, "linearGradient")) {
+        if (std.mem.eql(u8, tag.name, "svg") or std.mem.eql(u8, tag.name, "g") or std.mem.eql(u8, tag.name, "a") or std.mem.eql(u8, tag.name, "defs") or std.mem.eql(u8, tag.name, "linearGradient") or std.mem.eql(u8, tag.name, "style")) {
             if (tag.self_close) continue;
             if (depth >= stack.len) return error.UnsupportedSvgFeature;
             stack[depth] = .{
@@ -758,7 +758,7 @@ fn renderMarkupExtended(surface: *Surface, svg: []const u8, root: Matrix, gradie
                         current.transform
                 else
                     current.transform,
-                .suppress = current.suppress or std.mem.eql(u8, tag.name, "defs") or std.mem.eql(u8, tag.name, "linearGradient"),
+                .suppress = current.suppress or std.mem.eql(u8, tag.name, "defs") or std.mem.eql(u8, tag.name, "linearGradient") or std.mem.eql(u8, tag.name, "style"),
             };
             depth += 1;
             continue;

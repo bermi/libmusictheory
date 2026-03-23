@@ -31,19 +31,19 @@ test "opc svg generation basic validity" {
 
 test "optc cluster coloring and center label" {
     const set = pcs.fromList(&[_]pitch.PitchClass{ 0, 1, 2, 5 });
-    var buf: [8192]u8 = undefined;
+    var buf: [16384]u8 = undefined;
     const svg = clock.renderOPTC(set, "0125", &buf);
 
     try testing.expect(std.mem.startsWith(u8, svg, "<svg"));
 
-    const gray_top = "<circle class=\"optc-node\" cx=\"50.00\" cy=\"8.00\" r=\"10\" fill=\"gray\" />";
+    const gray_top = "<circle class=\"optc-node\" cx=\"50.00\" cy=\"8.00\" r=\"10\" stroke=\"black\" stroke-width=\"3\" fill=\"gray\" />";
     try testing.expect(std.mem.indexOf(u8, svg, gray_top) != null);
 
-    const black_pc5 = "<circle class=\"optc-node\" cx=\"71.00\" cy=\"86.37\" r=\"10\" fill=\"black\" />";
+    const black_pc5 = "<circle class=\"optc-node\" cx=\"71.00\" cy=\"86.37\" r=\"10\" stroke=\"black\" stroke-width=\"3\" fill=\"black\" />";
     try testing.expect(std.mem.indexOf(u8, svg, black_pc5) != null);
 
-    try testing.expect(std.mem.indexOf(u8, svg, ">0125<") != null);
-    try testing.expect(std.mem.indexOf(u8, svg, "label-serif inverse-outline optc-center") != null);
+    try testing.expect(std.mem.indexOf(u8, svg, "scale(0.680)") != null);
+    try testing.expect(std.mem.indexOf(u8, svg, "<path fill=\"#111\" d=\"") != null);
     try testing.expect(std.mem.indexOf(u8, svg, "shape-rendering=\"geometricPrecision\"") != null);
 }
 
