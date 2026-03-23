@@ -126,7 +126,7 @@ Scope:
 
 ## Implementation History (Point-in-Time)
 
-- Commit hash: `PENDING`
+- Commit hash: `4fee6f6`
 - Date: 2026-03-23
 - Shipped behavior:
   - expanded the standalone gallery into a curated six-scene surface with authored presets and public-API-only examples
