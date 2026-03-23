@@ -53,6 +53,16 @@ test "staff svg dimensions and notation structure" {
     try testing.expect(std.mem.indexOf(u8, scale_svg, "class=\"clef clef-treble\"") != null);
 }
 
+test "lower C ledger line stays on C and stem overlaps notehead edge" {
+    const c_major = key.Key.init(pitch.pc.C, .major);
+
+    var buf: [12288]u8 = undefined;
+    const svg = staff.renderChordStaff(&[_]pitch.MidiNote{ 60, 64, 67 }, c_major, &buf);
+    try testing.expect(std.mem.indexOf(u8, svg, "class=\"ledger-line\" x1=\"115.20\" y1=\"92.00\" x2=\"132.80\" y2=\"92.00\"") != null);
+    try testing.expect(std.mem.indexOf(u8, svg, "y1=\"102.00\" x2=\"132.80\" y2=\"102.00\"") == null);
+    try testing.expect(std.mem.indexOf(u8, svg, "class=\"stem cluster-stem\" x1=\"128.90\"") != null);
+}
+
 test "single staff chord notes stay simultaneous and seconds displace" {
     const c_major = key.Key.init(pitch.pc.C, .major);
 

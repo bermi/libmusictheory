@@ -25,8 +25,10 @@ Address the remaining small public-surface rough edges discovered during RC revi
 - review-driven public image QA fixes:
   - measured clock-label layout for `lmt_svg_clock_optc`
   - false-barre rejection for `lmt_svg_fret`
+  - explicit barre-sample coverage in the bitmap QA atlas for `lmt_svg_fret`
   - aspect-correct bitmap QA capture for `lmt_svg_chord_staff`
   - public staff-position cleanup where line/ledger placement was visually misleading
+  - lower-C ledger-line placement and stem-notehead alignment fixes for `lmt_svg_chord_staff`
 
 ## Verification-First Guardrails
 

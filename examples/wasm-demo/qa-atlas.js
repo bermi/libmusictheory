@@ -14,7 +14,7 @@ const BITMAP_TARGETS = {
 
 const ATLAS_SAMPLES = {
   lmt_svg_clock_optc: { pcsMain: [0, 4, 7] },
-  lmt_svg_fret: { frets: [0, 2, 2, 1, 0, 0] },
+  lmt_svg_fret: { frets: [1, 3, 3, 2, 1, 1] },
   lmt_svg_fret_n: { frets: [2, 0, 1, 0], stringCount: 4, windowStart: 0, visibleFrets: 4 },
   lmt_svg_chord_staff: { chordType: 0, chordRoot: 0 },
 };
@@ -368,6 +368,7 @@ async function renderBitmapCard(entry, wasm, memory, defaults) {
     bitmapWidth: rendered.width,
     bitmapHeight: rendered.height,
     meta: rendered.meta,
+    referenceHasBarre: svgMarkup.includes('class="barre"'),
     comparison,
   };
 }
@@ -486,6 +487,7 @@ async function buildAtlas() {
       drift: card.comparison.drift,
       changedPixels: card.comparison.changedPixels,
       candidateInkPixels: card.comparison.candidateInkPixels,
+      referenceHasBarre: card.referenceHasBarre,
     })),
   };
   setStatus(`QA atlas ready with ${cards.length} labeled bitmap image methods.`);

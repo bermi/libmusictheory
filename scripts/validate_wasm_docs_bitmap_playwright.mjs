@@ -159,6 +159,9 @@ async function main() {
         if (expectedSize && (method.bitmapWidth !== expectedSize.width || method.bitmapHeight !== expectedSize.height)) {
           failures.push(`${method.label}:${method.method}:size=${method.bitmapWidth}x${method.bitmapHeight}`);
         }
+        if (method.method === "lmt_svg_fret" && method.referenceHasBarre !== true) {
+          failures.push(`${method.label}:${method.method}:missing-barre-sample`);
+        }
         if ((method.candidateInkPixels || 0) < minInkPixels) {
           failures.push(`${method.label}:${method.method}:ink=${method.candidateInkPixels}`);
         }

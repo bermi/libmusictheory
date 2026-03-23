@@ -56,7 +56,8 @@ const notehead_ry: f32 = 4.1;
 const notehead_shift: f32 = 8.8;
 const accidental_column_gap: f32 = 9.0;
 const stem_length: f32 = 31.0;
-const stem_to_head: f32 = notehead_rx;
+const stem_overlap: f32 = 0.9;
+const stem_to_head: f32 = notehead_rx - stem_overlap;
 const vertical_collision_step: i16 = 1;
 
 const TREBLE_CLEF_PATH_D =
@@ -347,7 +348,7 @@ fn drawChordCluster(writer: anytype, cluster: *const ChordClusterLayout) void {
     }
 
     for (cluster.notes[0..cluster.count]) |note| {
-        drawLedgerLines(writer, note.note_x, note.note.position.y, note.note.position);
+        drawLedgerLines(writer, note.note_x, note.note.position);
     }
 
     for (cluster.notes[0..cluster.count]) |note| {
@@ -368,14 +369,14 @@ fn drawSingleStaffNote(writer: anytype, x: f32, note: SpelledStaffNote, notehead
         const accidental_x: f32 = x - (if (note.accidental == .flat) @as(f32, 11.0) else @as(f32, 13.0));
         drawAccidentalGlyph(writer, note.accidental, accidental_x, y);
     }
-    drawLedgerLines(writer, x, y, note.position);
+    drawLedgerLines(writer, x, note.position);
     drawNotehead(writer, x, y, notehead_class);
 
     const stem_up = y >= 60.0;
     if (stem_up) {
-        writer.print("<line class=\"stem {s}\" x1=\"{d:.2}\" y1=\"{d:.2}\" x2=\"{d:.2}\" y2=\"{d:.2}\" stroke=\"#111\" stroke-width=\"1.4\" stroke-linecap=\"round\" />\n", .{ stem_class, x + 4.8, y - 0.6, x + 4.8, y - 29.0 }) catch unreachable;
+        writer.print("<line class=\"stem {s}\" x1=\"{d:.2}\" y1=\"{d:.2}\" x2=\"{d:.2}\" y2=\"{d:.2}\" stroke=\"#111\" stroke-width=\"1.4\" stroke-linecap=\"round\" />\n", .{ stem_class, x + stem_to_head, y - 0.6, x + stem_to_head, y - 29.0 }) catch unreachable;
     } else {
-        writer.print("<line class=\"stem {s}\" x1=\"{d:.2}\" y1=\"{d:.2}\" x2=\"{d:.2}\" y2=\"{d:.2}\" stroke=\"#111\" stroke-width=\"1.4\" stroke-linecap=\"round\" />\n", .{ stem_class, x - 4.8, y + 0.6, x - 4.8, y + 29.0 }) catch unreachable;
+        writer.print("<line class=\"stem {s}\" x1=\"{d:.2}\" y1=\"{d:.2}\" x2=\"{d:.2}\" y2=\"{d:.2}\" stroke=\"#111\" stroke-width=\"1.4\" stroke-linecap=\"round\" />\n", .{ stem_class, x - stem_to_head, y + 0.6, x - stem_to_head, y + 29.0 }) catch unreachable;
     }
 }
 
@@ -479,15 +480,15 @@ fn accidentalClass(kind: AccidentalGlyph) []const u8 {
     };
 }
 
-fn drawLedgerLines(writer: anytype, x: f32, y: f32, position: StaffPosition) void {
-    var i: u8 = 0;
-    while (i < position.ledger_lines_above) : (i += 1) {
-        const ly = y - @as(f32, @floatFromInt((i * 2) + 2)) * staff_step_gap;
+fn drawLedgerLines(writer: anytype, x: f32, position: StaffPosition) void {
+    var ledger_step: i16 = 10;
+    while (ledger_step <= position.diatonic_step) : (ledger_step += 2) {
+        const ly = staff_bottom_line_y - @as(f32, @floatFromInt(ledger_step)) * staff_step_gap;
         writer.print("<line class=\"ledger-line\" x1=\"{d:.2}\" y1=\"{d:.2}\" x2=\"{d:.2}\" y2=\"{d:.2}\" stroke=\"#171717\" stroke-width=\"1.4\" stroke-linecap=\"round\" />\n", .{ x - 8.8, ly, x + 8.8, ly }) catch unreachable;
     }
-    i = 0;
-    while (i < position.ledger_lines_below) : (i += 1) {
-        const ly = y + @as(f32, @floatFromInt((i * 2) + 2)) * staff_step_gap;
+    ledger_step = -2;
+    while (ledger_step >= position.diatonic_step) : (ledger_step -= 2) {
+        const ly = staff_bottom_line_y - @as(f32, @floatFromInt(ledger_step)) * staff_step_gap;
         writer.print("<line class=\"ledger-line\" x1=\"{d:.2}\" y1=\"{d:.2}\" x2=\"{d:.2}\" y2=\"{d:.2}\" stroke=\"#171717\" stroke-width=\"1.4\" stroke-linecap=\"round\" />\n", .{ x - 8.8, ly, x + 8.8, ly }) catch unreachable;
     }
 }
