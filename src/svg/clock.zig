@@ -94,9 +94,9 @@ pub fn renderOPTC(set: pcs.PitchClassSet, prime_label: []const u8, buf: []u8) []
     }
 
     if (label_path) |horizontal| {
-        const scale = 0.68;
+        const scale = @min(0.52, 22.0 / @max(horizontal.width, 1.0));
         const label_x = 50.0 - @as(f64, horizontal.width) * scale / 2.0;
-        const label_y = 45.0;
+        const label_y = 46.4;
         w.print(
             "<g transform=\"translate({d:.3},{d:.3}) scale({d:.3})\"><path fill=\"#111\" d=\"{s}\" /></g>\n",
             .{ label_x, label_y, scale, horizontal.d },

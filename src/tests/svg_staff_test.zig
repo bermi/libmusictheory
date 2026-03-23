@@ -8,6 +8,8 @@ const staff = @import("../svg/staff.zig");
 test "staff positions and grand split" {
     const e4 = staff.midiToStaffPosition(64, .treble);
     const g4 = staff.midiToStaffPosition(67, .treble);
+    try testing.expectApproxEqAbs(@as(f32, 82.0), e4.y, 0.01);
+    try testing.expectApproxEqAbs(@as(f32, 74.5), g4.y, 0.01);
     try testing.expect(e4.y > g4.y);
 
     try testing.expectEqual(staff.Clef.bass, staff.clefForGrandStaff(59));

@@ -142,36 +142,240 @@ pub const HorizontalPath = struct {
     width: f32,
 };
 
-fn horizontalAdvance(ch: u8) i32 {
-    return switch (ch) {
-        '1' => 85_000,
-        '-' => 95_000,
-        'Z' => 118_000,
-        else => 112_000,
-    };
+const HorizontalBounds = struct {
+    min_x: i32,
+    max_x: i32,
+    min_y: i32,
+    max_y: i32,
+
+    fn width(self: HorizontalBounds) i32 {
+        return self.max_x - self.min_x;
+    }
+};
+
+fn includeBoundsPoint(bounds: *HorizontalBounds, x: i32, y: i32) void {
+    bounds.min_x = @min(bounds.min_x, x);
+    bounds.max_x = @max(bounds.max_x, x);
+    bounds.min_y = @min(bounds.min_y, y);
+    bounds.max_y = @max(bounds.max_y, y);
+}
+
+fn skipPathSeparators(text: []const u8, index: *usize) void {
+    while (index.* < text.len) : (index.* += 1) {
+        switch (text[index.*]) {
+            ' ', '\t', '\r', '\n', ',' => {},
+            else => return,
+        }
+    }
+}
+
+fn isPathNumberStart(ch: u8) bool {
+    return (ch >= '0' and ch <= '9') or ch == '-' or ch == '+' or ch == '.';
+}
+
+fn parseScaledNumber(text: []const u8, index: *usize) ?i32 {
+    skipPathSeparators(text, index);
+    if (index.* >= text.len or !isPathNumberStart(text[index.*])) return null;
+
+    var sign: i64 = 1;
+    if (text[index.*] == '-') {
+        sign = -1;
+        index.* += 1;
+    } else if (text[index.*] == '+') {
+        index.* += 1;
+    }
+
+    var whole: i64 = 0;
+    var saw_digit = false;
+    while (index.* < text.len and text[index.*] >= '0' and text[index.*] <= '9') : (index.* += 1) {
+        saw_digit = true;
+        whole = whole * 10 + @as(i64, text[index.*] - '0');
+    }
+
+    var frac: i64 = 0;
+    var frac_scale: i64 = 1;
+    if (index.* < text.len and text[index.*] == '.') {
+        index.* += 1;
+        while (index.* < text.len and text[index.*] >= '0' and text[index.*] <= '9') : (index.* += 1) {
+            if (frac_scale < 10_000) {
+                frac = frac * 10 + @as(i64, text[index.*] - '0');
+                frac_scale *= 10;
+            }
+        }
+    }
+
+    if (!saw_digit and frac_scale == 1) return null;
+    while (frac_scale < 10_000) : (frac_scale *= 10) frac *= 10;
+    const scaled = sign * (whole * 10_000 + frac);
+    return @intCast(scaled);
+}
+
+fn measurePrimitive(body: []const u8) ?HorizontalBounds {
+    var bounds = HorizontalBounds{ .min_x = 0, .max_x = 0, .min_y = 0, .max_y = 0 };
+    var index: usize = 0;
+    var cmd: u8 = 0;
+    var current_x: i32 = 0;
+    var current_y: i32 = 0;
+    var start_x: i32 = 0;
+    var start_y: i32 = 0;
+
+    while (index < body.len) {
+        skipPathSeparators(body, &index);
+        if (index >= body.len) break;
+
+        const ch = body[index];
+        if ((ch >= 'A' and ch <= 'Z') or (ch >= 'a' and ch <= 'z')) {
+            cmd = ch;
+            index += 1;
+        } else if (cmd == 0) {
+            return null;
+        }
+
+        switch (cmd) {
+            'm', 'M' => {
+                const dx = parseScaledNumber(body, &index) orelse return null;
+                const dy = parseScaledNumber(body, &index) orelse return null;
+                if (cmd == 'm') {
+                    current_x += dx;
+                    current_y += dy;
+                } else {
+                    current_x = dx;
+                    current_y = dy;
+                }
+                start_x = current_x;
+                start_y = current_y;
+                includeBoundsPoint(&bounds, current_x, current_y);
+                cmd = if (cmd == 'm') 'l' else 'L';
+            },
+            'l', 'L' => while (true) {
+                const vx = parseScaledNumber(body, &index) orelse break;
+                const vy = parseScaledNumber(body, &index) orelse return null;
+                if (cmd == 'l') {
+                    current_x += vx;
+                    current_y += vy;
+                } else {
+                    current_x = vx;
+                    current_y = vy;
+                }
+                includeBoundsPoint(&bounds, current_x, current_y);
+            },
+            'h', 'H' => while (true) {
+                const vx = parseScaledNumber(body, &index) orelse break;
+                if (cmd == 'h') current_x += vx else current_x = vx;
+                includeBoundsPoint(&bounds, current_x, current_y);
+            },
+            'v', 'V' => while (true) {
+                const vy = parseScaledNumber(body, &index) orelse break;
+                if (cmd == 'v') current_y += vy else current_y = vy;
+                includeBoundsPoint(&bounds, current_x, current_y);
+            },
+            'c', 'C' => while (true) {
+                const x1 = parseScaledNumber(body, &index) orelse break;
+                const y1 = parseScaledNumber(body, &index) orelse return null;
+                const x2 = parseScaledNumber(body, &index) orelse return null;
+                const y2 = parseScaledNumber(body, &index) orelse return null;
+                const x = parseScaledNumber(body, &index) orelse return null;
+                const y = parseScaledNumber(body, &index) orelse return null;
+                if (cmd == 'c') {
+                    includeBoundsPoint(&bounds, current_x + x1, current_y + y1);
+                    includeBoundsPoint(&bounds, current_x + x2, current_y + y2);
+                    current_x += x;
+                    current_y += y;
+                } else {
+                    includeBoundsPoint(&bounds, x1, y1);
+                    includeBoundsPoint(&bounds, x2, y2);
+                    current_x = x;
+                    current_y = y;
+                }
+                includeBoundsPoint(&bounds, current_x, current_y);
+            },
+            's', 'S' => while (true) {
+                const x2 = parseScaledNumber(body, &index) orelse break;
+                const y2 = parseScaledNumber(body, &index) orelse return null;
+                const x = parseScaledNumber(body, &index) orelse return null;
+                const y = parseScaledNumber(body, &index) orelse return null;
+                if (cmd == 's') {
+                    includeBoundsPoint(&bounds, current_x + x2, current_y + y2);
+                    current_x += x;
+                    current_y += y;
+                } else {
+                    includeBoundsPoint(&bounds, x2, y2);
+                    current_x = x;
+                    current_y = y;
+                }
+                includeBoundsPoint(&bounds, current_x, current_y);
+            },
+            'z', 'Z' => {
+                current_x = start_x;
+                current_y = start_y;
+                includeBoundsPoint(&bounds, current_x, current_y);
+            },
+            else => return null,
+        }
+    }
+
+    return bounds;
+}
+
+fn measureSymbolBounds(symbol: primitives.SymbolDef) ?HorizontalBounds {
+    var first = true;
+    var bounds = HorizontalBounds{ .min_x = 0, .max_x = 0, .min_y = 0, .max_y = 0 };
+    for (symbol.parts) |part| {
+        if (part.primitive_index >= primitives.PRIMITIVES.len) return null;
+        const primitive = primitives.PRIMITIVES[part.primitive_index];
+        const primitive_bounds = measurePrimitive(primitive.body) orelse return null;
+        const min_x = primitive_bounds.min_x + part.dx;
+        const max_x = primitive_bounds.max_x + part.dx;
+        const min_y = primitive_bounds.min_y + part.dy;
+        const max_y = primitive_bounds.max_y + part.dy;
+        if (first) {
+            bounds = .{ .min_x = min_x, .max_x = max_x, .min_y = min_y, .max_y = max_y };
+            first = false;
+        } else {
+            includeBoundsPoint(&bounds, min_x, min_y);
+            includeBoundsPoint(&bounds, max_x, max_y);
+        }
+    }
+    return if (first) null else bounds;
 }
 
 pub fn horizontalPathData(text: []const u8, buf: []u8) ?HorizontalPath {
     if (text.len == 0 or text.len > 64) return null;
 
-    var stream = std.io.fixedBufferStream(buf);
-    const writer = stream.writer();
-    var cursor_x: i32 = 0;
+    const gap: i32 = 12_000;
+    var symbol_bounds: [64]HorizontalBounds = undefined;
+    var baseline_max_y: i32 = std.math.minInt(i32);
     var i: usize = 0;
     while (i < text.len) : (i += 1) {
         const symbol = findSymbol(text[i]) orelse return null;
+        const bounds = measureSymbolBounds(symbol) orelse return null;
+        symbol_bounds[i] = bounds;
+        baseline_max_y = @max(baseline_max_y, bounds.max_y);
+    }
+
+    var stream = std.io.fixedBufferStream(buf);
+    const writer = stream.writer();
+    var cursor_x: i32 = 0;
+    i = 0;
+    while (i < text.len) : (i += 1) {
+        const symbol = findSymbol(text[i]) orelse return null;
+        const bounds = symbol_bounds[i];
+        const origin_x = cursor_x - bounds.min_x;
+        const origin_y = baseline_max_y - bounds.max_y;
         for (symbol.parts) |part| {
             if (part.primitive_index >= primitives.PRIMITIVES.len) return null;
             const primitive = primitives.PRIMITIVES[part.primitive_index];
-            const x = cursor_x + part.dx;
+            const x = origin_x + part.dx;
+            const y = origin_y + part.dy;
 
             writer.writeByte('M') catch return null;
             writeScaledCoord(writer, x) catch return null;
             writer.writeByte(',') catch return null;
-            writeScaledCoord(writer, part.dy) catch return null;
+            writeScaledCoord(writer, y) catch return null;
             writer.writeAll(primitive.body) catch return null;
         }
-        cursor_x += horizontalAdvance(text[i]);
+        cursor_x += bounds.width();
+        if (i + 1 < text.len) cursor_x += gap;
     }
 
     return .{

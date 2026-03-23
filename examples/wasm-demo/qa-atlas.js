@@ -9,7 +9,7 @@ const BITMAP_TARGETS = {
   lmt_svg_clock_optc: { width: BITMAP_REVIEW_WIDTH, height: 1200 },
   lmt_svg_fret: { width: BITMAP_REVIEW_WIDTH, height: 1200 },
   lmt_svg_fret_n: { width: BITMAP_REVIEW_WIDTH, height: 1200 },
-  lmt_svg_chord_staff: { width: BITMAP_REVIEW_WIDTH, height: 420 },
+  lmt_svg_chord_staff: { width: BITMAP_REVIEW_WIDTH, height: Math.round((BITMAP_REVIEW_WIDTH * 126) / 210) },
 };
 
 const ATLAS_SAMPLES = {

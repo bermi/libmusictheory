@@ -28,6 +28,8 @@ const CHORD_COMPAT_SVG_BUFFER_LIMIT: usize = 64 * 1024;
 const GENERATED_COMPAT_SVG_BUFFER_LIMIT: usize = 512 * 1024;
 const AA_SUBPIXEL_GRID: u32 = 4;
 const AA_ROW_COVERAGE_LIMIT: usize = 8192;
+const CIRCLE_AA_SUBPIXEL_GRID: u32 = 6;
+const PIXEL_CORNER_RADIUS: f64 = 0.7071067811865476;
 const SCALE_SOURCE_WIDTH: f64 = 363.0;
 const SCALE_SOURCE_HEIGHT: f64 = 113.0;
 const EVEN_SOURCE_WIDTH: u32 = 500;
@@ -2081,6 +2083,43 @@ fn annulusCoverageForDistance(dist: f64, inner_radius: f64, outer_radius: f64) f
     return clamp01(outer - inner);
 }
 
+fn sampleCircleCoverage(cx: f64, cy: f64, radius: f64, px: i32, py: i32) f64 {
+    var inside: u32 = 0;
+    var sy: u32 = 0;
+    while (sy < CIRCLE_AA_SUBPIXEL_GRID) : (sy += 1) {
+        var sx: u32 = 0;
+        while (sx < CIRCLE_AA_SUBPIXEL_GRID) : (sx += 1) {
+            const sample_x = @as(f64, @floatFromInt(px)) + (@as(f64, @floatFromInt(sx)) + 0.5) / @as(f64, @floatFromInt(CIRCLE_AA_SUBPIXEL_GRID));
+            const sample_y = @as(f64, @floatFromInt(py)) + (@as(f64, @floatFromInt(sy)) + 0.5) / @as(f64, @floatFromInt(CIRCLE_AA_SUBPIXEL_GRID));
+            const dx = sample_x - cx;
+            const dy = sample_y - cy;
+            if (dx * dx + dy * dy <= radius * radius) inside += 1;
+        }
+    }
+    const total = @as(f64, @floatFromInt(CIRCLE_AA_SUBPIXEL_GRID * CIRCLE_AA_SUBPIXEL_GRID));
+    return @as(f64, @floatFromInt(inside)) / total;
+}
+
+fn sampleAnnulusCoverage(cx: f64, cy: f64, inner_radius: f64, outer_radius: f64, px: i32, py: i32) f64 {
+    var inside: u32 = 0;
+    const inner_sq = inner_radius * inner_radius;
+    const outer_sq = outer_radius * outer_radius;
+    var sy: u32 = 0;
+    while (sy < CIRCLE_AA_SUBPIXEL_GRID) : (sy += 1) {
+        var sx: u32 = 0;
+        while (sx < CIRCLE_AA_SUBPIXEL_GRID) : (sx += 1) {
+            const sample_x = @as(f64, @floatFromInt(px)) + (@as(f64, @floatFromInt(sx)) + 0.5) / @as(f64, @floatFromInt(CIRCLE_AA_SUBPIXEL_GRID));
+            const sample_y = @as(f64, @floatFromInt(py)) + (@as(f64, @floatFromInt(sy)) + 0.5) / @as(f64, @floatFromInt(CIRCLE_AA_SUBPIXEL_GRID));
+            const dx = sample_x - cx;
+            const dy = sample_y - cy;
+            const dist_sq = dx * dx + dy * dy;
+            if (dist_sq <= outer_sq and dist_sq >= inner_sq) inside += 1;
+        }
+    }
+    const total = @as(f64, @floatFromInt(CIRCLE_AA_SUBPIXEL_GRID * CIRCLE_AA_SUBPIXEL_GRID));
+    return @as(f64, @floatFromInt(inside)) / total;
+}
+
 fn rectCoverage(x0: f64, y0: f64, x1: f64, y1: f64, px: i32, py: i32) f64 {
     return intervalCoverage(x0, x1, px) * intervalCoverage(y0, y1, py);
 }
@@ -2726,6 +2765,8 @@ fn drawRect(surface: *Surface, x: f64, y: f64, width: f64, height: f64, fill: [4
 
 fn drawCircle(surface: *Surface, cx: f64, cy: f64, r: f64, fill: [4]u8, stroke: [4]u8, stroke_width: f64) void {
     const half_stroke = stroke_width / 2.0;
+    const inner_radius = @max(0.0, r - half_stroke);
+    const outer_radius = r + half_stroke;
     const min_x: i32 = @intFromFloat(@floor(cx - r - half_stroke - 1.0));
     const max_x: i32 = @intFromFloat(@ceil(cx + r + half_stroke + 1.0));
     const min_y: i32 = @intFromFloat(@floor(cy - r - half_stroke - 1.0));
@@ -2739,9 +2780,22 @@ fn drawCircle(surface: *Surface, cx: f64, cy: f64, r: f64, fill: [4]u8, stroke: 
             const dy = (@as(f64, @floatFromInt(py)) + 0.5) - cy;
             const dist = @sqrt(dx * dx + dy * dy);
             if (pixelPtr(surface, px, py)) |dst| {
-                const fill_coverage = if (fill[3] > 0) fillCoverageForDistance(dist, r) else 0.0;
+                const fill_coverage = if (fill[3] > 0)
+                    if (dist <= r - PIXEL_CORNER_RADIUS)
+                        1.0
+                    else if (dist >= r + PIXEL_CORNER_RADIUS)
+                        0.0
+                    else
+                        sampleCircleCoverage(cx, cy, r, px, py)
+                else
+                    0.0;
                 const stroke_coverage = if (stroke[3] > 0 and stroke_width > 0.0)
-                    annulusCoverageForDistance(dist, @max(0.0, r - half_stroke), r + half_stroke)
+                    if (dist >= inner_radius + PIXEL_CORNER_RADIUS and dist <= outer_radius - PIXEL_CORNER_RADIUS)
+                        1.0
+                    else if (dist <= inner_radius - PIXEL_CORNER_RADIUS or dist >= outer_radius + PIXEL_CORNER_RADIUS)
+                        0.0
+                    else
+                        sampleAnnulusCoverage(cx, cy, inner_radius, outer_radius, px, py)
                 else
                     0.0;
                 if (fill_coverage > 0.0) blendCoverage(dst, fill, fill_coverage);

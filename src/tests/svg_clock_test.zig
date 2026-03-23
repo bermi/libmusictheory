@@ -42,7 +42,8 @@ test "optc cluster coloring and center label" {
     const black_pc5 = "<circle class=\"optc-node\" cx=\"71.00\" cy=\"86.37\" r=\"10\" stroke=\"black\" stroke-width=\"3\" fill=\"black\" />";
     try testing.expect(std.mem.indexOf(u8, svg, black_pc5) != null);
 
-    try testing.expect(std.mem.indexOf(u8, svg, "scale(0.680)") != null);
+    try testing.expect(std.mem.indexOf(u8, svg, "<g transform=\"translate(") != null);
+    try testing.expect(std.mem.indexOf(u8, svg, ") scale(") != null);
     try testing.expect(std.mem.indexOf(u8, svg, "<path fill=\"#111\" d=\"") != null);
     try testing.expect(std.mem.indexOf(u8, svg, "shape-rendering=\"geometricPrecision\"") != null);
 }

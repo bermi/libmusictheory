@@ -22,6 +22,11 @@ Address the remaining small public-surface rough edges discovered during RC revi
 - example code improvements in docs/gallery where the stable surface is underspecified
 - minor ergonomic improvements that preserve caller-owned buffer discipline and current ABI boundaries
 - deterministic QA atlas page and screenshot capture for the public image-producing docs methods
+- review-driven public image QA fixes:
+  - measured clock-label layout for `lmt_svg_clock_optc`
+  - false-barre rejection for `lmt_svg_fret`
+  - aspect-correct bitmap QA capture for `lmt_svg_chord_staff`
+  - public staff-position cleanup where line/ledger placement was visually misleading
 
 ## Verification-First Guardrails
 
@@ -34,4 +39,6 @@ Before implementation:
 
 - public docs and examples are clearer at the stable boundary
 - any changed API language is enforced by verification
+- the bitmap QA atlas remains visually inspectable and does not distort method output during capture
+- known public image defects from RC review are either fixed or explicitly tracked; no silent “close enough” claims
 - `./verify.sh` passes

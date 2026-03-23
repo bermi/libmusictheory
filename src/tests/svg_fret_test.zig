@@ -44,6 +44,15 @@ test "barre detection" {
     try testing.expect(std.mem.indexOf(u8, svg, "class=\"barre\"") != null);
 }
 
+test "barre detection does not invent a barre for open C major" {
+    const c_major = guitar.GuitarVoicing{ .frets = .{ 0, 2, 2, 1, 0, 0 }, .tuning = guitar.tunings.STANDARD };
+    try testing.expect(fret.detectBarre(c_major) == null);
+
+    var buf: [4096]u8 = undefined;
+    const svg = fret.renderFretDiagram(c_major, &buf);
+    try testing.expect(std.mem.indexOf(u8, svg, "class=\"barre\"") == null);
+}
+
 test "generic fret diagram supports four strings" {
     const frets = [_]i8{ 0, 0, 0, 3 };
 

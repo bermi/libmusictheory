@@ -49,10 +49,14 @@ const ChordClusterLayout = struct {
 
 const staff_line_gap: f32 = 10.0;
 const staff_step_gap: f32 = 5.0;
-const notehead_shift: f32 = 8.5;
+const staff_top_line_y: f32 = 42.0;
+const staff_bottom_line_y: f32 = staff_top_line_y + 4.0 * staff_line_gap;
+const notehead_rx: f32 = 5.8;
+const notehead_ry: f32 = 4.1;
+const notehead_shift: f32 = 8.8;
 const accidental_column_gap: f32 = 9.0;
 const stem_length: f32 = 31.0;
-const stem_to_head: f32 = 5.0;
+const stem_to_head: f32 = notehead_rx;
 const vertical_collision_step: i16 = 1;
 
 const TREBLE_CLEF_PATH_D =
@@ -79,15 +83,15 @@ pub fn midiToStaffPosition(note: pitch.MidiNote, clef: Clef) StaffPosition {
     };
 
     const semitones = @as(i16, @intCast(note)) - ref_midi;
-    const y = 80.0 - @as(f32, @floatFromInt(semitones)) * 2.5;
-    const diatonic_step = @as(i16, @intFromFloat(std.math.round((80.0 - y) / staff_step_gap)));
+    const y = staff_bottom_line_y - @as(f32, @floatFromInt(semitones)) * 2.5;
+    const diatonic_step = @as(i16, @intFromFloat(std.math.round((staff_bottom_line_y - y) / staff_step_gap)));
 
-    const ledger_above: u8 = if (y < 40.0)
-        @as(u8, @intFromFloat(std.math.ceil((40.0 - y) / staff_line_gap)))
+    const ledger_above: u8 = if (y < staff_top_line_y)
+        @as(u8, @intFromFloat(std.math.ceil((staff_top_line_y - y) / staff_line_gap)))
     else
         0;
-    const ledger_below: u8 = if (y > 80.0)
-        @as(u8, @intFromFloat(std.math.ceil((y - 80.0) / staff_line_gap)))
+    const ledger_below: u8 = if (y > staff_bottom_line_y)
+        @as(u8, @intFromFloat(std.math.ceil((y - staff_bottom_line_y) / staff_line_gap)))
     else
         0;
 
@@ -489,7 +493,7 @@ fn drawLedgerLines(writer: anytype, x: f32, y: f32, position: StaffPosition) voi
 }
 
 fn drawNotehead(writer: anytype, x: f32, y: f32, extra_class: []const u8) void {
-    writer.print("<ellipse class=\"notehead {s}\" cx=\"{d:.2}\" cy=\"{d:.2}\" rx=\"6.0\" ry=\"4.35\" transform=\"rotate(-20 {d:.2} {d:.2})\" fill=\"#111\" stroke=\"#111\" stroke-width=\"0.7\" />\n", .{ extra_class, x, y, x, y }) catch unreachable;
+    writer.print("<ellipse class=\"notehead {s}\" cx=\"{d:.2}\" cy=\"{d:.2}\" rx=\"{d:.2}\" ry=\"{d:.2}\" fill=\"#111\" stroke=\"none\" />\n", .{ extra_class, x, y, notehead_rx, notehead_ry }) catch unreachable;
 }
 
 fn writeSvgPrelude(writer: anytype, width: comptime_int, height: []const u8, view_box: []const u8) void {
@@ -502,7 +506,7 @@ fn writeSvgPrelude(writer: anytype, width: comptime_int, height: []const u8, vie
         \\.staff-brace{stroke:#111;fill:none;stroke-width:1.55;stroke-linecap:round;stroke-linejoin:round}
         \\.staff-brace{stroke-width:1.7}
         \\.clef-glyph{fill:#111;stroke:none}
-        \\.notehead{fill:#111;stroke:#111;stroke-width:0.7}
+        \\.notehead{fill:#111;stroke:none}
         \\.stem{stroke:#111;stroke-width:1.4;stroke-linecap:round}
         \\.cluster-stem{stroke-width:1.5}
         \\.accidental{stroke:#111;fill:none;stroke-width:1.25;stroke-linecap:round;stroke-linejoin:round}
@@ -530,7 +534,7 @@ fn noteOctaveForName(note: pitch.MidiNote, name: note_name.NoteName) i8 {
 
 pub fn staffPositionForName(name: note_name.NoteName, octave: i8, clef: Clef) StaffPosition {
     const steps = diatonicIndex(name.letter, octave) - referenceDiatonicIndex(clef);
-    const y = 80.0 - @as(f32, @floatFromInt(steps)) * staff_step_gap;
+    const y = staff_bottom_line_y - @as(f32, @floatFromInt(steps)) * staff_step_gap;
     return .{
         .y = y,
         .diatonic_step = steps,

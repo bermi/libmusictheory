@@ -14,6 +14,12 @@ const docsDir = path.join(rootDir, "zig-out", "wasm-docs");
 const host = process.env.LMT_VALIDATION_HOST || "127.0.0.1";
 const maxDrift = Number.parseFloat(process.env.LMT_WASM_DOCS_BITMAP_MAX_DRIFT || "0.03");
 const minInkPixels = Number.parseInt(process.env.LMT_WASM_DOCS_BITMAP_MIN_INK || "1000", 10);
+const expectedBitmapSizes = {
+  lmt_svg_clock_optc: { width: 1200, height: 1200 },
+  lmt_svg_fret: { width: 1200, height: 1200 },
+  lmt_svg_fret_n: { width: 1200, height: 1200 },
+  lmt_svg_chord_staff: { width: 1200, height: 720 },
+};
 
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -149,6 +155,10 @@ async function main() {
 
       const failures = [];
       for (const method of summary.methods || []) {
+        const expectedSize = expectedBitmapSizes[method.method];
+        if (expectedSize && (method.bitmapWidth !== expectedSize.width || method.bitmapHeight !== expectedSize.height)) {
+          failures.push(`${method.label}:${method.method}:size=${method.bitmapWidth}x${method.bitmapHeight}`);
+        }
         if ((method.candidateInkPixels || 0) < minInkPixels) {
           failures.push(`${method.label}:${method.method}:ink=${method.candidateInkPixels}`);
         }

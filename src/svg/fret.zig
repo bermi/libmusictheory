@@ -115,27 +115,40 @@ pub fn detectBarreForFrets(frets: []const i8) ?GenericBarre {
 
     var fret: u32 = 1;
     while (fret <= max_fret) : (fret += 1) {
-        var min_string: ?usize = null;
-        var max_string: usize = 0;
-        var count: usize = 0;
+        var low_string: ?usize = null;
+        var high_string: ?usize = null;
+        var exact_count: usize = 0;
 
         for (frets, 0..) |sfret, string| {
-            if (sfret < 0) continue;
-            if (@as(u32, @intCast(sfret)) < fret) continue;
-
-            if (min_string == null) min_string = string;
-            max_string = string;
-            count += 1;
+            if (sfret <= 0) continue;
+            const ufret = @as(u32, @intCast(sfret));
+            if (ufret != fret) continue;
+            if (low_string == null) low_string = string;
+            high_string = string;
+            exact_count += 1;
         }
 
-        if (count < 2) continue;
-        const low_string = min_string orelse continue;
-        if ((max_string - low_string) != count - 1) continue;
+        if (exact_count < 2) continue;
+        const low = low_string orelse continue;
+        const high = high_string orelse continue;
+
+        if (high - low < 2 and exact_count < 3) continue;
+
+        var string = low;
+        var valid_span = true;
+        while (string <= high) : (string += 1) {
+            const sfret = frets[string];
+            if (sfret <= 0 or @as(u32, @intCast(sfret)) < fret) {
+                valid_span = false;
+                break;
+            }
+        }
+        if (!valid_span) continue;
 
         return .{
             .fret = fret,
-            .low_string = low_string,
-            .high_string = max_string,
+            .low_string = low,
+            .high_string = high,
         };
     }
 
