@@ -116,6 +116,14 @@ if [ -f "$ROOT_DIR/docs/plans/in_progress/0082-first-release-candidate-cut.md" ]
     check_cmd "cd '$ROOT_DIR' && ! rg -n 'tmp/harmoniousapp\\.net|wasm-demo|wasm-scaled-render-parity|wasm-native-rgba-proof|wasm-harmonious-spa|validate_harmonious_' docs/release" "0082 release-candidate guardrail (public release docs stay independent from Harmonious-local tooling)"
 fi
 
+if [ -f "$ROOT_DIR/docs/plans/in_progress/0086-stable-cut-readiness-and-promotion.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0086-stable-cut-readiness-and-promotion.md" ]; then
+    if rg -q '^[0-9]+\.[0-9]+\.[0-9]+$' "$ROOT_DIR/VERSION"; then
+        check_cmd "cd '$ROOT_DIR' && rg -n '^## \\[[0-9]+\\.[0-9]+\\.[0-9]+\\] - [0-9]{4}-[0-9]{2}-[0-9]{2}$' CHANGELOG.md && ! rg -n '\\-rc\\.[0-9]+' CHANGELOG.md" "0086 stable-cut guardrail (CHANGELOG is promoted from rc to stable entry)"
+        check_cmd "cd '$ROOT_DIR' && ! rg -n 'release candidate|0\\.[0-9]+\\.[0-9]+-rc\\.[0-9]+' RELEASE_CHECKLIST.md docs/release/reviewer-guide.md docs/release/versioning.md" "0086 stable-cut guardrail (checklist and release docs no longer describe an rc cut after promotion)"
+        check_cmd "cd '$ROOT_DIR' && rg -n '^# Stable Release Reviewer Guide$|^Target: `[0-9]+\\.[0-9]+\\.[0-9]+`$' docs/release/reviewer-guide.md" "0086 stable-cut guardrail (reviewer guide is rewritten for a stable cut)"
+    fi
+fi
+
 if [ -f "$ROOT_DIR/scripts/release_smoke.sh" ]; then
     check_cmd "cd '$ROOT_DIR' && test -x scripts/release_smoke.sh" "0078 release smoke guardrail (script is executable)"
     check_cmd "cd '$ROOT_DIR' && ! rg -n 'tmp/harmoniousapp\\.net|validate_harmonious_|wasm-demo|wasm-scaled-render-parity|wasm-native-rgba-proof|wasm-harmonious-spa' scripts/release_smoke.sh" "0078 release smoke guardrail (script stays on standalone surfaces and does not depend on local harmonious data)"
