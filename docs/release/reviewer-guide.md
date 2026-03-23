@@ -79,7 +79,7 @@ Inspect:
 - `/Users/bermi/code/libmusictheory/zig-out/wasm-docs-qa/qa-atlas.png`
 - `/Users/bermi/code/libmusictheory/zig-out/wasm-docs-qa/qa-atlas.json`
 
-The atlas is a single labeled image that lays out only the public image-producing docs methods, one row per method, so visual QA can happen in one pass.
+The atlas is a single labeled image that lays out only the public image-producing docs methods, one row per method, as direct PNGs encoded from RGBA buffers returned by the library. It is not an SVG preview sheet.
 
 ## Public API Review
 

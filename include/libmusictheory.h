@@ -14,7 +14,8 @@ extern "C" {
  * Surface classes:
  * - Stable public C ABI: declarations in this header, except those marked as
  *   experimental.
- * - Experimental APIs: lmt_raster_is_enabled and lmt_raster_demo_rgba.
+ * - Experimental APIs: lmt_raster_is_enabled, lmt_raster_demo_rgba, and the
+ *   method-specific RGBA bitmap renderers below.
  * - Internal Harmonious verification/proof APIs: declarations in
  *   libmusictheory_compat.h.
  *
@@ -138,6 +139,10 @@ uint32_t lmt_svg_chord_staff(lmt_chord_type type, lmt_pitch_class root, char *bu
 /* Experimental APIs: useful for demos and renderer work, not yet stable ABI. */
 uint32_t lmt_raster_is_enabled(void);
 uint32_t lmt_raster_demo_rgba(uint32_t width, uint32_t height, uint8_t *out_rgba, uint32_t out_rgba_size);
+uint32_t lmt_bitmap_clock_optc_rgba(lmt_pitch_class_set set, uint32_t width, uint32_t height, uint8_t *out_rgba, uint32_t out_rgba_size);
+uint32_t lmt_bitmap_fret_rgba(const int8_t *frets, uint32_t width, uint32_t height, uint8_t *out_rgba, uint32_t out_rgba_size);
+uint32_t lmt_bitmap_fret_n_rgba(const int8_t *frets, uint32_t string_count, uint32_t window_start, uint32_t visible_frets, uint32_t width, uint32_t height, uint8_t *out_rgba, uint32_t out_rgba_size);
+uint32_t lmt_bitmap_chord_staff_rgba(lmt_chord_type type, lmt_pitch_class root, uint32_t width, uint32_t height, uint8_t *out_rgba, uint32_t out_rgba_size);
 
 /* Internal Harmonious verification/proof APIs live in libmusictheory_compat.h. */
 

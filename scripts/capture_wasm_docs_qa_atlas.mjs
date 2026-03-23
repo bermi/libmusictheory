@@ -158,6 +158,19 @@ async function main() {
       const summary = await page.evaluate(() => ({
         status: document.getElementById("status")?.textContent || "",
         atlas: window.__lmtQaAtlasSummary || null,
+        rendered: {
+          imageCount: document.querySelectorAll("#atlas-grid img.atlas-bitmap").length,
+          svgCount: document.querySelectorAll("#atlas-grid svg").length,
+          linkTargets: Array.from(document.querySelectorAll("#atlas-grid a.atlas-bitmap-link"), (link) => link.target),
+          hrefSchemes: Array.from(document.querySelectorAll("#atlas-grid a.atlas-bitmap-link"), (link) => {
+            try {
+              return new URL(link.href).protocol;
+            } catch (_error) {
+              return "invalid:";
+            }
+          }),
+          displayWidths: Array.from(document.querySelectorAll("#atlas-grid img.atlas-bitmap"), (img) => Math.round(img.getBoundingClientRect().width)),
+        },
       }));
 
       const outPath = path.join(outputDir, "qa-atlas.png");
@@ -179,11 +192,29 @@ async function main() {
       if ((summary.atlas?.imageMethodCount || 0) !== 4) {
         throw new Error(`qa atlas captured wrong image method count: ${summary.atlas?.imageMethodCount || 0}`);
       }
-      if ((summary.atlas?.svgCount || 0) !== 4) {
-        throw new Error(`qa atlas captured wrong svg panel count: ${summary.atlas?.svgCount || 0}`);
+      if ((summary.atlas?.svgCount || 0) !== 0) {
+        throw new Error(`qa atlas unexpectedly reported svg panels: ${summary.atlas?.svgCount || 0}`);
       }
       if ((summary.atlas?.renderedImageCount || 0) !== 4) {
         throw new Error(`qa atlas captured missing image rows: ${summary.atlas?.renderedImageCount || 0}/4 rendered`);
+      }
+      if ((summary.rendered?.imageCount || 0) !== 4) {
+        throw new Error(`qa atlas DOM is missing bitmap images: ${summary.rendered?.imageCount || 0}/4`);
+      }
+      if ((summary.rendered?.svgCount || 0) !== 0) {
+        throw new Error(`qa atlas DOM still contains svg elements: ${summary.rendered?.svgCount || 0}`);
+      }
+      if (!(summary.atlas?.rasterEnabled)) {
+        throw new Error("qa atlas did not confirm raster backend enabled");
+      }
+      if ((summary.rendered?.linkTargets || []).some((target) => target !== "_blank")) {
+        throw new Error(`qa atlas links are not all target=_blank: ${JSON.stringify(summary.rendered?.linkTargets || [])}`);
+      }
+      if ((summary.rendered?.hrefSchemes || []).some((scheme) => scheme !== "blob:")) {
+        throw new Error(`qa atlas links are not all blob URLs: ${JSON.stringify(summary.rendered?.hrefSchemes || [])}`);
+      }
+      if ((summary.rendered?.displayWidths || []).some((width) => width < 800)) {
+        throw new Error(`qa atlas bitmap rows rendered too small: ${JSON.stringify(summary.rendered?.displayWidths || [])}`);
       }
       if (size.width < 2200 || size.height < 2600) {
         throw new Error(`qa atlas image unexpectedly small: ${size.width}x${size.height}`);

@@ -60,6 +60,10 @@ extern fn lmt_svg_fret_n(frets_ptr: [*c]const i8, string_count: u32, window_star
 extern fn lmt_svg_chord_staff(chord_kind: u8, root: u8, buf: [*c]u8, buf_size: u32) callconv(.c) u32;
 extern fn lmt_raster_is_enabled() callconv(.c) u32;
 extern fn lmt_raster_demo_rgba(width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32;
+extern fn lmt_bitmap_clock_optc_rgba(set: u16, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32;
+extern fn lmt_bitmap_fret_rgba(frets_ptr: [*c]const i8, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32;
+extern fn lmt_bitmap_fret_n_rgba(frets_ptr: [*c]const i8, string_count: u32, window_start: u32, visible_frets: u32, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32;
+extern fn lmt_bitmap_chord_staff_rgba(chord_kind: u8, root: u8, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32;
 extern fn lmt_wasm_scratch_ptr() callconv(.c) [*c]u8;
 extern fn lmt_wasm_scratch_size() callconv(.c) u32;
 extern fn lmt_svg_compat_kind_count() callconv(.c) u32;
@@ -257,6 +261,25 @@ test "c abi raster generators" {
     var rgba: [64 * 64 * 4]u8 = [_]u8{0} ** (64 * 64 * 4);
     const written = lmt_raster_demo_rgba(64, 64, @ptrCast(&rgba), @intCast(rgba.len));
     try testing.expectEqual(@as(u32, rgba.len), written);
+
+    const clock_set = lmt_chord(c.LMT_CHORD_MAJOR, 0);
+    var clock_rgba: [240 * 240 * 4]u8 = [_]u8{0} ** (240 * 240 * 4);
+    try testing.expectEqual(@as(u32, clock_rgba.len), lmt_bitmap_clock_optc_rgba(clock_set, 240, 240, @ptrCast(&clock_rgba), @intCast(clock_rgba.len)));
+    try testing.expect(std.mem.indexOfNone(u8, &clock_rgba, &[_]u8{255}) != null);
+
+    const frets = [_]i8{ -1, 3, 2, 0, 1, 0 };
+    var fret_rgba: [320 * 320 * 4]u8 = [_]u8{0} ** (320 * 320 * 4);
+    try testing.expectEqual(@as(u32, fret_rgba.len), lmt_bitmap_fret_rgba(@ptrCast(&frets), 320, 320, @ptrCast(&fret_rgba), @intCast(fret_rgba.len)));
+    try testing.expect(std.mem.indexOfNone(u8, &fret_rgba, &[_]u8{255}) != null);
+
+    const four_string = [_]i8{ 0, 0, 0, 3 };
+    var fret_n_rgba: [320 * 320 * 4]u8 = [_]u8{0} ** (320 * 320 * 4);
+    try testing.expectEqual(@as(u32, fret_n_rgba.len), lmt_bitmap_fret_n_rgba(@ptrCast(&four_string), four_string.len, 0, 4, 320, 320, @ptrCast(&fret_n_rgba), @intCast(fret_n_rgba.len)));
+    try testing.expect(std.mem.indexOfNone(u8, &fret_n_rgba, &[_]u8{255}) != null);
+
+    var staff_rgba: [640 * 240 * 4]u8 = [_]u8{0} ** (640 * 240 * 4);
+    try testing.expectEqual(@as(u32, staff_rgba.len), lmt_bitmap_chord_staff_rgba(c.LMT_CHORD_MAJOR, 0, 640, 240, @ptrCast(&staff_rgba), @intCast(staff_rgba.len)));
+    try testing.expect(std.mem.indexOfNone(u8, &staff_rgba, &[_]u8{255}) != null);
 }
 
 test "c abi harmonious compatibility surface" {

@@ -681,12 +681,14 @@ async function main() {
     wasm = instance.exports;
     verifyExports(wasm);
     memory = wasm.memory;
+    window.__lmtDocsWasm = { exports: wasm, memory };
 
     setStatus("WASM loaded. Interactive API calls are ready.");
 
     wireUi();
     runAll();
   } catch (err) {
+    window.__lmtDocsWasm = null;
     setStatus(`Failed to initialize: ${err.message}`, "error");
   }
 }

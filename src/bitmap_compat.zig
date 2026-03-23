@@ -106,6 +106,21 @@ pub const Surface = struct {
     stride: u32,
 };
 
+pub fn renderSvgMarkupRgba(width: u32, height: u32, svg: []const u8, out_rgba: []u8) Error!usize {
+    const required: u64 = @as(u64, width) * @as(u64, height) * 4;
+    if (width == 0 or height == 0 or required == 0 or required > out_rgba.len) return error.OutputTooSmall;
+
+    var surface = Surface{
+        .pixels = out_rgba[0..@as(usize, @intCast(required))],
+        .width = width,
+        .height = height,
+        .stride = width * 4,
+    };
+    clear(&surface, .{ 255, 255, 255, 255 });
+    try renderSvgDocument(&surface, svg);
+    return @as(usize, @intCast(required));
+}
+
 const Point = struct {
     x: f64,
     y: f64,

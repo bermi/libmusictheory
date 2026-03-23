@@ -269,6 +269,24 @@ fn copySvgOut(svg: []const u8, buf: [*c]u8, buf_size: u32) u32 {
     return total;
 }
 
+fn requiredRgbaBytes(width: u32, height: u32) ?u32 {
+    const required: u64 = @as(u64, width) * @as(u64, height) * 4;
+    if (width == 0 or height == 0 or required == 0 or required > std.math.maxInt(u32)) return null;
+    return @as(u32, @intCast(required));
+}
+
+fn renderPublicSvgBitmap(svg: []const u8, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) u32 {
+    if (!build_options.enable_raster_backend) return 0;
+    if (out_rgba == null) return 0;
+
+    const required = requiredRgbaBytes(width, height) orelse return 0;
+    if (required > out_rgba_size) return 0;
+
+    const out = out_rgba[0..@as(usize, required)];
+    const written = bitmap_compat.renderSvgMarkupRgba(width, height, svg, out) catch return 0;
+    return @as(u32, @intCast(written));
+}
+
 export fn lmt_wasm_scratch_ptr() callconv(.C) [*c]u8 {
     return &wasm_client_scratch[0];
 }
@@ -685,6 +703,38 @@ export fn lmt_raster_demo_rgba(width: u32, height: u32, out_rgba: [*c]u8, out_rg
     };
     raster.renderDemoScene(&surface);
     return @as(u32, @intCast(required));
+}
+
+export fn lmt_bitmap_clock_optc_rgba(set: u16, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.C) u32 {
+    const total = lmt_svg_clock_optc(set, null, 0);
+    if (total == 0 or total >= compat_svg_buf.len) return 0;
+    const written_total = lmt_svg_clock_optc(set, @ptrCast(&compat_svg_buf), @intCast(compat_svg_buf.len));
+    if (written_total != total) return 0;
+    return renderPublicSvgBitmap(compat_svg_buf[0..@as(usize, total)], width, height, out_rgba, out_rgba_size);
+}
+
+export fn lmt_bitmap_fret_rgba(frets_ptr: [*c]const i8, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.C) u32 {
+    const total = lmt_svg_fret(frets_ptr, null, 0);
+    if (total == 0 or total >= compat_svg_buf.len) return 0;
+    const written_total = lmt_svg_fret(frets_ptr, @ptrCast(&compat_svg_buf), @intCast(compat_svg_buf.len));
+    if (written_total != total) return 0;
+    return renderPublicSvgBitmap(compat_svg_buf[0..@as(usize, total)], width, height, out_rgba, out_rgba_size);
+}
+
+export fn lmt_bitmap_fret_n_rgba(frets_ptr: [*c]const i8, string_count: u32, window_start: u32, visible_frets: u32, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.C) u32 {
+    const total = lmt_svg_fret_n(frets_ptr, string_count, window_start, visible_frets, null, 0);
+    if (total == 0 or total >= compat_svg_buf.len) return 0;
+    const written_total = lmt_svg_fret_n(frets_ptr, string_count, window_start, visible_frets, @ptrCast(&compat_svg_buf), @intCast(compat_svg_buf.len));
+    if (written_total != total) return 0;
+    return renderPublicSvgBitmap(compat_svg_buf[0..@as(usize, total)], width, height, out_rgba, out_rgba_size);
+}
+
+export fn lmt_bitmap_chord_staff_rgba(chord_kind: u8, root: u8, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.C) u32 {
+    const total = lmt_svg_chord_staff(chord_kind, root, null, 0);
+    if (total == 0 or total >= compat_svg_buf.len) return 0;
+    const written_total = lmt_svg_chord_staff(chord_kind, root, @ptrCast(&compat_svg_buf), @intCast(compat_svg_buf.len));
+    if (written_total != total) return 0;
+    return renderPublicSvgBitmap(compat_svg_buf[0..@as(usize, total)], width, height, out_rgba, out_rgba_size);
 }
 
 export fn lmt_bitmap_proof_scale_numerator() callconv(.C) u32 {

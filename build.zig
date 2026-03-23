@@ -43,6 +43,11 @@ const full_demo_export_symbols = [_][]const u8{
     "lmt_svg_fret",
     "lmt_svg_fret_n",
     "lmt_svg_chord_staff",
+    "lmt_raster_is_enabled",
+    "lmt_bitmap_clock_optc_rgba",
+    "lmt_bitmap_fret_rgba",
+    "lmt_bitmap_fret_n_rgba",
+    "lmt_bitmap_chord_staff_rgba",
     "lmt_wasm_scratch_ptr",
     "lmt_wasm_scratch_size",
     "lmt_svg_compat_kind_count",
@@ -253,7 +258,7 @@ pub fn build(b: *std.Build) void {
         .optimize = .ReleaseSmall,
     });
     const wasm_docs_build_options = b.addOptions();
-    wasm_docs_build_options.addOption(bool, "enable_raster_backend", false);
+    wasm_docs_build_options.addOption(bool, "enable_raster_backend", true);
     wasm_docs_build_options.addOption(bool, "enable_harmonious_generic_fallbacks", true);
     wasm_docs_mod.addOptions("build_options", wasm_docs_build_options);
     wasm_docs_mod.export_symbol_names = &full_demo_export_symbols;

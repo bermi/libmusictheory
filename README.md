@@ -157,7 +157,7 @@ python3 -m http.server --directory /Users/bermi/code/libmusictheory/zig-out/wasm
 
 Open [http://localhost:8001/index.html](http://localhost:8001/index.html).
 
-For a single-image QA atlas covering the public image-producing docs methods:
+For a single-image QA atlas covering the public image-producing docs methods as direct library RGBA bitmaps:
 
 ```bash
 cd /Users/bermi/code/libmusictheory
@@ -226,6 +226,7 @@ node /Users/bermi/code/libmusictheory/scripts/capture_wasm_docs_qa_atlas.mjs
 ```
 
 This writes a single review image and summary to `/Users/bermi/code/libmusictheory/zig-out/wasm-docs-qa/`.
+The atlas rows are PNGs encoded from RGBA buffers returned by the library, not browser-rasterized SVG previews.
 
 If you want to call exports directly from JavaScript, start with scalar APIs that do not require manual buffer setup:
 
