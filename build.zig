@@ -294,6 +294,21 @@ pub fn build(b: *std.Build) void {
         .prefix,
         "wasm-docs/validation.js",
     );
+    const install_docs_qa_atlas_html = b.addInstallFileWithDir(
+        b.path("examples/wasm-demo/qa-atlas.html"),
+        .prefix,
+        "wasm-docs/qa-atlas.html",
+    );
+    const install_docs_qa_atlas_js = b.addInstallFileWithDir(
+        b.path("examples/wasm-demo/qa-atlas.js"),
+        .prefix,
+        "wasm-docs/qa-atlas.js",
+    );
+    const install_docs_qa_atlas_css = b.addInstallFileWithDir(
+        b.path("examples/wasm-demo/qa-atlas.css"),
+        .prefix,
+        "wasm-docs/qa-atlas.css",
+    );
 
     const wasm_docs_step = b.step("wasm-docs", "Build WebAssembly standalone interactive docs bundle");
     wasm_docs_step.dependOn(&wasm_docs_exe.step);
@@ -303,6 +318,9 @@ pub fn build(b: *std.Build) void {
     wasm_docs_step.dependOn(&install_docs_styles.step);
     wasm_docs_step.dependOn(&install_docs_validation_html.step);
     wasm_docs_step.dependOn(&install_docs_validation_js.step);
+    wasm_docs_step.dependOn(&install_docs_qa_atlas_html.step);
+    wasm_docs_step.dependOn(&install_docs_qa_atlas_js.step);
+    wasm_docs_step.dependOn(&install_docs_qa_atlas_css.step);
     maybeInstallDirectory(b, wasm_docs_step, "tmp/harmoniousapp.net", "wasm-docs/tmp/harmoniousapp.net");
 
     const wasm_gallery_mod = b.createModule(.{

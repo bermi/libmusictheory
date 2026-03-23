@@ -157,6 +157,15 @@ python3 -m http.server --directory /Users/bermi/code/libmusictheory/zig-out/wasm
 
 Open [http://localhost:8001/index.html](http://localhost:8001/index.html).
 
+For a single-image QA atlas covering all public docs method outputs:
+
+```bash
+cd /Users/bermi/code/libmusictheory
+python3 -m http.server --directory /Users/bermi/code/libmusictheory/zig-out/wasm-docs 8001
+```
+
+Open [http://localhost:8001/qa-atlas.html](http://localhost:8001/qa-atlas.html).
+
 For a gallery that uses only the stable public APIs:
 
 ```bash
@@ -208,6 +217,15 @@ node /Users/bermi/code/libmusictheory/scripts/capture_wasm_gallery_screenshots.m
 ```
 
 This writes deterministic captures to `/Users/bermi/code/libmusictheory/zig-out/wasm-gallery-captures/`.
+
+To regenerate the standalone docs QA atlas image locally:
+
+```bash
+cd /Users/bermi/code/libmusictheory
+node /Users/bermi/code/libmusictheory/scripts/capture_wasm_docs_qa_atlas.mjs
+```
+
+This writes a single review image and summary to `/Users/bermi/code/libmusictheory/zig-out/wasm-docs-qa/`.
 
 If you want to call exports directly from JavaScript, start with scalar APIs that do not require manual buffer setup:
 

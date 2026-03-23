@@ -3,7 +3,7 @@
 > Dependencies: 0085, 0074, 0076
 > Follow-up: none
 
-Status: Draft
+Status: In progress
 
 ## Summary
 
@@ -21,6 +21,7 @@ Address the remaining small public-surface rough edges discovered during RC revi
 - README and docs quickstart refinements
 - example code improvements in docs/gallery where the stable surface is underspecified
 - minor ergonomic improvements that preserve caller-owned buffer discipline and current ABI boundaries
+- deterministic QA atlas page and screenshot capture for all public docs method outputs
 
 ## Verification-First Guardrails
 

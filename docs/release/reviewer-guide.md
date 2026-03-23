@@ -65,6 +65,22 @@ Inspect:
 - `/Users/bermi/code/libmusictheory/zig-out/wasm-gallery-captures/scene-chord.png`
 - `/Users/bermi/code/libmusictheory/zig-out/wasm-gallery-captures/scene-fret.png`
 
+## QA Atlas Review
+
+Run:
+
+```bash
+cd /Users/bermi/code/libmusictheory
+node /Users/bermi/code/libmusictheory/scripts/capture_wasm_docs_qa_atlas.mjs
+```
+
+Inspect:
+
+- `/Users/bermi/code/libmusictheory/zig-out/wasm-docs-qa/qa-atlas.png`
+- `/Users/bermi/code/libmusictheory/zig-out/wasm-docs-qa/qa-atlas.json`
+
+The atlas is a single labeled image that lays out every public docs method output so visual QA can happen in one pass.
+
 ## Public API Review
 
 Run:

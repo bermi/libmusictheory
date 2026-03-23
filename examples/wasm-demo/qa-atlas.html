@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>libmusictheory QA Atlas</title>
+  <link rel="stylesheet" href="./qa-atlas.css" />
+</head>
+<body>
+  <main id="qa-atlas-root">
+    <header class="atlas-header">
+      <p class="eyebrow">Public API QA Atlas</p>
+      <h1>All docs method outputs in one image</h1>
+      <p class="lede">This page clones the real `wasm-docs` outputs into a single labeled review sheet so visual QA can happen in one pass.</p>
+      <p id="status">Loading docs source…</p>
+    </header>
+
+    <section class="atlas-summary">
+      <div><span class="summary-label">Cards</span><strong id="summary-cards">0</strong></div>
+      <div><span class="summary-label">SVG methods</span><strong id="summary-svg">0</strong></div>
+      <div><span class="summary-label">Source</span><strong>index.html</strong></div>
+    </section>
+
+    <section id="atlas-grid" class="atlas-grid" aria-live="polite"></section>
+  </main>
+
+  <iframe id="qa-source" src="./index.html?qa-source=1" title="qa source" hidden></iframe>
+  <script type="module" src="./qa-atlas.js"></script>
+</body>
+</html>
