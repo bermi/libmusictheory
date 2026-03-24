@@ -8,6 +8,27 @@ const CUSTOM_PRESET_VALUE = "custom";
 const captureMode = new URLSearchParams(window.location.search).get("capture") === "1";
 const MIDI_SNAPSHOT_STORAGE_KEY = "lmt.gallery.midi.snapshots";
 const MIDI_SCENE_TITLE = "Live MIDI Compass";
+const MIDI_DEFAULT_TONIC = 0;
+const MIDI_DEFAULT_MODE = 0;
+const MODE_OPTIONS = [
+  { id: 0, name: "Ionian" },
+  { id: 1, name: "Dorian" },
+  { id: 2, name: "Phrygian" },
+  { id: 3, name: "Lydian" },
+  { id: 4, name: "Mixolydian" },
+  { id: 5, name: "Aeolian" },
+  { id: 6, name: "Locrian" },
+  { id: 7, name: "Melodic Minor" },
+  { id: 8, name: "Dorian b2" },
+  { id: 9, name: "Lydian Aug" },
+  { id: 10, name: "Lydian Dom" },
+  { id: 11, name: "Mixolydian b6" },
+  { id: 12, name: "Locrian nat2" },
+  { id: 13, name: "Super Locrian" },
+  { id: 14, name: "Half-Whole" },
+  { id: 15, name: "Whole-Half" },
+  { id: 16, name: "Whole-Tone" },
+];
 
 if (captureMode) {
   document.documentElement.dataset.captureMode = "1";
@@ -56,7 +77,10 @@ const midiStaffEl = document.getElementById("midi-staff");
 const midiSuggestionsEl = document.getElementById("midi-suggestions");
 const midiSnapshotsEl = document.getElementById("midi-snapshots");
 const connectMidiEl = document.getElementById("connect-midi");
+const midiSaveSnapshotEl = document.getElementById("midi-save-snapshot");
 const midiReturnLiveEl = document.getElementById("midi-return-live");
+const midiTonicEl = document.getElementById("midi-tonic");
+const midiModeEl = document.getElementById("midi-mode");
 
 const setPresetEl = document.getElementById("set-preset");
 const keyPresetEl = document.getElementById("key-preset");
@@ -270,6 +294,39 @@ function noteName(pc) {
 
 function spellNote(pc, tonic, quality) {
   return readCString(wasm.lmt_spell_note_parts(pc % 12, tonic % 12, quality));
+}
+
+function modeName(modeType) {
+  return MODE_OPTIONS.find((one) => one.id === modeType)?.name || `Mode ${modeType}`;
+}
+
+function populateModeSelect(select) {
+  select.innerHTML = MODE_OPTIONS.map((one) => `<option value="${one.id}">${escapeHtml(one.name)}</option>`).join("");
+}
+
+function modeSet(tonic, modeType) {
+  return wasm.lmt_mode(modeType, tonic);
+}
+
+function inferModeSpellingQuality(modeSetValue, tonic) {
+  const minorThird = (modeSetValue & (1 << ((tonic + 3) % 12))) !== 0;
+  const majorThird = (modeSetValue & (1 << ((tonic + 4) % 12))) !== 0;
+  if (minorThird && !majorThird) return 1;
+  return 0;
+}
+
+function currentMidiContext() {
+  const tonic = Number.parseInt(midiTonicEl.value, 10);
+  const modeType = Number.parseInt(midiModeEl.value, 10);
+  const setValue = modeSet(tonic, modeType);
+  const quality = inferModeSpellingQuality(setValue, tonic);
+  return {
+    tonic,
+    modeType,
+    setValue,
+    quality,
+    label: `${spellNote(tonic, tonic, quality)} ${modeName(modeType)}`,
+  };
 }
 
 function svgString(arena, renderFn, ...args) {
@@ -521,6 +578,10 @@ function currentDisplayMidiNotes() {
   return currentLiveMidiNotes();
 }
 
+function currentDisplayMidiContext() {
+  return currentMidiContext();
+}
+
 function persistMidiSnapshots() {
   try {
     window.localStorage?.setItem(MIDI_SNAPSHOT_STORAGE_KEY, JSON.stringify(midiState.snapshots));
@@ -543,6 +604,9 @@ function hydrateMidiSnapshots() {
         createdAt: typeof one.createdAt === "number" ? one.createdAt : Date.now(),
         chordName: typeof one.chordName === "string" ? one.chordName : "",
         noteLabel: typeof one.noteLabel === "string" ? one.noteLabel : "",
+        tonic: Number.isFinite(Number(one.tonic)) ? Number(one.tonic) : MIDI_DEFAULT_TONIC,
+        modeType: Number.isFinite(Number(one.modeType)) ? Number(one.modeType) : MIDI_DEFAULT_MODE,
+        contextLabel: typeof one.contextLabel === "string" ? one.contextLabel : "",
         midiNotes: sortedAscendingNumbers(one.midiNotes.map((value) => Number(value)).filter((value) => Number.isFinite(value) && value >= 0 && value <= 127)),
       }))
       .filter((one) => one.midiNotes.length > 0);
@@ -554,22 +618,30 @@ function hydrateMidiSnapshots() {
 function saveMidiSnapshot() {
   const midiNotes = currentLiveMidiNotes();
   if (midiNotes.length === 0) return false;
+  const context = currentMidiContext();
   const duplicate = midiState.snapshots[0];
-  if (duplicate && JSON.stringify(duplicate.midiNotes) === JSON.stringify(midiNotes)) {
+  if (
+    duplicate
+    && JSON.stringify(duplicate.midiNotes) === JSON.stringify(midiNotes)
+    && duplicate.tonic === context.tonic
+    && duplicate.modeType === context.modeType
+  ) {
     return false;
   }
 
   const arena = new ScratchArena();
   try {
     const setValue = midiListToSet(arena, midiNotes);
-    const keyCandidate = buildKeyCandidates(setValue)[0] || { tonic: midiNotes[0] % 12, quality: 0 };
     const chordName = friendlyChordName(rawChordName(setValue));
-    const noteLabel = midiNotes.map((midi) => midiName(midi, keyCandidate.tonic, keyCandidate.quality)).join(" · ");
+    const noteLabel = midiNotes.map((midi) => midiName(midi, context.tonic, context.quality)).join(" · ");
     midiState.snapshots.unshift({
       id: `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
       createdAt: Date.now(),
       chordName,
       noteLabel,
+      tonic: context.tonic,
+      modeType: context.modeType,
+      contextLabel: context.label,
       midiNotes,
     });
     midiState.snapshots = midiState.snapshots.slice(0, 12);
@@ -581,6 +653,11 @@ function saveMidiSnapshot() {
 }
 
 function setMidiSnapshotPreview(snapshotId) {
+  const snapshot = midiState.snapshots.find((one) => one.id === snapshotId);
+  if (snapshot) {
+    midiTonicEl.value = String(snapshot.tonic);
+    midiModeEl.value = String(snapshot.modeType);
+  }
   midiState.activeSnapshotId = snapshotId;
   renderMidiScene();
 }
@@ -799,6 +876,7 @@ function renderMidiSnapshotCards() {
     .map((snapshot, index) => `
       <button class="snapshot-card${midiState.activeSnapshotId === snapshot.id ? " is-active" : ""}" type="button" data-midi-snapshot="${escapeHtml(snapshot.id)}">
         <strong>${escapeHtml(String.fromCharCode(65 + index))}. ${escapeHtml(snapshot.chordName || "Snapshot")}</strong>
+        <span class="snapshot-context">${escapeHtml(snapshot.contextLabel || "Context pending")}</span>
         <span>${escapeHtml(snapshot.noteLabel)}</span>
         <span>${new Date(snapshot.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>
       </button>
@@ -806,31 +884,37 @@ function renderMidiSnapshotCards() {
     .join("");
 }
 
-function buildMidiSuggestions(arena, setValue, midiNotes, bestKey) {
+function buildMidiSuggestions(arena, setValue, midiNotes, context) {
   if (setValue === 0) return [];
   const lastPc = midiNotes.length > 0 ? midiNotes[midiNotes.length - 1] % 12 : null;
+  const currentOverlap = wasm.lmt_pcs_cardinality(setValue & context.setValue);
   const suggestions = [];
   for (let pc = 0; pc < 12; pc += 1) {
     if ((setValue & (1 << pc)) !== 0) continue;
     const expanded = setValue | (1 << pc);
     const rawName = rawChordName(expanded);
     const chordLabel = friendlyChordName(rawName);
-    const inBestKey = bestKey ? (bestKey.set & (1 << pc)) !== 0 : false;
+    const inContext = (context.setValue & (1 << pc)) !== 0;
+    const overlap = wasm.lmt_pcs_cardinality(expanded & context.setValue);
+    const outside = wasm.lmt_pcs_cardinality(expanded) - overlap;
+    const overlapGain = overlap - currentOverlap;
     const clusterFree = wasm.lmt_is_cluster_free(expanded) === 1;
     const evenness = wasm.lmt_evenness_distance(expanded);
     const stepDistance = lastPc == null
       ? 0
       : Math.min((pc - lastPc + 12) % 12, (lastPc - pc + 12) % 12);
-    let score = (inBestKey ? 12 : -4) + (clusterFree ? 3 : -3) + ((rawName && rawName !== "Unknown") ? 5 : 0) - (evenness * 0.12) - (stepDistance * 0.4);
-    if (bestKey && ((expanded & bestKey.set) === expanded)) score += 3;
+    const rootDistance = Math.min((pc - context.tonic + 12) % 12, (context.tonic - pc + 12) % 12);
+    let score = (inContext ? 16 : -8) + (overlapGain * 8) - (outside * 4) + (clusterFree ? 3 : -4) + ((rawName && rawName !== "Unknown") ? 5 : 0) - (evenness * 0.12) - (stepDistance * 0.4) - (rootDistance * 0.15);
+    if ((expanded & context.setValue) === expanded) score += 5;
     if (midiNotes.length <= 2 && rawName && rawName !== "Unknown") score += 3;
     const reason = [];
-    if (inBestKey && bestKey) reason.push(`stays inside ${bestKey.label}`);
+    reason.push(inContext ? `inside ${context.label}` : `outside ${context.label}`);
+    reason.push(`context overlap ${overlap}/${wasm.lmt_pcs_cardinality(expanded)}`);
     if (rawName && rawName !== "Unknown") reason.push(`reads as ${rawName}`);
     reason.push(clusterFree ? "avoids cluster pressure" : "adds cluster pressure");
     suggestions.push({
       pc,
-      name: bestKey ? spellNote(pc, bestKey.tonic, bestKey.quality) : noteName(pc),
+      name: spellNote(pc, context.tonic, context.quality),
       chordLabel,
       reason: reason.join(" · "),
       score,
@@ -844,16 +928,19 @@ function buildMidiSuggestions(arena, setValue, midiNotes, bestKey) {
 function renderMidiScene() {
   const liveNotes = currentLiveMidiNotes();
   const displayNotes = currentDisplayMidiNotes();
+  const context = currentDisplayMidiContext();
   const viewingSnapshot = midiState.activeSnapshotId != null;
 
   midiCaptionEl.textContent = summarizeMidiAccess();
   connectMidiEl.disabled = midiState.accessState === "connecting";
+  midiSaveSnapshotEl.disabled = liveNotes.length === 0;
   midiReturnLiveEl.disabled = !viewingSnapshot;
 
   const statusPills = [];
   statusPills.push(`<span class="status-pill ${viewingSnapshot ? "is-snapshot" : "is-live"}">${viewingSnapshot ? "Viewing snapshot" : "Live input"}</span>`);
   statusPills.push(`<span class="status-pill ${liveNotes.length > 0 ? "is-live" : "is-muted"}">${liveNotes.length} sounding</span>`);
   statusPills.push(`<span class="status-pill ${midiState.snapshots.length > 0 ? "is-snapshot" : "is-muted"}">${midiState.snapshots.length} saved</span>`);
+  statusPills.push(`<span class="status-pill is-live">${escapeHtml(context.label)}</span>`);
   midiStatusPillsEl.innerHTML = statusPills.join("");
   midiDevicesEl.innerHTML = Array.from(midiState.inputs.values()).map((input) =>
     `<span class="pill">${escapeHtml(input.name || input.manufacturer || input.id || "MIDI input")}</span>`).join("")
@@ -864,20 +951,24 @@ function renderMidiScene() {
   const arena = new ScratchArena();
   try {
     const setValue = midiListToSet(arena, displayNotes);
-    const bestKey = setValue === 0 ? null : buildKeyCandidates(setValue)[0];
     const currentChord = friendlyChordName(rawChordName(setValue));
     const triad = detectRenderableTriad(setValue);
-    const suggestions = buildMidiSuggestions(arena, setValue, displayNotes, bestKey);
+    const contextOverlap = wasm.lmt_pcs_cardinality(setValue & context.setValue);
+    const outsideCount = wasm.lmt_pcs_cardinality(setValue) - contextOverlap;
+    const suggestions = buildMidiSuggestions(arena, setValue, displayNotes, context);
     const displayNotesLabel = displayNotes.length > 0
-      ? displayNotes.map((midi) => midiName(midi, bestKey?.tonic ?? (midi % 12), bestKey?.quality ?? 0))
+      ? displayNotes.map((midi) => midiName(midi, context.tonic, context.quality))
       : [];
+    const orbitNames = orderedMembersFromSet(context.setValue, context.tonic).map((pc) => spellNote(pc, context.tonic, context.quality));
 
     midiSummaryEl.textContent = [
       `mode: ${viewingSnapshot ? "snapshot preview" : "live input"}`,
+      `selected context: ${context.label}`,
       `active MIDI notes: ${displayNotes.length > 0 ? displayNotes.join(", ") : "none"}`,
       `set: ${setValue === 0 ? "0x000 []" : `0x${setValue.toString(16).padStart(3, "0")} ${JSON.stringify(setMembers(setValue))}`}`,
       `hearing: ${setValue === 0 ? "awaiting notes" : currentChord}`,
-      `best key fit: ${bestKey ? `${bestKey.label} (overlap ${bestKey.overlap}, outside ${bestKey.outside})` : "n/a"}`,
+      `context orbit: ${orbitNames.join(" · ")}`,
+      `context overlap: ${contextOverlap}/${wasm.lmt_pcs_cardinality(setValue)} inside, ${outsideCount} outside`,
       `next-step suggestions: ${suggestions.length}`,
       `last event: ${midiState.lastEventText}`,
     ].join("\n");
@@ -899,7 +990,7 @@ function renderMidiScene() {
     }
 
     if (suggestions.length === 0) {
-      midiSuggestionsEl.innerHTML = `<p class="snapshot-empty">Once at least one note is sounding, libmusictheory will rank compatible pitch-class additions here.</p>`;
+      midiSuggestionsEl.innerHTML = `<p class="snapshot-empty">Once at least one note is sounding, libmusictheory will rank pitch-class additions against ${escapeHtml(context.label)} here.</p>`;
     } else {
       midiSuggestionsEl.innerHTML = suggestions.map((suggestion, index) => `
         <article class="suggestion-card">
@@ -920,8 +1011,14 @@ function renderMidiScene() {
       displayCount: displayNotes.length,
       snapshotCount: midiState.snapshots.length,
       viewingSnapshot,
+      contextLabel: context.label,
+      tonic: context.tonic,
+      modeType: context.modeType,
+      insideCount: contextOverlap,
+      outsideCount,
       chordName: setValue === 0 ? "" : currentChord,
       suggestionCount: suggestions.length,
+      suggestionNames: suggestions.map((one) => one.name),
       rendered: true,
     });
   } finally {
@@ -1415,6 +1512,11 @@ function wireSceneEvents() {
       setStatus(`${MIDI_SCENE_TITLE} error: ${midiState.lastError || "unable to connect"}`, "error");
     }
   });
+  midiSaveSnapshotEl.addEventListener("click", () => {
+    const saved = saveMidiSnapshot();
+    renderMidiScene();
+    setStatus(saved ? `${MIDI_SCENE_TITLE} snapshot saved for ${currentMidiContext().label}.` : `${MIDI_SCENE_TITLE} snapshot ignored because nothing changed.`);
+  });
   midiReturnLiveEl.addEventListener("click", () => {
     returnMidiSceneToLive();
     setStatus(`${MIDI_SCENE_TITLE} returned to live input.`);
@@ -1423,8 +1525,13 @@ function wireSceneEvents() {
     const button = event.target.closest("[data-midi-snapshot]");
     if (!button) return;
     setMidiSnapshotPreview(button.getAttribute("data-midi-snapshot"));
-    setStatus(`${MIDI_SCENE_TITLE} snapshot recalled.`);
+    const snapshot = midiState.snapshots.find((one) => one.id === button.getAttribute("data-midi-snapshot"));
+    setStatus(`${MIDI_SCENE_TITLE} snapshot recalled${snapshot?.contextLabel ? ` in ${snapshot.contextLabel}` : ""}.`);
   });
+  [midiTonicEl, midiModeEl].forEach((node) => node.addEventListener("change", () => {
+    renderMidiScene();
+    setStatus(`${MIDI_SCENE_TITLE} context set to ${currentMidiContext().label}.`);
+  }));
   document.getElementById("render-set").addEventListener("click", () => {
     renderSetScene();
     setStatus("Set Observatory refreshed.");
@@ -1553,11 +1660,15 @@ async function instantiateWasm() {
 }
 
 function initializeUi() {
+  createNoteSelectors(midiTonicEl);
+  populateModeSelect(midiModeEl);
   createNoteSelectors(keyTonicEl);
   createNoteSelectors(chordRootEl);
   createNoteSelectors(chordKeyTonicEl);
   buildToggleGrid();
   hydrateMidiSnapshots();
+  midiTonicEl.value = String(MIDI_DEFAULT_TONIC);
+  midiModeEl.value = String(MIDI_DEFAULT_MODE);
   midiCaptionEl.textContent = "Connect MIDI to listen to every browser MIDI input, sustain pedal, and middle-pedal snapshots.";
   populatePresetSelect(setPresetEl, manifestList("setPresets"));
   populatePresetSelect(keyPresetEl, manifestList("keyPresets"));

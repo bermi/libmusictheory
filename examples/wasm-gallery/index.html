@@ -52,10 +52,21 @@
             </div>
             <div class="scene-head-actions">
               <button id="connect-midi" class="accent-button" type="button">Connect MIDI</button>
+              <button id="midi-save-snapshot" class="ghost-button" type="button">Save Snapshot</button>
               <button id="midi-return-live" class="ghost-button" type="button" disabled>Return To Live</button>
             </div>
           </div>
           <p id="midi-caption" class="scene-caption"></p>
+          <div class="control-row control-row-midi">
+            <label>
+              <span>Tonic</span>
+              <select id="midi-tonic"></select>
+            </label>
+            <label>
+              <span>Mode</span>
+              <select id="midi-mode"></select>
+            </label>
+          </div>
           <div class="scene-meta-row">
             <div class="pill-list" id="midi-status-pills"></div>
             <div class="pill-list" id="midi-devices"></div>

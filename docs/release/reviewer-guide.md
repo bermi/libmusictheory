@@ -48,7 +48,7 @@ Review points:
 
 - hero and scene cards load without layout breakage
 - the live MIDI scene appears above the fold and shows a ready/connected state
-- after connecting a MIDI controller, sustain (`CC64`) keeps sounding notes visible and middle pedal (`CC66`) stores a clickable snapshot
+- after connecting a MIDI controller, sustain (`CC64`) keeps sounding notes visible, changing tonic/mode visibly changes the interpretation and suggestions, and middle pedal (`CC66`) stores a clickable snapshot that restores both notes and context
 - clock scenes are large, centered, and crisp
 - chord/staff scenes show proper clef opening, simultaneous cluster layout, and readable accidentals
 - fret scenes are centered and remain legible across arbitrary tuning/string-count examples

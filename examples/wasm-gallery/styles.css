@@ -251,6 +251,11 @@ label span,
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
 }
 
+.control-row-midi {
+  grid-template-columns: minmax(140px, 180px) minmax(220px, 320px);
+  align-items: end;
+}
+
 label {
   display: grid;
   gap: 8px;
@@ -608,6 +613,11 @@ select {
   font-size: 0.94rem;
 }
 
+.snapshot-card .snapshot-context {
+  color: var(--ink);
+  font-weight: 600;
+}
+
 .snapshot-empty {
   color: var(--muted);
   margin: 6px 0 0;
@@ -670,6 +680,10 @@ select {
 
   .scene-head-actions {
     justify-content: flex-start;
+  }
+
+  .control-row-midi {
+    grid-template-columns: 1fr;
   }
 
   .toggle-grid {

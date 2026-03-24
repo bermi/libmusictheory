@@ -168,12 +168,16 @@ sounding_notes():
 
 ### 8. Middle Pedal Snapshot Capture
 
-The interactive gallery uses middle pedal / sostenuto (`CC66`) as a composer snapshot command rather than as a playback-state modifier. On the rising edge of the pedal, save the current sounding notes so they can be recalled from the UI later.
+The interactive gallery uses middle pedal / sostenuto (`CC66`) as a composer snapshot command rather than as a playback-state modifier. On the rising edge of the pedal, save the current sounding notes together with the currently selected tonic/mode context so the UI can restore the same interpretation later.
 
 ```
 cc66(value):
     if value >= 64 and not sostenuto_down:
-        save_snapshot(sounding_notes())
+        save_snapshot(
+            notes = sounding_notes(),
+            tonic = selected_tonic,
+            mode = selected_mode,
+        )
         sostenuto_down = true
     elif value < 64:
         sostenuto_down = false
@@ -181,14 +185,18 @@ cc66(value):
 
 ### 9. Compatible Next-Step Suggestions
 
-Given the current sounding PCS, rank single pitch-class additions by:
+Given the current sounding PCS and an explicit selected tonic/mode, rank single pitch-class additions by:
 
-- whether the added tone stays inside the best-fitting major/minor orbit
+- whether the added tone stays inside the selected context orbit
+- how much overlap with the selected context increases or decreases
+- how many tones in the expanded set fall outside the selected context
 - whether the result remains cluster-free
 - whether the expanded set reads as a named chord
 - evenness distance
+- step distance from the last played tone
+- root distance from the selected tonic
 
-This keeps the live gallery suggestions on the stable public theory surface instead of inventing a separate hidden harmonic engine.
+This keeps the live gallery suggestions on the stable public theory surface instead of inventing a separate hidden harmonic engine. The user-facing result is intentionally deterministic: if the tonic/mode changes, spelling, summary text, suggestion ordering, and snapshot recall all change with it.
 
 ## Data Structures Used
 

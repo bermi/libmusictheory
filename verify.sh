@@ -140,6 +140,11 @@ if [ -f "$ROOT_DIR/docs/plans/in_progress/0088-live-midi-composer-scene.md" ] ||
     check_cmd "cd '$ROOT_DIR' && rg -n 'installFakeMidi|driveFakeMidiTriad|waitForMidiSceneActive|data-midi-snapshot|scene-midi\\.png' scripts/validate_wasm_gallery_playwright.mjs scripts/capture_wasm_gallery_screenshots.mjs scripts/lib/wasm_gallery_playwright_common.mjs docs/release/gallery-capture.md >/dev/null" "0088 live MIDI scene guardrail (fake MIDI validation and capture flow are wired)"
 fi
 
+if [ -f "$ROOT_DIR/docs/plans/in_progress/0089-live-midi-context-and-snapshot-ux.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0089-live-midi-context-and-snapshot-ux.md" ]; then
+    check_cmd "cd '$ROOT_DIR' && rg -n 'midi-tonic|midi-mode|midi-save-snapshot|selected context|context orbit|context overlap|snapshot context|contextLabel|suggestionNames' examples/wasm-gallery/index.html examples/wasm-gallery/gallery.js scripts/validate_wasm_gallery_playwright.mjs README.md docs/release/reviewer-guide.md docs/research/algorithms/keyboard-interaction.md >/dev/null" "0089 live MIDI context guardrail (UI, runtime, docs, and verification wiring are present)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'selectOption\\(\"#midi-tonic\"|selectOption\\(\"#midi-mode\"|contextChanged|snapshotContextRestored' scripts/validate_wasm_gallery_playwright.mjs >/dev/null" "0089 live MIDI context guardrail (playwright proves tonic/mode changes alter the scene and snapshot recall restores context)"
+fi
+
 if [ -f "$ROOT_DIR/scripts/release_smoke.sh" ]; then
     check_cmd "cd '$ROOT_DIR' && test -x scripts/release_smoke.sh" "0078 release smoke guardrail (script is executable)"
     check_cmd "cd '$ROOT_DIR' && ! rg -n 'tmp/harmoniousapp\\.net|validate_harmonious_|wasm-demo|wasm-scaled-render-parity|wasm-native-rgba-proof|wasm-harmonious-spa' scripts/release_smoke.sh" "0078 release smoke guardrail (script stays on standalone surfaces and does not depend on local harmonious data)"

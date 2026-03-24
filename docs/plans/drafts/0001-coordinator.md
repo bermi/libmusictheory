@@ -11,7 +11,7 @@ Build `libmusictheory`, a Zig library exposing a C ABI that implements the compl
 
 - Draft: 0001, 0085
 - In progress: 0086, 0087
-- Completed: 0002, 0003, 0004, 0005, 0006, 0007, 0008, 0009, 0010, 0011, 0012, 0013, 0014, 0015, 0016, 0017, 0018, 0019, 0020, 0021, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0032, 0033, 0034, 0035, 0036, 0037, 0038, 0039, 0040, 0041, 0042, 0043, 0044, 0045, 0046, 0047, 0048, 0049, 0050, 0051, 0052, 0053, 0054, 0055, 0056, 0057, 0058, 0059, 0060, 0061, 0062, 0063, 0064, 0065, 0066, 0067, 0068, 0069, 0070, 0071, 0072, 0073, 0074, 0075, 0076, 0077, 0078, 0079, 0080, 0081, 0082, 0083, 0084, 0088
+- Completed: 0002, 0003, 0004, 0005, 0006, 0007, 0008, 0009, 0010, 0011, 0012, 0013, 0014, 0015, 0016, 0017, 0018, 0019, 0020, 0021, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0032, 0033, 0034, 0035, 0036, 0037, 0038, 0039, 0040, 0041, 0042, 0043, 0044, 0045, 0046, 0047, 0048, 0049, 0050, 0051, 0052, 0053, 0054, 0055, 0056, 0057, 0058, 0059, 0060, 0061, 0062, 0063, 0064, 0065, 0066, 0067, 0068, 0069, 0070, 0071, 0072, 0073, 0074, 0075, 0076, 0077, 0078, 0079, 0080, 0081, 0082, 0083, 0084, 0088, 0089
 
 ## Plan Dependencies (Execute in Order)
 
@@ -375,6 +375,12 @@ The standalone surface is now structurally clean. The next phase is to make it p
 Add a first-class interactive gallery scene that listens to all browser MIDI inputs, respects sustain behavior, stores snapshots on middle-pedal presses, and gives composers an immediate visual/theory reading of what they are sounding plus compatible next-step suggestions.
 
 **Deliverable**: a Playwright-verified above-the-fold gallery scene driven by real Web MIDI at runtime and fake MIDI in verification, with snapshot recall, stable-public-API visual output, and screenshot coverage in the release capture pipeline.
+
+## Phase 0089 (Completed): Live MIDI Context And Snapshot UX
+
+Stabilize the composer-facing behavior of `Live MIDI Compass` by replacing auto-fit key guessing with explicit tonic/mode context controls. The selected context must drive spelling, suggestion ranking, and saved snapshot recall so the scene behaves predictably during composition.
+
+**Deliverable**: a Playwright-verified live MIDI scene whose selected tonic/mode changes the rendered interpretation and whose snapshots recall both notes and context.
 
 ## Research Documents Index
 

@@ -59,7 +59,26 @@ async function main() {
 
       await driveFakeMidiTriad(page);
       const midiActive = await waitForMidiSceneActive(page);
+      const defaultContext = await page.evaluate(() => ({
+        label: window.__lmtGallerySummary?.scenes?.midi?.contextLabel || "",
+        suggestionNames: window.__lmtGallerySummary?.scenes?.midi?.suggestionNames || [],
+      }));
+      await page.selectOption("#midi-tonic", "0");
+      await page.selectOption("#midi-mode", "2");
+      const contextChanged = await page.waitForFunction(({ beforeLabel, beforeFirstSuggestion }) => {
+        const midi = window.__lmtGallerySummary?.scenes?.midi;
+        if (!midi?.rendered) return false;
+        const nextFirstSuggestion = Array.isArray(midi.suggestionNames) ? (midi.suggestionNames[0] || "") : "";
+        return midi.contextLabel !== beforeLabel && nextFirstSuggestion !== beforeFirstSuggestion && midi.displayCount >= 3;
+      }, { beforeLabel: defaultContext.label, beforeFirstSuggestion: defaultContext.suggestionNames[0] || "" }, { timeout: 30000 }).then((handle) => handle.jsonValue());
       await page.click("#midi-snapshots [data-midi-snapshot]");
+      const snapshotContextRestored = await page.waitForFunction(() => {
+        const midi = window.__lmtGallerySummary?.scenes?.midi;
+        return midi?.viewingSnapshot === true
+          && midi?.contextLabel === "C Ionian"
+          && document.querySelector("#midi-tonic")?.value === "0"
+          && document.querySelector("#midi-mode")?.value === "0";
+      }, { timeout: 30000 }).then((handle) => handle.jsonValue());
       const snapshotView = await page.waitForFunction(() => {
         const midi = window.__lmtGallerySummary?.scenes?.midi;
         return midi?.viewingSnapshot === true && midi?.displayCount >= 3 && midi?.snapshotCount >= 1;
@@ -93,6 +112,8 @@ async function main() {
             manifestLoaded: finalSnapshot.summary.manifestLoaded,
             sceneCount: finalSnapshot.summary.sceneCount,
             midiActive,
+            contextChanged,
+            snapshotContextRestored,
             snapshotView,
             backToLive,
             scenes: finalSnapshot.summary.scenes,
