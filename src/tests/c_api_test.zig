@@ -61,6 +61,7 @@ extern fn lmt_svg_fret(frets_ptr: [*c]const i8, buf: [*c]u8, buf_size: u32) call
 extern fn lmt_svg_fret_n(frets_ptr: [*c]const i8, string_count: u32, window_start: u32, visible_frets: u32, buf: [*c]u8, buf_size: u32) callconv(.c) u32;
 extern fn lmt_svg_chord_staff(chord_kind: u8, root: u8, buf: [*c]u8, buf_size: u32) callconv(.c) u32;
 extern fn lmt_svg_key_staff(tonic: u8, quality: u8, buf: [*c]u8, buf_size: u32) callconv(.c) u32;
+extern fn lmt_svg_keyboard(notes_ptr: [*c]const u8, note_count: u32, range_low: u8, range_high: u8, buf: [*c]u8, buf_size: u32) callconv(.c) u32;
 extern fn lmt_raster_is_enabled() callconv(.c) u32;
 extern fn lmt_raster_demo_rgba(width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32;
 extern fn lmt_bitmap_clock_optc_rgba(set: u16, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32;
@@ -70,6 +71,7 @@ extern fn lmt_bitmap_fret_rgba(frets_ptr: [*c]const i8, width: u32, height: u32,
 extern fn lmt_bitmap_fret_n_rgba(frets_ptr: [*c]const i8, string_count: u32, window_start: u32, visible_frets: u32, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32;
 extern fn lmt_bitmap_chord_staff_rgba(chord_kind: u8, root: u8, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32;
 extern fn lmt_bitmap_key_staff_rgba(tonic: u8, quality: u8, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32;
+extern fn lmt_bitmap_keyboard_rgba(notes_ptr: [*c]const u8, note_count: u32, range_low: u8, range_high: u8, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32;
 extern fn lmt_wasm_scratch_ptr() callconv(.c) [*c]u8;
 extern fn lmt_wasm_scratch_size() callconv(.c) u32;
 extern fn lmt_svg_compat_kind_count() callconv(.c) u32;
@@ -273,6 +275,13 @@ test "c abi svg generators" {
     try testing.expect(std.mem.indexOf(u8, svg_buf[0..key_staff_len], "width=\"520\"") != null);
     try testing.expect(std.mem.count(u8, svg_buf[0..key_staff_len], "class=\"staff-barline\"") >= 2);
     try testing.expect(std.mem.count(u8, svg_buf[0..key_staff_len], "class=\"notehead key-notehead\"") >= 8);
+
+    const keyboard_notes = [_]u8{ 60, 64, 67 };
+    const keyboard_len = lmt_svg_keyboard(@ptrCast(&keyboard_notes), keyboard_notes.len, 48, 72, @ptrCast(&svg_buf), @intCast(svg_buf.len));
+    try testing.expect(keyboard_len > 0);
+    try testing.expect(std.mem.count(u8, svg_buf[0..keyboard_len], "class=\"keyboard-key white-key is-selected\"") >= 3);
+    try testing.expect(std.mem.count(u8, svg_buf[0..keyboard_len], "class=\"keyboard-key white-key is-echo\"") >= 2);
+    try testing.expect(std.mem.count(u8, svg_buf[0..keyboard_len], "class=\"keyboard-key black-key\"") >= 10);
 }
 
 test "c abi raster generators" {
@@ -314,6 +323,11 @@ test "c abi raster generators" {
     var key_staff_rgba: [960 * 240 * 4]u8 = [_]u8{0} ** (960 * 240 * 4);
     try testing.expectEqual(@as(u32, key_staff_rgba.len), lmt_bitmap_key_staff_rgba(0, c.LMT_KEY_MAJOR, 960, 240, @ptrCast(&key_staff_rgba), @intCast(key_staff_rgba.len)));
     try testing.expect(std.mem.indexOfNone(u8, &key_staff_rgba, &[_]u8{255}) != null);
+
+    const keyboard_notes = [_]u8{ 60, 64, 67 };
+    var keyboard_rgba: [840 * 220 * 4]u8 = [_]u8{0} ** (840 * 220 * 4);
+    try testing.expectEqual(@as(u32, keyboard_rgba.len), lmt_bitmap_keyboard_rgba(@ptrCast(&keyboard_notes), keyboard_notes.len, 48, 72, 840, 220, @ptrCast(&keyboard_rgba), @intCast(keyboard_rgba.len)));
+    try testing.expect(std.mem.indexOfNone(u8, &keyboard_rgba, &[_]u8{255}) != null);
 }
 
 test "c abi harmonious compatibility surface" {

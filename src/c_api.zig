@@ -16,6 +16,7 @@ const guitar = @import("guitar.zig");
 const svg_clock = @import("svg/clock.zig");
 const svg_evenness_chart = @import("svg/evenness_chart.zig");
 const svg_fret = @import("svg/fret.zig");
+const svg_keyboard = @import("svg/keyboard_svg.zig");
 const svg_staff = @import("svg/staff.zig");
 const svg_compat = @import("harmonious_svg_compat.zig");
 const raster = @import("render/raster.zig");
@@ -86,6 +87,7 @@ var c_string_slot_index: usize = 0;
 var compat_svg_buf: [4 * 1024 * 1024]u8 = undefined;
 var wasm_client_scratch: [8 * 1024 * 1024]u8 = undefined;
 const MAX_PARAMETRIC_FRET_STRINGS: usize = 64;
+const MAX_KEYBOARD_RENDER_NOTES: usize = 128;
 const MAX_C_API_GENERIC_VOICINGS: usize = MAX_PARAMETRIC_FRET_STRINGS * MAX_PARAMETRIC_FRET_STRINGS;
 var generic_voicing_meta_buf: [MAX_C_API_GENERIC_VOICINGS]guitar.GenericVoicing = undefined;
 var generic_voicing_fret_buf: [MAX_C_API_GENERIC_VOICINGS * MAX_PARAMETRIC_FRET_STRINGS]i8 = undefined;
@@ -219,6 +221,31 @@ fn decodeTuningGeneric(ptr: [*c]const u8, tuning_count: u32, out: *[MAX_PARAMETR
         out[i] = @as(pitch.MidiNote, @intCast(@min(raw, @as(u8, 127))));
     }
     return out[0..len];
+}
+
+fn decodeMidiNotes(ptr: [*c]const u8, note_count: u32, out: *[MAX_KEYBOARD_RENDER_NOTES]pitch.MidiNote) []const pitch.MidiNote {
+    const len = @min(@as(usize, @intCast(note_count)), out.len);
+    if (ptr == null or len == 0) return out[0..0];
+
+    var i: usize = 0;
+    while (i < len) : (i += 1) {
+        out[i] = @as(pitch.MidiNote, @intCast(@min(ptr[i], @as(u8, 127))));
+    }
+    return out[0..len];
+}
+
+const KeyboardRange = struct {
+    low: pitch.MidiNote,
+    high: pitch.MidiNote,
+};
+
+fn sanitizeKeyboardRange(low_raw: u8, high_raw: u8) KeyboardRange {
+    const clamped_low = @as(pitch.MidiNote, @intCast(@min(low_raw, @as(u8, 127))));
+    const clamped_high = @as(pitch.MidiNote, @intCast(@min(high_raw, @as(u8, 127))));
+    return if (clamped_low <= clamped_high)
+        .{ .low = clamped_low, .high = clamped_high }
+    else
+        .{ .low = clamped_high, .high = clamped_low };
 }
 
 fn isSelectedGuidePosition(selected_ptr: [*c]const LmtFretPos, selected_count: usize, string: usize, fret: u8) bool {
@@ -722,6 +749,16 @@ export fn lmt_svg_key_staff(tonic: u8, quality_raw: u8, buf: [*c]u8, buf_size: u
     return copySvgOut(svg, buf, buf_size);
 }
 
+export fn lmt_svg_keyboard(notes_ptr: [*c]const u8, note_count: u32, range_low: u8, range_high: u8, buf: [*c]u8, buf_size: u32) callconv(.C) u32 {
+    var notes_buf: [MAX_KEYBOARD_RENDER_NOTES]pitch.MidiNote = undefined;
+    const notes = decodeMidiNotes(notes_ptr, note_count, &notes_buf);
+    const range = sanitizeKeyboardRange(range_low, range_high);
+
+    var svg_buf: [128 * 1024]u8 = undefined;
+    const svg = svg_keyboard.renderKeyboard(notes, range.low, range.high, &svg_buf);
+    return copySvgOut(svg, buf, buf_size);
+}
+
 export fn lmt_raster_is_enabled() callconv(.C) u32 {
     return if (build_options.enable_raster_backend) 1 else 0;
 }
@@ -799,6 +836,14 @@ export fn lmt_bitmap_key_staff_rgba(tonic: u8, quality_raw: u8, width: u32, heig
     const total = lmt_svg_key_staff(tonic, quality_raw, null, 0);
     if (total == 0 or total >= compat_svg_buf.len) return 0;
     const written_total = lmt_svg_key_staff(tonic, quality_raw, @ptrCast(&compat_svg_buf), @intCast(compat_svg_buf.len));
+    if (written_total != total) return 0;
+    return renderPublicSvgBitmap(compat_svg_buf[0..@as(usize, total)], width, height, out_rgba, out_rgba_size);
+}
+
+export fn lmt_bitmap_keyboard_rgba(notes_ptr: [*c]const u8, note_count: u32, range_low: u8, range_high: u8, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.C) u32 {
+    const total = lmt_svg_keyboard(notes_ptr, note_count, range_low, range_high, null, 0);
+    if (total == 0 or total >= compat_svg_buf.len) return 0;
+    const written_total = lmt_svg_keyboard(notes_ptr, note_count, range_low, range_high, @ptrCast(&compat_svg_buf), @intCast(compat_svg_buf.len));
     if (written_total != total) return 0;
     return renderPublicSvgBitmap(compat_svg_buf[0..@as(usize, total)], width, height, out_rgba, out_rgba_size);
 }

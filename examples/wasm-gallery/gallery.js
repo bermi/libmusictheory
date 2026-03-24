@@ -66,6 +66,7 @@ const REQUIRED_EXPORTS = [
   "lmt_svg_fret_n",
   "lmt_svg_chord_staff",
   "lmt_svg_key_staff",
+  "lmt_svg_keyboard",
 ];
 
 const statusEl = document.getElementById("status");
@@ -77,6 +78,7 @@ const midiSummaryEl = document.getElementById("midi-summary");
 const midiNotesEl = document.getElementById("midi-notes");
 const midiClockEl = document.getElementById("midi-clock");
 const midiStaffEl = document.getElementById("midi-staff");
+const midiKeyboardEl = document.getElementById("midi-keyboard");
 const midiSuggestionsEl = document.getElementById("midi-suggestions");
 const midiSnapshotsEl = document.getElementById("midi-snapshots");
 const connectMidiEl = document.getElementById("connect-midi");
@@ -120,6 +122,7 @@ const keyNotesEl = document.getElementById("key-notes");
 const keyDegreesEl = document.getElementById("key-degrees");
 const keyClockEl = document.getElementById("key-clock");
 const keyStaffEl = document.getElementById("key-staff");
+const keyKeyboardEl = document.getElementById("key-keyboard");
 const chordSummaryEl = document.getElementById("chord-summary");
 const chordNotesEl = document.getElementById("chord-notes");
 const chordClockEl = document.getElementById("chord-clock");
@@ -335,11 +338,30 @@ function currentMidiContext() {
   };
 }
 
+function keyboardPreviewNotesForSet(setValue, tonic) {
+  const ordered = orderedMembersFromSet(setValue, tonic);
+  const tonicAnchor = 60 + tonic;
+  return ordered.map((pc) => {
+    let midi = 60 + pc;
+    if (midi < tonicAnchor) midi += 12;
+    return midi;
+  });
+}
+
+function keyboardPreviewNotesForContext(context) {
+  return keyboardPreviewNotesForSet(context.setValue, context.tonic);
+}
+
 function svgString(arena, renderFn, ...args) {
   const required = renderFn(...args, 0, 0);
   const bufPtr = arena.alloc(required + 1, 1);
   renderFn(...args, bufPtr, required + 1);
   return readCString(bufPtr);
+}
+
+function keyboardSvgString(arena, notes, rangeLow, rangeHigh) {
+  const notesPtr = writeU8Array(arena, notes);
+  return svgString(arena, wasm.lmt_svg_keyboard, notesPtr, notes.length, rangeLow, rangeHigh);
 }
 
 function normalizeSvgPreview(host, options = {}) {
@@ -403,6 +425,21 @@ function normalizeSvgPreview(host, options = {}) {
       svg.dataset.previewNormalized = "0";
     }
   }
+}
+
+function inspectKeyboardSvg(svg) {
+  if (!svg) {
+    return {
+      selectedKeyCount: 0,
+      echoKeyCount: 0,
+      blackKeyCount: 0,
+    };
+  }
+  return {
+    selectedKeyCount: svg.querySelectorAll(".keyboard-key.is-selected").length,
+    echoKeyCount: svg.querySelectorAll(".keyboard-key.is-echo").length,
+    blackKeyCount: svg.querySelectorAll(".keyboard-key.black-key").length,
+  };
 }
 
 function inspectStaffSvg(svg) {
@@ -966,6 +1003,7 @@ function renderMidiScene() {
     const setValue = midiListToSet(arena, displayNotes);
     const currentChord = friendlyChordName(rawChordName(setValue));
     const triad = detectRenderableTriad(setValue);
+    const keyboardNotes = displayNotes.length > 0 ? displayNotes : keyboardPreviewNotesForContext(context);
     const contextOverlap = wasm.lmt_pcs_cardinality(setValue & context.setValue);
     const outsideCount = wasm.lmt_pcs_cardinality(setValue) - contextOverlap;
     const suggestions = buildMidiSuggestions(arena, setValue, displayNotes, context);
@@ -994,6 +1032,8 @@ function renderMidiScene() {
 
     midiClockEl.innerHTML = svgString(arena, wasm.lmt_svg_clock_optc, setValue);
     normalizeSvgPreview(midiClockEl, { maxHeight: 420, squareWidth: 420, mediumWidth: 520 });
+    midiKeyboardEl.innerHTML = keyboardSvgString(arena, keyboardNotes, 48, 84);
+    normalizeSvgPreview(midiKeyboardEl, { maxHeight: 220, squareWidth: 780, mediumWidth: 920, wideWidth: 1040, ultraWideWidth: 1160, padXRatio: 0.02, padYRatio: 0.08 });
 
     if (triad) {
       midiStaffEl.innerHTML = svgString(arena, wasm.lmt_svg_chord_staff, triad.type, triad.root);
@@ -1016,6 +1056,8 @@ function renderMidiScene() {
       normalizeSvgPreview(midiSuggestionsEl, { maxHeight: 160, squareWidth: 160, mediumWidth: 180, wideWidth: 180, ultraWideWidth: 180, padXRatio: 0.08, padYRatio: 0.12 });
     }
 
+    const keyboardFeatures = inspectKeyboardSvg(midiKeyboardEl.querySelector("svg"));
+
     updateSummaryScene("midi", {
       supported: midiState.supported,
       accessState: midiState.accessState,
@@ -1032,6 +1074,7 @@ function renderMidiScene() {
       chordName: setValue === 0 ? "" : currentChord,
       suggestionCount: suggestions.length,
       suggestionNames: suggestions.map((one) => one.name),
+      keyboardFeatures,
       rendered: true,
     });
   } finally {
@@ -1223,7 +1266,10 @@ function renderKeyScene() {
     normalizeSvgPreview(keyClockEl, { maxHeight: 440, squareWidth: 440, mediumWidth: 560 });
     keyStaffEl.innerHTML = svgString(arena, wasm.lmt_svg_key_staff, tonic, quality);
     normalizeSvgPreview(keyStaffEl, { maxHeight: 240, squareWidth: 780, mediumWidth: 920, wideWidth: 1040, ultraWideWidth: 1120, padXRatio: 0.04, padYRatio: 0.12 });
+    keyKeyboardEl.innerHTML = keyboardSvgString(arena, keyboardPreviewNotesForSet(orbit.setValue, orbit.tonic), 36, 96);
+    normalizeSvgPreview(keyKeyboardEl, { maxHeight: 220, squareWidth: 780, mediumWidth: 920, wideWidth: 1040, ultraWideWidth: 1160, padXRatio: 0.02, padYRatio: 0.08 });
     const keyStaffFeatures = inspectStaffSvg(keyStaffEl.querySelector("svg"));
+    const keyboardFeatures = inspectKeyboardSvg(keyKeyboardEl.querySelector("svg"));
 
     updateSummaryScene("key", {
       tonic: noteName(tonic),
@@ -1231,6 +1277,7 @@ function renderKeyScene() {
       noteCount: orbit.ordered.length,
       degrees: degreeCards.length,
       keyStaffFeatures,
+      keyboardFeatures,
     });
   } finally {
     arena.release();

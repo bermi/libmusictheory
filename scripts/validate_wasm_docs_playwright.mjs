@@ -161,18 +161,36 @@ async function waitForRenderedOutputs(page) {
       fret: document.getElementById("svg-fret")?.innerHTML || "",
       staff: document.getElementById("svg-staff")?.innerHTML || "",
       keyStaff: document.getElementById("svg-key-staff")?.innerHTML || "",
+      keyboard: document.getElementById("svg-keyboard")?.innerHTML || "",
       clockNormalized: document.querySelector("#svg-clock svg")?.dataset.previewNormalized || "",
       opticKNormalized: document.querySelector("#svg-optic-k svg")?.dataset.previewNormalized || "",
       evennessNormalized: document.querySelector("#svg-evenness svg")?.dataset.previewNormalized || "",
       fretNormalized: document.querySelector("#svg-fret svg")?.dataset.previewNormalized || "",
       staffNormalized: document.querySelector("#svg-staff svg")?.dataset.previewNormalized || "",
       keyStaffNormalized: document.querySelector("#svg-key-staff svg")?.dataset.previewNormalized || "",
+      keyboardNormalized: document.querySelector("#svg-keyboard svg")?.dataset.previewNormalized || "",
       clockBounds: document.querySelector("#svg-clock svg")?.getBoundingClientRect?.() || null,
       opticKBounds: document.querySelector("#svg-optic-k svg")?.getBoundingClientRect?.() || null,
       evennessBounds: document.querySelector("#svg-evenness svg")?.getBoundingClientRect?.() || null,
       fretBounds: document.querySelector("#svg-fret svg")?.getBoundingClientRect?.() || null,
       staffBounds: document.querySelector("#svg-staff svg")?.getBoundingClientRect?.() || null,
       keyStaffBounds: document.querySelector("#svg-key-staff svg")?.getBoundingClientRect?.() || null,
+      keyboardBounds: document.querySelector("#svg-keyboard svg")?.getBoundingClientRect?.() || null,
+      keyboardFeatures: (() => {
+        const svg = document.querySelector("#svg-keyboard svg");
+        if (!svg) {
+          return {
+            selectedKeyCount: 0,
+            echoKeyCount: 0,
+            blackKeyCount: 0,
+          };
+        }
+        return {
+          selectedKeyCount: svg.querySelectorAll(".keyboard-key.is-selected").length,
+          echoKeyCount: svg.querySelectorAll(".keyboard-key.is-echo").length,
+          blackKeyCount: svg.querySelectorAll(".keyboard-key.black-key").length,
+        };
+      })(),
       staffFeatures: (() => {
         const svg = document.querySelector("#svg-staff svg");
         if (!svg) {
@@ -217,6 +235,7 @@ async function waitForRenderedOutputs(page) {
       snapshot.svgMeta.includes("lmt_svg_evenness_chart bytes:") &&
       snapshot.svgMeta.includes("lmt_svg_fret_n bytes:") &&
       snapshot.svgMeta.includes("lmt_svg_key_staff bytes:") &&
+      snapshot.svgMeta.includes("lmt_svg_keyboard bytes:") &&
       snapshot.svgMeta.includes("aligned: yes") &&
       snapshot.clock.includes("<svg") &&
       snapshot.opticK.includes("<svg") &&
@@ -224,6 +243,7 @@ async function waitForRenderedOutputs(page) {
       snapshot.fret.includes("<svg") &&
       snapshot.staff.includes("<svg") &&
       snapshot.keyStaff.includes("<svg") &&
+      snapshot.keyboard.includes("<svg") &&
       snapshot.status.includes("All sections rendered successfully.") &&
       snapshot.clockNormalized === "1" &&
       snapshot.opticKNormalized === "1" &&
@@ -231,16 +251,21 @@ async function waitForRenderedOutputs(page) {
       snapshot.fretNormalized === "1" &&
       snapshot.staffNormalized === "1" &&
       snapshot.keyStaffNormalized === "1" &&
+      snapshot.keyboardNormalized === "1" &&
       snapshot.clockBounds &&
       snapshot.opticKBounds &&
       snapshot.evennessBounds &&
       snapshot.fretBounds &&
       snapshot.staffBounds &&
       snapshot.keyStaffBounds &&
+      snapshot.keyboardBounds &&
       snapshot.staffFeatures.clefCount >= 1 &&
       snapshot.staffFeatures.noteheadCount >= 3 &&
       snapshot.staffFeatures.sharedStemCount === 1 &&
       snapshot.staffFeatures.noteColumnSpan <= 12 &&
+      snapshot.keyboardFeatures.selectedKeyCount >= 3 &&
+      snapshot.keyboardFeatures.echoKeyCount >= 3 &&
+      snapshot.keyboardFeatures.blackKeyCount >= 10 &&
       visibleBoundsOk(snapshot);
 
     if (ready) return;
@@ -300,7 +325,7 @@ async function main() {
           const node = document.getElementById(id);
           if (node) node.textContent = "";
         }
-        for (const id of ["svg-clock", "svg-optic-k", "svg-evenness", "svg-fret", "svg-staff", "svg-key-staff"]) {
+        for (const id of ["svg-clock", "svg-optic-k", "svg-evenness", "svg-fret", "svg-staff", "svg-key-staff", "svg-keyboard"]) {
           const node = document.getElementById(id);
           if (node) node.innerHTML = "";
         }
@@ -334,7 +359,9 @@ function visibleBoundsOk(snapshot) {
     snapshot.staffBounds.width >= 220 &&
     snapshot.staffBounds.height >= 120 &&
     snapshot.keyStaffBounds.width >= 420 &&
-    snapshot.keyStaffBounds.height >= 90
+    snapshot.keyStaffBounds.height >= 90 &&
+    snapshot.keyboardBounds.width >= 420 &&
+    snapshot.keyboardBounds.height >= 100
   );
 }
 

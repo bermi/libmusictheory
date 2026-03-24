@@ -78,5 +78,10 @@ int main(void) {
     assert(svg_len > 0);
     assert(strncmp(svg, "<svg", 4) == 0);
 
+    const uint8_t keyboard_notes[3] = {60, 64, 67};
+    svg_len = lmt_svg_keyboard(keyboard_notes, 3, 48, 72, svg, sizeof(svg));
+    assert(svg_len > 0);
+    assert(strncmp(svg, "<svg", 4) == 0);
+
     return 0;
 }

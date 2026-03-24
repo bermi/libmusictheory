@@ -229,7 +229,16 @@ export async function waitForMidiSceneActive(page) {
       suggestionCards: document.querySelectorAll("#midi-suggestions .suggestion-card").length,
       noteChips: document.querySelectorAll("#midi-notes .chip").length,
       clockSvg: document.querySelector("#midi-clock svg")?.outerHTML || "",
+      keyboardSvg: document.querySelector("#midi-keyboard svg")?.outerHTML || "",
       staffHtml: document.querySelector("#midi-staff")?.innerHTML || "",
+      keyboardFeatures: (() => {
+        const svg = document.querySelector("#midi-keyboard svg");
+        if (!svg) return { selectedKeyCount: 0, echoKeyCount: 0 };
+        return {
+          selectedKeyCount: svg.querySelectorAll(".keyboard-key.is-selected").length,
+          echoKeyCount: svg.querySelectorAll(".keyboard-key.is-echo").length,
+        };
+      })(),
     }));
     if (
       snapshot.summary?.rendered === true
@@ -242,7 +251,10 @@ export async function waitForMidiSceneActive(page) {
       && snapshot.noteChips >= 3
       && snapshot.suggestionCards >= 1
       && snapshot.clockSvg.includes("<svg")
+      && snapshot.keyboardSvg.includes("<svg")
       && snapshot.staffHtml.includes("<svg")
+      && snapshot.keyboardFeatures.selectedKeyCount >= 3
+      && snapshot.keyboardFeatures.echoKeyCount >= 3
     ) {
       return snapshot;
     }
@@ -261,6 +273,7 @@ export async function waitForGalleryReady(page) {
       summary: window.__lmtGallerySummary || null,
       captureMode: document.documentElement.dataset.captureMode || "",
       midiClockSvg: document.querySelector("#midi-clock svg")?.outerHTML || "",
+      midiKeyboardSvg: document.querySelector("#midi-keyboard svg")?.outerHTML || "",
       clockSvg: document.querySelector("#set-clock svg")?.outerHTML || "",
       setOpticKSvg: document.querySelector("#set-optic-k svg")?.outerHTML || "",
       setEvennessSvg: document.querySelector("#set-evenness svg")?.outerHTML || "",
@@ -268,6 +281,7 @@ export async function waitForGalleryReady(page) {
       chordSvg: document.querySelector("#chord-clock svg")?.outerHTML || "",
       staffSvg: document.querySelector("#chord-staff svg")?.outerHTML || "",
       keyStaffSvg: document.querySelector("#key-staff svg")?.outerHTML || "",
+      keyKeyboardSvg: document.querySelector("#key-keyboard svg")?.outerHTML || "",
       progressionSvg: document.querySelector("#progression-clock svg")?.outerHTML || "",
       compareLeftSvg: document.querySelector("#compare-left-clock svg")?.outerHTML || "",
       compareOverlapSvg: document.querySelector("#compare-overlap-clock svg")?.outerHTML || "",
@@ -285,7 +299,7 @@ export async function waitForGalleryReady(page) {
       sceneCardCount: document.querySelectorAll(".scene-card").length,
       presetSelectCount: document.querySelectorAll("select[id$='-preset']").length,
       previewMetrics: Array.from(
-        document.querySelectorAll("#midi-clock svg, #set-clock svg, #set-optic-k svg, #set-evenness svg, #key-clock svg, #key-staff svg, #chord-clock svg, #chord-staff svg, #progression-clock svg, #compare-left-clock svg, #compare-overlap-clock svg, #compare-right-clock svg, #fret-svg svg"),
+        document.querySelectorAll("#midi-clock svg, #midi-keyboard svg, #set-clock svg, #set-optic-k svg, #set-evenness svg, #key-clock svg, #key-staff svg, #key-keyboard svg, #chord-clock svg, #chord-staff svg, #progression-clock svg, #compare-left-clock svg, #compare-overlap-clock svg, #compare-right-clock svg, #fret-svg svg"),
         (svg) => {
           const rect = svg.getBoundingClientRect();
           return {
@@ -342,6 +356,32 @@ export async function waitForGalleryReady(page) {
           barlineCount: svg.querySelectorAll(".staff-barline").length,
         };
       })(),
+      midiKeyboardFeatures: (() => {
+        const svg = document.querySelector("#midi-keyboard svg");
+        if (!svg) {
+          return {
+            selectedKeyCount: 0,
+            echoKeyCount: 0,
+          };
+        }
+        return {
+          selectedKeyCount: svg.querySelectorAll(".keyboard-key.is-selected").length,
+          echoKeyCount: svg.querySelectorAll(".keyboard-key.is-echo").length,
+        };
+      })(),
+      keyKeyboardFeatures: (() => {
+        const svg = document.querySelector("#key-keyboard svg");
+        if (!svg) {
+          return {
+            selectedKeyCount: 0,
+            echoKeyCount: 0,
+          };
+        }
+        return {
+          selectedKeyCount: svg.querySelectorAll(".keyboard-key.is-selected").length,
+          echoKeyCount: svg.querySelectorAll(".keyboard-key.is-echo").length,
+        };
+      })(),
       setEvennessFeatures: (() => {
         const svg = document.querySelector("#set-evenness svg");
         if (!svg) {
@@ -391,11 +431,13 @@ export async function waitForGalleryReady(page) {
       summary.scenes?.compare?.rendered &&
       summary.scenes?.fret?.rendered &&
       snapshot.midiClockSvg.includes("<svg") &&
+      snapshot.midiKeyboardSvg.includes("<svg") &&
       snapshot.clockSvg.includes("<svg") &&
       snapshot.setOpticKSvg.includes("<svg") &&
       snapshot.setEvennessSvg.includes("<svg") &&
       snapshot.keySvg.includes("<svg") &&
       snapshot.keyStaffSvg.includes("<svg") &&
+      snapshot.keyKeyboardSvg.includes("<svg") &&
       snapshot.chordSvg.includes("<svg") &&
       snapshot.staffSvg.includes("<svg") &&
       snapshot.progressionSvg.includes("<svg") &&
@@ -411,10 +453,12 @@ export async function waitForGalleryReady(page) {
       snapshot.toggleCount === 12 &&
       snapshot.sceneCardCount >= 7 &&
       snapshot.presetSelectCount >= 6 &&
-      snapshot.previewMetrics.length >= 13 &&
+      snapshot.previewMetrics.length >= 15 &&
       snapshot.previewMetrics.every((metric) => metric.normalized === "1") &&
       snapshot.previewMetrics.find((metric) => metric.host === "midi-clock")?.width >= 360 &&
       snapshot.previewMetrics.find((metric) => metric.host === "midi-clock")?.height >= 360 &&
+      snapshot.previewMetrics.find((metric) => metric.host === "midi-keyboard")?.width >= 720 &&
+      snapshot.previewMetrics.find((metric) => metric.host === "midi-keyboard")?.height >= 120 &&
       snapshot.previewMetrics.find((metric) => metric.host === "set-clock")?.width >= 320 &&
       snapshot.previewMetrics.find((metric) => metric.host === "set-clock")?.height >= 320 &&
       snapshot.previewMetrics.find((metric) => metric.host === "set-optic-k")?.width >= 560 &&
@@ -425,6 +469,8 @@ export async function waitForGalleryReady(page) {
       snapshot.previewMetrics.find((metric) => metric.host === "key-clock")?.height >= 360 &&
       snapshot.previewMetrics.find((metric) => metric.host === "key-staff")?.width >= 780 &&
       snapshot.previewMetrics.find((metric) => metric.host === "key-staff")?.height >= 160 &&
+      snapshot.previewMetrics.find((metric) => metric.host === "key-keyboard")?.width >= 720 &&
+      snapshot.previewMetrics.find((metric) => metric.host === "key-keyboard")?.height >= 120 &&
       snapshot.previewMetrics.find((metric) => metric.host === "chord-clock")?.width >= 240 &&
       snapshot.previewMetrics.find((metric) => metric.host === "chord-clock")?.height >= 240 &&
       snapshot.previewMetrics.find((metric) => metric.host === "chord-staff")?.width >= 620 &&
@@ -446,6 +492,10 @@ export async function waitForGalleryReady(page) {
       snapshot.keyStaffFeatures.noteheadCount >= 8 &&
       snapshot.keyStaffFeatures.keyNoteheadCount >= 8 &&
       snapshot.keyStaffFeatures.barlineCount >= 2 &&
+      snapshot.midiKeyboardFeatures.selectedKeyCount >= 3 &&
+      snapshot.midiKeyboardFeatures.echoKeyCount >= 3 &&
+      snapshot.keyKeyboardFeatures.selectedKeyCount >= 7 &&
+      snapshot.keyKeyboardFeatures.echoKeyCount >= 20 &&
       snapshot.setOpticKFeatures.clockCount >= 2 &&
       snapshot.setOpticKFeatures.linkCount >= 1 &&
       snapshot.setOpticKFeatures.labelCount >= 5 &&

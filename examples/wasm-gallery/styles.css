@@ -383,6 +383,18 @@ select {
   max-height: 360px;
 }
 
+.keyboard-frame {
+  min-height: 250px;
+}
+
+.keyboard-frame svg {
+  max-height: 220px;
+}
+
+.midi-keyboard-frame {
+  min-height: 260px;
+}
+
 .compact-frame {
   min-height: 250px;
 }

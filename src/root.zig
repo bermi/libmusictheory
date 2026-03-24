@@ -38,6 +38,7 @@ pub const svg_tessellation = @import("svg/tessellation.zig");
 pub const svg_mode_icon = @import("svg/mode_icon.zig");
 pub const svg_evenness_chart = @import("svg/evenness_chart.zig");
 pub const svg_evenness_compat = @import("svg/evenness_compat.zig");
+pub const svg_keyboard = @import("svg/keyboard_svg.zig");
 pub const svg_orbifold = @import("svg/orbifold.zig");
 pub const svg_circle_of_fifths = @import("svg/circle_of_fifths.zig");
 pub const svg_key_sig = @import("svg/key_sig.zig");
@@ -68,6 +69,7 @@ test {
     _ = @import("tests/keyboard_test.zig");
     _ = @import("tests/svg_clock_test.zig");
     _ = @import("tests/svg_staff_test.zig");
+    _ = @import("tests/svg_keyboard_test.zig");
     _ = @import("tests/svg_fret_test.zig");
     _ = @import("tests/svg_tessellation_test.zig");
     _ = @import("tests/svg_misc_test.zig");

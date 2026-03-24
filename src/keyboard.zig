@@ -89,6 +89,24 @@ pub const PlaybackMode = enum {
     simultaneous,
 };
 
+pub fn notesPitchClassSet(notes: []const pitch.MidiNote) pcs.PitchClassSet {
+    var out: pcs.PitchClassSet = 0;
+    for (notes) |note| {
+        const pc = @as(pitch.PitchClass, @intCast(note % 12));
+        out |= @as(pcs.PitchClassSet, 1) << pc;
+    }
+    return out;
+}
+
+pub fn visualOpacityForMidi(selected: []const pitch.MidiNote, selected_pcs: pcs.PitchClassSet, midi: pitch.MidiNote) f32 {
+    return if (contains(selected, midi))
+        KeyVisual.FULL_OPACITY
+    else if ((selected_pcs & (@as(pcs.PitchClassSet, 1) << @as(pitch.PitchClass, @intCast(midi % 12)))) != 0)
+        KeyVisual.HALF_OPACITY
+    else
+        KeyVisual.NORMAL_OPACITY;
+}
+
 pub fn updateKeyVisuals(state: KeyboardState) [NUM_KEYS]KeyVisual {
     var out: [NUM_KEYS]KeyVisual = undefined;
     const selected_pcs = state.pitchClassSet();
@@ -96,16 +114,10 @@ pub fn updateKeyVisuals(state: KeyboardState) [NUM_KEYS]KeyVisual {
     var i: usize = 0;
     while (i < NUM_KEYS) : (i += 1) {
         const midi = @as(pitch.MidiNote, @intCast(@as(u8, state.range_low) + i));
-        const pc = @as(pitch.PitchClass, @intCast(midi % 12));
-
-        const opacity: f32 = if (contains(state.selected(), midi))
-            KeyVisual.FULL_OPACITY
-        else if ((selected_pcs & (@as(pcs.PitchClassSet, 1) << pc)) != 0)
-            KeyVisual.HALF_OPACITY
-        else
-            KeyVisual.NORMAL_OPACITY;
-
-        out[i] = .{ .midi = midi, .opacity = opacity };
+        out[i] = .{
+            .midi = midi,
+            .opacity = visualOpacityForMidi(state.selected(), selected_pcs, midi),
+        };
     }
 
     return out;
