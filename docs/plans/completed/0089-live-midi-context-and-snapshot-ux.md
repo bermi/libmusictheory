@@ -41,7 +41,7 @@ Tune the `Live MIDI Compass` gallery scene so its theory reading is driven by an
 
 ## Implementation History (Point-in-Time)
 
-- Commit: `TBD`
+- Commit: `f4a861a`
 - Date: 2026-03-24
 - Shipped behavior:
   - added explicit tonic and mode controls to `Live MIDI Compass`
