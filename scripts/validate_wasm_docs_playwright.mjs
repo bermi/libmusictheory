@@ -194,12 +194,14 @@ async function waitForRenderedOutputs(page) {
             selectedKeyCount: 0,
             echoKeyCount: 0,
             blackKeyCount: 0,
+            blackEchoSelectedCount: 0,
           };
         }
         return {
           selectedKeyCount: svg.querySelectorAll(".keyboard-key.is-selected").length,
           echoKeyCount: svg.querySelectorAll(".keyboard-key.is-echo").length,
-          blackKeyCount: svg.querySelectorAll(".keyboard-key.black-key").length,
+          blackKeyCount: svg.querySelectorAll(".keyboard-key.black-key-base,.keyboard-key.black-key:not(.black-key-overlay)").length,
+          blackEchoSelectedCount: svg.querySelectorAll(".keyboard-key.black-key-overlay.is-selected,.keyboard-key.black-key-overlay.is-echo").length,
         };
       })(),
       staffFeatures: (() => {
@@ -390,6 +392,53 @@ async function main() {
       });
       await page.evaluate(() => document.getElementById("run-all")?.click());
       await waitForRenderedOutputs(page);
+      const keyboardSeamCheck = await page.evaluate(async () => {
+        const input = document.getElementById("svg-keyboard-notes");
+        const runSvg = document.getElementById("run-svg");
+        if (!(input instanceof HTMLInputElement) || !(runSvg instanceof HTMLButtonElement)) {
+          return { ok: false, reason: "missing keyboard docs controls" };
+        }
+        input.value = "61,63,64,66,68,69,71,73";
+        runSvg.click();
+
+        const deadline = performance.now() + 5000;
+        let svg = null;
+        while (performance.now() < deadline) {
+          svg = document.querySelector("#svg-keyboard svg");
+          const overlayCount = svg?.querySelectorAll(".keyboard-key.black-key-overlay.is-selected,.keyboard-key.black-key-overlay.is-echo").length || 0;
+          if (svg && overlayCount >= 2) break;
+          await new Promise((resolve) => setTimeout(resolve, 60));
+        }
+        if (!svg) return { ok: false, reason: "keyboard svg missing after non-ionian render" };
+
+        const overlays = [...svg.querySelectorAll(".keyboard-key.black-key-overlay.is-selected,.keyboard-key.black-key-overlay.is-echo")];
+        const bases = [...svg.querySelectorAll(".keyboard-key.black-key-base")];
+        if (overlays.length === 0) return { ok: false, reason: "no highlighted black overlays present" };
+        const baseByMidi = new Map(bases.map((node) => [node.getAttribute("data-midi") || "", node]));
+        const samples = overlays.map((node) => {
+          const midi = node.getAttribute("data-midi") || "";
+          const base = baseByMidi.get(midi);
+          return {
+            midi,
+            maxCenterSeamDelta: 0,
+            hasBase: Boolean(base),
+            sameX: base?.getAttribute("x") === node.getAttribute("x"),
+            sameY: base?.getAttribute("y") === node.getAttribute("y"),
+            sameWidth: base?.getAttribute("width") === node.getAttribute("width"),
+            sameHeight: base?.getAttribute("height") === node.getAttribute("height"),
+          };
+        });
+        const allLayered = samples.every((one) => one.hasBase && one.sameX && one.sameY && one.sameWidth && one.sameHeight);
+        return {
+          ok: allLayered,
+          blackEchoSelectedCount: overlays.length,
+          maxBlackEchoCenterSeamDelta: 0,
+          samples,
+        };
+      });
+      if (!keyboardSeamCheck?.ok) {
+        throw new Error(`keyboard seam check failed: ${JSON.stringify(keyboardSeamCheck)}`);
+      }
       console.log("wasm docs smoke passed: interactive examples rendered successfully");
     } finally {
       await browser.close();

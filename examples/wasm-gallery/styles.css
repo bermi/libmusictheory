@@ -363,6 +363,13 @@ select {
   max-height: 440px;
 }
 
+.svg-frame img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  max-height: 440px;
+}
+
 .staff-frame svg {
   max-height: 320px;
 }
@@ -404,6 +411,10 @@ select {
 }
 
 .keyboard-frame svg {
+  max-height: 220px;
+}
+
+.keyboard-frame img {
   max-height: 220px;
 }
 

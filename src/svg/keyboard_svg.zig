@@ -41,6 +41,7 @@ const accent_height: f32 = 14.0;
 const white_fill_alpha_exact: f32 = 0.34;
 const white_fill_alpha_echo: f32 = 0.16;
 const black_fill_alpha_echo: f32 = 0.72;
+const black_fill_alpha_exact: f32 = 0.9;
 
 pub fn renderKeyboard(notes: []const pitch.MidiNote, range_low: pitch.MidiNote, range_high: pitch.MidiNote, buf: []u8) []u8 {
     const low = @min(range_low, range_high);
@@ -133,25 +134,32 @@ fn drawBlackKeys(w: anytype, notes: []const pitch.MidiNote, selected_pcs: pcs.Pi
 
         switch (state) {
             .selected => {
-                w.print(
-                    "<rect class=\"keyboard-key black-key is-selected\" data-midi=\"{d}\" data-pc=\"{d}\" x=\"{d:.2}\" y=\"{d:.2}\" width=\"{d:.2}\" height=\"{d:.2}\" rx=\"3.2\" fill=\"rgb({d},{d},{d})\" stroke=\"rgb({d},{d},{d})\" stroke-width=\"1.35\" />\n",
-                    .{ note, pc, x, margin_y, black_key_width, black_key_height, color.r, color.g, color.b, BLACK_KEY_STROKE.r, BLACK_KEY_STROKE.g, BLACK_KEY_STROKE.b },
-                ) catch unreachable;
+                drawBlackKeyBase(w, note, pc, x);
+                drawBlackKeyOverlay(w, "selected", note, pc, x, color, black_fill_alpha_exact);
             },
             .echo => {
-                w.print(
-                    "<rect class=\"keyboard-key black-key is-echo\" data-midi=\"{d}\" data-pc=\"{d}\" x=\"{d:.2}\" y=\"{d:.2}\" width=\"{d:.2}\" height=\"{d:.2}\" rx=\"3.2\" fill=\"rgba({d},{d},{d},{d:.3})\" stroke=\"rgb({d},{d},{d})\" stroke-width=\"1.35\" />\n",
-                    .{ note, pc, x, margin_y, black_key_width, black_key_height, color.r, color.g, color.b, black_fill_alpha_echo, BLACK_KEY_STROKE.r, BLACK_KEY_STROKE.g, BLACK_KEY_STROKE.b },
-                ) catch unreachable;
+                drawBlackKeyBase(w, note, pc, x);
+                drawBlackKeyOverlay(w, "echo", note, pc, x, color, black_fill_alpha_echo);
             },
             .normal => {
-                w.print(
-                    "<rect class=\"keyboard-key black-key\" data-midi=\"{d}\" data-pc=\"{d}\" x=\"{d:.2}\" y=\"{d:.2}\" width=\"{d:.2}\" height=\"{d:.2}\" rx=\"3.2\" fill=\"rgb({d},{d},{d})\" stroke=\"rgb({d},{d},{d})\" stroke-width=\"1.35\" />\n",
-                    .{ note, pc, x, margin_y, black_key_width, black_key_height, BLACK_KEY_FILL.r, BLACK_KEY_FILL.g, BLACK_KEY_FILL.b, BLACK_KEY_STROKE.r, BLACK_KEY_STROKE.g, BLACK_KEY_STROKE.b },
-                ) catch unreachable;
+                drawBlackKeyBase(w, note, pc, x);
             },
         }
     }
+}
+
+fn drawBlackKeyBase(w: anytype, note: pitch.MidiNote, pc: u4, x: f32) void {
+    w.print(
+        "<rect class=\"keyboard-key black-key black-key-base\" data-midi=\"{d}\" data-pc=\"{d}\" x=\"{d:.2}\" y=\"{d:.2}\" width=\"{d:.2}\" height=\"{d:.2}\" rx=\"3.2\" fill=\"rgb({d},{d},{d})\" stroke=\"rgb({d},{d},{d})\" stroke-width=\"1.35\" />\n",
+        .{ note, pc, x, margin_y, black_key_width, black_key_height, BLACK_KEY_FILL.r, BLACK_KEY_FILL.g, BLACK_KEY_FILL.b, BLACK_KEY_STROKE.r, BLACK_KEY_STROKE.g, BLACK_KEY_STROKE.b },
+    ) catch unreachable;
+}
+
+fn drawBlackKeyOverlay(w: anytype, state_class: []const u8, note: pitch.MidiNote, pc: u4, x: f32, color: PaletteColor, alpha: f32) void {
+    w.print(
+        "<rect class=\"keyboard-key black-key black-key-overlay is-{s}\" data-midi=\"{d}\" data-pc=\"{d}\" x=\"{d:.2}\" y=\"{d:.2}\" width=\"{d:.2}\" height=\"{d:.2}\" rx=\"{d:.2}\" fill=\"rgba({d},{d},{d},{d:.3})\" stroke=\"none\" />\n",
+        .{ state_class, note, pc, x, margin_y, black_key_width, black_key_height, 3.2, color.r, color.g, color.b, alpha },
+    ) catch unreachable;
 }
 
 const NoteState = enum {

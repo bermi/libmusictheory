@@ -76,6 +76,115 @@ async function main() {
         const nextFirstSuggestion = Array.isArray(midi.suggestionNames) ? (midi.suggestionNames[0] || "") : "";
         return midi.contextLabel !== beforeLabel && nextFirstSuggestion !== beforeFirstSuggestion && midi.displayCount >= 3;
       }, { beforeLabel: defaultContext.label, beforeFirstSuggestion: defaultContext.suggestionNames[0] || "" }, { timeout: 30000 }).then((handle) => handle.jsonValue());
+      await releaseFakeMidiSustain(page);
+      await page.waitForFunction(() => {
+        const midi = window.__lmtGallerySummary?.scenes?.midi;
+        return midi?.viewingSnapshot === false && midi?.liveCount === 0 && midi?.displayCount === 0 && midi?.contextLabel === "C Phrygian";
+      }, { timeout: 30000 });
+      const keyboardSeamCheck = await page.evaluate(async () => {
+        const host = document.querySelector("#midi-keyboard");
+        const image = host?.querySelector("img");
+        const svg = host?.querySelector("svg");
+        const sample = {
+          notes: [60, 61, 63, 65, 67, 68, 70],
+          low: 48,
+          high: 83,
+          marginX: 16,
+          marginY: 16,
+          whiteKeyWidth: 24,
+          whiteKeyHeight: 124,
+          blackKeyWidth: 14,
+          blackKeyHeight: 76,
+        };
+        const isBlackKey = (midi) => [1, 3, 6, 8, 10].includes(midi % 12);
+        const whiteIndexBefore = (rangeLow, midiNote) => {
+          let total = 0;
+          for (let midi = rangeLow; midi < midiNote; midi += 1) {
+            if (!isBlackKey(midi)) total += 1;
+          }
+          return total;
+        };
+        const countWhiteKeys = (rangeLow, rangeHigh) => {
+          let total = 0;
+          for (let midi = rangeLow; midi <= rangeHigh; midi += 1) {
+            if (!isBlackKey(midi)) total += 1;
+          }
+          return total;
+        };
+        const selectedPcs = new Set(sample.notes.map((note) => note % 12));
+
+        let rasterImage = null;
+        if (image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0) {
+          rasterImage = image;
+        } else if (svg instanceof SVGSVGElement) {
+          const xml = new XMLSerializer().serializeToString(svg);
+          const url = URL.createObjectURL(new Blob([xml], { type: "image/svg+xml;charset=utf-8" }));
+          try {
+            const generated = new Image();
+            generated.decoding = "sync";
+            const loaded = new Promise((resolve, reject) => {
+              generated.onload = resolve;
+              generated.onerror = reject;
+            });
+            generated.src = url;
+            await loaded;
+            rasterImage = generated;
+          } finally {
+            URL.revokeObjectURL(url);
+          }
+        }
+        if (!(rasterImage instanceof HTMLImageElement)) {
+          return { ok: false, reason: "missing live keyboard raster surface" };
+        }
+
+        const sourceWidth = sample.marginX * 2 + countWhiteKeys(sample.low, sample.high) * sample.whiteKeyWidth;
+        const sourceHeight = sample.marginY * 2 + sample.whiteKeyHeight;
+        const scaleX = rasterImage.naturalWidth / sourceWidth;
+        const scaleY = rasterImage.naturalHeight / sourceHeight;
+
+        const canvas = document.createElement("canvas");
+        canvas.width = rasterImage.naturalWidth;
+        canvas.height = rasterImage.naturalHeight;
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+        if (!ctx) return { ok: false, reason: "missing 2d context" };
+        ctx.drawImage(rasterImage, 0, 0);
+
+        const samples = [];
+        for (let midi = sample.low; midi <= sample.high; midi += 1) {
+          if (!isBlackKey(midi) || !selectedPcs.has(midi % 12)) continue;
+          const keyX = sample.marginX + whiteIndexBefore(sample.low, midi) * sample.whiteKeyWidth - sample.blackKeyWidth / 2;
+          const sampleX = Math.max(1, Math.min(canvas.width - 2, Math.round((keyX + sample.blackKeyWidth / 2) * scaleX)));
+          const sampleYs = [
+            sample.marginY + sample.blackKeyHeight * 0.42,
+            sample.marginY + sample.blackKeyHeight * 0.52,
+            sample.marginY + sample.blackKeyHeight * 0.62,
+          ].map((value) => Math.max(0, Math.min(canvas.height - 1, Math.round(value * scaleY))));
+          const seamDeltas = sampleYs.map((sampleY) => {
+            const center = ctx.getImageData(sampleX, sampleY, 1, 1).data;
+            const left = ctx.getImageData(sampleX - 1, sampleY, 1, 1).data;
+            const right = ctx.getImageData(sampleX + 1, sampleY, 1, 1).data;
+            const centerLightness = (center[0] + center[1] + center[2]) / 3;
+            const neighborLightness = ((left[0] + left[1] + left[2]) + (right[0] + right[1] + right[2])) / 6;
+            return centerLightness - neighborLightness;
+          });
+          samples.push({
+            midi,
+            maxCenterSeamDelta: Math.max(...seamDeltas),
+          });
+        }
+
+        if (samples.length === 0) return { ok: false, reason: "no black-key seam probes generated" };
+        const maxBlackEchoCenterSeamDelta = Math.max(...samples.map((one) => one.maxCenterSeamDelta));
+        return {
+          ok: maxBlackEchoCenterSeamDelta < 18,
+          blackEchoSelectedCount: samples.length,
+          maxBlackEchoCenterSeamDelta,
+          samples,
+        };
+      });
+      if (!keyboardSeamCheck?.ok) {
+        throw new Error(`live keyboard seam check failed: ${JSON.stringify(keyboardSeamCheck)}`);
+      }
       await page.click("#midi-snapshots [data-midi-snapshot]");
       const snapshotContextRestored = await page.waitForFunction(() => {
         const midi = window.__lmtGallerySummary?.scenes?.midi;
@@ -88,11 +197,6 @@ async function main() {
         const midi = window.__lmtGallerySummary?.scenes?.midi;
         return midi?.viewingSnapshot === true && midi?.displayCount >= 3 && midi?.snapshotCount >= 1;
       }, { timeout: 30000 }).then((handle) => handle.jsonValue());
-      await releaseFakeMidiSustain(page);
-      await page.waitForFunction(() => {
-        const midi = window.__lmtGallerySummary?.scenes?.midi;
-        return midi?.viewingSnapshot === true && midi?.liveCount === 0 && midi?.displayCount >= 4;
-      }, { timeout: 30000 });
       await page.click("#midi-return-live");
       const backToLive = await page.waitForFunction(() => {
         const midi = window.__lmtGallerySummary?.scenes?.midi;
@@ -131,6 +235,7 @@ async function main() {
             sceneCount: finalSnapshot.summary.sceneCount,
             midiActive,
             contextChanged,
+            keyboardSeamCheck,
             snapshotContextRestored,
             snapshotView,
             backToLive,

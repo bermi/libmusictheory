@@ -69,6 +69,7 @@ const REQUIRED_EXPORTS = [
   "lmt_svg_key_staff",
   "lmt_svg_keyboard",
   "lmt_svg_piano_staff",
+  "lmt_bitmap_keyboard_rgba",
 ];
 
 const statusEl = document.getElementById("status");
@@ -390,6 +391,31 @@ function keyboardSvgString(arena, notes, rangeLow, rangeHigh) {
   return svgString(arena, wasm.lmt_svg_keyboard, notesPtr, notes.length, rangeLow, rangeHigh);
 }
 
+function rgbaToPngDataUrl(rgbaBytes, width, height) {
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    throw new Error("failed to acquire 2d context for keyboard bitmap preview");
+  }
+  const imageData = new ImageData(new Uint8ClampedArray(rgbaBytes), width, height);
+  ctx.putImageData(imageData, 0, 0);
+  return canvas.toDataURL("image/png");
+}
+
+function keyboardBitmapDataUrl(arena, notes, rangeLow, rangeHigh, width = 1160, height = 220) {
+  const notesPtr = writeU8Array(arena, notes);
+  const rgbaBytes = width * height * 4;
+  const rgbaPtr = arena.alloc(rgbaBytes, 1);
+  const written = wasm.lmt_bitmap_keyboard_rgba(notesPtr, notes.length, rangeLow, rangeHigh, width, height, rgbaPtr, rgbaBytes);
+  if (written !== rgbaBytes) {
+    throw new Error(`lmt_bitmap_keyboard_rgba wrote ${written}/${rgbaBytes}`);
+  }
+  const rgbaCopy = new Uint8Array(memory.buffer.slice(rgbaPtr, rgbaPtr + rgbaBytes));
+  return rgbaToPngDataUrl(rgbaCopy, width, height);
+}
+
 function pianoStaffSvgString(arena, notes, tonic, quality) {
   const notesPtr = writeU8Array(arena, notes);
   return svgString(arena, wasm.lmt_svg_piano_staff, notesPtr, notes.length, tonic, quality);
@@ -462,19 +488,46 @@ function normalizeSvgPreview(host, options = {}) {
   }
 }
 
+function setBitmapPreview(host, dataUrl, width, height, alt) {
+  host.innerHTML = `<img class="bitmap-preview" data-preview-normalized="1" data-preview-aspect="${(width / height).toFixed(3)}" width="${width}" height="${height}" src="${dataUrl}" alt="${escapeHtml(alt)}" />`;
+}
+
 function inspectKeyboardSvg(svg) {
   if (!svg) {
     return {
       selectedKeyCount: 0,
       echoKeyCount: 0,
       blackKeyCount: 0,
+      blackEchoSelectedCount: 0,
     };
   }
   return {
     selectedKeyCount: svg.querySelectorAll(".keyboard-key.is-selected").length,
     echoKeyCount: svg.querySelectorAll(".keyboard-key.is-echo").length,
-    blackKeyCount: svg.querySelectorAll(".keyboard-key.black-key").length,
+    blackKeyCount: svg.querySelectorAll(".keyboard-key.black-key-base,.keyboard-key.black-key:not(.black-key-overlay)").length,
+    blackEchoSelectedCount: svg.querySelectorAll(".keyboard-key.black-key-overlay.is-selected,.keyboard-key.black-key-overlay.is-echo").length,
   };
+}
+
+function inspectKeyboardNotes(notes, rangeLow, rangeHigh) {
+  const exact = new Set(notes);
+  const pcs = new Set(notes.map((note) => note % 12));
+  let selectedKeyCount = 0;
+  let echoKeyCount = 0;
+  let blackKeyCount = 0;
+  let blackEchoSelectedCount = 0;
+  for (let midi = rangeLow; midi <= rangeHigh; midi += 1) {
+    const isBlack = [1, 3, 6, 8, 10].includes(midi % 12);
+    if (isBlack) blackKeyCount += 1;
+    if (exact.has(midi)) {
+      selectedKeyCount += 1;
+      if (isBlack) blackEchoSelectedCount += 1;
+    } else if (pcs.has(midi % 12)) {
+      echoKeyCount += 1;
+      if (isBlack) blackEchoSelectedCount += 1;
+    }
+  }
+  return { selectedKeyCount, echoKeyCount, blackKeyCount, blackEchoSelectedCount };
 }
 
 function inspectOpticKSvg(svg) {
@@ -1108,8 +1161,7 @@ function renderMidiScene() {
     normalizeSvgPreview(midiOpticKEl, { maxHeight: 300, squareWidth: 520, mediumWidth: 620, wideWidth: 720, ultraWideWidth: 760, padXRatio: 0.04, padYRatio: 0.08 });
     midiEvennessEl.innerHTML = evennessFieldSvg;
     normalizeSvgPreview(midiEvennessEl, { maxHeight: 440, squareWidth: 360, mediumWidth: 420, wideWidth: 500, ultraWideWidth: 560, padXRatio: 0.05, padYRatio: 0.05 });
-    midiKeyboardEl.innerHTML = keyboardSvgString(arena, keyboardNotes, keyboardRange.low, keyboardRange.high);
-    normalizeSvgPreview(midiKeyboardEl, { maxHeight: 220, squareWidth: 780, mediumWidth: 920, wideWidth: 1040, ultraWideWidth: 1160, padXRatio: 0.02, padYRatio: 0.08 });
+    setBitmapPreview(midiKeyboardEl, keyboardBitmapDataUrl(arena, keyboardNotes, keyboardRange.low, keyboardRange.high, 1160, 220), 1160, 220, "Live keyboard bitmap");
 
     if (displayNotes.length > 0) {
       midiStaffEl.innerHTML = pianoStaffSvgString(arena, displayNotes, context.tonic, context.quality);
@@ -1132,7 +1184,7 @@ function renderMidiScene() {
       normalizeSvgPreview(midiSuggestionsEl, { maxHeight: 160, squareWidth: 160, mediumWidth: 180, wideWidth: 180, ultraWideWidth: 180, padXRatio: 0.08, padYRatio: 0.12 });
     }
 
-    const keyboardFeatures = inspectKeyboardSvg(midiKeyboardEl.querySelector("svg"));
+    const keyboardFeatures = inspectKeyboardNotes(keyboardNotes, keyboardRange.low, keyboardRange.high);
     const midiOpticKFeatures = inspectOpticKSvg(midiOpticKEl.querySelector("svg"));
     const midiEvennessFeatures = inspectEvennessSvg(midiEvennessEl.querySelector("svg"));
     const midiStaffFeatures = inspectStaffSvg(midiStaffEl.querySelector("svg"));
@@ -1341,10 +1393,10 @@ function renderKeyScene() {
     normalizeSvgPreview(keyClockEl, { maxHeight: 440, squareWidth: 440, mediumWidth: 560 });
     keyStaffEl.innerHTML = svgString(arena, wasm.lmt_svg_key_staff, tonic, quality);
     normalizeSvgPreview(keyStaffEl, { maxHeight: 240, squareWidth: 780, mediumWidth: 920, wideWidth: 1040, ultraWideWidth: 1120, padXRatio: 0.04, padYRatio: 0.12 });
-    keyKeyboardEl.innerHTML = keyboardSvgString(arena, keyboardPreviewNotesForSet(orbit.setValue, orbit.tonic), 36, 96);
-    normalizeSvgPreview(keyKeyboardEl, { maxHeight: 220, squareWidth: 780, mediumWidth: 920, wideWidth: 1040, ultraWideWidth: 1160, padXRatio: 0.02, padYRatio: 0.08 });
+    const keyKeyboardNotes = keyboardPreviewNotesForSet(orbit.setValue, orbit.tonic);
+    setBitmapPreview(keyKeyboardEl, keyboardBitmapDataUrl(arena, keyKeyboardNotes, 36, 96, 1160, 220), 1160, 220, "Key keyboard bitmap");
     const keyStaffFeatures = inspectStaffSvg(keyStaffEl.querySelector("svg"));
-    const keyboardFeatures = inspectKeyboardSvg(keyKeyboardEl.querySelector("svg"));
+    const keyboardFeatures = inspectKeyboardNotes(keyKeyboardNotes, 36, 96);
 
     updateSummaryScene("key", {
       tonic: noteName(tonic),

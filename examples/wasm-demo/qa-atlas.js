@@ -27,7 +27,7 @@ const ATLAS_SAMPLES = {
   lmt_svg_fret_n: { frets: [2, 0, 1, 0], stringCount: 4, windowStart: 0, visibleFrets: 4 },
   lmt_svg_chord_staff: { chordType: 0, chordRoot: 0 },
   lmt_svg_key_staff: { keyTonic: 0, keyQuality: 0 },
-  lmt_svg_keyboard: { keyboardNotes: [60, 62, 64, 65, 67, 69, 71, 72], keyboardLow: 48, keyboardHigh: 84 },
+  lmt_svg_keyboard: { keyboardNotes: [61, 63, 64, 66, 68, 69, 71, 73], keyboardLow: 48, keyboardHigh: 84 },
   lmt_svg_piano_staff: { pianoNotes: [43, 52, 60, 64], keyTonic: 0, keyQuality: 0 },
 };
 

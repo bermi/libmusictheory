@@ -285,12 +285,14 @@ test "c abi svg generators" {
     try testing.expect(std.mem.count(u8, svg_buf[0..key_staff_len], "class=\"staff-barline\"") >= 2);
     try testing.expect(std.mem.count(u8, svg_buf[0..key_staff_len], "class=\"notehead key-notehead\"") >= 8);
 
-    const keyboard_notes = [_]u8{ 60, 64, 67 };
+    const keyboard_notes = [_]u8{ 61, 63, 64, 66, 68, 69, 71, 73 };
     const keyboard_len = lmt_svg_keyboard(@ptrCast(&keyboard_notes), keyboard_notes.len, 48, 72, @ptrCast(&svg_buf), @intCast(svg_buf.len));
     try testing.expect(keyboard_len > 0);
-    try testing.expect(std.mem.count(u8, svg_buf[0..keyboard_len], "class=\"keyboard-key white-key is-selected\"") >= 3);
+    try testing.expect(std.mem.count(u8, svg_buf[0..keyboard_len], "class=\"keyboard-key white-key is-selected\"") >= 2);
     try testing.expect(std.mem.count(u8, svg_buf[0..keyboard_len], "class=\"keyboard-key white-key is-echo\"") >= 2);
-    try testing.expect(std.mem.count(u8, svg_buf[0..keyboard_len], "class=\"keyboard-key black-key\"") >= 10);
+    try testing.expect(std.mem.count(u8, svg_buf[0..keyboard_len], "class=\"keyboard-key black-key black-key-base\"") >= 10);
+    try testing.expect(std.mem.count(u8, svg_buf[0..keyboard_len], "class=\"keyboard-key black-key black-key-overlay is-selected\"") >= 1);
+    try testing.expect(std.mem.count(u8, svg_buf[0..keyboard_len], "class=\"keyboard-key black-key black-key-overlay is-echo\"") >= 1);
 
     const piano_notes = [_]u8{ 43, 52, 60, 64 };
     const piano_staff_len = lmt_svg_piano_staff(@ptrCast(&piano_notes), piano_notes.len, 0, c.LMT_KEY_MAJOR, @ptrCast(&svg_buf), @intCast(svg_buf.len));
@@ -343,7 +345,7 @@ test "c abi raster generators" {
     try testing.expectEqual(@as(u32, key_staff_rgba.len), lmt_bitmap_key_staff_rgba(0, c.LMT_KEY_MAJOR, 960, 240, @ptrCast(&key_staff_rgba), @intCast(key_staff_rgba.len)));
     try testing.expect(std.mem.indexOfNone(u8, &key_staff_rgba, &[_]u8{255}) != null);
 
-    const keyboard_notes = [_]u8{ 60, 64, 67 };
+    const keyboard_notes = [_]u8{ 61, 63, 64, 66, 68, 69, 71, 73 };
     var keyboard_rgba: [840 * 220 * 4]u8 = [_]u8{0} ** (840 * 220 * 4);
     try testing.expectEqual(@as(u32, keyboard_rgba.len), lmt_bitmap_keyboard_rgba(@ptrCast(&keyboard_notes), keyboard_notes.len, 48, 72, 840, 220, @ptrCast(&keyboard_rgba), @intCast(keyboard_rgba.len)));
     try testing.expect(std.mem.indexOfNone(u8, &keyboard_rgba, &[_]u8{255}) != null);

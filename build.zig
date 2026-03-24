@@ -104,6 +104,7 @@ const gallery_export_symbols = [_][]const u8{
     "lmt_svg_key_staff",
     "lmt_svg_keyboard",
     "lmt_svg_piano_staff",
+    "lmt_bitmap_keyboard_rgba",
 };
 
 const render_compare_export_symbols = [_][]const u8{
@@ -352,7 +353,7 @@ pub fn build(b: *std.Build) void {
         .optimize = .ReleaseSmall,
     });
     const wasm_gallery_build_options = b.addOptions();
-    wasm_gallery_build_options.addOption(bool, "enable_raster_backend", false);
+    wasm_gallery_build_options.addOption(bool, "enable_raster_backend", true);
     wasm_gallery_build_options.addOption(bool, "enable_harmonious_generic_fallbacks", false);
     wasm_gallery_mod.addOptions("build_options", wasm_gallery_build_options);
     wasm_gallery_mod.export_symbol_names = &gallery_export_symbols;

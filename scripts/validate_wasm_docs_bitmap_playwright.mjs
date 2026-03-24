@@ -27,6 +27,18 @@ const expectedBitmapSizes = {
   lmt_svg_piano_staff: { width: 840, height: 869 },
   lmt_svg_keyboard: { width: 840, height: 220 },
 };
+const keyboardSeamSample = {
+  notes: [61, 63, 64, 66, 68, 69, 71, 73],
+  low: 48,
+  high: 84,
+  marginX: 16,
+  marginY: 16,
+  whiteKeyWidth: 24,
+  whiteKeyHeight: 124,
+  blackKeyWidth: 14,
+  blackKeyHeight: 76,
+  maxBlackEchoCenterSeamDelta: 18,
+};
 
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -185,7 +197,79 @@ async function main() {
         throw new Error(`qa atlas bitmap diff failures: ${failures.join(", ")}`);
       }
 
-      console.log(JSON.stringify({ maxDrift, minInkPixels, summary }, null, 2));
+      const keyboardSeamCheck = await page.evaluate((sample) => {
+        const isBlackKey = (midi) => [1, 3, 6, 8, 10].includes(midi % 12);
+        const whiteIndexBefore = (rangeLow, midiNote) => {
+          let total = 0;
+          for (let midi = rangeLow; midi < midiNote; midi += 1) {
+            if (!isBlackKey(midi)) total += 1;
+          }
+          return total;
+        };
+        const countWhiteKeys = (rangeLow, rangeHigh) => {
+          let total = 0;
+          for (let midi = rangeLow; midi <= rangeHigh; midi += 1) {
+            if (!isBlackKey(midi)) total += 1;
+          }
+          return total;
+        };
+
+        const card = document.querySelector('[data-method="lmt_svg_keyboard"]');
+        const image = card?.querySelector("img");
+        if (!(image instanceof HTMLImageElement) || !image.complete || image.naturalWidth <= 0 || image.naturalHeight <= 0) {
+          return { ok: false, reason: "keyboard bitmap row missing image" };
+        }
+
+        const selectedPcs = new Set(sample.notes.map((note) => note % 12));
+        const sourceWidth = sample.marginX * 2 + countWhiteKeys(sample.low, sample.high) * sample.whiteKeyWidth;
+        const sourceHeight = sample.marginY * 2 + sample.whiteKeyHeight;
+        const scaleX = image.naturalWidth / sourceWidth;
+        const scaleY = image.naturalHeight / sourceHeight;
+
+        const canvas = document.createElement("canvas");
+        canvas.width = image.naturalWidth;
+        canvas.height = image.naturalHeight;
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+        if (!ctx) return { ok: false, reason: "missing 2d context" };
+        ctx.drawImage(image, 0, 0);
+
+        const samples = [];
+        for (let midi = sample.low; midi <= sample.high; midi += 1) {
+          if (!isBlackKey(midi) || !selectedPcs.has(midi % 12)) continue;
+          const keyX = sample.marginX + whiteIndexBefore(sample.low, midi) * sample.whiteKeyWidth - sample.blackKeyWidth / 2;
+          const sampleX = Math.max(1, Math.min(canvas.width - 2, Math.round((keyX + sample.blackKeyWidth / 2) * scaleX)));
+          const sampleYs = [
+            sample.marginY + sample.blackKeyHeight * 0.42,
+            sample.marginY + sample.blackKeyHeight * 0.52,
+            sample.marginY + sample.blackKeyHeight * 0.62,
+          ].map((value) => Math.max(0, Math.min(canvas.height - 1, Math.round(value * scaleY))));
+          const seamDeltas = sampleYs.map((sampleY) => {
+            const center = ctx.getImageData(sampleX, sampleY, 1, 1).data;
+            const left = ctx.getImageData(sampleX - 1, sampleY, 1, 1).data;
+            const right = ctx.getImageData(sampleX + 1, sampleY, 1, 1).data;
+            const centerLightness = (center[0] + center[1] + center[2]) / 3;
+            const neighborLightness = ((left[0] + left[1] + left[2]) + (right[0] + right[1] + right[2])) / 6;
+            return centerLightness - neighborLightness;
+          });
+          samples.push({
+            midi,
+            maxCenterSeamDelta: Math.max(...seamDeltas),
+          });
+        }
+
+        if (samples.length === 0) return { ok: false, reason: "no black-key seam probes generated" };
+        const maxBlackEchoCenterSeamDelta = Math.max(...samples.map((one) => one.maxCenterSeamDelta));
+        return {
+          ok: maxBlackEchoCenterSeamDelta < sample.maxBlackEchoCenterSeamDelta,
+          maxBlackEchoCenterSeamDelta,
+          samples,
+        };
+      }, keyboardSeamSample);
+      if (!keyboardSeamCheck?.ok) {
+        throw new Error(`qa atlas keyboard seam check failed: ${JSON.stringify(keyboardSeamCheck)}`);
+      }
+
+      console.log(JSON.stringify({ maxDrift, minInkPixels, keyboardSeamCheck, summary }, null, 2));
     } finally {
       await browser.close();
     }

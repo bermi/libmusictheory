@@ -108,6 +108,7 @@ const REQUIRED_EXPORTS_BY_PROFILE = {
     'lmt_svg_key_staff',
     'lmt_svg_keyboard',
     'lmt_svg_piano_staff',
+    'lmt_bitmap_keyboard_rgba',
   ],
   scaled_render_parity: [
     'memory',
