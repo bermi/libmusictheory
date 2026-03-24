@@ -384,6 +384,137 @@ pub fn horizontalPathData(text: []const u8, buf: []u8) ?HorizontalPath {
     };
 }
 
+pub const BlockTextAnchor = enum {
+    left,
+    center,
+    right,
+};
+
+const BlockGlyph = struct {
+    ch: u8,
+    width: u8,
+    rows: [7]u8,
+};
+
+const BLOCK_GLYPHS = [_]BlockGlyph{
+    .{ .ch = ' ', .width = 3, .rows = .{ 0, 0, 0, 0, 0, 0, 0 } },
+    .{ .ch = '-', .width = 3, .rows = .{ 0, 0, 0b111, 0, 0, 0, 0 } },
+    .{ .ch = '/', .width = 5, .rows = .{ 0b00001, 0b00010, 0b00100, 0b00100, 0b01000, 0b10000, 0 } },
+    .{ .ch = '[', .width = 3, .rows = .{ 0b111, 0b100, 0b100, 0b100, 0b100, 0b100, 0b111 } },
+    .{ .ch = ']', .width = 3, .rows = .{ 0b111, 0b001, 0b001, 0b001, 0b001, 0b001, 0b111 } },
+    .{ .ch = '.', .width = 1, .rows = .{ 0, 0, 0, 0, 0, 0, 0b1 } },
+    .{ .ch = '0', .width = 5, .rows = .{ 0b01110, 0b10001, 0b10011, 0b10101, 0b11001, 0b10001, 0b01110 } },
+    .{ .ch = '1', .width = 5, .rows = .{ 0b00100, 0b01100, 0b00100, 0b00100, 0b00100, 0b00100, 0b01110 } },
+    .{ .ch = '2', .width = 5, .rows = .{ 0b01110, 0b10001, 0b00001, 0b00010, 0b00100, 0b01000, 0b11111 } },
+    .{ .ch = '3', .width = 5, .rows = .{ 0b11110, 0b00001, 0b00001, 0b01110, 0b00001, 0b00001, 0b11110 } },
+    .{ .ch = '4', .width = 5, .rows = .{ 0b00010, 0b00110, 0b01010, 0b10010, 0b11111, 0b00010, 0b00010 } },
+    .{ .ch = '5', .width = 5, .rows = .{ 0b11111, 0b10000, 0b10000, 0b11110, 0b00001, 0b00001, 0b11110 } },
+    .{ .ch = '6', .width = 5, .rows = .{ 0b01110, 0b10000, 0b10000, 0b11110, 0b10001, 0b10001, 0b01110 } },
+    .{ .ch = '7', .width = 5, .rows = .{ 0b11111, 0b00001, 0b00010, 0b00100, 0b01000, 0b01000, 0b01000 } },
+    .{ .ch = '8', .width = 5, .rows = .{ 0b01110, 0b10001, 0b10001, 0b01110, 0b10001, 0b10001, 0b01110 } },
+    .{ .ch = '9', .width = 5, .rows = .{ 0b01110, 0b10001, 0b10001, 0b01111, 0b00001, 0b00001, 0b01110 } },
+    .{ .ch = 'A', .width = 5, .rows = .{ 0b01110, 0b10001, 0b10001, 0b11111, 0b10001, 0b10001, 0b10001 } },
+    .{ .ch = 'B', .width = 5, .rows = .{ 0b11110, 0b10001, 0b10001, 0b11110, 0b10001, 0b10001, 0b11110 } },
+    .{ .ch = 'C', .width = 5, .rows = .{ 0b01111, 0b10000, 0b10000, 0b10000, 0b10000, 0b10000, 0b01111 } },
+    .{ .ch = 'D', .width = 5, .rows = .{ 0b11110, 0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b11110 } },
+    .{ .ch = 'E', .width = 5, .rows = .{ 0b11111, 0b10000, 0b10000, 0b11110, 0b10000, 0b10000, 0b11111 } },
+    .{ .ch = 'F', .width = 5, .rows = .{ 0b11111, 0b10000, 0b10000, 0b11110, 0b10000, 0b10000, 0b10000 } },
+    .{ .ch = 'G', .width = 5, .rows = .{ 0b01111, 0b10000, 0b10000, 0b10111, 0b10001, 0b10001, 0b01110 } },
+    .{ .ch = 'H', .width = 5, .rows = .{ 0b10001, 0b10001, 0b10001, 0b11111, 0b10001, 0b10001, 0b10001 } },
+    .{ .ch = 'I', .width = 5, .rows = .{ 0b11111, 0b00100, 0b00100, 0b00100, 0b00100, 0b00100, 0b11111 } },
+    .{ .ch = 'J', .width = 5, .rows = .{ 0b00001, 0b00001, 0b00001, 0b00001, 0b10001, 0b10001, 0b01110 } },
+    .{ .ch = 'K', .width = 5, .rows = .{ 0b10001, 0b10010, 0b10100, 0b11000, 0b10100, 0b10010, 0b10001 } },
+    .{ .ch = 'L', .width = 5, .rows = .{ 0b10000, 0b10000, 0b10000, 0b10000, 0b10000, 0b10000, 0b11111 } },
+    .{ .ch = 'M', .width = 5, .rows = .{ 0b10001, 0b11011, 0b10101, 0b10101, 0b10001, 0b10001, 0b10001 } },
+    .{ .ch = 'N', .width = 5, .rows = .{ 0b10001, 0b11001, 0b10101, 0b10011, 0b10001, 0b10001, 0b10001 } },
+    .{ .ch = 'O', .width = 5, .rows = .{ 0b01110, 0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b01110 } },
+    .{ .ch = 'P', .width = 5, .rows = .{ 0b11110, 0b10001, 0b10001, 0b11110, 0b10000, 0b10000, 0b10000 } },
+    .{ .ch = 'Q', .width = 5, .rows = .{ 0b01110, 0b10001, 0b10001, 0b10001, 0b10101, 0b10010, 0b01101 } },
+    .{ .ch = 'R', .width = 5, .rows = .{ 0b11110, 0b10001, 0b10001, 0b11110, 0b10100, 0b10010, 0b10001 } },
+    .{ .ch = 'S', .width = 5, .rows = .{ 0b01111, 0b10000, 0b10000, 0b01110, 0b00001, 0b00001, 0b11110 } },
+    .{ .ch = 'T', .width = 5, .rows = .{ 0b11111, 0b00100, 0b00100, 0b00100, 0b00100, 0b00100, 0b00100 } },
+    .{ .ch = 'U', .width = 5, .rows = .{ 0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b01110 } },
+    .{ .ch = 'V', .width = 5, .rows = .{ 0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b01010, 0b00100 } },
+    .{ .ch = 'W', .width = 5, .rows = .{ 0b10001, 0b10001, 0b10001, 0b10101, 0b10101, 0b10101, 0b01010 } },
+    .{ .ch = 'X', .width = 5, .rows = .{ 0b10001, 0b10001, 0b01010, 0b00100, 0b01010, 0b10001, 0b10001 } },
+    .{ .ch = 'Y', .width = 5, .rows = .{ 0b10001, 0b10001, 0b01010, 0b00100, 0b00100, 0b00100, 0b00100 } },
+    .{ .ch = 'Z', .width = 5, .rows = .{ 0b11111, 0b00001, 0b00010, 0b00100, 0b01000, 0b10000, 0b11111 } },
+};
+
+fn findBlockGlyph(ch: u8) BlockGlyph {
+    for (BLOCK_GLYPHS) |glyph| {
+        if (glyph.ch == ch) return glyph;
+    }
+    return BLOCK_GLYPHS[0];
+}
+
+pub fn blockTextWidth(text: []const u8, cell: f64, tracking: f64) f64 {
+    if (text.len == 0) return 0.0;
+
+    var width: f64 = 0.0;
+    for (text, 0..) |raw_ch, index| {
+        const glyph = findBlockGlyph(std.ascii.toUpper(raw_ch));
+        width += @as(f64, @floatFromInt(glyph.width)) * cell;
+        if (index + 1 < text.len) width += tracking;
+    }
+    return width;
+}
+
+pub fn writeBlockText(
+    writer: anytype,
+    text: []const u8,
+    x: f64,
+    y: f64,
+    cell: f64,
+    tracking: f64,
+    fill: []const u8,
+    anchor: BlockTextAnchor,
+    class_name: ?[]const u8,
+) !void {
+    if (text.len == 0) return;
+
+    const total_width = blockTextWidth(text, cell, tracking);
+    var start_x = x;
+    switch (anchor) {
+        .left => {},
+        .center => start_x -= total_width / 2.0,
+        .right => start_x -= total_width,
+    }
+
+    if (class_name) |class| {
+        try writer.print("<g class=\"{s}\" data-text=\"{s}\">\n", .{ class, text });
+    } else {
+        try writer.print("<g data-text=\"{s}\">\n", .{text});
+    }
+
+    var cursor_x = start_x;
+    for (text, 0..) |raw_ch, index| {
+        const glyph = findBlockGlyph(std.ascii.toUpper(raw_ch));
+        var row: usize = 0;
+        while (row < glyph.rows.len) : (row += 1) {
+            const bits = glyph.rows[row];
+            var col: u8 = 0;
+            while (col < glyph.width) : (col += 1) {
+                const shift = glyph.width - 1 - col;
+                if ((bits & (@as(u8, 1) << @as(u3, @intCast(shift)))) == 0) continue;
+                try writer.print(
+                    "<rect x=\"{d:.3}\" y=\"{d:.3}\" width=\"{d:.3}\" height=\"{d:.3}\" fill=\"{s}\" />\n",
+                    .{
+                        cursor_x + @as(f64, @floatFromInt(col)) * cell,
+                        y + @as(f64, @floatFromInt(row)) * cell,
+                        cell,
+                        cell,
+                        fill,
+                    },
+                );
+            }
+        }
+        cursor_x += @as(f64, @floatFromInt(glyph.width)) * cell;
+        if (index + 1 < text.len) cursor_x += tracking;
+    }
+    try writer.writeAll("</g>\n");
+}
+
 pub fn centerSquarePathData(glyph: []const u8) ?[]const u8 {
     return findCenterTemplate(glyph);
 }

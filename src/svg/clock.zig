@@ -106,7 +106,7 @@ pub fn renderOPTC(set: pcs.PitchClassSet, prime_label: []const u8, buf: []u8) []
             .{ label_x, label_y, scale, horizontal.d },
         ) catch unreachable;
     } else {
-        w.print("<text x=\"50\" y=\"55\" text-anchor=\"middle\" fill=\"#111\" font-size=\"16\">{s}</text>\n", .{prime_label}) catch unreachable;
+        text_misc.writeBlockText(w, prime_label, 50.0, 43.0, 1.7, 0.45, "#111", .center, "optc-fallback-label") catch unreachable;
     }
     w.writeAll("</svg>\n") catch unreachable;
 
@@ -149,26 +149,26 @@ pub fn renderOpticKGroup(set: pcs.PitchClassSet, buf: []u8) []u8 {
         \\.optic-k-link{fill:none;stroke:#8d7f74;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
         \\.optic-k-ring{fill:none;stroke:#111;stroke-width:1.75}
         \\.optic-k-node{stroke-width:2.8}
-        \\.optic-k-title{font-size:12px}
-        \\.optic-k-chip{font-size:10px}
-        \\.optic-k-label{font-size:11px}
-        \\.optic-k-set{font-size:11px}
         \\
     ) catch unreachable;
-    w.writeAll("<rect class=\"optic-k-bg\" x=\"0\" y=\"0\" width=\"280\" height=\"140\" />\n") catch unreachable;
-    w.writeAll("<rect class=\"optic-k-card\" x=\"8\" y=\"8\" width=\"120\" height=\"124\" rx=\"18\" />\n") catch unreachable;
-    w.writeAll("<rect class=\"optic-k-card\" x=\"152\" y=\"8\" width=\"120\" height=\"124\" rx=\"18\" />\n") catch unreachable;
-    w.writeAll("<path class=\"optic-k-link\" d=\"M118 57 C138 46, 142 46, 162 57 M118 83 C138 94, 142 94, 162 83\" />\n") catch unreachable;
-    w.print("<text class=\"label-sans optic-k-title inverse-outline\" x=\"140\" y=\"18\" text-anchor=\"middle\" fill=\"#24323d\">OPTIC/K</text>\n", .{}) catch unreachable;
-    w.print("<text class=\"label-sans optic-k-chip inverse-outline\" x=\"140\" y=\"71\" text-anchor=\"middle\" fill=\"#6b5f55\">{s}</text>\n", .{group_state}) catch unreachable;
+    w.writeAll("<rect class=\"optic-k-bg\" x=\"0\" y=\"0\" width=\"280\" height=\"140\" fill=\"white\" />\n") catch unreachable;
+    w.writeAll("<rect class=\"optic-k-card\" x=\"8\" y=\"8\" width=\"120\" height=\"124\" rx=\"18\" fill=\"rgba(255,255,255,0.94)\" stroke=\"rgba(17,24,39,0.08)\" stroke-width=\"1.2\" />\n") catch unreachable;
+    w.writeAll("<rect class=\"optic-k-card\" x=\"152\" y=\"8\" width=\"120\" height=\"124\" rx=\"18\" fill=\"rgba(255,255,255,0.94)\" stroke=\"rgba(17,24,39,0.08)\" stroke-width=\"1.2\" />\n") catch unreachable;
+    w.writeAll("<path class=\"optic-k-link\" d=\"M118 57 C138 46, 142 46, 162 57 M118 83 C138 94, 142 94, 162 83\" fill=\"none\" stroke=\"#8d7f74\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />\n") catch unreachable;
+    text_misc.writeBlockText(w, "OPTIC/K", 140.0, 12.0, 1.55, 0.55, "#24323d", .center, "optic-k-title") catch unreachable;
+    text_misc.writeBlockText(w, upperOpticKState(group_state), 140.0, 64.0, 0.95, 0.45, "#6b5f55", .center, "optic-k-chip") catch unreachable;
 
     writeOpticKWheel(w, left_set, 68.0, 70.0, 28.0, 7.0, 13.0);
     writeOpticKWheel(w, right_set, 212.0, 70.0, 28.0, 7.0, 13.0);
 
-    w.print("<text class=\"label-sans optic-k-label inverse-outline\" x=\"68\" y=\"104\" text-anchor=\"middle\" fill=\"#111\">{s}</text>\n", .{left_forte_label}) catch unreachable;
-    w.print("<text class=\"label-mono optic-k-set inverse-outline\" x=\"68\" y=\"118\" text-anchor=\"middle\" fill=\"#475569\">[{s}]</text>\n", .{left_set_label}) catch unreachable;
-    w.print("<text class=\"label-sans optic-k-label inverse-outline\" x=\"212\" y=\"104\" text-anchor=\"middle\" fill=\"#111\">{s}</text>\n", .{right_forte_label}) catch unreachable;
-    w.print("<text class=\"label-mono optic-k-set inverse-outline\" x=\"212\" y=\"118\" text-anchor=\"middle\" fill=\"#475569\">[{s}]</text>\n", .{right_set_label}) catch unreachable;
+    text_misc.writeBlockText(w, left_forte_label, 68.0, 100.0, 1.25, 0.42, "#111", .center, "optic-k-label") catch unreachable;
+    var left_set_display_buf: [18]u8 = undefined;
+    const left_set_display = std.fmt.bufPrint(&left_set_display_buf, "[{s}]", .{left_set_label}) catch unreachable;
+    text_misc.writeBlockText(w, left_set_display, 68.0, 114.0, 0.95, 0.36, "#475569", .center, "optic-k-set") catch unreachable;
+    text_misc.writeBlockText(w, right_forte_label, 212.0, 100.0, 1.25, 0.42, "#111", .center, "optic-k-label") catch unreachable;
+    var right_set_display_buf: [18]u8 = undefined;
+    const right_set_display = std.fmt.bufPrint(&right_set_display_buf, "[{s}]", .{right_set_label}) catch unreachable;
+    text_misc.writeBlockText(w, right_set_display, 212.0, 114.0, 0.95, 0.36, "#475569", .center, "optic-k-set") catch unreachable;
     w.writeAll("</svg>\n") catch unreachable;
 
     return buf[0..stream.pos];
@@ -191,7 +191,7 @@ pub fn generateAllOPTCFiles(dir: std.fs.Dir) !void {
 fn writeOpticKWheel(w: anytype, set: pcs.PitchClassSet, center_x: f64, center_y: f64, radius: f64, node_radius: f64, ring_radius: f64) void {
     const cluster_info = cluster.getClusters(set);
     w.print(
-        "<circle class=\"optic-k-ring\" cx=\"{d:.2}\" cy=\"{d:.2}\" r=\"{d:.2}\" />\n",
+        "<circle class=\"optic-k-ring\" cx=\"{d:.2}\" cy=\"{d:.2}\" r=\"{d:.2}\" fill=\"none\" stroke=\"#111\" stroke-width=\"1.75\" />\n",
         .{ center_x, center_y, ring_radius },
     ) catch unreachable;
 
@@ -210,7 +210,7 @@ fn writeOpticKWheel(w: anytype, set: pcs.PitchClassSet, center_x: f64, center_y:
             OPC_FILL_COLORS[pc];
 
         w.print(
-            "<circle class=\"optic-k-node\" cx=\"{d:.2}\" cy=\"{d:.2}\" r=\"{d:.2}\" stroke=\"{s}\" fill=\"{s}\" />\n",
+            "<circle class=\"optic-k-node\" cx=\"{d:.2}\" cy=\"{d:.2}\" r=\"{d:.2}\" stroke=\"{s}\" stroke-width=\"2.8\" fill=\"{s}\" />\n",
             .{ p.x, p.y, node_radius, stroke, fill },
         ) catch unreachable;
     }
@@ -232,4 +232,9 @@ fn forteLabel(number: forte.ForteNumber, out: *[16]u8) []u8 {
         return std.fmt.bufPrint(out, "{d}-Z{d}", .{ number.cardinality, number.ordinal }) catch unreachable;
     }
     return std.fmt.bufPrint(out, "{d}-{d}", .{ number.cardinality, number.ordinal }) catch unreachable;
+}
+
+fn upperOpticKState(group_state: []const u8) []const u8 {
+    if (std.mem.eql(u8, group_state, "self-complementary")) return "SELF-COMPLEMENTARY";
+    return "COMPLEMENT-PAIRED";
 }

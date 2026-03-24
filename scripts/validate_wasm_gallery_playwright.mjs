@@ -19,6 +19,25 @@ import {
   waitForServer,
 } from "./lib/wasm_gallery_playwright_common.mjs";
 
+const maxPreviewDrift = Number.parseFloat(process.env.LMT_WASM_GALLERY_PREVIEW_MAX_DRIFT || "0.07");
+const criticalPreviewHosts = new Set([
+  "midi-clock",
+  "midi-optic-k",
+  "midi-evenness",
+  "set-clock",
+  "set-optic-k",
+  "set-evenness",
+]);
+
+async function captureHostScreenshots(page, hostIds) {
+  const out = {};
+  for (const hostId of hostIds) {
+    const preview = page.locator(`#${hostId} :is(svg,img)`).first();
+    out[hostId] = (await preview.screenshot({ type: "png" })).toString("base64");
+  }
+  return out;
+}
+
 async function main() {
   const indexPath = path.join(galleryDir, "index.html");
   if (!fs.existsSync(indexPath)) {
@@ -55,12 +74,34 @@ async function main() {
       await page.waitForSelector("#shuffle-scenes", { timeout: 30000 });
       const svgReady = await waitForGalleryReady(page, "svg");
       await page.waitForFunction(() => window.__lmtGallerySummary?.scenes?.midi?.inputCount >= 2, { timeout: 30000 });
+      const previewDiffHostIds = [
+        "midi-clock",
+        "midi-optic-k",
+        "midi-evenness",
+        "midi-keyboard",
+        "midi-staff",
+        "set-clock",
+        "set-optic-k",
+        "set-evenness",
+        "key-clock",
+        "key-staff",
+        "key-keyboard",
+        "chord-clock",
+        "chord-staff",
+        "progression-clock",
+        "compare-left-clock",
+        "compare-overlap-clock",
+        "compare-right-clock",
+        "fret-svg",
+      ];
 
       await driveFakeMidiTriad(page);
       const midiActiveSvg = await waitForMidiSceneActive(page, "svg");
+      const svgPreviewScreenshots = await captureHostScreenshots(page, previewDiffHostIds);
       await page.click("#preview-mode-bitmap");
       const bitmapReady = await waitForGalleryReady(page, "bitmap");
       const midiActive = await waitForMidiSceneActive(page, "bitmap");
+      const bitmapPreviewScreenshots = await captureHostScreenshots(page, previewDiffHostIds);
       const midiActiveStaffFeatures = midiActive.summary?.midiStaffFeatures ?? midiActive.midiStaffFeatures;
       const midiActiveOpticKFeatures = midiActive.summary?.midiOpticKFeatures ?? midiActive.midiOpticKFeatures;
       const midiActiveEvennessFeatures = midiActive.summary?.midiEvennessFeatures ?? midiActive.midiEvennessFeatures;
@@ -84,6 +125,68 @@ async function main() {
       const previewModeFailures = previewModeDrift.filter((one) => one.widthDelta > 6 || one.heightDelta > 6);
       if (previewModeFailures.length > 0) {
         throw new Error(`preview mode size drift too large: ${JSON.stringify(previewModeFailures)}`);
+      }
+      const previewVisualDiffs = await page.evaluate(({ svgShots, bitmapShots }) => {
+        const dataUrlToImage = async (src) => {
+          const image = new Image();
+          image.decoding = "sync";
+          await new Promise((resolve, reject) => {
+            image.onload = () => resolve();
+            image.onerror = () => reject(new Error(`failed to load raster image: ${src.slice(0, 96)}`));
+            image.src = src;
+          });
+          return image;
+        };
+
+        const compareRgba = (candidate, reference) => {
+          const len = Math.min(candidate.length, reference.length);
+          let totalDiff = 0;
+          let changedPixels = 0;
+          for (let i = 0; i < len; i += 4) {
+            let pixelChanged = false;
+            for (let channel = 0; channel < 4; channel += 1) {
+              const diff = Math.abs(candidate[i + channel] - reference[i + channel]);
+              totalDiff += diff;
+              if (diff > 8) pixelChanged = true;
+            }
+            if (pixelChanged) changedPixels += 1;
+          }
+          return {
+            drift: len > 0 ? totalDiff / (len * 255) : 1,
+            changedPixels,
+          };
+        };
+
+        const hostIds = Object.keys(svgShots).filter((id) => svgShots[id] && bitmapShots[id]);
+        return Promise.all(hostIds.map(async (id) => {
+          const svgImage = await dataUrlToImage(`data:image/png;base64,${svgShots[id]}`);
+          const bitmapImage = await dataUrlToImage(`data:image/png;base64,${bitmapShots[id]}`);
+          const width = Math.min(svgImage.naturalWidth, bitmapImage.naturalWidth);
+          const height = Math.min(svgImage.naturalHeight, bitmapImage.naturalHeight);
+          if (width <= 0 || height <= 0) {
+            return { host: id, error: "invalid host screenshot dimensions" };
+          }
+          const referenceCanvas = document.createElement("canvas");
+          referenceCanvas.width = width;
+          referenceCanvas.height = height;
+          const referenceCtx = referenceCanvas.getContext("2d", { willReadFrequently: true });
+          referenceCtx.drawImage(svgImage, 0, 0, width, height);
+          const reference = referenceCtx.getImageData(0, 0, width, height).data;
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d", { willReadFrequently: true });
+          ctx.drawImage(bitmapImage, 0, 0, width, height);
+          const candidate = ctx.getImageData(0, 0, width, height).data;
+          const diff = compareRgba(candidate, reference);
+          return { host: id, width, height, ...diff };
+        }));
+      }, { svgShots: svgPreviewScreenshots, bitmapShots: bitmapPreviewScreenshots });
+      const previewVisualFailures = previewVisualDiffs.filter((one) =>
+        criticalPreviewHosts.has(one.host)
+          && (one.error || !Number.isFinite(one.drift) || one.drift > maxPreviewDrift));
+      if (previewVisualFailures.length > 0) {
+        throw new Error(`preview mode visual drift too large: ${JSON.stringify(previewVisualFailures)}`);
       }
       if (midiActiveStaffFeatures?.staffMode !== "grand" || (midiActiveStaffFeatures?.clefCount || 0) < 2) {
         throw new Error(`live midi scene did not render a grand staff: ${JSON.stringify(midiActiveStaffFeatures)}`);
@@ -268,6 +371,8 @@ async function main() {
             bitmapPreviewKinds: bitmapReady.previewKinds,
             svgReadyAgainPreviewMode: svgReadyAgain.summary.previewMode,
             previewModeDrift,
+            previewVisualDiffs,
+            maxPreviewDrift,
             midiActiveSvg,
             midiActive,
             contextChanged,

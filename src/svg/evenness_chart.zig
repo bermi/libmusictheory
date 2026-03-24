@@ -5,6 +5,7 @@ const set_class = @import("../set_class.zig");
 const evenness = @import("../evenness.zig");
 const cluster = @import("../cluster.zig");
 const svg_quality = @import("quality.zig");
+const text_misc = @import("text_misc.zig");
 
 pub const MAX_DOTS: usize = set_class.SET_CLASSES.len;
 
@@ -121,8 +122,6 @@ fn renderEvennessFieldInternal(highlight_set: ?pcs.PitchClassSet, buf: []u8) []u
         \\.ring{fill:none;stroke:#8f949d;stroke-width:2;stroke-linecap:round}
         \\.dot{stroke:white;stroke-width:1.25}
         \\.dot-highlight{fill:none;stroke:#18242f;stroke-width:3.25;vector-effect:non-scaling-stroke}
-        \\.highlight-label{font-size:12px}
-        \\.highlight-chip{font-size:10px}
         \\
     ) catch unreachable;
     w.writeAll("<rect x=\"0\" y=\"0\" width=\"500\" height=\"650\" fill=\"white\" />\n") catch unreachable;
@@ -178,13 +177,17 @@ fn renderEvennessFieldInternal(highlight_set: ?pcs.PitchClassSet, buf: []u8) []u
 
             w.print("<circle class=\"dot-highlight\" cx=\"{d:.2}\" cy=\"{d:.2}\" r=\"15.5\" />\n", .{ highlight_x, highlight_y }) catch unreachable;
             w.print("<circle class=\"dot-highlight\" cx=\"{d:.2}\" cy=\"{d:.2}\" r=\"21.5\" opacity=\"0.28\" />\n", .{ highlight_x, highlight_y }) catch unreachable;
-            w.print("<rect x=\"20\" y=\"20\" width=\"124\" height=\"44\" rx=\"16\" fill=\"rgba(255,255,255,0.92)\" stroke=\"rgba(24,36,47,0.12)\" stroke-width=\"1.1\" />\n", .{}) catch unreachable;
-            w.print("<text class=\"label-sans highlight-label inverse-outline\" x=\"32\" y=\"39\" fill=\"#18242f\">focus {s}</text>\n", .{label}) catch unreachable;
-            w.print("<text class=\"label-mono highlight-chip inverse-outline\" x=\"32\" y=\"55\" fill=\"{s}\">[{s}] · evenness {d:.4}</text>\n", .{
-                chip_fill,
+            w.print("<rect x=\"20\" y=\"20\" width=\"160\" height=\"48\" rx=\"16\" fill=\"rgba(255,255,255,0.92)\" stroke=\"rgba(24,36,47,0.12)\" stroke-width=\"1.1\" />\n", .{}) catch unreachable;
+            var focus_text_buf: [24]u8 = undefined;
+            const focus_text = std.fmt.bufPrint(&focus_text_buf, "FOCUS {s}", .{label}) catch unreachable;
+            text_misc.writeBlockText(w, focus_text, 32.0, 31.0, 1.25, 0.45, "#18242f", .left, "highlight-label") catch unreachable;
+
+            var chip_text_buf: [48]u8 = undefined;
+            const chip_text = std.fmt.bufPrint(&chip_text_buf, "[{s}] EVEN {d:.4}", .{
                 set_label,
                 dot.evenness_distance,
             }) catch unreachable;
+            text_misc.writeBlockText(w, chip_text, 32.0, 47.0, 0.9, 0.32, chip_fill, .left, "highlight-chip") catch unreachable;
         }
     }
 

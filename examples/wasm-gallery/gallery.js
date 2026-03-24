@@ -441,28 +441,51 @@ function svgString(arena, renderFn, ...args) {
   return readCString(bufPtr);
 }
 
-function rgbaToPngDataUrl(rgbaBytes, width, height) {
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) {
-    throw new Error("failed to acquire 2d context for keyboard bitmap preview");
+function rgbaToPngDataUrl(rgbaBytes, width, height, cropBox = null, outputWidth = width, outputHeight = height) {
+  const sourceCanvas = document.createElement("canvas");
+  sourceCanvas.width = width;
+  sourceCanvas.height = height;
+  const sourceCtx = sourceCanvas.getContext("2d");
+  if (!sourceCtx) {
+    throw new Error("failed to acquire 2d context for bitmap preview");
   }
   const imageData = new ImageData(new Uint8ClampedArray(rgbaBytes), width, height);
-  ctx.putImageData(imageData, 0, 0);
-  return canvas.toDataURL("image/png");
+  sourceCtx.putImageData(imageData, 0, 0);
+
+  if (!cropBox) {
+    return sourceCanvas.toDataURL("image/png");
+  }
+
+  const outputCanvas = document.createElement("canvas");
+  outputCanvas.width = outputWidth;
+  outputCanvas.height = outputHeight;
+  const outputCtx = outputCanvas.getContext("2d");
+  if (!outputCtx) {
+    throw new Error("failed to acquire crop context for bitmap preview");
+  }
+  outputCtx.clearRect(0, 0, outputWidth, outputHeight);
+  outputCtx.drawImage(
+    sourceCanvas,
+    cropBox.x,
+    cropBox.y,
+    cropBox.width,
+    cropBox.height,
+    0,
+    0,
+    outputWidth,
+    outputHeight,
+  );
+  return outputCanvas.toDataURL("image/png");
 }
 
-function bitmapDataUrlFromCall(arena, width, height, renderFn, label) {
+function bitmapRgbaFromCall(arena, width, height, renderFn, label) {
   const rgbaBytes = width * height * 4;
   const rgbaPtr = arena.alloc(rgbaBytes, 1);
   const written = renderFn(rgbaPtr, rgbaBytes);
   if (written !== rgbaBytes) {
     throw new Error(`${label} wrote ${written}/${rgbaBytes}`);
   }
-  const rgbaCopy = new Uint8Array(memory.buffer.slice(rgbaPtr, rgbaPtr + rgbaBytes));
-  return rgbaToPngDataUrl(rgbaCopy, width, height);
+  return new Uint8Array(memory.buffer.slice(rgbaPtr, rgbaPtr + rgbaBytes));
 }
 
 function normalizeSvgPreview(host, options = {}) {
@@ -540,9 +563,13 @@ function measureSvgPreviewLayout(host, svgMarkup, options = {}) {
     throw new Error("missing svg preview during bitmap measurement");
   }
   const rect = svg.getBoundingClientRect();
+  const originalViewBox = parseViewBox(svg.dataset.originalViewBox || svg.getAttribute("viewBox"));
+  const previewViewBox = parseViewBox(svg.getAttribute("viewBox"));
   return {
     displayWidth: Math.max(1, Math.round(rect.width)),
     displayHeight: Math.max(1, Math.round(rect.height)),
+    originalViewBox,
+    previewViewBox,
   };
 }
 
@@ -558,6 +585,22 @@ function setBitmapPreview(host, dataUrl, pixelWidth, pixelHeight, alt, displayWi
   image.style.maxHeight = `${options.maxHeight || 320}px`;
 }
 
+function parseViewBox(raw) {
+  const parts = String(raw || "")
+    .trim()
+    .split(/[\s,]+/)
+    .map((value) => Number.parseFloat(value));
+  if (parts.length !== 4 || parts.some((value) => !Number.isFinite(value))) {
+    return null;
+  }
+  return {
+    minX: parts[0],
+    minY: parts[1],
+    width: parts[2],
+    height: parts[3],
+  };
+}
+
 function renderPreviewSvgOrBitmap(host, { svgMarkup, bitmapRenderer, alt, options = {} }) {
   if (!isBitmapPreviewMode()) {
     setSvgPreview(host, svgMarkup, options);
@@ -567,63 +610,78 @@ function renderPreviewSvgOrBitmap(host, { svgMarkup, bitmapRenderer, alt, option
   const deviceScale = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
   const pixelWidth = Math.max(1, Math.round(layout.displayWidth * deviceScale));
   const pixelHeight = Math.max(1, Math.round(layout.displayHeight * deviceScale));
-  const dataUrl = bitmapRenderer.render(pixelWidth, pixelHeight);
+  const widthScale = layout.originalViewBox && layout.previewViewBox
+    ? layout.originalViewBox.width / Math.max(layout.previewViewBox.width, 1)
+    : 1;
+  const heightScale = layout.originalViewBox && layout.previewViewBox
+    ? layout.originalViewBox.height / Math.max(layout.previewViewBox.height, 1)
+    : 1;
+  const sourcePixelWidth = Math.max(pixelWidth, Math.round(pixelWidth * widthScale));
+  const sourcePixelHeight = Math.max(pixelHeight, Math.round(pixelHeight * heightScale));
+  const cropBox = layout.originalViewBox && layout.previewViewBox ? {
+    x: ((layout.previewViewBox.minX - layout.originalViewBox.minX) / Math.max(layout.originalViewBox.width, 1)) * sourcePixelWidth,
+    y: ((layout.previewViewBox.minY - layout.originalViewBox.minY) / Math.max(layout.originalViewBox.height, 1)) * sourcePixelHeight,
+    width: (layout.previewViewBox.width / Math.max(layout.originalViewBox.width, 1)) * sourcePixelWidth,
+    height: (layout.previewViewBox.height / Math.max(layout.originalViewBox.height, 1)) * sourcePixelHeight,
+  } : null;
+  const sourceRgba = bitmapRenderer.renderRgba(sourcePixelWidth, sourcePixelHeight);
+  const dataUrl = rgbaToPngDataUrl(sourceRgba, sourcePixelWidth, sourcePixelHeight, cropBox, pixelWidth, pixelHeight);
   setBitmapPreview(host, dataUrl, pixelWidth, pixelHeight, alt, layout.displayWidth, layout.displayHeight, options);
 }
 
-function clockBitmapDataUrl(arena, setValue, width, height) {
-  return bitmapDataUrlFromCall(arena, width, height, (rgbaPtr, rgbaBytes) =>
+function clockBitmapRgba(arena, setValue, width, height) {
+  return bitmapRgbaFromCall(arena, width, height, (rgbaPtr, rgbaBytes) =>
     wasm.lmt_bitmap_clock_optc_rgba(setValue, width, height, rgbaPtr, rgbaBytes),
   "lmt_bitmap_clock_optc_rgba");
 }
 
-function opticKBitmapDataUrl(arena, setValue, width, height) {
-  return bitmapDataUrlFromCall(arena, width, height, (rgbaPtr, rgbaBytes) =>
+function opticKBitmapRgba(arena, setValue, width, height) {
+  return bitmapRgbaFromCall(arena, width, height, (rgbaPtr, rgbaBytes) =>
     wasm.lmt_bitmap_optic_k_group_rgba(setValue, width, height, rgbaPtr, rgbaBytes),
   "lmt_bitmap_optic_k_group_rgba");
 }
 
-function evennessChartBitmapDataUrl(arena, width, height) {
-  return bitmapDataUrlFromCall(arena, width, height, (rgbaPtr, rgbaBytes) =>
+function evennessChartBitmapRgba(arena, width, height) {
+  return bitmapRgbaFromCall(arena, width, height, (rgbaPtr, rgbaBytes) =>
     wasm.lmt_bitmap_evenness_chart_rgba(width, height, rgbaPtr, rgbaBytes),
   "lmt_bitmap_evenness_chart_rgba");
 }
 
-function evennessFieldBitmapDataUrl(arena, setValue, width, height) {
-  return bitmapDataUrlFromCall(arena, width, height, (rgbaPtr, rgbaBytes) =>
+function evennessFieldBitmapRgba(arena, setValue, width, height) {
+  return bitmapRgbaFromCall(arena, width, height, (rgbaPtr, rgbaBytes) =>
     wasm.lmt_bitmap_evenness_field_rgba(setValue, width, height, rgbaPtr, rgbaBytes),
   "lmt_bitmap_evenness_field_rgba");
 }
 
-function chordStaffBitmapDataUrl(arena, chordType, root, width, height) {
-  return bitmapDataUrlFromCall(arena, width, height, (rgbaPtr, rgbaBytes) =>
+function chordStaffBitmapRgba(arena, chordType, root, width, height) {
+  return bitmapRgbaFromCall(arena, width, height, (rgbaPtr, rgbaBytes) =>
     wasm.lmt_bitmap_chord_staff_rgba(chordType, root, width, height, rgbaPtr, rgbaBytes),
   "lmt_bitmap_chord_staff_rgba");
 }
 
-function keyStaffBitmapDataUrl(arena, tonic, quality, width, height) {
-  return bitmapDataUrlFromCall(arena, width, height, (rgbaPtr, rgbaBytes) =>
+function keyStaffBitmapRgba(arena, tonic, quality, width, height) {
+  return bitmapRgbaFromCall(arena, width, height, (rgbaPtr, rgbaBytes) =>
     wasm.lmt_bitmap_key_staff_rgba(tonic, quality, width, height, rgbaPtr, rgbaBytes),
   "lmt_bitmap_key_staff_rgba");
 }
 
-function keyboardBitmapDataUrl(arena, notes, rangeLow, rangeHigh, width, height) {
+function keyboardBitmapRgba(arena, notes, rangeLow, rangeHigh, width, height) {
   const notesPtr = writeU8Array(arena, notes);
-  return bitmapDataUrlFromCall(arena, width, height, (rgbaPtr, rgbaBytes) =>
+  return bitmapRgbaFromCall(arena, width, height, (rgbaPtr, rgbaBytes) =>
     wasm.lmt_bitmap_keyboard_rgba(notesPtr, notes.length, rangeLow, rangeHigh, width, height, rgbaPtr, rgbaBytes),
   "lmt_bitmap_keyboard_rgba");
 }
 
-function pianoStaffBitmapDataUrl(arena, notes, tonic, quality, width, height) {
+function pianoStaffBitmapRgba(arena, notes, tonic, quality, width, height) {
   const notesPtr = writeU8Array(arena, notes);
-  return bitmapDataUrlFromCall(arena, width, height, (rgbaPtr, rgbaBytes) =>
+  return bitmapRgbaFromCall(arena, width, height, (rgbaPtr, rgbaBytes) =>
     wasm.lmt_bitmap_piano_staff_rgba(notesPtr, notes.length, tonic, quality, width, height, rgbaPtr, rgbaBytes),
   "lmt_bitmap_piano_staff_rgba");
 }
 
-function fretBitmapDataUrl(arena, frets, windowStart, visibleFrets, width, height) {
+function fretBitmapRgba(arena, frets, windowStart, visibleFrets, width, height) {
   const fretsPtr = writeI8Array(arena, frets);
-  return bitmapDataUrlFromCall(arena, width, height, (rgbaPtr, rgbaBytes) =>
+  return bitmapRgbaFromCall(arena, width, height, (rgbaPtr, rgbaBytes) =>
     wasm.lmt_bitmap_fret_n_rgba(fretsPtr, frets.length, windowStart, visibleFrets, width, height, rgbaPtr, rgbaBytes),
   "lmt_bitmap_fret_n_rgba");
 }
@@ -1313,7 +1371,7 @@ function renderMidiScene() {
     renderPreviewSvgOrBitmap(midiClockEl, {
       svgMarkup: clockSvg,
       bitmapRenderer: {
-        render: (width, height) => clockBitmapDataUrl(arena, setValue, width, height),
+        renderRgba: (width, height) => clockBitmapRgba(arena, setValue, width, height),
       },
       alt: "Live clock preview",
       options: { maxHeight: 420, squareWidth: 420, mediumWidth: 520 },
@@ -1321,7 +1379,7 @@ function renderMidiScene() {
     renderPreviewSvgOrBitmap(midiOpticKEl, {
       svgMarkup: opticKSvg,
       bitmapRenderer: {
-        render: (width, height) => opticKBitmapDataUrl(arena, setValue, width, height),
+        renderRgba: (width, height) => opticKBitmapRgba(arena, setValue, width, height),
       },
       alt: "Live OPTIC/K bitmap preview",
       options: { maxHeight: 300, squareWidth: 520, mediumWidth: 620, wideWidth: 720, ultraWideWidth: 760, padXRatio: 0.04, padYRatio: 0.08 },
@@ -1329,7 +1387,7 @@ function renderMidiScene() {
     renderPreviewSvgOrBitmap(midiEvennessEl, {
       svgMarkup: evennessFieldSvg,
       bitmapRenderer: {
-        render: (width, height) => evennessFieldBitmapDataUrl(arena, setValue, width, height),
+        renderRgba: (width, height) => evennessFieldBitmapRgba(arena, setValue, width, height),
       },
       alt: "Live evenness bitmap preview",
       options: { maxHeight: 440, squareWidth: 360, mediumWidth: 420, wideWidth: 500, ultraWideWidth: 560, padXRatio: 0.05, padYRatio: 0.05 },
@@ -1337,7 +1395,7 @@ function renderMidiScene() {
     renderPreviewSvgOrBitmap(midiKeyboardEl, {
       svgMarkup: svgString(arena, wasm.lmt_svg_keyboard, writeU8Array(arena, keyboardNotes), keyboardNotes.length, keyboardRange.low, keyboardRange.high),
       bitmapRenderer: {
-        render: (width, height) => keyboardBitmapDataUrl(arena, keyboardNotes, keyboardRange.low, keyboardRange.high, width, height),
+        renderRgba: (width, height) => keyboardBitmapRgba(arena, keyboardNotes, keyboardRange.low, keyboardRange.high, width, height),
       },
       alt: "Live keyboard bitmap preview",
       options: { maxHeight: 220, squareWidth: 780, mediumWidth: 920, wideWidth: 1040, ultraWideWidth: 1160, padXRatio: 0.02, padYRatio: 0.08 },
@@ -1347,7 +1405,7 @@ function renderMidiScene() {
       renderPreviewSvgOrBitmap(midiStaffEl, {
         svgMarkup: staffSvg,
         bitmapRenderer: {
-          render: (width, height) => pianoStaffBitmapDataUrl(arena, displayNotes, context.tonic, context.quality, width, height),
+          renderRgba: (width, height) => pianoStaffBitmapRgba(arena, displayNotes, context.tonic, context.quality, width, height),
         },
         alt: "Live piano staff bitmap preview",
         options: { maxHeight: 420, squareWidth: 700, mediumWidth: 840, wideWidth: 980, ultraWideWidth: 1120, padXRatio: 0.05, padYRatio: 0.12 },
@@ -1538,7 +1596,7 @@ function renderSetScene() {
     renderPreviewSvgOrBitmap(setClockEl, {
       svgMarkup: svg,
       bitmapRenderer: {
-        render: (width, height) => clockBitmapDataUrl(arena, setValue, width, height),
+        renderRgba: (width, height) => clockBitmapRgba(arena, setValue, width, height),
       },
       alt: "Set clock bitmap preview",
       options: { maxHeight: 420, squareWidth: 420, mediumWidth: 520 },
@@ -1546,7 +1604,7 @@ function renderSetScene() {
     renderPreviewSvgOrBitmap(setOpticKEl, {
       svgMarkup: opticKSvg,
       bitmapRenderer: {
-        render: (width, height) => opticKBitmapDataUrl(arena, setValue, width, height),
+        renderRgba: (width, height) => opticKBitmapRgba(arena, setValue, width, height),
       },
       alt: "Set OPTIC/K bitmap preview",
       options: { maxHeight: 320, squareWidth: 620, mediumWidth: 760, wideWidth: 840, ultraWideWidth: 920, padXRatio: 0.04, padYRatio: 0.08 },
@@ -1554,7 +1612,7 @@ function renderSetScene() {
     renderPreviewSvgOrBitmap(setEvennessEl, {
       svgMarkup: evennessSvg,
       bitmapRenderer: {
-        render: (width, height) => evennessFieldBitmapDataUrl(arena, setValue, width, height),
+        renderRgba: (width, height) => evennessFieldBitmapRgba(arena, setValue, width, height),
       },
       alt: "Set evenness bitmap preview",
       options: { maxHeight: 520, squareWidth: 420, mediumWidth: 520, wideWidth: 620, ultraWideWidth: 680, padXRatio: 0.05, padYRatio: 0.04 },
@@ -1596,7 +1654,7 @@ function renderKeyScene() {
     renderPreviewSvgOrBitmap(keyClockEl, {
       svgMarkup: keyClockSvg,
       bitmapRenderer: {
-        render: (width, height) => clockBitmapDataUrl(arena, orbit.setValue, width, height),
+        renderRgba: (width, height) => clockBitmapRgba(arena, orbit.setValue, width, height),
       },
       alt: "Key orbit bitmap preview",
       options: { maxHeight: 440, squareWidth: 440, mediumWidth: 560 },
@@ -1604,7 +1662,7 @@ function renderKeyScene() {
     renderPreviewSvgOrBitmap(keyStaffEl, {
       svgMarkup: keyStaffSvg,
       bitmapRenderer: {
-        render: (width, height) => keyStaffBitmapDataUrl(arena, tonic, quality, width, height),
+        renderRgba: (width, height) => keyStaffBitmapRgba(arena, tonic, quality, width, height),
       },
       alt: "Key staff bitmap preview",
       options: { maxHeight: 240, squareWidth: 780, mediumWidth: 920, wideWidth: 1040, ultraWideWidth: 1120, padXRatio: 0.04, padYRatio: 0.12 },
@@ -1613,7 +1671,7 @@ function renderKeyScene() {
     renderPreviewSvgOrBitmap(keyKeyboardEl, {
       svgMarkup: svgString(arena, wasm.lmt_svg_keyboard, writeU8Array(arena, keyKeyboardNotes), keyKeyboardNotes.length, 36, 96),
       bitmapRenderer: {
-        render: (width, height) => keyboardBitmapDataUrl(arena, keyKeyboardNotes, 36, 96, width, height),
+        renderRgba: (width, height) => keyboardBitmapRgba(arena, keyKeyboardNotes, 36, 96, width, height),
       },
       alt: "Key keyboard bitmap preview",
       options: { maxHeight: 220, squareWidth: 780, mediumWidth: 920, wideWidth: 1040, ultraWideWidth: 1160, padXRatio: 0.02, padYRatio: 0.08 },
@@ -1666,7 +1724,7 @@ function renderChordScene() {
     renderPreviewSvgOrBitmap(chordClockEl, {
       svgMarkup: chordClockSvg,
       bitmapRenderer: {
-        render: (width, height) => clockBitmapDataUrl(arena, chordSet, width, height),
+        renderRgba: (width, height) => clockBitmapRgba(arena, chordSet, width, height),
       },
       alt: "Chord clock bitmap preview",
       options: { maxHeight: 360, squareWidth: 320, mediumWidth: 380 },
@@ -1674,7 +1732,7 @@ function renderChordScene() {
     renderPreviewSvgOrBitmap(chordStaffEl, {
       svgMarkup: chordStaffSvg,
       bitmapRenderer: {
-        render: (width, height) => chordStaffBitmapDataUrl(arena, chordType, root, width, height),
+        renderRgba: (width, height) => chordStaffBitmapRgba(arena, chordType, root, width, height),
       },
       alt: "Chord staff bitmap preview",
       options: { maxHeight: 320, squareWidth: 620, mediumWidth: 780, wideWidth: 920, ultraWideWidth: 1040, padXRatio: 0.05, padYRatio: 0.12 },
@@ -1737,7 +1795,7 @@ function renderProgressionScene() {
     renderPreviewSvgOrBitmap(progressionClockEl, {
       svgMarkup: progressionClockSvg,
       bitmapRenderer: {
-        render: (width, height) => clockBitmapDataUrl(arena, unionSet, width, height),
+        renderRgba: (width, height) => clockBitmapRgba(arena, unionSet, width, height),
       },
       alt: "Progression clock bitmap preview",
       options: { maxHeight: 340, squareWidth: 320, mediumWidth: 460 },
@@ -1778,19 +1836,19 @@ function renderCompareScene() {
     const comparePreviewOptions = { maxHeight: 260, squareWidth: 260, mediumWidth: 280 };
     renderPreviewSvgOrBitmap(compareLeftClockEl, {
       svgMarkup: leftClockSvg,
-      bitmapRenderer: { render: (width, height) => clockBitmapDataUrl(arena, leftSet, width, height) },
+      bitmapRenderer: { renderRgba: (width, height) => clockBitmapRgba(arena, leftSet, width, height) },
       alt: "Compare left bitmap preview",
       options: comparePreviewOptions,
     });
     renderPreviewSvgOrBitmap(compareOverlapClockEl, {
       svgMarkup: overlapClockSvg,
-      bitmapRenderer: { render: (width, height) => clockBitmapDataUrl(arena, overlapSet, width, height) },
+      bitmapRenderer: { renderRgba: (width, height) => clockBitmapRgba(arena, overlapSet, width, height) },
       alt: "Compare overlap bitmap preview",
       options: comparePreviewOptions,
     });
     renderPreviewSvgOrBitmap(compareRightClockEl, {
       svgMarkup: rightClockSvg,
-      bitmapRenderer: { render: (width, height) => clockBitmapDataUrl(arena, rightSet, width, height) },
+      bitmapRenderer: { renderRgba: (width, height) => clockBitmapRgba(arena, rightSet, width, height) },
       alt: "Compare right bitmap preview",
       options: comparePreviewOptions,
     });
@@ -1915,7 +1973,7 @@ function renderFretScene() {
     renderPreviewSvgOrBitmap(fretSvgEl, {
       svgMarkup: fretSvg,
       bitmapRenderer: {
-        render: (width, height) => fretBitmapDataUrl(arena, frets, windowStart, visibleFrets, width, height),
+        renderRgba: (width, height) => fretBitmapRgba(arena, frets, windowStart, visibleFrets, width, height),
       },
       alt: "Fretboard bitmap preview",
       options: { maxHeight: 420, squareWidth: 360, mediumWidth: 520, wideWidth: 680, ultraWideWidth: 760, padXRatio: 0.12, padYRatio: 0.18 },

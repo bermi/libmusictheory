@@ -68,7 +68,8 @@ test "evenness chart ring counts match set class cardinality counts" {
 
     const focused = evenness_chart.renderEvennessField(pcs.fromList(&[_]pitch.PitchClass{ 0, 4, 7 }), &svg_buf);
     try testing.expect(std.mem.indexOf(u8, focused, "class=\"dot-highlight\"") != null);
-    try testing.expect(std.mem.indexOf(u8, focused, "focus 3-11") != null);
+    try testing.expect(std.mem.indexOf(u8, focused, "class=\"highlight-label\"") != null);
+    try testing.expect(std.mem.indexOf(u8, focused, "data-text=\"FOCUS 3-11\"") != null);
 }
 
 test "circle of fifths order and svg validity" {

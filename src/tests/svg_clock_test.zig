@@ -54,16 +54,17 @@ test "optc cluster coloring and center label" {
 
 test "optic/k group renders paired classes and connector" {
     const set = pcs.C_MAJOR_TRIAD;
-    var buf: [24576]u8 = undefined;
+    var buf: [128 * 1024]u8 = undefined;
     const svg = clock.renderOpticKGroup(set, &buf);
 
     try testing.expect(std.mem.startsWith(u8, svg, "<svg"));
-    try testing.expect(std.mem.indexOf(u8, svg, "OPTIC/K") != null);
+    try testing.expect(std.mem.indexOf(u8, svg, "class=\"optic-k-title\"") != null);
+    try testing.expect(std.mem.indexOf(u8, svg, "data-text=\"OPTIC/K\"") != null);
     try testing.expect(std.mem.count(u8, svg, "class=\"optic-k-ring\"") >= 2);
     try testing.expect(std.mem.count(u8, svg, "class=\"optic-k-node\"") >= 24);
     try testing.expect(std.mem.indexOf(u8, svg, "class=\"optic-k-link\"") != null);
-    try testing.expect(std.mem.indexOf(u8, svg, "3-11") != null);
-    try testing.expect(std.mem.indexOf(u8, svg, "9-11") != null);
+    try testing.expect(std.mem.indexOf(u8, svg, "data-text=\"3-11\"") != null);
+    try testing.expect(std.mem.indexOf(u8, svg, "data-text=\"9-11\"") != null);
 }
 
 test "optc harmonious compat emits xml prolog and variant glyph path" {

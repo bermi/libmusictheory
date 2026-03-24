@@ -236,7 +236,7 @@ test "c abi svg generators" {
 
     const optic_k_len = lmt_svg_optic_k_group(c_major, @ptrCast(&svg_buf), @intCast(svg_buf.len));
     try testing.expect(optic_k_len > 0);
-    try testing.expect(std.mem.indexOf(u8, svg_buf[0..optic_k_len], "OPTIC/K") != null);
+    try testing.expect(std.mem.indexOf(u8, svg_buf[0..optic_k_len], "data-text=\"OPTIC/K\"") != null);
     try testing.expect(std.mem.count(u8, svg_buf[0..optic_k_len], "class=\"optic-k-ring\"") >= 2);
 
     const evenness_len = lmt_svg_evenness_chart(@ptrCast(&svg_buf), @intCast(svg_buf.len));
@@ -247,7 +247,7 @@ test "c abi svg generators" {
     const evenness_field_len = lmt_svg_evenness_field(c_major, @ptrCast(&svg_buf), @intCast(svg_buf.len));
     try testing.expect(evenness_field_len > 0);
     try testing.expect(std.mem.indexOf(u8, svg_buf[0..evenness_field_len], "class=\"dot-highlight\"") != null);
-    try testing.expect(std.mem.indexOf(u8, svg_buf[0..evenness_field_len], "focus ") != null);
+    try testing.expect(std.mem.indexOf(u8, svg_buf[0..evenness_field_len], "data-text=\"FOCUS ") != null);
 
     const frets = [_]i8{ -1, 3, 2, 0, 1, 0 };
     const len2 = lmt_svg_fret(@ptrCast(&frets), @ptrCast(&svg_buf), @intCast(svg_buf.len));
