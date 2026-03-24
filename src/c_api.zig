@@ -618,6 +618,13 @@ export fn lmt_svg_clock_optc(set: u16, buf: [*c]u8, buf_size: u32) callconv(.C) 
     return copySvgOut(svg, buf, buf_size);
 }
 
+export fn lmt_svg_optic_k_group(set: u16, buf: [*c]u8, buf_size: u32) callconv(.C) u32 {
+    var svg_buf: [24576]u8 = undefined;
+    const safe_set = maskPitchClassSet(set);
+    const svg = svg_clock.renderOpticKGroup(safe_set, &svg_buf);
+    return copySvgOut(svg, buf, buf_size);
+}
+
 export fn lmt_svg_evenness_chart(buf: [*c]u8, buf_size: u32) callconv(.C) u32 {
     var svg_buf: [65536]u8 = undefined;
     const svg = svg_evenness_chart.renderEvennessChart(&svg_buf);
@@ -745,6 +752,15 @@ export fn lmt_bitmap_clock_optc_rgba(set: u16, width: u32, height: u32, out_rgba
     const written_total = lmt_svg_clock_optc(set, @ptrCast(&compat_svg_buf), @intCast(compat_svg_buf.len));
     if (written_total != total) return 0;
     return renderPublicSvgBitmap(compat_svg_buf[0..@as(usize, total)], width, height, out_rgba, out_rgba_size);
+}
+
+export fn lmt_bitmap_optic_k_group_rgba(set: u16, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.C) u32 {
+    if (!build_options.enable_raster_backend or out_rgba == null) return 0;
+    const required = requiredRgbaBytes(width, height) orelse return 0;
+    if (required > out_rgba_size) return 0;
+    const out = out_rgba[0..@as(usize, required)];
+    const written = bitmap_compat.renderPublicOpticKGroupRgba(width, height, maskPitchClassSet(set), out) catch return 0;
+    return @as(u32, @intCast(written));
 }
 
 export fn lmt_bitmap_evenness_chart_rgba(width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.C) u32 {

@@ -31,6 +31,7 @@ Address the remaining small public-surface rough edges discovered during RC revi
   - lower-C ledger-line placement and stem-notehead alignment fixes for `lmt_svg_chord_staff`
   - add a real public multi-bar key-staff API and gallery/docs example instead of implying that a one-bar chord staff covers melodic/key notation
   - expose the public evenness chart in the docs, gallery, and bitmap QA atlas instead of showing only a scalar evenness number
+  - expose a public algorithmic `OPTIC/K` group diagram in the docs, gallery, and bitmap QA atlas so complement-equivalence context is visible on the standalone surface
 
 ## Verification-First Guardrails
 

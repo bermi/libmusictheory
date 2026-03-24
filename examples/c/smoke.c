@@ -57,6 +57,10 @@ int main(void) {
     assert(svg_len > 0);
     assert(strncmp(svg, "<svg", 4) == 0);
 
+    svg_len = lmt_svg_optic_k_group(c_major, svg, sizeof(svg));
+    assert(svg_len > 0);
+    assert(strncmp(svg, "<svg", 4) == 0);
+
     svg_len = lmt_svg_evenness_chart(svg, sizeof(svg));
     assert(svg_len > 0);
     assert(strncmp(svg, "<svg", 4) == 0);

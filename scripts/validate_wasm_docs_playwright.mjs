@@ -156,16 +156,19 @@ async function waitForRenderedOutputs(page) {
       guitar: document.getElementById("out-guitar")?.textContent || "",
       svgMeta: document.getElementById("out-svg-meta")?.textContent || "",
       clock: document.getElementById("svg-clock")?.innerHTML || "",
+      opticK: document.getElementById("svg-optic-k")?.innerHTML || "",
       evenness: document.getElementById("svg-evenness")?.innerHTML || "",
       fret: document.getElementById("svg-fret")?.innerHTML || "",
       staff: document.getElementById("svg-staff")?.innerHTML || "",
       keyStaff: document.getElementById("svg-key-staff")?.innerHTML || "",
       clockNormalized: document.querySelector("#svg-clock svg")?.dataset.previewNormalized || "",
+      opticKNormalized: document.querySelector("#svg-optic-k svg")?.dataset.previewNormalized || "",
       evennessNormalized: document.querySelector("#svg-evenness svg")?.dataset.previewNormalized || "",
       fretNormalized: document.querySelector("#svg-fret svg")?.dataset.previewNormalized || "",
       staffNormalized: document.querySelector("#svg-staff svg")?.dataset.previewNormalized || "",
       keyStaffNormalized: document.querySelector("#svg-key-staff svg")?.dataset.previewNormalized || "",
       clockBounds: document.querySelector("#svg-clock svg")?.getBoundingClientRect?.() || null,
+      opticKBounds: document.querySelector("#svg-optic-k svg")?.getBoundingClientRect?.() || null,
       evennessBounds: document.querySelector("#svg-evenness svg")?.getBoundingClientRect?.() || null,
       fretBounds: document.querySelector("#svg-fret svg")?.getBoundingClientRect?.() || null,
       staffBounds: document.querySelector("#svg-staff svg")?.getBoundingClientRect?.() || null,
@@ -210,22 +213,26 @@ async function waitForRenderedOutputs(page) {
       snapshot.guitar.includes("lmt_frets_to_url_n") &&
       snapshot.guitar.includes("lmt_url_to_frets_n") &&
       snapshot.svgMeta.includes("lmt_svg_clock_optc bytes:") &&
+      snapshot.svgMeta.includes("lmt_svg_optic_k_group bytes:") &&
       snapshot.svgMeta.includes("lmt_svg_evenness_chart bytes:") &&
       snapshot.svgMeta.includes("lmt_svg_fret_n bytes:") &&
       snapshot.svgMeta.includes("lmt_svg_key_staff bytes:") &&
       snapshot.svgMeta.includes("aligned: yes") &&
       snapshot.clock.includes("<svg") &&
+      snapshot.opticK.includes("<svg") &&
       snapshot.evenness.includes("<svg") &&
       snapshot.fret.includes("<svg") &&
       snapshot.staff.includes("<svg") &&
       snapshot.keyStaff.includes("<svg") &&
       snapshot.status.includes("All sections rendered successfully.") &&
       snapshot.clockNormalized === "1" &&
+      snapshot.opticKNormalized === "1" &&
       snapshot.evennessNormalized === "1" &&
       snapshot.fretNormalized === "1" &&
       snapshot.staffNormalized === "1" &&
       snapshot.keyStaffNormalized === "1" &&
       snapshot.clockBounds &&
+      snapshot.opticKBounds &&
       snapshot.evennessBounds &&
       snapshot.fretBounds &&
       snapshot.staffBounds &&
@@ -289,17 +296,14 @@ async function main() {
       await page.waitForSelector("#run-all", { timeout: 30_000 });
       await waitForInteractiveReady(page);
       await page.evaluate(() => {
-        document.getElementById("out-pcs").textContent = "";
-        document.getElementById("out-classification").textContent = "";
-        document.getElementById("out-scale-mode").textContent = "";
-        document.getElementById("out-chord").textContent = "";
-        document.getElementById("out-guitar").textContent = "";
-        document.getElementById("out-svg-meta").textContent = "";
-        document.getElementById("svg-clock").innerHTML = "";
-        document.getElementById("svg-evenness").innerHTML = "";
-        document.getElementById("svg-fret").innerHTML = "";
-        document.getElementById("svg-staff").innerHTML = "";
-        document.getElementById("svg-key-staff").innerHTML = "";
+        for (const id of ["out-pcs", "out-classification", "out-scale-mode", "out-chord", "out-guitar", "out-svg-meta"]) {
+          const node = document.getElementById(id);
+          if (node) node.textContent = "";
+        }
+        for (const id of ["svg-clock", "svg-optic-k", "svg-evenness", "svg-fret", "svg-staff", "svg-key-staff"]) {
+          const node = document.getElementById(id);
+          if (node) node.innerHTML = "";
+        }
       });
       await page.evaluate(() => document.getElementById("run-all")?.click());
       await waitForRenderedOutputs(page);
@@ -321,6 +325,8 @@ function visibleBoundsOk(snapshot) {
   return (
     snapshot.clockBounds.width >= 100 &&
     snapshot.clockBounds.height >= 100 &&
+    snapshot.opticKBounds.width >= 280 &&
+    snapshot.opticKBounds.height >= 140 &&
     snapshot.evennessBounds.width >= 160 &&
     snapshot.evennessBounds.height >= 220 &&
     snapshot.fretBounds.width >= 150 &&

@@ -191,17 +191,17 @@ async function main() {
       };
       fs.writeFileSync(path.join(outputDir, "qa-atlas.json"), `${JSON.stringify(manifest, null, 2)}\n`);
 
-      if ((summary.atlas?.imageMethodCount || 0) !== 6) {
+      if ((summary.atlas?.imageMethodCount || 0) !== 7) {
         throw new Error(`qa atlas captured wrong image method count: ${summary.atlas?.imageMethodCount || 0}`);
       }
       if ((summary.atlas?.svgCount || 0) !== 0) {
         throw new Error(`qa atlas unexpectedly reported svg panels: ${summary.atlas?.svgCount || 0}`);
       }
-      if ((summary.atlas?.renderedImageCount || 0) !== 6) {
-        throw new Error(`qa atlas captured missing image rows: ${summary.atlas?.renderedImageCount || 0}/6 rendered`);
+      if ((summary.atlas?.renderedImageCount || 0) !== 7) {
+        throw new Error(`qa atlas captured missing image rows: ${summary.atlas?.renderedImageCount || 0}/7 rendered`);
       }
-      if ((summary.rendered?.imageCount || 0) !== 6) {
-        throw new Error(`qa atlas DOM is missing bitmap images: ${summary.rendered?.imageCount || 0}/6`);
+      if ((summary.rendered?.imageCount || 0) !== 7) {
+        throw new Error(`qa atlas DOM is missing bitmap images: ${summary.rendered?.imageCount || 0}/7`);
       }
       if ((summary.rendered?.svgCount || 0) !== 0) {
         throw new Error(`qa atlas DOM still contains svg elements: ${summary.rendered?.svgCount || 0}`);

@@ -3,6 +3,7 @@ const std = @import("std");
 const svg_compat = @import("harmonious_svg_compat.zig");
 const cluster = @import("cluster.zig");
 const pcs = @import("pitch_class_set.zig");
+const set_class = @import("set_class.zig");
 const oc_templates = @import("generated/harmonious_oc_templates.zig");
 const fret_compat = @import("svg/fret_compat.zig");
 const chord_compat = @import("svg/chord_compat.zig");
@@ -121,6 +122,107 @@ pub fn renderSvgMarkupRgba(width: u32, height: u32, svg: []const u8, out_rgba: [
     clear(&surface, .{ 255, 255, 255, 255 });
     try renderSvgDocumentExtended(&surface, svg);
     return @as(usize, @intCast(required));
+}
+
+pub fn renderPublicOpticKGroupRgba(width: u32, height: u32, set: pcs.PitchClassSet, out_rgba: []u8) Error!usize {
+    const required: u64 = @as(u64, width) * @as(u64, height) * 4;
+    if (width == 0 or height == 0 or required == 0 or required > out_rgba.len) return error.OutputTooSmall;
+
+    var surface = Surface{
+        .pixels = out_rgba[0..@as(usize, @intCast(required))],
+        .width = width,
+        .height = height,
+        .stride = width * 4,
+    };
+    clear(&surface, .{ 255, 255, 255, 255 });
+
+    const nominal_width = 280.0;
+    const nominal_height = 140.0;
+    const scale = @min(
+        @as(f64, @floatFromInt(width)) / nominal_width,
+        @as(f64, @floatFromInt(height)) / nominal_height,
+    );
+    const offset_x = (@as(f64, @floatFromInt(width)) - nominal_width * scale) / 2.0;
+    const offset_y = (@as(f64, @floatFromInt(height)) - nominal_height * scale) / 2.0;
+    const transform = Matrix{
+        .a = scale,
+        .d = scale,
+        .e = offset_x,
+        .f = offset_y,
+    };
+
+    drawRect(
+        &surface,
+        offset_x + 8.0 * scale,
+        offset_y + 8.0 * scale,
+        120.0 * scale,
+        124.0 * scale,
+        .{ 255, 255, 255, 240 },
+        .{ 17, 24, 39, 20 },
+        1.2 * scale,
+    );
+    drawRect(
+        &surface,
+        offset_x + 152.0 * scale,
+        offset_y + 8.0 * scale,
+        120.0 * scale,
+        124.0 * scale,
+        .{ 255, 255, 255, 240 },
+        .{ 17, 24, 39, 20 },
+        1.2 * scale,
+    );
+    try renderPathStroke(
+        &surface,
+        "M118 57 C138 46, 142 46, 162 57 M118 83 C138 94, 142 94, 162 83",
+        transform,
+        hexColor("#8d7f74"),
+        1.8 * scale,
+        0.0,
+        0.0,
+    );
+    try renderOpticKWheelDirect(&surface, set_class.fortePrime(set & 0x0fff), 68.0, 70.0, 28.0, 7.0, 13.0, scale, offset_x, offset_y);
+    try renderOpticKWheelDirect(&surface, set_class.fortePrime(pcs.complement(set & 0x0fff)), 212.0, 70.0, 28.0, 7.0, 13.0, scale, offset_x, offset_y);
+
+    return @as(usize, @intCast(required));
+}
+
+fn renderOpticKWheelDirect(surface: *Surface, set: pcs.PitchClassSet, center_x: f64, center_y: f64, radius: f64, node_radius: f64, ring_radius: f64, scale: f64, offset_x: f64, offset_y: f64) Error!void {
+    const cluster_info = cluster.getClusters(set);
+    drawCircle(
+        surface,
+        offset_x + center_x * scale,
+        offset_y + center_y * scale,
+        ring_radius * scale,
+        .{ 0, 0, 0, 0 },
+        hexColor("#111"),
+        1.75 * scale,
+    );
+
+    var pc: u4 = 0;
+    while (pc < 12) : (pc += 1) {
+        const angle = (std.math.pi * 2.0) * (@as(f64, @floatFromInt(pc)) / 12.0);
+        const x = center_x + radius * std.math.sin(angle);
+        const y = center_y - radius * std.math.cos(angle);
+        const bit = @as(pcs.PitchClassSet, 1) << pc;
+        const present = (set & bit) != 0;
+        const in_cluster = (cluster_info.cluster_mask & bit) != 0;
+        const stroke = OPC_STROKE_COLORS[pc];
+        const fill = if (!present)
+            .{ 255, 255, 255, 255 }
+        else if (in_cluster)
+            stroke
+        else
+            OPC_FILL_COLORS[pc];
+        drawCircle(
+            surface,
+            offset_x + x * scale,
+            offset_y + y * scale,
+            node_radius * scale,
+            fill,
+            stroke,
+            2.8 * scale,
+        );
+    }
 }
 
 const Point = struct {

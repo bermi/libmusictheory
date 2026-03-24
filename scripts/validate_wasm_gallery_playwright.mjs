@@ -133,6 +133,7 @@ async function main() {
             previewMetrics: finalSnapshot.previewMetrics,
             staffFeatures: finalSnapshot.staffFeatures,
             keyStaffFeatures: finalSnapshot.keyStaffFeatures,
+            setOpticKFeatures: finalSnapshot.setOpticKFeatures,
             setEvennessFeatures: finalSnapshot.setEvennessFeatures,
             degreeCards: finalSnapshot.degreeCards,
             progressionCards: finalSnapshot.progressionCards,

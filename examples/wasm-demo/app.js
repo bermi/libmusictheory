@@ -8,6 +8,7 @@ const outGuitar = document.getElementById("out-guitar");
 const outSvgMeta = document.getElementById("out-svg-meta");
 
 const svgClockHost = document.getElementById("svg-clock");
+const svgOpticKHost = document.getElementById("svg-optic-k");
 const svgEvennessHost = document.getElementById("svg-evenness");
 const svgFretCompatHost = document.getElementById("svg-fret-compat");
 const svgFretHost = document.getElementById("svg-fret");
@@ -48,6 +49,7 @@ const REQUIRED_EXPORTS = [
   "lmt_frets_to_url_n",
   "lmt_url_to_frets_n",
   "lmt_svg_clock_optc",
+  "lmt_svg_optic_k_group",
   "lmt_svg_evenness_chart",
   "lmt_svg_fret",
   "lmt_svg_fret_n",
@@ -75,6 +77,7 @@ function renderSectionError(label, target, err) {
 
 function clearSvgHosts() {
   svgClockHost.innerHTML = "";
+  svgOpticKHost.innerHTML = "";
   svgEvennessHost.innerHTML = "";
   svgFretCompatHost.innerHTML = "";
   svgFretHost.innerHTML = "";
@@ -494,6 +497,9 @@ function runSvgApis() {
     const clockLen = wasm.lmt_svg_clock_optc(mainSet, svgBufPtr, C_STRING_CAPACITY);
     const clockSvg = readCString(svgBufPtr);
 
+    const opticKLen = wasm.lmt_svg_optic_k_group(mainSet, svgBufPtr, C_STRING_CAPACITY);
+    const opticKSvg = readCString(svgBufPtr);
+
     const evennessLen = wasm.lmt_svg_evenness_chart(svgBufPtr, C_STRING_CAPACITY);
     const evennessSvg = readCString(svgBufPtr);
 
@@ -511,6 +517,7 @@ function runSvgApis() {
 
     const lines = [
       `lmt_svg_clock_optc bytes: ${clockLen}`,
+      `lmt_svg_optic_k_group bytes: ${opticKLen}`,
       `lmt_svg_evenness_chart bytes: ${evennessLen}`,
       compatFretLen !== null ? `lmt_svg_fret bytes: ${compatFretLen}` : `lmt_svg_fret bytes: unavailable for string_count=${fretValues.length}`,
       `lmt_svg_fret_n bytes: ${fretLen}`,
@@ -530,6 +537,7 @@ function runSvgApis() {
     outSvgMeta.textContent = lines.join("\n");
 
     svgClockHost.innerHTML = clockSvg;
+    svgOpticKHost.innerHTML = opticKSvg;
     svgEvennessHost.innerHTML = evennessSvg;
     svgFretCompatHost.innerHTML = compatFretSvg;
     svgFretHost.innerHTML = fretSvg;
@@ -537,6 +545,7 @@ function runSvgApis() {
     svgKeyStaffHost.innerHTML = keyStaffSvg;
 
     normalizeSvgPreview(svgClockHost);
+    normalizeSvgPreview(svgOpticKHost, { maxHeight: 320, squareWidth: 620, mediumWidth: 760, wideWidth: 840, ultraWideWidth: 920, padXRatio: 0.04, padYRatio: 0.08 });
     normalizeSvgPreview(svgEvennessHost, { maxHeight: 520, squareWidth: 420, mediumWidth: 500, wideWidth: 520, ultraWideWidth: 540, padXRatio: 0.06, padYRatio: 0.06 });
     normalizeSvgPreview(svgFretCompatHost);
     normalizeSvgPreview(svgFretHost);

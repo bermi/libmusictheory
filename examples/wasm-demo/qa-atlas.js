@@ -7,6 +7,7 @@ const BITMAP_REVIEW_WIDTH = 840;
 const textDecoder = new TextDecoder();
 const BITMAP_TARGETS = {
   lmt_svg_clock_optc: { width: BITMAP_REVIEW_WIDTH, height: 840 },
+  lmt_svg_optic_k_group: { width: BITMAP_REVIEW_WIDTH, height: 420 },
   lmt_svg_evenness_chart: { width: BITMAP_REVIEW_WIDTH, height: Math.round((BITMAP_REVIEW_WIDTH * 650) / 500) },
   lmt_svg_fret: { width: BITMAP_REVIEW_WIDTH, height: 840 },
   lmt_svg_fret_n: { width: BITMAP_REVIEW_WIDTH, height: 840 },
@@ -16,6 +17,7 @@ const BITMAP_TARGETS = {
 
 const ATLAS_SAMPLES = {
   lmt_svg_clock_optc: { pcsMain: [0, 7] },
+  lmt_svg_optic_k_group: { pcsMain: [0, 4, 7] },
   lmt_svg_fret: { frets: [1, 3, 3, 2, 1, 1] },
   lmt_svg_fret_n: { frets: [2, 0, 1, 0], stringCount: 4, windowStart: 0, visibleFrets: 4 },
   lmt_svg_chord_staff: { chordType: 0, chordRoot: 0 },
@@ -24,6 +26,7 @@ const ATLAS_SAMPLES = {
 
 const IMAGE_METHODS = [
   { section: "SVG Diagram APIs", method: "lmt_svg_clock_optc", bitmapExport: "lmt_bitmap_clock_optc_rgba" },
+  { section: "SVG Diagram APIs", method: "lmt_svg_optic_k_group", bitmapExport: "lmt_bitmap_optic_k_group_rgba" },
   { section: "SVG Diagram APIs", method: "lmt_svg_evenness_chart", bitmapExport: "lmt_bitmap_evenness_chart_rgba" },
   { section: "SVG Diagram APIs", method: "lmt_svg_fret", bitmapExport: "lmt_bitmap_fret_rgba" },
   { section: "SVG Diagram APIs", method: "lmt_svg_fret_n", bitmapExport: "lmt_bitmap_fret_n_rgba" },
@@ -77,6 +80,7 @@ function collectDefaults(sourceDoc) {
 function atlasSampleForMethod(method, defaults) {
   switch (method) {
     case "lmt_svg_clock_optc":
+    case "lmt_svg_optic_k_group":
       return { pcsMain: ATLAS_SAMPLES[method].pcsMain.slice() };
     case "lmt_svg_fret":
       return { svgFrets: ATLAS_SAMPLES[method].frets.slice() };
@@ -229,6 +233,21 @@ function renderClockBitmap(wasm, memory, arena, defaults) {
   };
 }
 
+function renderOpticKBitmap(wasm, memory, arena, defaults) {
+  const dims = BITMAP_TARGETS.lmt_svg_optic_k_group;
+  const mainSet = buildMainSet(wasm, arena, defaults.pcsMain);
+  const rgbaBytes = dims.width * dims.height * 4;
+  const rgbaPtr = arena.alloc(rgbaBytes, 4);
+  const written = wasm.lmt_bitmap_optic_k_group_rgba(mainSet, dims.width, dims.height, rgbaPtr, rgbaBytes);
+  if (written !== rgbaBytes) throw new Error(`lmt_bitmap_optic_k_group_rgba wrote ${written}/${rgbaBytes}`);
+  return {
+    width: dims.width,
+    height: dims.height,
+    rgba: copyRgba(memory, rgbaPtr, rgbaBytes),
+    meta: `set=${defaults.pcsMain.join(",")} | bitmap=${dims.width}x${dims.height}`,
+  };
+}
+
 function renderEvennessBitmap(wasm, memory, arena) {
   const dims = BITMAP_TARGETS.lmt_svg_evenness_chart;
   const rgbaBytes = dims.width * dims.height * 4;
@@ -319,6 +338,11 @@ function renderSvgString(entry, wasm, memory, defaults) {
       total = wasm.lmt_svg_clock_optc(mainSet, 0, 0);
       break;
     }
+    case "lmt_svg_optic_k_group": {
+      const mainSet = buildMainSet(wasm, arena, defaults.pcsMain);
+      total = wasm.lmt_svg_optic_k_group(mainSet, 0, 0);
+      break;
+    }
     case "lmt_svg_evenness_chart":
       total = wasm.lmt_svg_evenness_chart(0, 0);
       break;
@@ -355,6 +379,11 @@ function renderSvgString(entry, wasm, memory, defaults) {
     case "lmt_svg_clock_optc": {
       const mainSet = buildMainSet(wasm, arena, defaults.pcsMain);
       written = wasm.lmt_svg_clock_optc(mainSet, svgPtr, total + 1);
+      break;
+    }
+    case "lmt_svg_optic_k_group": {
+      const mainSet = buildMainSet(wasm, arena, defaults.pcsMain);
+      written = wasm.lmt_svg_optic_k_group(mainSet, svgPtr, total + 1);
       break;
     }
     case "lmt_svg_evenness_chart":
@@ -396,6 +425,9 @@ async function renderBitmapCard(entry, wasm, memory, defaults) {
   switch (entry.method) {
     case "lmt_svg_clock_optc":
       rendered = renderClockBitmap(wasm, memory, arena, defaults);
+      break;
+    case "lmt_svg_optic_k_group":
+      rendered = renderOpticKBitmap(wasm, memory, arena, defaults);
       break;
     case "lmt_svg_evenness_chart":
       rendered = renderEvennessBitmap(wasm, memory, arena);

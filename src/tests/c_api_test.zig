@@ -55,6 +55,7 @@ extern fn lmt_frets_to_url_n(frets_ptr: [*c]const i8, fret_count: u32, buf: [*c]
 extern fn lmt_url_to_frets_n(url_ptr: [*c]const u8, out: [*c]i8, out_cap: u32) callconv(.c) u32;
 
 extern fn lmt_svg_clock_optc(set: u16, buf: [*c]u8, buf_size: u32) callconv(.c) u32;
+extern fn lmt_svg_optic_k_group(set: u16, buf: [*c]u8, buf_size: u32) callconv(.c) u32;
 extern fn lmt_svg_evenness_chart(buf: [*c]u8, buf_size: u32) callconv(.c) u32;
 extern fn lmt_svg_fret(frets_ptr: [*c]const i8, buf: [*c]u8, buf_size: u32) callconv(.c) u32;
 extern fn lmt_svg_fret_n(frets_ptr: [*c]const i8, string_count: u32, window_start: u32, visible_frets: u32, buf: [*c]u8, buf_size: u32) callconv(.c) u32;
@@ -63,6 +64,7 @@ extern fn lmt_svg_key_staff(tonic: u8, quality: u8, buf: [*c]u8, buf_size: u32) 
 extern fn lmt_raster_is_enabled() callconv(.c) u32;
 extern fn lmt_raster_demo_rgba(width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32;
 extern fn lmt_bitmap_clock_optc_rgba(set: u16, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32;
+extern fn lmt_bitmap_optic_k_group_rgba(set: u16, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32;
 extern fn lmt_bitmap_evenness_chart_rgba(width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32;
 extern fn lmt_bitmap_fret_rgba(frets_ptr: [*c]const i8, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32;
 extern fn lmt_bitmap_fret_n_rgba(frets_ptr: [*c]const i8, string_count: u32, window_start: u32, visible_frets: u32, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32;
@@ -226,6 +228,11 @@ test "c abi svg generators" {
     try testing.expect(len1 > 0);
     try testing.expect(std.mem.startsWith(u8, svg_buf[0..4], "<svg"));
 
+    const optic_k_len = lmt_svg_optic_k_group(c_major, @ptrCast(&svg_buf), @intCast(svg_buf.len));
+    try testing.expect(optic_k_len > 0);
+    try testing.expect(std.mem.indexOf(u8, svg_buf[0..optic_k_len], "OPTIC/K") != null);
+    try testing.expect(std.mem.count(u8, svg_buf[0..optic_k_len], "class=\"optic-k-ring\"") >= 2);
+
     const evenness_len = lmt_svg_evenness_chart(@ptrCast(&svg_buf), @intCast(svg_buf.len));
     try testing.expect(evenness_len > 0);
     try testing.expect(std.mem.indexOf(u8, svg_buf[0..evenness_len], "class=\"ring\"") != null);
@@ -281,6 +288,10 @@ test "c abi raster generators" {
     var clock_rgba: [240 * 240 * 4]u8 = [_]u8{0} ** (240 * 240 * 4);
     try testing.expectEqual(@as(u32, clock_rgba.len), lmt_bitmap_clock_optc_rgba(clock_set, 240, 240, @ptrCast(&clock_rgba), @intCast(clock_rgba.len)));
     try testing.expect(std.mem.indexOfNone(u8, &clock_rgba, &[_]u8{255}) != null);
+
+    var optic_k_rgba: [320 * 160 * 4]u8 = [_]u8{0} ** (320 * 160 * 4);
+    try testing.expectEqual(@as(u32, optic_k_rgba.len), lmt_bitmap_optic_k_group_rgba(clock_set, 320, 160, @ptrCast(&optic_k_rgba), @intCast(optic_k_rgba.len)));
+    try testing.expect(std.mem.indexOfNone(u8, &optic_k_rgba, &[_]u8{255}) != null);
 
     var evenness_rgba: [240 * 312 * 4]u8 = [_]u8{0} ** (240 * 312 * 4);
     try testing.expectEqual(@as(u32, evenness_rgba.len), lmt_bitmap_evenness_chart_rgba(240, 312, @ptrCast(&evenness_rgba), @intCast(evenness_rgba.len)));

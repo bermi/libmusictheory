@@ -262,6 +262,7 @@ export async function waitForGalleryReady(page) {
       captureMode: document.documentElement.dataset.captureMode || "",
       midiClockSvg: document.querySelector("#midi-clock svg")?.outerHTML || "",
       clockSvg: document.querySelector("#set-clock svg")?.outerHTML || "",
+      setOpticKSvg: document.querySelector("#set-optic-k svg")?.outerHTML || "",
       setEvennessSvg: document.querySelector("#set-evenness svg")?.outerHTML || "",
       keySvg: document.querySelector("#key-clock svg")?.outerHTML || "",
       chordSvg: document.querySelector("#chord-clock svg")?.outerHTML || "",
@@ -284,7 +285,7 @@ export async function waitForGalleryReady(page) {
       sceneCardCount: document.querySelectorAll(".scene-card").length,
       presetSelectCount: document.querySelectorAll("select[id$='-preset']").length,
       previewMetrics: Array.from(
-        document.querySelectorAll("#midi-clock svg, #set-clock svg, #set-evenness svg, #key-clock svg, #key-staff svg, #chord-clock svg, #chord-staff svg, #progression-clock svg, #compare-left-clock svg, #compare-overlap-clock svg, #compare-right-clock svg, #fret-svg svg"),
+        document.querySelectorAll("#midi-clock svg, #set-clock svg, #set-optic-k svg, #set-evenness svg, #key-clock svg, #key-staff svg, #chord-clock svg, #chord-staff svg, #progression-clock svg, #compare-left-clock svg, #compare-overlap-clock svg, #compare-right-clock svg, #fret-svg svg"),
         (svg) => {
           const rect = svg.getBoundingClientRect();
           return {
@@ -354,6 +355,21 @@ export async function waitForGalleryReady(page) {
           dotCount: svg.querySelectorAll(".dot").length,
         };
       })(),
+      setOpticKFeatures: (() => {
+        const svg = document.querySelector("#set-optic-k svg");
+        if (!svg) {
+          return {
+            clockCount: 0,
+            linkCount: 0,
+            labelCount: 0,
+          };
+        }
+        return {
+          clockCount: svg.querySelectorAll(".optic-k-ring").length,
+          linkCount: svg.querySelectorAll(".optic-k-link").length,
+          labelCount: svg.querySelectorAll(".optic-k-label,.optic-k-set,.optic-k-chip,.optic-k-title").length,
+        };
+      })(),
     }));
 
     if (snapshot.status.includes("Failed to initialize gallery")) {
@@ -376,6 +392,7 @@ export async function waitForGalleryReady(page) {
       summary.scenes?.fret?.rendered &&
       snapshot.midiClockSvg.includes("<svg") &&
       snapshot.clockSvg.includes("<svg") &&
+      snapshot.setOpticKSvg.includes("<svg") &&
       snapshot.setEvennessSvg.includes("<svg") &&
       snapshot.keySvg.includes("<svg") &&
       snapshot.keyStaffSvg.includes("<svg") &&
@@ -394,12 +411,14 @@ export async function waitForGalleryReady(page) {
       snapshot.toggleCount === 12 &&
       snapshot.sceneCardCount >= 7 &&
       snapshot.presetSelectCount >= 6 &&
-      snapshot.previewMetrics.length >= 12 &&
+      snapshot.previewMetrics.length >= 13 &&
       snapshot.previewMetrics.every((metric) => metric.normalized === "1") &&
       snapshot.previewMetrics.find((metric) => metric.host === "midi-clock")?.width >= 360 &&
       snapshot.previewMetrics.find((metric) => metric.host === "midi-clock")?.height >= 360 &&
       snapshot.previewMetrics.find((metric) => metric.host === "set-clock")?.width >= 320 &&
       snapshot.previewMetrics.find((metric) => metric.host === "set-clock")?.height >= 320 &&
+      snapshot.previewMetrics.find((metric) => metric.host === "set-optic-k")?.width >= 560 &&
+      snapshot.previewMetrics.find((metric) => metric.host === "set-optic-k")?.height >= 200 &&
       snapshot.previewMetrics.find((metric) => metric.host === "set-evenness")?.width >= 420 &&
       snapshot.previewMetrics.find((metric) => metric.host === "set-evenness")?.height >= 500 &&
       snapshot.previewMetrics.find((metric) => metric.host === "key-clock")?.width >= 360 &&
@@ -427,6 +446,9 @@ export async function waitForGalleryReady(page) {
       snapshot.keyStaffFeatures.noteheadCount >= 8 &&
       snapshot.keyStaffFeatures.keyNoteheadCount >= 8 &&
       snapshot.keyStaffFeatures.barlineCount >= 2 &&
+      snapshot.setOpticKFeatures.clockCount >= 2 &&
+      snapshot.setOpticKFeatures.linkCount >= 1 &&
+      snapshot.setOpticKFeatures.labelCount >= 5 &&
       snapshot.setEvennessFeatures.ringCount >= 5 &&
       snapshot.setEvennessFeatures.dotCount >= 200;
 

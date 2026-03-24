@@ -3,6 +3,7 @@ const pitch = @import("../pitch.zig");
 const pcs = @import("../pitch_class_set.zig");
 const cluster = @import("../cluster.zig");
 const set_class = @import("../set_class.zig");
+const forte = @import("../forte.zig");
 const svg_quality = @import("quality.zig");
 const text_misc = @import("text_misc.zig");
 
@@ -112,6 +113,67 @@ pub fn renderOPTC(set: pcs.PitchClassSet, prime_label: []const u8, buf: []u8) []
     return buf[0..stream.pos];
 }
 
+pub fn renderOpticKGroup(set: pcs.PitchClassSet, buf: []u8) []u8 {
+    var stream = std.io.fixedBufferStream(buf);
+    const w = stream.writer();
+
+    const safe_set = set & 0x0fff;
+    const left_set = set_class.fortePrime(safe_set);
+    const right_set = set_class.fortePrime(pcs.complement(safe_set));
+    const left_forte = forte.lookup(left_set) orelse forte.ForteNumber{
+        .cardinality = pcs.cardinality(left_set),
+        .ordinal = 0,
+        .is_z = false,
+    };
+    const right_forte = forte.lookup(right_set) orelse forte.ForteNumber{
+        .cardinality = pcs.cardinality(right_set),
+        .ordinal = 0,
+        .is_z = false,
+    };
+
+    var left_set_label_buf: [12]u8 = undefined;
+    var right_set_label_buf: [12]u8 = undefined;
+    var left_forte_label_buf: [16]u8 = undefined;
+    var right_forte_label_buf: [16]u8 = undefined;
+
+    const left_set_label = pcs.format(left_set, &left_set_label_buf);
+    const right_set_label = pcs.format(right_set, &right_set_label_buf);
+    const left_forte_label = forteLabel(left_forte, &left_forte_label_buf);
+    const right_forte_label = forteLabel(right_forte, &right_forte_label_buf);
+    const group_state = if (left_set == right_set) "self-complementary" else "complement-paired";
+
+    svg_quality.writeSvgPrelude(w, "280", "140", "0 0 280 140",
+        \\.optic-k-bg{fill:white}
+        \\.optic-k-card{fill:rgba(255,255,255,0.94);stroke:rgba(17,24,39,0.08);stroke-width:1.2}
+        \\.optic-k-link,.optic-k-ring,.optic-k-node{vector-effect:non-scaling-stroke}
+        \\.optic-k-link{fill:none;stroke:#8d7f74;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+        \\.optic-k-ring{fill:none;stroke:#111;stroke-width:1.75}
+        \\.optic-k-node{stroke-width:2.8}
+        \\.optic-k-title{font-size:12px}
+        \\.optic-k-chip{font-size:10px}
+        \\.optic-k-label{font-size:11px}
+        \\.optic-k-set{font-size:11px}
+        \\
+    ) catch unreachable;
+    w.writeAll("<rect class=\"optic-k-bg\" x=\"0\" y=\"0\" width=\"280\" height=\"140\" />\n") catch unreachable;
+    w.writeAll("<rect class=\"optic-k-card\" x=\"8\" y=\"8\" width=\"120\" height=\"124\" rx=\"18\" />\n") catch unreachable;
+    w.writeAll("<rect class=\"optic-k-card\" x=\"152\" y=\"8\" width=\"120\" height=\"124\" rx=\"18\" />\n") catch unreachable;
+    w.writeAll("<path class=\"optic-k-link\" d=\"M118 57 C138 46, 142 46, 162 57 M118 83 C138 94, 142 94, 162 83\" />\n") catch unreachable;
+    w.print("<text class=\"label-sans optic-k-title inverse-outline\" x=\"140\" y=\"18\" text-anchor=\"middle\" fill=\"#24323d\">OPTIC/K</text>\n", .{}) catch unreachable;
+    w.print("<text class=\"label-sans optic-k-chip inverse-outline\" x=\"140\" y=\"71\" text-anchor=\"middle\" fill=\"#6b5f55\">{s}</text>\n", .{group_state}) catch unreachable;
+
+    writeOpticKWheel(w, left_set, 68.0, 70.0, 28.0, 7.0, 13.0);
+    writeOpticKWheel(w, right_set, 212.0, 70.0, 28.0, 7.0, 13.0);
+
+    w.print("<text class=\"label-sans optic-k-label inverse-outline\" x=\"68\" y=\"104\" text-anchor=\"middle\" fill=\"#111\">{s}</text>\n", .{left_forte_label}) catch unreachable;
+    w.print("<text class=\"label-mono optic-k-set inverse-outline\" x=\"68\" y=\"118\" text-anchor=\"middle\" fill=\"#475569\">[{s}]</text>\n", .{left_set_label}) catch unreachable;
+    w.print("<text class=\"label-sans optic-k-label inverse-outline\" x=\"212\" y=\"104\" text-anchor=\"middle\" fill=\"#111\">{s}</text>\n", .{right_forte_label}) catch unreachable;
+    w.print("<text class=\"label-mono optic-k-set inverse-outline\" x=\"212\" y=\"118\" text-anchor=\"middle\" fill=\"#475569\">[{s}]</text>\n", .{right_set_label}) catch unreachable;
+    w.writeAll("</svg>\n") catch unreachable;
+
+    return buf[0..stream.pos];
+}
+
 pub fn generateAllOPTCFiles(dir: std.fs.Dir) !void {
     var svg_buf: [8192]u8 = undefined;
     var label_buf: [12]u8 = undefined;
@@ -124,4 +186,50 @@ pub fn generateAllOPTCFiles(dir: std.fs.Dir) !void {
         const file_name = std.fmt.bufPrint(&file_name_buf, "{s}.svg", .{label}) catch continue;
         try dir.writeFile(.{ .sub_path = file_name, .data = svg });
     }
+}
+
+fn writeOpticKWheel(w: anytype, set: pcs.PitchClassSet, center_x: f64, center_y: f64, radius: f64, node_radius: f64, ring_radius: f64) void {
+    const cluster_info = cluster.getClusters(set);
+    w.print(
+        "<circle class=\"optic-k-ring\" cx=\"{d:.2}\" cy=\"{d:.2}\" r=\"{d:.2}\" />\n",
+        .{ center_x, center_y, ring_radius },
+    ) catch unreachable;
+
+    var pc: u4 = 0;
+    while (pc < 12) : (pc += 1) {
+        const p = circlePositionScaled(@as(pitch.PitchClass, @intCast(pc)), center_x, center_y, radius);
+        const bit = @as(pcs.PitchClassSet, 1) << pc;
+        const present = (set & bit) != 0;
+        const in_cluster = (cluster_info.cluster_mask & bit) != 0;
+        const stroke = OPC_STROKE_COLORS[pc];
+        const fill = if (!present)
+            "white"
+        else if (in_cluster)
+            OPC_STROKE_COLORS[pc]
+        else
+            OPC_FILL_COLORS[pc];
+
+        w.print(
+            "<circle class=\"optic-k-node\" cx=\"{d:.2}\" cy=\"{d:.2}\" r=\"{d:.2}\" stroke=\"{s}\" fill=\"{s}\" />\n",
+            .{ p.x, p.y, node_radius, stroke, fill },
+        ) catch unreachable;
+    }
+}
+
+fn circlePositionScaled(pc: pitch.PitchClass, center_x: f64, center_y: f64, radius: f64) Point {
+    const angle = TAU * (@as(f64, @floatFromInt(pc)) / 12.0);
+    return .{
+        .x = center_x + radius * std.math.sin(angle),
+        .y = center_y - radius * std.math.cos(angle),
+    };
+}
+
+fn forteLabel(number: forte.ForteNumber, out: *[16]u8) []u8 {
+    if (number.ordinal == 0) {
+        return std.fmt.bufPrint(out, "{d}?", .{number.cardinality}) catch unreachable;
+    }
+    if (number.is_z) {
+        return std.fmt.bufPrint(out, "{d}-Z{d}", .{ number.cardinality, number.ordinal }) catch unreachable;
+    }
+    return std.fmt.bufPrint(out, "{d}-{d}", .{ number.cardinality, number.ordinal }) catch unreachable;
 }

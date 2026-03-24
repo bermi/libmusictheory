@@ -61,6 +61,7 @@ const REQUIRED_EXPORTS = [
   "lmt_frets_to_url_n",
   "lmt_url_to_frets_n",
   "lmt_svg_clock_optc",
+  "lmt_svg_optic_k_group",
   "lmt_svg_evenness_chart",
   "lmt_svg_fret_n",
   "lmt_svg_chord_staff",
@@ -113,6 +114,7 @@ const fretCaptionEl = document.getElementById("fret-caption");
 
 const setSummaryEl = document.getElementById("set-summary");
 const setClockEl = document.getElementById("set-clock");
+const setOpticKEl = document.getElementById("set-optic-k");
 const setEvennessEl = document.getElementById("set-evenness");
 const keyNotesEl = document.getElementById("key-notes");
 const keyDegreesEl = document.getElementById("key-degrees");
@@ -1137,6 +1139,7 @@ function renderSetScene() {
   if (pcsList.length === 0) {
     setSummaryEl.textContent = "Select at least one pitch class.";
     setClockEl.innerHTML = "";
+    setOpticKEl.innerHTML = "";
     setEvennessEl.innerHTML = "";
     updateSummaryScene("set", { selectedCount: 0, setHex: "0x000" });
     return;
@@ -1154,6 +1157,7 @@ function renderSetScene() {
     const evenness = wasm.lmt_evenness_distance(setValue);
     const chordName = friendlyChordName(readCString(wasm.lmt_chord_name(setValue)));
     const svg = svgString(arena, wasm.lmt_svg_clock_optc, setValue);
+    const opticKSvg = svgString(arena, wasm.lmt_svg_optic_k_group, setValue);
     const evennessSvg = svgString(arena, wasm.lmt_svg_evenness_chart);
 
     setSummaryEl.textContent = [
@@ -1169,9 +1173,17 @@ function renderSetScene() {
       `chord reading: ${chordName}`,
     ].join("\n");
     setClockEl.innerHTML = svg;
+    setOpticKEl.innerHTML = opticKSvg;
     setEvennessEl.innerHTML = evennessSvg;
     normalizeSvgPreview(setClockEl, { maxHeight: 420, squareWidth: 420, mediumWidth: 520 });
+    normalizeSvgPreview(setOpticKEl, { maxHeight: 320, squareWidth: 620, mediumWidth: 760, wideWidth: 840, ultraWideWidth: 920, padXRatio: 0.04, padYRatio: 0.08 });
     normalizeSvgPreview(setEvennessEl, { maxHeight: 520, squareWidth: 420, mediumWidth: 520, wideWidth: 620, ultraWideWidth: 680, padXRatio: 0.05, padYRatio: 0.04 });
+    const opticKSvgNode = setOpticKEl.querySelector("svg");
+    const setOpticKFeatures = opticKSvgNode ? {
+      clockCount: opticKSvgNode.querySelectorAll(".optic-k-ring").length,
+      linkCount: opticKSvgNode.querySelectorAll(".optic-k-link").length,
+      labelCount: opticKSvgNode.querySelectorAll(".optic-k-label,.optic-k-set,.optic-k-chip,.optic-k-title").length,
+    } : { clockCount: 0, linkCount: 0, labelCount: 0 };
     const evennessSvgNode = setEvennessEl.querySelector("svg");
     const setEvennessFeatures = evennessSvgNode ? {
       ringCount: evennessSvgNode.querySelectorAll(".ring").length,
@@ -1182,6 +1194,7 @@ function renderSetScene() {
       setHex: `0x${setValue.toString(16).padStart(3, "0")}`,
       chordName,
       primeHex: `0x${prime.toString(16).padStart(3, "0")}`,
+      setOpticKFeatures,
       setEvennessFeatures,
     });
   } finally {
