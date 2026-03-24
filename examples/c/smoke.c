@@ -65,6 +65,10 @@ int main(void) {
     assert(svg_len > 0);
     assert(strncmp(svg, "<svg", 4) == 0);
 
+    svg_len = lmt_svg_evenness_field(c_major, svg, sizeof(svg));
+    assert(svg_len > 0);
+    assert(strncmp(svg, "<svg", 4) == 0);
+
     const int8_t frets[6] = {-1, 3, 2, 0, 1, 0};
     svg_len = lmt_svg_fret(frets, svg, sizeof(svg));
     assert(svg_len > 0);

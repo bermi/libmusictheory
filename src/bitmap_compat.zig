@@ -895,6 +895,7 @@ fn renderMarkupExtended(surface: *Surface, svg: []const u8, root: Matrix, gradie
             continue;
         }
 
+        if (std.mem.eql(u8, tag.name, "text")) continue;
         if (std.mem.eql(u8, tag.name, "stop")) continue;
 
         return error.UnsupportedSvgFeature;

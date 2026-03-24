@@ -134,6 +134,7 @@ uint32_t lmt_url_to_frets_n(const char *url, int8_t *out, uint32_t out_cap);
 uint32_t lmt_svg_clock_optc(lmt_pitch_class_set set, char *buf, uint32_t buf_size);
 uint32_t lmt_svg_optic_k_group(lmt_pitch_class_set set, char *buf, uint32_t buf_size);
 uint32_t lmt_svg_evenness_chart(char *buf, uint32_t buf_size);
+uint32_t lmt_svg_evenness_field(lmt_pitch_class_set set, char *buf, uint32_t buf_size);
 uint32_t lmt_svg_fret(const int8_t *frets, char *buf, uint32_t buf_size);
 uint32_t lmt_svg_fret_n(const int8_t *frets, uint32_t string_count, uint32_t window_start, uint32_t visible_frets, char *buf, uint32_t buf_size);
 uint32_t lmt_svg_chord_staff(lmt_chord_type type, lmt_pitch_class root, char *buf, uint32_t buf_size);
@@ -147,6 +148,7 @@ uint32_t lmt_raster_demo_rgba(uint32_t width, uint32_t height, uint8_t *out_rgba
 uint32_t lmt_bitmap_clock_optc_rgba(lmt_pitch_class_set set, uint32_t width, uint32_t height, uint8_t *out_rgba, uint32_t out_rgba_size);
 uint32_t lmt_bitmap_optic_k_group_rgba(lmt_pitch_class_set set, uint32_t width, uint32_t height, uint8_t *out_rgba, uint32_t out_rgba_size);
 uint32_t lmt_bitmap_evenness_chart_rgba(uint32_t width, uint32_t height, uint8_t *out_rgba, uint32_t out_rgba_size);
+uint32_t lmt_bitmap_evenness_field_rgba(lmt_pitch_class_set set, uint32_t width, uint32_t height, uint8_t *out_rgba, uint32_t out_rgba_size);
 uint32_t lmt_bitmap_fret_rgba(const int8_t *frets, uint32_t width, uint32_t height, uint8_t *out_rgba, uint32_t out_rgba_size);
 uint32_t lmt_bitmap_fret_n_rgba(const int8_t *frets, uint32_t string_count, uint32_t window_start, uint32_t visible_frets, uint32_t width, uint32_t height, uint8_t *out_rgba, uint32_t out_rgba_size);
 uint32_t lmt_bitmap_chord_staff_rgba(lmt_chord_type type, lmt_pitch_class root, uint32_t width, uint32_t height, uint8_t *out_rgba, uint32_t out_rgba_size);

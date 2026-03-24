@@ -9,6 +9,7 @@ const BITMAP_TARGETS = {
   lmt_svg_clock_optc: { width: BITMAP_REVIEW_WIDTH, height: 840 },
   lmt_svg_optic_k_group: { width: BITMAP_REVIEW_WIDTH, height: 420 },
   lmt_svg_evenness_chart: { width: BITMAP_REVIEW_WIDTH, height: Math.round((BITMAP_REVIEW_WIDTH * 650) / 500) },
+  lmt_svg_evenness_field: { width: BITMAP_REVIEW_WIDTH, height: Math.round((BITMAP_REVIEW_WIDTH * 650) / 500) },
   lmt_svg_fret: { width: BITMAP_REVIEW_WIDTH, height: 840 },
   lmt_svg_fret_n: { width: BITMAP_REVIEW_WIDTH, height: 840 },
   lmt_svg_chord_staff: { width: BITMAP_REVIEW_WIDTH, height: Math.round((BITMAP_REVIEW_WIDTH * 126) / 210) },
@@ -21,6 +22,7 @@ const ATLAS_SAMPLES = {
   lmt_svg_clock_optc: { pcsMain: [0, 7] },
   lmt_svg_optic_k_group: { pcsMain: [0, 4, 7] },
   lmt_svg_evenness_chart: {},
+  lmt_svg_evenness_field: { pcsMain: [0, 4, 7] },
   lmt_svg_fret: { frets: [1, 3, 3, 2, 1, 1] },
   lmt_svg_fret_n: { frets: [2, 0, 1, 0], stringCount: 4, windowStart: 0, visibleFrets: 4 },
   lmt_svg_chord_staff: { chordType: 0, chordRoot: 0 },
@@ -33,6 +35,7 @@ const IMAGE_METHODS = [
   { section: "SVG Diagram APIs", method: "lmt_svg_clock_optc", bitmapExport: "lmt_bitmap_clock_optc_rgba" },
   { section: "SVG Diagram APIs", method: "lmt_svg_optic_k_group", bitmapExport: "lmt_bitmap_optic_k_group_rgba" },
   { section: "SVG Diagram APIs", method: "lmt_svg_evenness_chart", bitmapExport: "lmt_bitmap_evenness_chart_rgba" },
+  { section: "SVG Diagram APIs", method: "lmt_svg_evenness_field", bitmapExport: "lmt_bitmap_evenness_field_rgba" },
   { section: "SVG Diagram APIs", method: "lmt_svg_fret", bitmapExport: "lmt_bitmap_fret_rgba" },
   { section: "SVG Diagram APIs", method: "lmt_svg_fret_n", bitmapExport: "lmt_bitmap_fret_n_rgba" },
   { section: "SVG Diagram APIs", method: "lmt_svg_chord_staff", bitmapExport: "lmt_bitmap_chord_staff_rgba" },
@@ -94,6 +97,8 @@ function atlasSampleForMethod(method, defaults) {
       return { pcsMain: ATLAS_SAMPLES[method].pcsMain.slice() };
     case "lmt_svg_fret":
       return { svgFrets: ATLAS_SAMPLES[method].frets.slice() };
+    case "lmt_svg_evenness_field":
+      return { pcsMain: ATLAS_SAMPLES[method].pcsMain.slice() };
     case "lmt_svg_fret_n":
       return {
         svgFrets: ATLAS_SAMPLES[method].frets.slice(),
@@ -284,6 +289,21 @@ function renderEvennessBitmap(wasm, memory, arena) {
   };
 }
 
+function renderEvennessFieldBitmap(wasm, memory, arena, defaults) {
+  const dims = BITMAP_TARGETS.lmt_svg_evenness_field;
+  const mainSet = buildMainSet(wasm, arena, defaults.pcsMain);
+  const rgbaBytes = dims.width * dims.height * 4;
+  const rgbaPtr = arena.alloc(rgbaBytes, 4);
+  const written = wasm.lmt_bitmap_evenness_field_rgba(mainSet, dims.width, dims.height, rgbaPtr, rgbaBytes);
+  if (written !== rgbaBytes) throw new Error(`lmt_bitmap_evenness_field_rgba wrote ${written}/${rgbaBytes}`);
+  return {
+    width: dims.width,
+    height: dims.height,
+    rgba: copyRgba(memory, rgbaPtr, rgbaBytes),
+    meta: `set=${defaults.pcsMain.join(",")} | bitmap=${dims.width}x${dims.height}`,
+  };
+}
+
 function renderFretBitmap(wasm, memory, arena, defaults) {
   const dims = BITMAP_TARGETS.lmt_svg_fret;
   const fretsPtr = writeI8Array(arena, defaults.svgFrets);
@@ -416,6 +436,11 @@ function renderSvgString(entry, wasm, memory, defaults) {
     case "lmt_svg_evenness_chart":
       total = wasm.lmt_svg_evenness_chart(0, 0);
       break;
+    case "lmt_svg_evenness_field": {
+      const mainSet = buildMainSet(wasm, arena, defaults.pcsMain);
+      total = wasm.lmt_svg_evenness_field(mainSet, 0, 0);
+      break;
+    }
     case "lmt_svg_fret": {
       const fretsPtr = writeI8Array(arena, defaults.svgFrets);
       total = wasm.lmt_svg_fret(fretsPtr, 0, 0);
@@ -469,6 +494,11 @@ function renderSvgString(entry, wasm, memory, defaults) {
     case "lmt_svg_evenness_chart":
       written = wasm.lmt_svg_evenness_chart(svgPtr, total + 1);
       break;
+    case "lmt_svg_evenness_field": {
+      const mainSet = buildMainSet(wasm, arena, defaults.pcsMain);
+      written = wasm.lmt_svg_evenness_field(mainSet, svgPtr, total + 1);
+      break;
+    }
     case "lmt_svg_fret": {
       const fretsPtr = writeI8Array(arena, defaults.svgFrets);
       written = wasm.lmt_svg_fret(fretsPtr, svgPtr, total + 1);
@@ -521,6 +551,9 @@ async function renderBitmapCard(entry, wasm, memory, defaults) {
       break;
     case "lmt_svg_evenness_chart":
       rendered = renderEvennessBitmap(wasm, memory, arena);
+      break;
+    case "lmt_svg_evenness_field":
+      rendered = renderEvennessFieldBitmap(wasm, memory, arena, defaults);
       break;
     case "lmt_svg_fret":
       rendered = renderFretBitmap(wasm, memory, arena, defaults);

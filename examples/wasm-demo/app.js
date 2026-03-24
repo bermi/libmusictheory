@@ -10,6 +10,7 @@ const outSvgMeta = document.getElementById("out-svg-meta");
 const svgClockHost = document.getElementById("svg-clock");
 const svgOpticKHost = document.getElementById("svg-optic-k");
 const svgEvennessHost = document.getElementById("svg-evenness");
+const svgEvennessFieldHost = document.getElementById("svg-evenness-field");
 const svgFretCompatHost = document.getElementById("svg-fret-compat");
 const svgFretHost = document.getElementById("svg-fret");
 const svgStaffHost = document.getElementById("svg-staff");
@@ -53,6 +54,7 @@ const REQUIRED_EXPORTS = [
   "lmt_svg_clock_optc",
   "lmt_svg_optic_k_group",
   "lmt_svg_evenness_chart",
+  "lmt_svg_evenness_field",
   "lmt_svg_fret",
   "lmt_svg_fret_n",
   "lmt_svg_chord_staff",
@@ -83,6 +85,7 @@ function clearSvgHosts() {
   svgClockHost.innerHTML = "";
   svgOpticKHost.innerHTML = "";
   svgEvennessHost.innerHTML = "";
+  svgEvennessFieldHost.innerHTML = "";
   svgFretCompatHost.innerHTML = "";
   svgFretHost.innerHTML = "";
   svgStaffHost.innerHTML = "";
@@ -512,6 +515,8 @@ function runSvgApis() {
 
     const evennessLen = wasm.lmt_svg_evenness_chart(svgBufPtr, C_STRING_CAPACITY);
     const evennessSvg = readCString(svgBufPtr);
+    const evennessFieldLen = wasm.lmt_svg_evenness_field(mainSet, svgBufPtr, C_STRING_CAPACITY);
+    const evennessFieldSvg = readCString(svgBufPtr);
 
     const fretsPtr = writeI8Array(arena, fretValues);
     const compatFretLen = fretValues.length === 6 ? wasm.lmt_svg_fret(fretsPtr, svgBufPtr, C_STRING_CAPACITY) : null;
@@ -536,6 +541,7 @@ function runSvgApis() {
       `lmt_svg_clock_optc bytes: ${clockLen}`,
       `lmt_svg_optic_k_group bytes: ${opticKLen}`,
       `lmt_svg_evenness_chart bytes: ${evennessLen}`,
+      `lmt_svg_evenness_field bytes: ${evennessFieldLen}`,
       compatFretLen !== null ? `lmt_svg_fret bytes: ${compatFretLen}` : `lmt_svg_fret bytes: unavailable for string_count=${fretValues.length}`,
       `lmt_svg_fret_n bytes: ${fretLen}`,
       `lmt_svg_chord_staff bytes: ${staffLen}`,
@@ -561,6 +567,7 @@ function runSvgApis() {
     svgClockHost.innerHTML = clockSvg;
     svgOpticKHost.innerHTML = opticKSvg;
     svgEvennessHost.innerHTML = evennessSvg;
+    svgEvennessFieldHost.innerHTML = evennessFieldSvg;
     svgFretCompatHost.innerHTML = compatFretSvg;
     svgFretHost.innerHTML = fretSvg;
     svgStaffHost.innerHTML = staffSvg;
@@ -571,6 +578,7 @@ function runSvgApis() {
     normalizeSvgPreview(svgClockHost);
     normalizeSvgPreview(svgOpticKHost, { maxHeight: 320, squareWidth: 620, mediumWidth: 760, wideWidth: 840, ultraWideWidth: 920, padXRatio: 0.04, padYRatio: 0.08 });
     normalizeSvgPreview(svgEvennessHost, { maxHeight: 520, squareWidth: 420, mediumWidth: 500, wideWidth: 520, ultraWideWidth: 540, padXRatio: 0.06, padYRatio: 0.06 });
+    normalizeSvgPreview(svgEvennessFieldHost, { maxHeight: 520, squareWidth: 420, mediumWidth: 520, wideWidth: 620, ultraWideWidth: 680, padXRatio: 0.06, padYRatio: 0.06 });
     normalizeSvgPreview(svgFretCompatHost);
     normalizeSvgPreview(svgFretHost);
     normalizeSvgPreview(svgStaffHost);

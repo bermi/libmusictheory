@@ -4,6 +4,7 @@ import fs from "node:fs";
 import net from "node:net";
 import path from "node:path";
 import process from "node:process";
+import { once } from "node:events";
 import { fileURLToPath } from "node:url";
 import { spawn, spawnSync } from "node:child_process";
 
@@ -18,6 +19,7 @@ const expectedBitmapSizes = {
   lmt_svg_clock_optc: { width: 840, height: 840 },
   lmt_svg_optic_k_group: { width: 840, height: 420 },
   lmt_svg_evenness_chart: { width: 840, height: 1092 },
+  lmt_svg_evenness_field: { width: 840, height: 1092 },
   lmt_svg_fret: { width: 840, height: 840 },
   lmt_svg_fret_n: { width: 840, height: 840 },
   lmt_svg_chord_staff: { width: 840, height: 504 },
@@ -113,13 +115,19 @@ async function waitForServer(url, timeoutMs = 15000) {
 function startServer(port) {
   const child = spawn("python3", ["-m", "http.server", String(port), "--bind", host, "--directory", docsDir], {
     cwd: docsDir,
-    stdio: ["ignore", "pipe", "pipe"],
+    stdio: ["ignore", "ignore", "ignore"],
   });
-  let stderr = "";
-  child.stderr.on("data", (chunk) => {
-    stderr += chunk.toString();
-  });
-  return { child, stderrRef: () => stderr };
+  child.unref();
+  return { child, stderrRef: () => "" };
+}
+
+async function stopServer(child) {
+  if (!child || child.exitCode !== null || child.killed) return;
+  child.kill("SIGTERM");
+  await Promise.race([
+    once(child, "exit").catch(() => {}),
+    delay(500),
+  ]);
 }
 
 async function main() {
@@ -129,17 +137,15 @@ async function main() {
 
   const port = await resolvePort();
   const { child: server, stderrRef } = startServer(port);
-  const cleanupServer = () => {
-    if (!server.killed) server.kill("SIGTERM");
-  };
+  const cleanupServer = () => stopServer(server);
 
   process.on("exit", cleanupServer);
   process.on("SIGINT", () => {
-    cleanupServer();
+    void cleanupServer();
     process.exit(130);
   });
   process.on("SIGTERM", () => {
-    cleanupServer();
+    void cleanupServer();
     process.exit(143);
   });
 
@@ -156,7 +162,7 @@ async function main() {
       const summary = await page.evaluate(() => window.__lmtQaAtlasSummary);
       if (!summary) throw new Error("qa atlas summary missing");
       if (!summary.rasterEnabled) throw new Error("qa atlas raster backend disabled");
-      if ((summary.methods || []).length !== 9) throw new Error(`qa atlas method count mismatch: ${(summary.methods || []).length}`);
+      if ((summary.methods || []).length !== 10) throw new Error(`qa atlas method count mismatch: ${(summary.methods || []).length}`);
 
       const failures = [];
       for (const method of summary.methods || []) {
@@ -188,7 +194,7 @@ async function main() {
     if (stderr.trim().length > 0) console.error(stderr.trim());
     throw error;
   } finally {
-    cleanupServer();
+    await cleanupServer();
     await delay(150);
   }
 }

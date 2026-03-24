@@ -315,7 +315,7 @@ select {
 }
 
 .scene-grid-midi {
-  grid-template-columns: minmax(320px, 0.84fr) minmax(360px, 0.76fr) minmax(360px, 0.7fr);
+  grid-template-columns: repeat(4, minmax(280px, 1fr));
   align-items: stretch;
 }
 
@@ -381,6 +381,22 @@ select {
 
 .midi-staff-frame svg {
   max-height: 360px;
+}
+
+.optic-k-frame {
+  min-height: 320px;
+}
+
+.optic-k-frame svg {
+  max-height: 280px;
+}
+
+.evenness-frame {
+  min-height: 420px;
+}
+
+.evenness-frame svg {
+  max-height: 420px;
 }
 
 .keyboard-frame {

@@ -63,6 +63,7 @@ const REQUIRED_EXPORTS = [
   "lmt_svg_clock_optc",
   "lmt_svg_optic_k_group",
   "lmt_svg_evenness_chart",
+  "lmt_svg_evenness_field",
   "lmt_svg_fret_n",
   "lmt_svg_chord_staff",
   "lmt_svg_key_staff",
@@ -78,6 +79,8 @@ const midiDevicesEl = document.getElementById("midi-devices");
 const midiSummaryEl = document.getElementById("midi-summary");
 const midiNotesEl = document.getElementById("midi-notes");
 const midiClockEl = document.getElementById("midi-clock");
+const midiOpticKEl = document.getElementById("midi-optic-k");
+const midiEvennessEl = document.getElementById("midi-evenness");
 const midiStaffEl = document.getElementById("midi-staff");
 const midiKeyboardEl = document.getElementById("midi-keyboard");
 const midiSuggestionsEl = document.getElementById("midi-suggestions");
@@ -392,6 +395,10 @@ function pianoStaffSvgString(arena, notes, tonic, quality) {
   return svgString(arena, wasm.lmt_svg_piano_staff, notesPtr, notes.length, tonic, quality);
 }
 
+function evennessFieldSvgString(arena, setValue) {
+  return svgString(arena, wasm.lmt_svg_evenness_field, setValue);
+}
+
 function normalizeSvgPreview(host, options = {}) {
   const {
     maxHeight = 320,
@@ -467,6 +474,36 @@ function inspectKeyboardSvg(svg) {
     selectedKeyCount: svg.querySelectorAll(".keyboard-key.is-selected").length,
     echoKeyCount: svg.querySelectorAll(".keyboard-key.is-echo").length,
     blackKeyCount: svg.querySelectorAll(".keyboard-key.black-key").length,
+  };
+}
+
+function inspectOpticKSvg(svg) {
+  if (!svg) {
+    return {
+      clockCount: 0,
+      linkCount: 0,
+      labelCount: 0,
+    };
+  }
+  return {
+    clockCount: svg.querySelectorAll(".optic-k-ring").length,
+    linkCount: svg.querySelectorAll(".optic-k-link").length,
+    labelCount: svg.querySelectorAll(".optic-k-label,.optic-k-set,.optic-k-chip,.optic-k-title").length,
+  };
+}
+
+function inspectEvennessSvg(svg) {
+  if (!svg) {
+    return {
+      ringCount: 0,
+      dotCount: 0,
+      highlightCount: 0,
+    };
+  }
+  return {
+    ringCount: svg.querySelectorAll(".ring").length,
+    dotCount: svg.querySelectorAll(".dot").length,
+    highlightCount: svg.querySelectorAll(".dot-highlight").length,
   };
 }
 
@@ -1044,6 +1081,8 @@ function renderMidiScene() {
       ? displayNotes.map((midi) => midiName(midi, context.tonic, context.quality))
       : [];
     const orbitNames = orderedMembersFromSet(context.setValue, context.tonic).map((pc) => spellNote(pc, context.tonic, context.quality));
+    const opticKSvg = svgString(arena, wasm.lmt_svg_optic_k_group, setValue);
+    const evennessFieldSvg = evennessFieldSvgString(arena, setValue);
 
     midiSummaryEl.textContent = [
       `mode: ${viewingSnapshot ? "snapshot preview" : "live input"}`,
@@ -1065,6 +1104,10 @@ function renderMidiScene() {
 
     midiClockEl.innerHTML = svgString(arena, wasm.lmt_svg_clock_optc, setValue);
     normalizeSvgPreview(midiClockEl, { maxHeight: 420, squareWidth: 420, mediumWidth: 520 });
+    midiOpticKEl.innerHTML = opticKSvg;
+    normalizeSvgPreview(midiOpticKEl, { maxHeight: 300, squareWidth: 520, mediumWidth: 620, wideWidth: 720, ultraWideWidth: 760, padXRatio: 0.04, padYRatio: 0.08 });
+    midiEvennessEl.innerHTML = evennessFieldSvg;
+    normalizeSvgPreview(midiEvennessEl, { maxHeight: 440, squareWidth: 360, mediumWidth: 420, wideWidth: 500, ultraWideWidth: 560, padXRatio: 0.05, padYRatio: 0.05 });
     midiKeyboardEl.innerHTML = keyboardSvgString(arena, keyboardNotes, keyboardRange.low, keyboardRange.high);
     normalizeSvgPreview(midiKeyboardEl, { maxHeight: 220, squareWidth: 780, mediumWidth: 920, wideWidth: 1040, ultraWideWidth: 1160, padXRatio: 0.02, padYRatio: 0.08 });
 
@@ -1090,6 +1133,8 @@ function renderMidiScene() {
     }
 
     const keyboardFeatures = inspectKeyboardSvg(midiKeyboardEl.querySelector("svg"));
+    const midiOpticKFeatures = inspectOpticKSvg(midiOpticKEl.querySelector("svg"));
+    const midiEvennessFeatures = inspectEvennessSvg(midiEvennessEl.querySelector("svg"));
     const midiStaffFeatures = inspectStaffSvg(midiStaffEl.querySelector("svg"));
 
     updateSummaryScene("midi", {
@@ -1108,6 +1153,8 @@ function renderMidiScene() {
       chordName: setValue === 0 ? "" : currentChord,
       suggestionCount: suggestions.length,
       suggestionNames: suggestions.map((one) => one.name),
+      midiOpticKFeatures,
+      midiEvennessFeatures,
       midiStaffFeatures,
       keyboardFeatures,
       rendered: true,
@@ -1236,7 +1283,7 @@ function renderSetScene() {
     const chordName = friendlyChordName(readCString(wasm.lmt_chord_name(setValue)));
     const svg = svgString(arena, wasm.lmt_svg_clock_optc, setValue);
     const opticKSvg = svgString(arena, wasm.lmt_svg_optic_k_group, setValue);
-    const evennessSvg = svgString(arena, wasm.lmt_svg_evenness_chart);
+    const evennessSvg = evennessFieldSvgString(arena, setValue);
 
     setSummaryEl.textContent = [
       `set: 0x${setValue.toString(16).padStart(3, "0")} ${JSON.stringify(pcsToList(arena, setValue))}`,
@@ -1257,16 +1304,9 @@ function renderSetScene() {
     normalizeSvgPreview(setOpticKEl, { maxHeight: 320, squareWidth: 620, mediumWidth: 760, wideWidth: 840, ultraWideWidth: 920, padXRatio: 0.04, padYRatio: 0.08 });
     normalizeSvgPreview(setEvennessEl, { maxHeight: 520, squareWidth: 420, mediumWidth: 520, wideWidth: 620, ultraWideWidth: 680, padXRatio: 0.05, padYRatio: 0.04 });
     const opticKSvgNode = setOpticKEl.querySelector("svg");
-    const setOpticKFeatures = opticKSvgNode ? {
-      clockCount: opticKSvgNode.querySelectorAll(".optic-k-ring").length,
-      linkCount: opticKSvgNode.querySelectorAll(".optic-k-link").length,
-      labelCount: opticKSvgNode.querySelectorAll(".optic-k-label,.optic-k-set,.optic-k-chip,.optic-k-title").length,
-    } : { clockCount: 0, linkCount: 0, labelCount: 0 };
+    const setOpticKFeatures = inspectOpticKSvg(opticKSvgNode);
     const evennessSvgNode = setEvennessEl.querySelector("svg");
-    const setEvennessFeatures = evennessSvgNode ? {
-      ringCount: evennessSvgNode.querySelectorAll(".ring").length,
-      dotCount: evennessSvgNode.querySelectorAll(".dot").length,
-    } : { ringCount: 0, dotCount: 0 };
+    const setEvennessFeatures = inspectEvennessSvg(evennessSvgNode);
     updateSummaryScene("set", {
       selectedCount: pcsList.length,
       setHex: `0x${setValue.toString(16).padStart(3, "0")}`,

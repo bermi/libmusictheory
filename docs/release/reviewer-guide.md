@@ -48,9 +48,9 @@ Review points:
 
 - hero and scene cards load without layout breakage
 - the live MIDI scene appears above the fold and shows a ready/connected state
-- after connecting a MIDI controller, sustain (`CC64`) keeps sounding notes visible, changing tonic/mode visibly changes the interpretation and suggestions, middle pedal (`CC66`) stores a clickable snapshot that restores both notes and context, and cross-register voicings paint a grand staff instead of collapsing into a triad proxy
+- after connecting a MIDI controller, sustain (`CC64`) keeps sounding notes visible, changing tonic/mode visibly changes the interpretation and suggestions, middle pedal (`CC66`) stores a clickable snapshot that restores both notes and context, cross-register voicings paint a grand staff instead of collapsing into a triad proxy, and the live scene keeps both `OPTIC/K` and evenness field diagrams visible and populated
 - clock scenes are large, centered, and crisp
-- the set scene includes all three public set visuals together: colored clock, OPTIC/K group diagram, and evenness chart
+- the set scene includes all three public set visuals together: colored clock, `OPTIC/K` group diagram, and focused evenness field
 - chord/staff scenes show proper clef opening, simultaneous cluster layout, readable accidentals, and the key scene includes a visible multi-bar staff walk
 - fret scenes are centered and remain legible across arbitrary tuning/string-count examples
 
@@ -83,7 +83,7 @@ Inspect:
 - `/Users/bermi/code/libmusictheory/zig-out/wasm-docs-qa/qa-atlas.png`
 - `/Users/bermi/code/libmusictheory/zig-out/wasm-docs-qa/qa-atlas.json`
 
-The atlas is a single labeled image that lays out only the public image-producing docs methods, one row per method, as direct PNGs encoded from RGBA buffers returned by the library. It is not an SVG preview sheet. The current public set includes the `OPTIC/K` group diagram, the evenness chart, and the multi-bar `lmt_svg_key_staff` row.
+The atlas is a single labeled image that lays out only the public image-producing docs methods, one row per method, as direct PNGs encoded from RGBA buffers returned by the library. It is not an SVG preview sheet. The current public set includes the `OPTIC/K` group diagram, the static evenness chart, the focused evenness field, and the multi-bar `lmt_svg_key_staff` row.
 
 ## Public API Review
 

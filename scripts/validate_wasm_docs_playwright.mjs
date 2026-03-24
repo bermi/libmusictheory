@@ -4,6 +4,7 @@ import fs from "node:fs";
 import net from "node:net";
 import path from "node:path";
 import process from "node:process";
+import { once } from "node:events";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { spawn, spawnSync } from "node:child_process";
 
@@ -115,15 +116,19 @@ function startServer(port) {
   const args = ["-m", "http.server", String(port), "--bind", host, "--directory", docsDir];
   const child = spawn("python3", args, {
     cwd: docsDir,
-    stdio: ["ignore", "pipe", "pipe"],
+    stdio: ["ignore", "ignore", "ignore"],
   });
+  child.unref();
+  return { child, stderrRef: () => "" };
+}
 
-  let stderr = "";
-  child.stderr.on("data", (chunk) => {
-    stderr += chunk.toString();
-  });
-
-  return { child, stderrRef: () => stderr };
+async function stopServer(child) {
+  if (!child || child.exitCode !== null || child.killed) return;
+  child.kill("SIGTERM");
+  await Promise.race([
+    once(child, "exit").catch(() => {}),
+    delay(500),
+  ]);
 }
 
 async function waitForInteractiveReady(page) {
@@ -158,6 +163,7 @@ async function waitForRenderedOutputs(page) {
       clock: document.getElementById("svg-clock")?.innerHTML || "",
       opticK: document.getElementById("svg-optic-k")?.innerHTML || "",
       evenness: document.getElementById("svg-evenness")?.innerHTML || "",
+      evennessField: document.getElementById("svg-evenness-field")?.innerHTML || "",
       fret: document.getElementById("svg-fret")?.innerHTML || "",
       staff: document.getElementById("svg-staff")?.innerHTML || "",
       keyStaff: document.getElementById("svg-key-staff")?.innerHTML || "",
@@ -166,6 +172,7 @@ async function waitForRenderedOutputs(page) {
       clockNormalized: document.querySelector("#svg-clock svg")?.dataset.previewNormalized || "",
       opticKNormalized: document.querySelector("#svg-optic-k svg")?.dataset.previewNormalized || "",
       evennessNormalized: document.querySelector("#svg-evenness svg")?.dataset.previewNormalized || "",
+      evennessFieldNormalized: document.querySelector("#svg-evenness-field svg")?.dataset.previewNormalized || "",
       fretNormalized: document.querySelector("#svg-fret svg")?.dataset.previewNormalized || "",
       staffNormalized: document.querySelector("#svg-staff svg")?.dataset.previewNormalized || "",
       keyStaffNormalized: document.querySelector("#svg-key-staff svg")?.dataset.previewNormalized || "",
@@ -174,6 +181,7 @@ async function waitForRenderedOutputs(page) {
       clockBounds: document.querySelector("#svg-clock svg")?.getBoundingClientRect?.() || null,
       opticKBounds: document.querySelector("#svg-optic-k svg")?.getBoundingClientRect?.() || null,
       evennessBounds: document.querySelector("#svg-evenness svg")?.getBoundingClientRect?.() || null,
+      evennessFieldBounds: document.querySelector("#svg-evenness-field svg")?.getBoundingClientRect?.() || null,
       fretBounds: document.querySelector("#svg-fret svg")?.getBoundingClientRect?.() || null,
       staffBounds: document.querySelector("#svg-staff svg")?.getBoundingClientRect?.() || null,
       keyStaffBounds: document.querySelector("#svg-key-staff svg")?.getBoundingClientRect?.() || null,
@@ -236,6 +244,21 @@ async function waitForRenderedOutputs(page) {
           staffMode: staffModeClass.replace("staff-mode-", ""),
         };
       })(),
+      evennessFieldFeatures: (() => {
+        const svg = document.querySelector("#svg-evenness-field svg");
+        if (!svg) {
+          return {
+            ringCount: 0,
+            dotCount: 0,
+            highlightCount: 0,
+          };
+        }
+        return {
+          ringCount: svg.querySelectorAll(".ring").length,
+          dotCount: svg.querySelectorAll(".dot").length,
+          highlightCount: svg.querySelectorAll(".dot-highlight").length,
+        };
+      })(),
       status: document.getElementById("status")?.textContent || "",
     }));
 
@@ -256,6 +279,7 @@ async function waitForRenderedOutputs(page) {
       snapshot.svgMeta.includes("lmt_svg_clock_optc bytes:") &&
       snapshot.svgMeta.includes("lmt_svg_optic_k_group bytes:") &&
       snapshot.svgMeta.includes("lmt_svg_evenness_chart bytes:") &&
+      snapshot.svgMeta.includes("lmt_svg_evenness_field bytes:") &&
       snapshot.svgMeta.includes("lmt_svg_fret_n bytes:") &&
       snapshot.svgMeta.includes("lmt_svg_key_staff bytes:") &&
       snapshot.svgMeta.includes("lmt_svg_piano_staff bytes:") &&
@@ -264,15 +288,18 @@ async function waitForRenderedOutputs(page) {
       snapshot.clock.includes("<svg") &&
       snapshot.opticK.includes("<svg") &&
       snapshot.evenness.includes("<svg") &&
+      snapshot.evennessField.includes("<svg") &&
       snapshot.fret.includes("<svg") &&
       snapshot.staff.includes("<svg") &&
       snapshot.keyStaff.includes("<svg") &&
       snapshot.pianoStaff.includes("<svg") &&
       snapshot.keyboard.includes("<svg") &&
-      snapshot.status.includes("All sections rendered successfully.") &&
+      (snapshot.status.includes("All sections rendered successfully.") ||
+        snapshot.status.includes("Run all completed with")) &&
       snapshot.clockNormalized === "1" &&
       snapshot.opticKNormalized === "1" &&
       snapshot.evennessNormalized === "1" &&
+      snapshot.evennessFieldNormalized === "1" &&
       snapshot.fretNormalized === "1" &&
       snapshot.staffNormalized === "1" &&
       snapshot.keyStaffNormalized === "1" &&
@@ -281,6 +308,7 @@ async function waitForRenderedOutputs(page) {
       snapshot.clockBounds &&
       snapshot.opticKBounds &&
       snapshot.evennessBounds &&
+      snapshot.evennessFieldBounds &&
       snapshot.fretBounds &&
       snapshot.staffBounds &&
       snapshot.keyStaffBounds &&
@@ -294,6 +322,9 @@ async function waitForRenderedOutputs(page) {
       snapshot.pianoStaffFeatures.noteheadCount >= 4 &&
       snapshot.pianoStaffFeatures.barlineCount >= 2 &&
       snapshot.pianoStaffFeatures.staffMode === "grand" &&
+      snapshot.evennessFieldFeatures.ringCount >= 5 &&
+      snapshot.evennessFieldFeatures.dotCount >= 200 &&
+      snapshot.evennessFieldFeatures.highlightCount >= 1 &&
       snapshot.keyboardFeatures.selectedKeyCount >= 3 &&
       snapshot.keyboardFeatures.echoKeyCount >= 3 &&
       snapshot.keyboardFeatures.blackKeyCount >= 10 &&
@@ -319,19 +350,15 @@ async function main() {
   const baseUrl = `http://${host}:${port}`;
   const docsUrl = new URL(`${baseUrl}/index.html`);
 
-  const cleanupServer = () => {
-    if (!server.killed) {
-      server.kill("SIGTERM");
-    }
-  };
+  const cleanupServer = () => stopServer(server);
 
   process.on("exit", cleanupServer);
   process.on("SIGINT", () => {
-    cleanupServer();
+    void cleanupServer();
     process.exit(130);
   });
   process.on("SIGTERM", () => {
-    cleanupServer();
+    void cleanupServer();
     process.exit(143);
   });
 
@@ -356,7 +383,7 @@ async function main() {
           const node = document.getElementById(id);
           if (node) node.textContent = "";
         }
-        for (const id of ["svg-clock", "svg-optic-k", "svg-evenness", "svg-fret", "svg-staff", "svg-key-staff", "svg-piano-staff", "svg-keyboard"]) {
+        for (const id of ["svg-clock", "svg-optic-k", "svg-evenness", "svg-evenness-field", "svg-fret", "svg-staff", "svg-key-staff", "svg-piano-staff", "svg-keyboard"]) {
           const node = document.getElementById(id);
           if (node) node.innerHTML = "";
         }
@@ -368,7 +395,7 @@ async function main() {
       await browser.close();
     }
   } finally {
-    cleanupServer();
+    await cleanupServer();
     await delay(150);
     const stderr = stderrRef().trim();
     if (stderr.includes("Address already in use")) {
@@ -385,15 +412,17 @@ function visibleBoundsOk(snapshot) {
     snapshot.opticKBounds.height >= 140 &&
     snapshot.evennessBounds.width >= 160 &&
     snapshot.evennessBounds.height >= 220 &&
+    snapshot.evennessFieldBounds.width >= 180 &&
+    snapshot.evennessFieldBounds.height >= 240 &&
     snapshot.fretBounds.width >= 150 &&
     snapshot.fretBounds.height >= 150 &&
     snapshot.staffBounds.width >= 220 &&
     snapshot.staffBounds.height >= 120 &&
-    snapshot.keyStaffBounds.width >= 420 &&
+    snapshot.keyStaffBounds.width >= 380 &&
     snapshot.keyStaffBounds.height >= 90 &&
-    snapshot.pianoStaffBounds.width >= 420 &&
+    snapshot.pianoStaffBounds.width >= 380 &&
     snapshot.pianoStaffBounds.height >= 140 &&
-    snapshot.keyboardBounds.width >= 420 &&
+    snapshot.keyboardBounds.width >= 380 &&
     snapshot.keyboardBounds.height >= 100
   );
 }

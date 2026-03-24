@@ -9,6 +9,7 @@ const svg_quality = @import("quality.zig");
 pub const MAX_DOTS: usize = set_class.SET_CLASSES.len;
 
 pub const Dot = struct {
+    set: pcs.PitchClassSet,
     x: f32,
     y: f32,
     cardinality: u4,
@@ -51,6 +52,7 @@ pub fn computeDots(out: *[MAX_DOTS]Dot) []Dot {
         const radius = base_radius + normalized * 210.0;
 
         out[i] = .{
+            .set = sc.pcs,
             .x = radius * @as(f32, @floatCast(std.math.cos(angle))),
             .y = radius * @as(f32, @floatCast(std.math.sin(angle))),
             .cardinality = sc.cardinality,
@@ -85,7 +87,18 @@ fn chartBounds(dots: []const Dot) Bounds {
     };
 }
 
-pub fn renderEvennessChart(buf: []u8) []u8 {
+fn findHighlightedDot(dots: []const Dot, set: pcs.PitchClassSet) ?Dot {
+    const safe_set = set & 0x0fff;
+    const card = pcs.cardinality(safe_set);
+    if (card < 3 or card > 9) return null;
+    const target = set_class.fortePrime(safe_set);
+    for (dots) |dot| {
+        if (dot.set == target) return dot;
+    }
+    return null;
+}
+
+fn renderEvennessFieldInternal(highlight_set: ?pcs.PitchClassSet, buf: []u8) []u8 {
     var stream = std.io.fixedBufferStream(buf);
     const w = stream.writer();
 
@@ -107,6 +120,9 @@ pub fn renderEvennessChart(buf: []u8) []u8 {
         \\.ring,.dot{vector-effect:non-scaling-stroke}
         \\.ring{fill:none;stroke:#8f949d;stroke-width:2;stroke-linecap:round}
         \\.dot{stroke:white;stroke-width:1.25}
+        \\.dot-highlight{fill:none;stroke:#18242f;stroke-width:3.25;vector-effect:non-scaling-stroke}
+        \\.highlight-label{font-size:12px}
+        \\.highlight-chip{font-size:10px}
         \\
     ) catch unreachable;
     w.writeAll("<rect x=\"0\" y=\"0\" width=\"500\" height=\"650\" fill=\"white\" />\n") catch unreachable;
@@ -134,8 +150,54 @@ pub fn renderEvennessChart(buf: []u8) []u8 {
         ) catch unreachable;
     }
 
+    if (highlight_set) |set| {
+        if (findHighlightedDot(dots, set)) |dot| {
+            const highlight_x = target_width / 2.0 + (dot.x - center_x) * scale;
+            const highlight_y = target_height / 2.0 + (dot.y - center_y) * scale;
+            const safe_set = set & 0x0fff;
+            const prime = set_class.fortePrime(safe_set);
+            var set_label_buf: [12]u8 = undefined;
+            const sc = blk: {
+                for (set_class.SET_CLASSES) |candidate| {
+                    if (candidate.pcs == prime) break :blk candidate;
+                }
+                break :blk set_class.SetClass{
+                    .pcs = prime,
+                    .cardinality = pcs.cardinality(prime),
+                    .prime = set_class.primeForm(prime),
+                    .forte_prime = prime,
+                    .forte_number = .{ .cardinality = pcs.cardinality(prime), .ordinal = 0, .is_z = false },
+                    .flags = .{},
+                };
+            };
+            var forte_buf: [16]u8 = undefined;
+            const label = forteLabel(sc, &forte_buf);
+            const set_label = pcs.format(safe_set, &set_label_buf);
+            const cluster_free = !cluster.hasCluster(safe_set);
+            const chip_fill = if (cluster_free) "#0f766e" else "#5b6470";
+
+            w.print("<circle class=\"dot-highlight\" cx=\"{d:.2}\" cy=\"{d:.2}\" r=\"15.5\" />\n", .{ highlight_x, highlight_y }) catch unreachable;
+            w.print("<circle class=\"dot-highlight\" cx=\"{d:.2}\" cy=\"{d:.2}\" r=\"21.5\" opacity=\"0.28\" />\n", .{ highlight_x, highlight_y }) catch unreachable;
+            w.print("<rect x=\"20\" y=\"20\" width=\"124\" height=\"44\" rx=\"16\" fill=\"rgba(255,255,255,0.92)\" stroke=\"rgba(24,36,47,0.12)\" stroke-width=\"1.1\" />\n", .{}) catch unreachable;
+            w.print("<text class=\"label-sans highlight-label inverse-outline\" x=\"32\" y=\"39\" fill=\"#18242f\">focus {s}</text>\n", .{label}) catch unreachable;
+            w.print("<text class=\"label-mono highlight-chip inverse-outline\" x=\"32\" y=\"55\" fill=\"{s}\">[{s}] · evenness {d:.4}</text>\n", .{
+                chip_fill,
+                set_label,
+                dot.evenness_distance,
+            }) catch unreachable;
+        }
+    }
+
     w.writeAll("</svg>\n") catch unreachable;
     return buf[0..stream.pos];
+}
+
+pub fn renderEvennessChart(buf: []u8) []u8 {
+    return renderEvennessFieldInternal(null, buf);
+}
+
+pub fn renderEvennessField(set: pcs.PitchClassSet, buf: []u8) []u8 {
+    return renderEvennessFieldInternal(set, buf);
 }
 
 pub fn forteLabel(sc: set_class.SetClass, out: *[16]u8) []u8 {

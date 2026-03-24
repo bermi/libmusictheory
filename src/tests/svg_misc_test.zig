@@ -2,6 +2,7 @@ const std = @import("std");
 const testing = std.testing;
 
 const set_class = @import("../set_class.zig");
+const pcs = @import("../pitch_class_set.zig");
 const pitch = @import("../pitch.zig");
 const key_signature = @import("../key_signature.zig");
 
@@ -64,6 +65,10 @@ test "evenness chart ring counts match set class cardinality counts" {
     try testing.expect(std.mem.indexOf(u8, svg, "class=\"dot\"") != null);
     try testing.expect(std.mem.indexOf(u8, svg, "shape-rendering=\"geometricPrecision\"") != null);
     try testing.expect(std.mem.indexOf(u8, svg, "class=\"ring\"") != null);
+
+    const focused = evenness_chart.renderEvennessField(pcs.fromList(&[_]pitch.PitchClass{ 0, 4, 7 }), &svg_buf);
+    try testing.expect(std.mem.indexOf(u8, focused, "class=\"dot-highlight\"") != null);
+    try testing.expect(std.mem.indexOf(u8, focused, "focus 3-11") != null);
 }
 
 test "circle of fifths order and svg validity" {

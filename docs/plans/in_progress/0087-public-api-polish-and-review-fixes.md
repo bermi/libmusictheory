@@ -24,6 +24,9 @@ Address the remaining small public-surface rough edges discovered during RC revi
 - deterministic QA atlas page and screenshot capture for the public image-producing docs methods
 - review-driven public image QA fixes:
   - measured clock-label layout for `lmt_svg_clock_optc`
+  - public pitch-class clocks use the standalone palette instead of monochrome fallback
+  - expose a public algorithmic `OPTIC/K` group diagram in docs, gallery, and bitmap QA atlas
+  - expose a public focused evenness-field diagram in docs, gallery, live MIDI scene, and bitmap QA atlas
   - false-barre rejection for `lmt_svg_fret`
   - explicit barre-sample coverage in the bitmap QA atlas for `lmt_svg_fret`
   - aspect-correct bitmap QA capture for `lmt_svg_chord_staff`
@@ -31,7 +34,7 @@ Address the remaining small public-surface rough edges discovered during RC revi
   - lower-C ledger-line placement and stem-notehead alignment fixes for `lmt_svg_chord_staff`
   - add a real public multi-bar key-staff API and gallery/docs example instead of implying that a one-bar chord staff covers melodic/key notation
   - expose the public evenness chart in the docs, gallery, and bitmap QA atlas instead of showing only a scalar evenness number
-  - expose a public algorithmic `OPTIC/K` group diagram in the docs, gallery, and bitmap QA atlas so complement-equivalence context is visible on the standalone surface
+  - expose a public keyboard diagram with highlighted notes and pitch-class colors on the standalone surface
   - replace the live MIDI scene's triad proxy with a real public piano-staff API that paints treble, bass, or grand staff from arbitrary MIDI note arrays
 
 ## Verification-First Guardrails

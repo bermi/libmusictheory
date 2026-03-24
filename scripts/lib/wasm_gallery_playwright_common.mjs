@@ -2,6 +2,7 @@ import fs from "node:fs";
 import net from "node:net";
 import path from "node:path";
 import process from "node:process";
+import { once } from "node:events";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { spawn, spawnSync } from "node:child_process";
 
@@ -105,15 +106,19 @@ export function startGalleryServer(port) {
   const args = ["-m", "http.server", String(port), "--bind", host, "--directory", galleryDir];
   const child = spawn("python3", args, {
     cwd: galleryDir,
-    stdio: ["ignore", "pipe", "pipe"],
+    stdio: ["ignore", "ignore", "ignore"],
   });
+  child.unref();
+  return { child, stderrRef: () => "" };
+}
 
-  let stderr = "";
-  child.stderr.on("data", (chunk) => {
-    stderr += chunk.toString();
-  });
-
-  return { child, stderrRef: () => stderr };
+export async function stopGalleryServer(child) {
+  if (!child || child.exitCode !== null || child.killed) return;
+  child.kill("SIGTERM");
+  await Promise.race([
+    once(child, "exit").catch(() => {}),
+    delay(500),
+  ]);
 }
 
 export function galleryUrl(port, search = "") {
@@ -232,6 +237,8 @@ export async function waitForMidiSceneActive(page) {
       suggestionCards: document.querySelectorAll("#midi-suggestions .suggestion-card").length,
       noteChips: document.querySelectorAll("#midi-notes .chip").length,
       clockSvg: document.querySelector("#midi-clock svg")?.outerHTML || "",
+      opticKSvg: document.querySelector("#midi-optic-k svg")?.outerHTML || "",
+      evennessSvg: document.querySelector("#midi-evenness svg")?.outerHTML || "",
       keyboardSvg: document.querySelector("#midi-keyboard svg")?.outerHTML || "",
       staffHtml: document.querySelector("#midi-staff")?.innerHTML || "",
       keyboardFeatures: (() => {
@@ -240,6 +247,24 @@ export async function waitForMidiSceneActive(page) {
         return {
           selectedKeyCount: svg.querySelectorAll(".keyboard-key.is-selected").length,
           echoKeyCount: svg.querySelectorAll(".keyboard-key.is-echo").length,
+        };
+      })(),
+      midiOpticKFeatures: (() => {
+        const svg = document.querySelector("#midi-optic-k svg");
+        if (!svg) return { clockCount: 0, linkCount: 0, labelCount: 0 };
+        return {
+          clockCount: svg.querySelectorAll(".optic-k-ring").length,
+          linkCount: svg.querySelectorAll(".optic-k-link").length,
+          labelCount: svg.querySelectorAll(".optic-k-label,.optic-k-set,.optic-k-chip,.optic-k-title").length,
+        };
+      })(),
+      midiEvennessFeatures: (() => {
+        const svg = document.querySelector("#midi-evenness svg");
+        if (!svg) return { ringCount: 0, dotCount: 0, highlightCount: 0 };
+        return {
+          ringCount: svg.querySelectorAll(".ring").length,
+          dotCount: svg.querySelectorAll(".dot").length,
+          highlightCount: svg.querySelectorAll(".dot-highlight").length,
         };
       })(),
       midiStaffFeatures: (() => {
@@ -274,8 +299,16 @@ export async function waitForMidiSceneActive(page) {
       && snapshot.noteChips >= 4
       && snapshot.suggestionCards >= 1
       && snapshot.clockSvg.includes("<svg")
+      && snapshot.opticKSvg.includes("<svg")
+      && snapshot.evennessSvg.includes("<svg")
       && snapshot.keyboardSvg.includes("<svg")
       && snapshot.staffHtml.includes("<svg")
+      && snapshot.midiOpticKFeatures.clockCount >= 2
+      && snapshot.midiOpticKFeatures.linkCount >= 1
+      && snapshot.midiOpticKFeatures.labelCount >= 5
+      && snapshot.midiEvennessFeatures.ringCount >= 5
+      && snapshot.midiEvennessFeatures.dotCount >= 200
+      && snapshot.midiEvennessFeatures.highlightCount >= 1
       && snapshot.keyboardFeatures.selectedKeyCount >= 4
       && snapshot.keyboardFeatures.echoKeyCount >= 4
       && snapshot.midiStaffFeatures.staffMode === "grand"
@@ -300,6 +333,8 @@ export async function waitForGalleryReady(page) {
       summary: window.__lmtGallerySummary || null,
       captureMode: document.documentElement.dataset.captureMode || "",
       midiClockSvg: document.querySelector("#midi-clock svg")?.outerHTML || "",
+      midiOpticKSvg: document.querySelector("#midi-optic-k svg")?.outerHTML || "",
+      midiEvennessSvg: document.querySelector("#midi-evenness svg")?.outerHTML || "",
       midiKeyboardSvg: document.querySelector("#midi-keyboard svg")?.outerHTML || "",
       clockSvg: document.querySelector("#set-clock svg")?.outerHTML || "",
       setOpticKSvg: document.querySelector("#set-optic-k svg")?.outerHTML || "",
@@ -326,7 +361,7 @@ export async function waitForGalleryReady(page) {
       sceneCardCount: document.querySelectorAll(".scene-card").length,
       presetSelectCount: document.querySelectorAll("select[id$='-preset']").length,
       previewMetrics: Array.from(
-        document.querySelectorAll("#midi-clock svg, #midi-keyboard svg, #set-clock svg, #set-optic-k svg, #set-evenness svg, #key-clock svg, #key-staff svg, #key-keyboard svg, #chord-clock svg, #chord-staff svg, #progression-clock svg, #compare-left-clock svg, #compare-overlap-clock svg, #compare-right-clock svg, #fret-svg svg"),
+        document.querySelectorAll("#midi-clock svg, #midi-optic-k svg, #midi-evenness svg, #midi-keyboard svg, #set-clock svg, #set-optic-k svg, #set-evenness svg, #key-clock svg, #key-staff svg, #key-keyboard svg, #chord-clock svg, #chord-staff svg, #progression-clock svg, #compare-left-clock svg, #compare-overlap-clock svg, #compare-right-clock svg, #fret-svg svg"),
         (svg) => {
           const rect = svg.getBoundingClientRect();
           return {
@@ -415,11 +450,43 @@ export async function waitForGalleryReady(page) {
           return {
             ringCount: 0,
             dotCount: 0,
+            highlightCount: 0,
           };
         }
         return {
           ringCount: svg.querySelectorAll(".ring").length,
           dotCount: svg.querySelectorAll(".dot").length,
+          highlightCount: svg.querySelectorAll(".dot-highlight").length,
+        };
+      })(),
+      midiEvennessFeatures: (() => {
+        const svg = document.querySelector("#midi-evenness svg");
+        if (!svg) {
+          return {
+            ringCount: 0,
+            dotCount: 0,
+            highlightCount: 0,
+          };
+        }
+        return {
+          ringCount: svg.querySelectorAll(".ring").length,
+          dotCount: svg.querySelectorAll(".dot").length,
+          highlightCount: svg.querySelectorAll(".dot-highlight").length,
+        };
+      })(),
+      midiOpticKFeatures: (() => {
+        const svg = document.querySelector("#midi-optic-k svg");
+        if (!svg) {
+          return {
+            clockCount: 0,
+            linkCount: 0,
+            labelCount: 0,
+          };
+        }
+        return {
+          clockCount: svg.querySelectorAll(".optic-k-ring").length,
+          linkCount: svg.querySelectorAll(".optic-k-link").length,
+          labelCount: svg.querySelectorAll(".optic-k-label,.optic-k-set,.optic-k-chip,.optic-k-title").length,
         };
       })(),
       setOpticKFeatures: (() => {
@@ -458,6 +525,8 @@ export async function waitForGalleryReady(page) {
       summary.scenes?.compare?.rendered &&
       summary.scenes?.fret?.rendered &&
       snapshot.midiClockSvg.includes("<svg") &&
+      snapshot.midiOpticKSvg.includes("<svg") &&
+      snapshot.midiEvennessSvg.includes("<svg") &&
       snapshot.midiKeyboardSvg.includes("<svg") &&
       snapshot.clockSvg.includes("<svg") &&
       snapshot.setOpticKSvg.includes("<svg") &&
@@ -480,10 +549,14 @@ export async function waitForGalleryReady(page) {
       snapshot.toggleCount === 12 &&
       snapshot.sceneCardCount >= 7 &&
       snapshot.presetSelectCount >= 6 &&
-      snapshot.previewMetrics.length >= 15 &&
+      snapshot.previewMetrics.length >= 17 &&
       snapshot.previewMetrics.every((metric) => metric.normalized === "1") &&
-      snapshot.previewMetrics.find((metric) => metric.host === "midi-clock")?.width >= 360 &&
-      snapshot.previewMetrics.find((metric) => metric.host === "midi-clock")?.height >= 360 &&
+      snapshot.previewMetrics.find((metric) => metric.host === "midi-clock")?.width >= 260 &&
+      snapshot.previewMetrics.find((metric) => metric.host === "midi-clock")?.height >= 260 &&
+      snapshot.previewMetrics.find((metric) => metric.host === "midi-optic-k")?.width >= 260 &&
+      snapshot.previewMetrics.find((metric) => metric.host === "midi-optic-k")?.height >= 130 &&
+      snapshot.previewMetrics.find((metric) => metric.host === "midi-evenness")?.width >= 260 &&
+      snapshot.previewMetrics.find((metric) => metric.host === "midi-evenness")?.height >= 330 &&
       snapshot.previewMetrics.find((metric) => metric.host === "midi-keyboard")?.width >= 720 &&
       snapshot.previewMetrics.find((metric) => metric.host === "midi-keyboard")?.height >= 120 &&
       snapshot.previewMetrics.find((metric) => metric.host === "set-clock")?.width >= 320 &&
@@ -521,13 +594,19 @@ export async function waitForGalleryReady(page) {
       snapshot.keyStaffFeatures.barlineCount >= 2 &&
       snapshot.midiKeyboardFeatures.selectedKeyCount >= 3 &&
       snapshot.midiKeyboardFeatures.echoKeyCount >= 3 &&
+      snapshot.midiOpticKFeatures.clockCount >= 2 &&
+      snapshot.midiOpticKFeatures.linkCount >= 1 &&
+      snapshot.midiOpticKFeatures.labelCount >= 5 &&
+      snapshot.midiEvennessFeatures.ringCount >= 5 &&
+      snapshot.midiEvennessFeatures.dotCount >= 200 &&
       snapshot.keyKeyboardFeatures.selectedKeyCount >= 7 &&
       snapshot.keyKeyboardFeatures.echoKeyCount >= 20 &&
       snapshot.setOpticKFeatures.clockCount >= 2 &&
       snapshot.setOpticKFeatures.linkCount >= 1 &&
       snapshot.setOpticKFeatures.labelCount >= 5 &&
       snapshot.setEvennessFeatures.ringCount >= 5 &&
-      snapshot.setEvennessFeatures.dotCount >= 200;
+      snapshot.setEvennessFeatures.dotCount >= 200 &&
+      snapshot.setEvennessFeatures.highlightCount >= 1;
 
     if (ready) return snapshot;
     if (Date.now() > deadline) {

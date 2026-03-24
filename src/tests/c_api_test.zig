@@ -57,6 +57,7 @@ extern fn lmt_url_to_frets_n(url_ptr: [*c]const u8, out: [*c]i8, out_cap: u32) c
 extern fn lmt_svg_clock_optc(set: u16, buf: [*c]u8, buf_size: u32) callconv(.c) u32;
 extern fn lmt_svg_optic_k_group(set: u16, buf: [*c]u8, buf_size: u32) callconv(.c) u32;
 extern fn lmt_svg_evenness_chart(buf: [*c]u8, buf_size: u32) callconv(.c) u32;
+extern fn lmt_svg_evenness_field(set: u16, buf: [*c]u8, buf_size: u32) callconv(.c) u32;
 extern fn lmt_svg_fret(frets_ptr: [*c]const i8, buf: [*c]u8, buf_size: u32) callconv(.c) u32;
 extern fn lmt_svg_fret_n(frets_ptr: [*c]const i8, string_count: u32, window_start: u32, visible_frets: u32, buf: [*c]u8, buf_size: u32) callconv(.c) u32;
 extern fn lmt_svg_chord_staff(chord_kind: u8, root: u8, buf: [*c]u8, buf_size: u32) callconv(.c) u32;
@@ -68,6 +69,7 @@ extern fn lmt_raster_demo_rgba(width: u32, height: u32, out_rgba: [*c]u8, out_rg
 extern fn lmt_bitmap_clock_optc_rgba(set: u16, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32;
 extern fn lmt_bitmap_optic_k_group_rgba(set: u16, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32;
 extern fn lmt_bitmap_evenness_chart_rgba(width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32;
+extern fn lmt_bitmap_evenness_field_rgba(set: u16, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32;
 extern fn lmt_bitmap_fret_rgba(frets_ptr: [*c]const i8, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32;
 extern fn lmt_bitmap_fret_n_rgba(frets_ptr: [*c]const i8, string_count: u32, window_start: u32, visible_frets: u32, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32;
 extern fn lmt_bitmap_chord_staff_rgba(chord_kind: u8, root: u8, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32;
@@ -242,6 +244,11 @@ test "c abi svg generators" {
     try testing.expect(std.mem.indexOf(u8, svg_buf[0..evenness_len], "class=\"ring\"") != null);
     try testing.expect(std.mem.indexOf(u8, svg_buf[0..evenness_len], "class=\"dot\"") != null);
 
+    const evenness_field_len = lmt_svg_evenness_field(c_major, @ptrCast(&svg_buf), @intCast(svg_buf.len));
+    try testing.expect(evenness_field_len > 0);
+    try testing.expect(std.mem.indexOf(u8, svg_buf[0..evenness_field_len], "class=\"dot-highlight\"") != null);
+    try testing.expect(std.mem.indexOf(u8, svg_buf[0..evenness_field_len], "focus ") != null);
+
     const frets = [_]i8{ -1, 3, 2, 0, 1, 0 };
     const len2 = lmt_svg_fret(@ptrCast(&frets), @ptrCast(&svg_buf), @intCast(svg_buf.len));
     try testing.expect(len2 > 0);
@@ -313,6 +320,10 @@ test "c abi raster generators" {
     var evenness_rgba: [240 * 312 * 4]u8 = [_]u8{0} ** (240 * 312 * 4);
     try testing.expectEqual(@as(u32, evenness_rgba.len), lmt_bitmap_evenness_chart_rgba(240, 312, @ptrCast(&evenness_rgba), @intCast(evenness_rgba.len)));
     try testing.expect(std.mem.indexOfNone(u8, &evenness_rgba, &[_]u8{255}) != null);
+
+    var evenness_field_rgba: [240 * 312 * 4]u8 = [_]u8{0} ** (240 * 312 * 4);
+    try testing.expectEqual(@as(u32, evenness_field_rgba.len), lmt_bitmap_evenness_field_rgba(clock_set, 240, 312, @ptrCast(&evenness_field_rgba), @intCast(evenness_field_rgba.len)));
+    try testing.expect(std.mem.indexOfNone(u8, &evenness_field_rgba, &[_]u8{255}) != null);
 
     const frets = [_]i8{ -1, 3, 2, 0, 1, 0 };
     var fret_rgba: [320 * 320 * 4]u8 = [_]u8{0} ** (320 * 320 * 4);

@@ -658,6 +658,13 @@ export fn lmt_svg_evenness_chart(buf: [*c]u8, buf_size: u32) callconv(.C) u32 {
     return copySvgOut(svg, buf, buf_size);
 }
 
+export fn lmt_svg_evenness_field(set: u16, buf: [*c]u8, buf_size: u32) callconv(.C) u32 {
+    var svg_buf: [65536]u8 = undefined;
+    const safe_set = maskPitchClassSet(set);
+    const svg = svg_evenness_chart.renderEvennessField(safe_set, &svg_buf);
+    return copySvgOut(svg, buf, buf_size);
+}
+
 export fn lmt_svg_fret(frets_ptr: [*c]const i8, buf: [*c]u8, buf_size: u32) callconv(.C) u32 {
     var frets: [guitar.NUM_STRINGS]i8 = [_]i8{-1} ** guitar.NUM_STRINGS;
     if (frets_ptr != null) {
@@ -816,6 +823,14 @@ export fn lmt_bitmap_evenness_chart_rgba(width: u32, height: u32, out_rgba: [*c]
     const total = lmt_svg_evenness_chart(null, 0);
     if (total == 0 or total >= compat_svg_buf.len) return 0;
     const written_total = lmt_svg_evenness_chart(@ptrCast(&compat_svg_buf), @intCast(compat_svg_buf.len));
+    if (written_total != total) return 0;
+    return renderPublicSvgBitmap(compat_svg_buf[0..@as(usize, total)], width, height, out_rgba, out_rgba_size);
+}
+
+export fn lmt_bitmap_evenness_field_rgba(set: u16, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.C) u32 {
+    const total = lmt_svg_evenness_field(set, null, 0);
+    if (total == 0 or total >= compat_svg_buf.len) return 0;
+    const written_total = lmt_svg_evenness_field(set, @ptrCast(&compat_svg_buf), @intCast(compat_svg_buf.len));
     if (written_total != total) return 0;
     return renderPublicSvgBitmap(compat_svg_buf[0..@as(usize, total)], width, height, out_rgba, out_rgba_size);
 }

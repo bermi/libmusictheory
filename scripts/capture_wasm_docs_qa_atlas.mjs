@@ -4,6 +4,7 @@ import fs from "node:fs";
 import net from "node:net";
 import path from "node:path";
 import process from "node:process";
+import { once } from "node:events";
 import { fileURLToPath } from "node:url";
 import { spawn, spawnSync } from "node:child_process";
 
@@ -15,7 +16,7 @@ const outputDir = path.join(rootDir, "zig-out", "wasm-docs-qa");
 const host = "127.0.0.1";
 const maxDrift = Number.parseFloat(process.env.LMT_WASM_DOCS_BITMAP_MAX_DRIFT || "0.05");
 const minInkPixels = Number.parseInt(process.env.LMT_WASM_DOCS_BITMAP_MIN_INK || "1000", 10);
-const expectedImageMethodCount = 9;
+const expectedImageMethodCount = 10;
 
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -114,13 +115,19 @@ async function waitForServer(url, timeoutMs = 15000) {
 function startServer(port) {
   const child = spawn("python3", ["-m", "http.server", String(port), "--bind", host, "--directory", docsDir], {
     cwd: docsDir,
-    stdio: ["ignore", "pipe", "pipe"],
+    stdio: ["ignore", "ignore", "ignore"],
   });
-  let stderr = "";
-  child.stderr.on("data", (chunk) => {
-    stderr += chunk.toString();
-  });
-  return { child, stderrRef: () => stderr };
+  child.unref();
+  return { child, stderrRef: () => "" };
+}
+
+async function stopServer(child) {
+  if (!child || child.exitCode !== null || child.killed) return;
+  child.kill("SIGTERM");
+  await Promise.race([
+    once(child, "exit").catch(() => {}),
+    delay(500),
+  ]);
 }
 
 async function main() {
@@ -131,17 +138,15 @@ async function main() {
   fs.mkdirSync(outputDir, { recursive: true });
   const port = await resolvePort();
   const { child: server, stderrRef } = startServer(port);
-  const cleanupServer = () => {
-    if (!server.killed) server.kill("SIGTERM");
-  };
+  const cleanupServer = () => stopServer(server);
 
   process.on("exit", cleanupServer);
   process.on("SIGINT", () => {
-    cleanupServer();
+    void cleanupServer();
     process.exit(130);
   });
   process.on("SIGTERM", () => {
-    cleanupServer();
+    void cleanupServer();
     process.exit(143);
   });
 
@@ -240,7 +245,7 @@ async function main() {
     }
     throw error;
   } finally {
-    cleanupServer();
+    await cleanupServer();
     await delay(150);
   }
 }

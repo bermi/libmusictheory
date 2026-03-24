@@ -13,6 +13,7 @@ import {
   releaseFakeMidiSustain,
   resolveValidationPort,
   startGalleryServer,
+  stopGalleryServer,
   waitForGalleryReady,
   waitForMidiSceneActive,
   waitForServer,
@@ -28,17 +29,15 @@ async function main() {
   const { child: server, stderrRef } = startGalleryServer(port);
   const url = galleryUrl(port);
 
-  const cleanupServer = () => {
-    if (!server.killed) server.kill("SIGTERM");
-  };
+  const cleanupServer = () => stopGalleryServer(server);
 
   process.on("exit", cleanupServer);
   process.on("SIGINT", () => {
-    cleanupServer();
+    void cleanupServer();
     process.exit(130);
   });
   process.on("SIGTERM", () => {
-    cleanupServer();
+    void cleanupServer();
     process.exit(143);
   });
 
@@ -61,6 +60,9 @@ async function main() {
       const midiActive = await waitForMidiSceneActive(page);
       if (midiActive.midiStaffFeatures?.staffMode !== "grand" || (midiActive.midiStaffFeatures?.clefCount || 0) < 2) {
         throw new Error(`live midi scene did not render a grand staff: ${JSON.stringify(midiActive.midiStaffFeatures)}`);
+      }
+      if ((midiActive.midiOpticKFeatures?.clockCount || 0) < 2 || (midiActive.midiEvennessFeatures?.highlightCount || 0) < 1) {
+        throw new Error(`live midi scene did not render OPTIC/K and evenness focus correctly: ${JSON.stringify({ optic: midiActive.midiOpticKFeatures, evenness: midiActive.midiEvennessFeatures })}`);
       }
       const defaultContext = await page.evaluate(() => ({
         label: window.__lmtGallerySummary?.scenes?.midi?.contextLabel || "",
@@ -158,7 +160,7 @@ async function main() {
     }
     throw error;
   } finally {
-    cleanupServer();
+    await cleanupServer();
     await delay(150);
   }
 }

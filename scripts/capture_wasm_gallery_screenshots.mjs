@@ -14,6 +14,7 @@ import {
   resolveValidationPort,
   rootDir,
   startGalleryServer,
+  stopGalleryServer,
   waitForGalleryReady,
   waitForMidiSceneActive,
   waitForServer,
@@ -71,17 +72,15 @@ async function main() {
   const { child: server, stderrRef } = startGalleryServer(port);
   const url = galleryUrl(port, "?capture=1");
 
-  const cleanupServer = () => {
-    if (!server.killed) server.kill("SIGTERM");
-  };
+  const cleanupServer = () => stopGalleryServer(server);
 
   process.on("exit", cleanupServer);
   process.on("SIGINT", () => {
-    cleanupServer();
+    void cleanupServer();
     process.exit(130);
   });
   process.on("SIGTERM", () => {
-    cleanupServer();
+    void cleanupServer();
     process.exit(143);
   });
 
@@ -168,7 +167,7 @@ async function main() {
     }
     throw error;
   } finally {
-    cleanupServer();
+    await cleanupServer();
     await delay(150);
   }
 }
