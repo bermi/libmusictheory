@@ -29,6 +29,7 @@ Address the remaining small public-surface rough edges discovered during RC revi
   - aspect-correct bitmap QA capture for `lmt_svg_chord_staff`
   - public staff-position cleanup where line/ledger placement was visually misleading
   - lower-C ledger-line placement and stem-notehead alignment fixes for `lmt_svg_chord_staff`
+  - add a real public multi-bar key-staff API and gallery/docs example instead of implying that a one-bar chord staff covers melodic/key notation
 
 ## Verification-First Guardrails
 

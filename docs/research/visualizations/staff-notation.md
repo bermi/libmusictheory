@@ -165,3 +165,5 @@ As of 2026-03-21 the public renderer also:
 - exposes those notation features through stable SVG classes so gallery screenshot verification can assert real notation structure instead of only image size
 
 This renderer is intended to be a clean, lightweight algorithmic notation surface for the public API docs. Exact byte-for-byte harmonious parity for `scale`, `chord`, and `grand-chord` remains the responsibility of the dedicated compatibility renderers.
+
+As of 2026-03-24 the standalone public API also exposes `lmt_svg_key_staff`, a two-measure treble staff walk for major and natural-minor keys. That method is intended for lightweight key-center previews in the gallery and docs, and it is paired with the experimental bitmap export `lmt_bitmap_key_staff_rgba` for QA-atlas review.

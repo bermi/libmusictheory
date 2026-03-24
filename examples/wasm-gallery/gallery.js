@@ -63,6 +63,7 @@ const REQUIRED_EXPORTS = [
   "lmt_svg_clock_optc",
   "lmt_svg_fret_n",
   "lmt_svg_chord_staff",
+  "lmt_svg_key_staff",
 ];
 
 const statusEl = document.getElementById("status");
@@ -114,6 +115,7 @@ const setClockEl = document.getElementById("set-clock");
 const keyNotesEl = document.getElementById("key-notes");
 const keyDegreesEl = document.getElementById("key-degrees");
 const keyClockEl = document.getElementById("key-clock");
+const keyStaffEl = document.getElementById("key-staff");
 const chordSummaryEl = document.getElementById("chord-summary");
 const chordNotesEl = document.getElementById("chord-notes");
 const chordClockEl = document.getElementById("chord-clock");
@@ -404,6 +406,8 @@ function inspectStaffSvg(svg) {
     return {
       clefCount: 0,
       noteheadCount: 0,
+      chordNoteheadCount: 0,
+      keyNoteheadCount: 0,
       sharedStemCount: 0,
       noteColumnSpan: Infinity,
       distinctNoteColumns: 0,
@@ -412,9 +416,12 @@ function inspectStaffSvg(svg) {
     };
   }
 
-  const noteXs = Array.from(svg.querySelectorAll(".notehead.chord-notehead"), (node) =>
+  const noteheadNodes = Array.from(svg.querySelectorAll(".notehead"));
+  const noteXs = Array.from(noteheadNodes, (node) =>
     Number.parseFloat(node.getAttribute("cx") || "0"),
   ).filter((value) => Number.isFinite(value));
+  const chordNoteheadCount = svg.querySelectorAll(".notehead.chord-notehead").length;
+  const keyNoteheadCount = svg.querySelectorAll(".notehead.key-notehead").length;
 
   const roundedColumns = new Set(noteXs.map((value) => value.toFixed(2)));
   const minX = noteXs.length > 0 ? Math.min(...noteXs) : 0;
@@ -424,10 +431,12 @@ function inspectStaffSvg(svg) {
   return {
     clefCount: svg.querySelectorAll(".clef").length,
     noteheadCount: noteXs.length,
+    chordNoteheadCount,
+    keyNoteheadCount,
     sharedStemCount: svg.querySelectorAll(".cluster-stem").length,
     noteColumnSpan,
     distinctNoteColumns: roundedColumns.size,
-    simultaneousCluster: noteXs.length >= 2 && noteColumnSpan <= 12,
+    simultaneousCluster: chordNoteheadCount >= 2 && noteColumnSpan <= 12,
     barlineCount: svg.querySelectorAll(".staff-barline").length,
   };
 }
@@ -1187,12 +1196,16 @@ function renderKeyScene() {
     keyDegreesEl.innerHTML = degreeCards.join("");
     keyClockEl.innerHTML = svgString(arena, wasm.lmt_svg_clock_optc, orbit.setValue);
     normalizeSvgPreview(keyClockEl, { maxHeight: 440, squareWidth: 440, mediumWidth: 560 });
+    keyStaffEl.innerHTML = svgString(arena, wasm.lmt_svg_key_staff, tonic, quality);
+    normalizeSvgPreview(keyStaffEl, { maxHeight: 240, squareWidth: 780, mediumWidth: 920, wideWidth: 1040, ultraWideWidth: 1120, padXRatio: 0.04, padYRatio: 0.12 });
+    const keyStaffFeatures = inspectStaffSvg(keyStaffEl.querySelector("svg"));
 
     updateSummaryScene("key", {
       tonic: noteName(tonic),
       quality: quality === 0 ? "major" : "minor",
       noteCount: orbit.ordered.length,
       degrees: degreeCards.length,
+      keyStaffFeatures,
     });
   } finally {
     arena.release();

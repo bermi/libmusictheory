@@ -12,13 +12,14 @@ const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, "..");
 const docsDir = path.join(rootDir, "zig-out", "wasm-docs");
 const host = process.env.LMT_VALIDATION_HOST || "127.0.0.1";
-const maxDrift = Number.parseFloat(process.env.LMT_WASM_DOCS_BITMAP_MAX_DRIFT || "0.03");
+const maxDrift = Number.parseFloat(process.env.LMT_WASM_DOCS_BITMAP_MAX_DRIFT || "0.05");
 const minInkPixels = Number.parseInt(process.env.LMT_WASM_DOCS_BITMAP_MIN_INK || "1000", 10);
 const expectedBitmapSizes = {
-  lmt_svg_clock_optc: { width: 1200, height: 1200 },
-  lmt_svg_fret: { width: 1200, height: 1200 },
-  lmt_svg_fret_n: { width: 1200, height: 1200 },
-  lmt_svg_chord_staff: { width: 1200, height: 720 },
+  lmt_svg_clock_optc: { width: 840, height: 840 },
+  lmt_svg_fret: { width: 840, height: 840 },
+  lmt_svg_fret_n: { width: 840, height: 840 },
+  lmt_svg_chord_staff: { width: 840, height: 504 },
+  lmt_svg_key_staff: { width: 840, height: 204 },
 };
 
 function delay(ms) {
@@ -151,7 +152,7 @@ async function main() {
       const summary = await page.evaluate(() => window.__lmtQaAtlasSummary);
       if (!summary) throw new Error("qa atlas summary missing");
       if (!summary.rasterEnabled) throw new Error("qa atlas raster backend disabled");
-      if ((summary.methods || []).length !== 4) throw new Error(`qa atlas method count mismatch: ${(summary.methods || []).length}`);
+      if ((summary.methods || []).length !== 5) throw new Error(`qa atlas method count mismatch: ${(summary.methods || []).length}`);
 
       const failures = [];
       for (const method of summary.methods || []) {

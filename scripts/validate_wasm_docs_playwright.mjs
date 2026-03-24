@@ -158,12 +158,15 @@ async function waitForRenderedOutputs(page) {
       clock: document.getElementById("svg-clock")?.innerHTML || "",
       fret: document.getElementById("svg-fret")?.innerHTML || "",
       staff: document.getElementById("svg-staff")?.innerHTML || "",
+      keyStaff: document.getElementById("svg-key-staff")?.innerHTML || "",
       clockNormalized: document.querySelector("#svg-clock svg")?.dataset.previewNormalized || "",
       fretNormalized: document.querySelector("#svg-fret svg")?.dataset.previewNormalized || "",
       staffNormalized: document.querySelector("#svg-staff svg")?.dataset.previewNormalized || "",
+      keyStaffNormalized: document.querySelector("#svg-key-staff svg")?.dataset.previewNormalized || "",
       clockBounds: document.querySelector("#svg-clock svg")?.getBoundingClientRect?.() || null,
       fretBounds: document.querySelector("#svg-fret svg")?.getBoundingClientRect?.() || null,
       staffBounds: document.querySelector("#svg-staff svg")?.getBoundingClientRect?.() || null,
+      keyStaffBounds: document.querySelector("#svg-key-staff svg")?.getBoundingClientRect?.() || null,
       staffFeatures: (() => {
         const svg = document.querySelector("#svg-staff svg");
         if (!svg) {
@@ -205,17 +208,21 @@ async function waitForRenderedOutputs(page) {
       snapshot.guitar.includes("lmt_url_to_frets_n") &&
       snapshot.svgMeta.includes("lmt_svg_clock_optc bytes:") &&
       snapshot.svgMeta.includes("lmt_svg_fret_n bytes:") &&
+      snapshot.svgMeta.includes("lmt_svg_key_staff bytes:") &&
       snapshot.svgMeta.includes("aligned: yes") &&
       snapshot.clock.includes("<svg") &&
       snapshot.fret.includes("<svg") &&
       snapshot.staff.includes("<svg") &&
+      snapshot.keyStaff.includes("<svg") &&
       snapshot.status.includes("All sections rendered successfully.") &&
       snapshot.clockNormalized === "1" &&
       snapshot.fretNormalized === "1" &&
       snapshot.staffNormalized === "1" &&
+      snapshot.keyStaffNormalized === "1" &&
       snapshot.clockBounds &&
       snapshot.fretBounds &&
       snapshot.staffBounds &&
+      snapshot.keyStaffBounds &&
       snapshot.staffFeatures.clefCount >= 1 &&
       snapshot.staffFeatures.noteheadCount >= 3 &&
       snapshot.staffFeatures.sharedStemCount === 1 &&
@@ -284,6 +291,7 @@ async function main() {
         document.getElementById("svg-clock").innerHTML = "";
         document.getElementById("svg-fret").innerHTML = "";
         document.getElementById("svg-staff").innerHTML = "";
+        document.getElementById("svg-key-staff").innerHTML = "";
       });
       await page.evaluate(() => document.getElementById("run-all")?.click());
       await waitForRenderedOutputs(page);
@@ -308,7 +316,9 @@ function visibleBoundsOk(snapshot) {
     snapshot.fretBounds.width >= 150 &&
     snapshot.fretBounds.height >= 150 &&
     snapshot.staffBounds.width >= 220 &&
-    snapshot.staffBounds.height >= 120
+    snapshot.staffBounds.height >= 120 &&
+    snapshot.keyStaffBounds.width >= 420 &&
+    snapshot.keyStaffBounds.height >= 90
   );
 }
 

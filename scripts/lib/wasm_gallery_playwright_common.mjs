@@ -265,6 +265,7 @@ export async function waitForGalleryReady(page) {
       keySvg: document.querySelector("#key-clock svg")?.outerHTML || "",
       chordSvg: document.querySelector("#chord-clock svg")?.outerHTML || "",
       staffSvg: document.querySelector("#chord-staff svg")?.outerHTML || "",
+      keyStaffSvg: document.querySelector("#key-staff svg")?.outerHTML || "",
       progressionSvg: document.querySelector("#progression-clock svg")?.outerHTML || "",
       compareLeftSvg: document.querySelector("#compare-left-clock svg")?.outerHTML || "",
       compareOverlapSvg: document.querySelector("#compare-overlap-clock svg")?.outerHTML || "",
@@ -282,7 +283,7 @@ export async function waitForGalleryReady(page) {
       sceneCardCount: document.querySelectorAll(".scene-card").length,
       presetSelectCount: document.querySelectorAll("select[id$='-preset']").length,
       previewMetrics: Array.from(
-        document.querySelectorAll("#midi-clock svg, #set-clock svg, #key-clock svg, #chord-clock svg, #chord-staff svg, #progression-clock svg, #compare-left-clock svg, #compare-overlap-clock svg, #compare-right-clock svg, #fret-svg svg"),
+        document.querySelectorAll("#midi-clock svg, #set-clock svg, #key-clock svg, #key-staff svg, #chord-clock svg, #chord-staff svg, #progression-clock svg, #compare-left-clock svg, #compare-overlap-clock svg, #compare-right-clock svg, #fret-svg svg"),
         (svg) => {
           const rect = svg.getBoundingClientRect();
           return {
@@ -322,6 +323,23 @@ export async function waitForGalleryReady(page) {
           barlineCount: svg.querySelectorAll(".staff-barline").length,
         };
       })(),
+      keyStaffFeatures: (() => {
+        const svg = document.querySelector("#key-staff svg");
+        if (!svg) {
+          return {
+            clefCount: 0,
+            noteheadCount: 0,
+            keyNoteheadCount: 0,
+            barlineCount: 0,
+          };
+        }
+        return {
+          clefCount: svg.querySelectorAll(".clef").length,
+          noteheadCount: svg.querySelectorAll(".notehead").length,
+          keyNoteheadCount: svg.querySelectorAll(".notehead.key-notehead").length,
+          barlineCount: svg.querySelectorAll(".staff-barline").length,
+        };
+      })(),
     }));
 
     if (snapshot.status.includes("Failed to initialize gallery")) {
@@ -345,6 +363,7 @@ export async function waitForGalleryReady(page) {
       snapshot.midiClockSvg.includes("<svg") &&
       snapshot.clockSvg.includes("<svg") &&
       snapshot.keySvg.includes("<svg") &&
+      snapshot.keyStaffSvg.includes("<svg") &&
       snapshot.chordSvg.includes("<svg") &&
       snapshot.staffSvg.includes("<svg") &&
       snapshot.progressionSvg.includes("<svg") &&
@@ -360,7 +379,7 @@ export async function waitForGalleryReady(page) {
       snapshot.toggleCount === 12 &&
       snapshot.sceneCardCount >= 7 &&
       snapshot.presetSelectCount >= 6 &&
-      snapshot.previewMetrics.length >= 10 &&
+      snapshot.previewMetrics.length >= 11 &&
       snapshot.previewMetrics.every((metric) => metric.normalized === "1") &&
       snapshot.previewMetrics.find((metric) => metric.host === "midi-clock")?.width >= 360 &&
       snapshot.previewMetrics.find((metric) => metric.host === "midi-clock")?.height >= 360 &&
@@ -368,6 +387,8 @@ export async function waitForGalleryReady(page) {
       snapshot.previewMetrics.find((metric) => metric.host === "set-clock")?.height >= 320 &&
       snapshot.previewMetrics.find((metric) => metric.host === "key-clock")?.width >= 360 &&
       snapshot.previewMetrics.find((metric) => metric.host === "key-clock")?.height >= 360 &&
+      snapshot.previewMetrics.find((metric) => metric.host === "key-staff")?.width >= 780 &&
+      snapshot.previewMetrics.find((metric) => metric.host === "key-staff")?.height >= 160 &&
       snapshot.previewMetrics.find((metric) => metric.host === "chord-clock")?.width >= 240 &&
       snapshot.previewMetrics.find((metric) => metric.host === "chord-clock")?.height >= 240 &&
       snapshot.previewMetrics.find((metric) => metric.host === "chord-staff")?.width >= 620 &&
@@ -384,7 +405,11 @@ export async function waitForGalleryReady(page) {
       snapshot.staffFeatures.sharedStemCount === 1 &&
       snapshot.staffFeatures.simultaneousCluster === true &&
       snapshot.staffFeatures.noteColumnSpan <= 12 &&
-      snapshot.staffFeatures.barlineCount >= 1;
+      snapshot.staffFeatures.barlineCount >= 1 &&
+      snapshot.keyStaffFeatures.clefCount >= 1 &&
+      snapshot.keyStaffFeatures.noteheadCount >= 8 &&
+      snapshot.keyStaffFeatures.keyNoteheadCount >= 8 &&
+      snapshot.keyStaffFeatures.barlineCount >= 2;
 
     if (ready) return snapshot;
     if (Date.now() > deadline) {

@@ -48,6 +48,7 @@ test "optc cluster coloring and center label" {
     try testing.expect(std.mem.indexOf(u8, svg, "<g transform=\"translate(") != null);
     try testing.expect(std.mem.indexOf(u8, svg, ") scale(") != null);
     try testing.expect(std.mem.indexOf(u8, svg, "<path fill=\"#111\" d=\"") != null);
+    try testing.expect(std.mem.indexOf(u8, svg, "class=\"optc-bg\"") != null);
     try testing.expect(std.mem.indexOf(u8, svg, "shape-rendering=\"geometricPrecision\"") != null);
 }
 

@@ -103,6 +103,20 @@ fn decodeKeyContext(ctx: LmtKeyContext) key.Key {
     return key.Key.init(tonic, quality);
 }
 
+fn buildKeyStaffNotes(tonic: pitch.PitchClass, quality: key.KeyQuality, out: *[8]pitch.MidiNote) []const pitch.MidiNote {
+    const base_root: u8 = @as(u8, tonic);
+    const root_midi: u8 = if (base_root <= 5) 60 + base_root else 48 + base_root;
+    const intervals = switch (quality) {
+        .major => [_]u8{ 0, 2, 4, 5, 7, 9, 11, 12 },
+        .minor => [_]u8{ 0, 2, 3, 5, 7, 8, 10, 12 },
+    };
+
+    for (intervals, 0..) |interval, index| {
+        out[index] = @as(pitch.MidiNote, @intCast(root_midi + interval));
+    }
+    return out[0..intervals.len];
+}
+
 fn decodeScaleType(scale_type: u8) ?scale.ScaleType {
     return switch (scale_type) {
         SCALE_DIATONIC => .diatonic,
@@ -681,6 +695,19 @@ export fn lmt_svg_chord_staff(chord_kind: u8, root: u8, buf: [*c]u8, buf_size: u
     return copySvgOut(svg, buf, buf_size);
 }
 
+export fn lmt_svg_key_staff(tonic: u8, quality_raw: u8, buf: [*c]u8, buf_size: u32) callconv(.C) u32 {
+    const tonic_pc = @as(pitch.PitchClass, @intCast(tonic % 12));
+    const quality: key.KeyQuality = if (quality_raw == KEY_MINOR) .minor else .major;
+    const k = key.Key.init(tonic_pc, quality);
+
+    var notes: [8]pitch.MidiNote = undefined;
+    const key_notes = buildKeyStaffNotes(tonic_pc, quality, &notes);
+
+    var svg_buf: [24576]u8 = undefined;
+    const svg = svg_staff.renderKeyStaff(key_notes, k, &svg_buf);
+    return copySvgOut(svg, buf, buf_size);
+}
+
 export fn lmt_raster_is_enabled() callconv(.C) u32 {
     return if (build_options.enable_raster_backend) 1 else 0;
 }
@@ -733,6 +760,14 @@ export fn lmt_bitmap_chord_staff_rgba(chord_kind: u8, root: u8, width: u32, heig
     const total = lmt_svg_chord_staff(chord_kind, root, null, 0);
     if (total == 0 or total >= compat_svg_buf.len) return 0;
     const written_total = lmt_svg_chord_staff(chord_kind, root, @ptrCast(&compat_svg_buf), @intCast(compat_svg_buf.len));
+    if (written_total != total) return 0;
+    return renderPublicSvgBitmap(compat_svg_buf[0..@as(usize, total)], width, height, out_rgba, out_rgba_size);
+}
+
+export fn lmt_bitmap_key_staff_rgba(tonic: u8, quality_raw: u8, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.C) u32 {
+    const total = lmt_svg_key_staff(tonic, quality_raw, null, 0);
+    if (total == 0 or total >= compat_svg_buf.len) return 0;
+    const written_total = lmt_svg_key_staff(tonic, quality_raw, @ptrCast(&compat_svg_buf), @intCast(compat_svg_buf.len));
     if (written_total != total) return 0;
     return renderPublicSvgBitmap(compat_svg_buf[0..@as(usize, total)], width, height, out_rgba, out_rgba_size);
 }

@@ -51,6 +51,21 @@ test "staff svg dimensions and notation structure" {
     try testing.expect(std.mem.indexOf(u8, scale_svg, "width=\"392\"") != null);
     try testing.expect(std.mem.indexOf(u8, scale_svg, "height=\"126\"") != null);
     try testing.expect(std.mem.indexOf(u8, scale_svg, "class=\"clef clef-treble\"") != null);
+
+    var key_buf: [16384]u8 = undefined;
+    const key_svg = staff.renderKeyStaff(&[_]pitch.MidiNote{ 60, 62, 64, 65, 67, 69, 71, 72 }, c_major, &key_buf);
+    try testing.expect(std.mem.indexOf(u8, key_svg, "width=\"520\"") != null);
+    try testing.expect(std.mem.count(u8, key_svg, "class=\"staff-barline\"") >= 2);
+    try testing.expect(std.mem.count(u8, key_svg, "class=\"notehead key-notehead\"") >= 8);
+}
+
+test "key staff uses multiple bars" {
+    const c_major = key.Key.init(pitch.pc.C, .major);
+
+    var buf: [16384]u8 = undefined;
+    const svg = staff.renderKeyStaff(&[_]pitch.MidiNote{ 60, 62, 64, 65, 67, 69, 71, 72 }, c_major, &buf);
+    try testing.expect(std.mem.indexOf(u8, svg, "class=\"staff-barline\" x1=\"240.00\"") != null);
+    try testing.expect(std.mem.indexOf(u8, svg, "class=\"staff-barline\" x1=\"406.00\"") != null);
 }
 
 test "lower C ledger line stays on C and stem overlaps notehead edge" {

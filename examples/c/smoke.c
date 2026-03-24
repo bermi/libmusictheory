@@ -66,5 +66,9 @@ int main(void) {
     assert(svg_len > 0);
     assert(strncmp(svg, "<svg", 4) == 0);
 
+    svg_len = lmt_svg_key_staff(0, LMT_KEY_MAJOR, svg, sizeof(svg));
+    assert(svg_len > 0);
+    assert(strncmp(svg, "<svg", 4) == 0);
+
     return 0;
 }

@@ -135,6 +135,7 @@ uint32_t lmt_svg_clock_optc(lmt_pitch_class_set set, char *buf, uint32_t buf_siz
 uint32_t lmt_svg_fret(const int8_t *frets, char *buf, uint32_t buf_size);
 uint32_t lmt_svg_fret_n(const int8_t *frets, uint32_t string_count, uint32_t window_start, uint32_t visible_frets, char *buf, uint32_t buf_size);
 uint32_t lmt_svg_chord_staff(lmt_chord_type type, lmt_pitch_class root, char *buf, uint32_t buf_size);
+uint32_t lmt_svg_key_staff(lmt_pitch_class tonic, lmt_key_quality quality, char *buf, uint32_t buf_size);
 
 /* Experimental APIs: useful for demos and renderer work, not yet stable ABI. */
 uint32_t lmt_raster_is_enabled(void);
@@ -143,6 +144,7 @@ uint32_t lmt_bitmap_clock_optc_rgba(lmt_pitch_class_set set, uint32_t width, uin
 uint32_t lmt_bitmap_fret_rgba(const int8_t *frets, uint32_t width, uint32_t height, uint8_t *out_rgba, uint32_t out_rgba_size);
 uint32_t lmt_bitmap_fret_n_rgba(const int8_t *frets, uint32_t string_count, uint32_t window_start, uint32_t visible_frets, uint32_t width, uint32_t height, uint8_t *out_rgba, uint32_t out_rgba_size);
 uint32_t lmt_bitmap_chord_staff_rgba(lmt_chord_type type, lmt_pitch_class root, uint32_t width, uint32_t height, uint8_t *out_rgba, uint32_t out_rgba_size);
+uint32_t lmt_bitmap_key_staff_rgba(lmt_pitch_class tonic, lmt_key_quality quality, uint32_t width, uint32_t height, uint8_t *out_rgba, uint32_t out_rgba_size);
 
 /* Internal Harmonious verification/proof APIs live in libmusictheory_compat.h. */
 

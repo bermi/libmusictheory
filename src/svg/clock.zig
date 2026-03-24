@@ -66,11 +66,13 @@ pub fn renderOPTC(set: pcs.PitchClassSet, prime_label: []const u8, buf: []u8) []
     const label_path = text_misc.horizontalPathData(prime_label, &label_path_buf);
 
     svg_quality.writeSvgPrelude(w, "70", "70", "-7 -7 114 114",
+        \\.optc-bg{fill:white}
         \\.optc-ring,.optc-node{vector-effect:non-scaling-stroke}
         \\.optc-ring{fill:none;stroke:black;stroke-width:2}
         \\.optc-node{stroke-width:3}
         \\
     ) catch unreachable;
+    w.writeAll("<rect class=\"optc-bg\" x=\"-7\" y=\"-7\" width=\"114\" height=\"114\" fill=\"white\" />\n") catch unreachable;
     w.writeAll("<circle class=\"optc-ring\" cx=\"50.00\" cy=\"50.00\" r=\"20\" fill=\"none\" stroke=\"black\" stroke-width=\"2\" />\n") catch unreachable;
 
     var pc: u4 = 0;

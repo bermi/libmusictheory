@@ -215,6 +215,40 @@ pub fn renderScaleStaff(notes: []const pitch.MidiNote, k: key.Key, buf: []u8) []
     return buf[0..stream.pos];
 }
 
+pub fn renderKeyStaff(notes: []const pitch.MidiNote, k: key.Key, buf: []u8) []u8 {
+    var stream = std.io.fixedBufferStream(buf);
+    const w = stream.writer();
+
+    const width: comptime_int = 520;
+    const top_y = 42.0;
+    const staff_x0 = 38.0;
+    const key_sig_x = 70.0;
+    const start_x = 106.0 + keySignatureAdvance(k);
+    const slot_spacing = 36.0;
+    const measure_bar_x = start_x + 134.0;
+    const second_measure_start_x = start_x + 166.0;
+    const end_bar_x = start_x + 300.0;
+
+    writeSvgPrelude(w, width, "126", "0 0 520 126");
+    drawStaffLines(w, staff_x0, end_bar_x, top_y);
+    drawEndBarline(w, measure_bar_x, top_y);
+    drawEndBarline(w, end_bar_x, top_y);
+    drawClef(w, .treble, staff_x0 + 5.0, top_y);
+    drawKeySignature(w, k, .treble, key_sig_x);
+
+    for (notes, 0..) |note, index| {
+        const spelled = spellStaffNote(note, k, .treble);
+        const measure_index = index / 4;
+        const slot_index = index % 4;
+        const base_x = if (measure_index == 0) start_x else second_measure_start_x;
+        const x = base_x + @as(f32, @floatFromInt(slot_index)) * slot_spacing;
+        drawSingleStaffNote(w, x, spelled, "key-notehead", "key-stem");
+    }
+
+    w.writeAll("</svg>\n") catch unreachable;
+    return buf[0..stream.pos];
+}
+
 fn layoutChordCluster(notes: []const pitch.MidiNote, k: key.Key, clef: Clef, cluster_x: f32) ChordClusterLayout {
     var cluster = ChordClusterLayout{};
     cluster.count = @min(notes.len, cluster.notes.len);

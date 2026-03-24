@@ -3,20 +3,22 @@ const atlasGrid = document.getElementById("atlas-grid");
 const summaryMethodsEl = document.getElementById("summary-methods");
 const sourceFrame = document.getElementById("qa-source");
 
-const BITMAP_REVIEW_WIDTH = 1200;
+const BITMAP_REVIEW_WIDTH = 840;
 const textDecoder = new TextDecoder();
 const BITMAP_TARGETS = {
-  lmt_svg_clock_optc: { width: BITMAP_REVIEW_WIDTH, height: 1200 },
-  lmt_svg_fret: { width: BITMAP_REVIEW_WIDTH, height: 1200 },
-  lmt_svg_fret_n: { width: BITMAP_REVIEW_WIDTH, height: 1200 },
+  lmt_svg_clock_optc: { width: BITMAP_REVIEW_WIDTH, height: 840 },
+  lmt_svg_fret: { width: BITMAP_REVIEW_WIDTH, height: 840 },
+  lmt_svg_fret_n: { width: BITMAP_REVIEW_WIDTH, height: 840 },
   lmt_svg_chord_staff: { width: BITMAP_REVIEW_WIDTH, height: Math.round((BITMAP_REVIEW_WIDTH * 126) / 210) },
+  lmt_svg_key_staff: { width: BITMAP_REVIEW_WIDTH, height: Math.round((BITMAP_REVIEW_WIDTH * 126) / 520) },
 };
 
 const ATLAS_SAMPLES = {
-  lmt_svg_clock_optc: { pcsMain: [0, 4, 7] },
+  lmt_svg_clock_optc: { pcsMain: [0, 7] },
   lmt_svg_fret: { frets: [1, 3, 3, 2, 1, 1] },
   lmt_svg_fret_n: { frets: [2, 0, 1, 0], stringCount: 4, windowStart: 0, visibleFrets: 4 },
   lmt_svg_chord_staff: { chordType: 0, chordRoot: 0 },
+  lmt_svg_key_staff: { keyTonic: 0, keyQuality: 0 },
 };
 
 const IMAGE_METHODS = [
@@ -24,6 +26,7 @@ const IMAGE_METHODS = [
   { section: "SVG Diagram APIs", method: "lmt_svg_fret", bitmapExport: "lmt_bitmap_fret_rgba" },
   { section: "SVG Diagram APIs", method: "lmt_svg_fret_n", bitmapExport: "lmt_bitmap_fret_n_rgba" },
   { section: "SVG Diagram APIs", method: "lmt_svg_chord_staff", bitmapExport: "lmt_bitmap_chord_staff_rgba" },
+  { section: "SVG Diagram APIs", method: "lmt_svg_key_staff", bitmapExport: "lmt_bitmap_key_staff_rgba" },
 ];
 
 function setStatus(message, tone = "ready") {
@@ -60,6 +63,8 @@ function collectDefaults(sourceDoc) {
     pcsMain: parseCsvIntegers(sourceDoc.getElementById("pcs-main")?.value || "0,4,7"),
     chordType: readNumberInput(sourceDoc, "chord-type", 0),
     chordRoot: readNumberInput(sourceDoc, "chord-root", 0),
+    keyTonic: readNumberInput(sourceDoc, "key-tonic", 0),
+    keyQuality: readNumberInput(sourceDoc, "key-quality", 0),
     tuning: parseCsvIntegers(sourceDoc.getElementById("guitar-tuning")?.value || "40,45,50,55,59,64"),
     svgFrets: parseCsvIntegers(sourceDoc.getElementById("svg-frets")?.value || "-1,-1,10,9,8,-1"),
     windowStart: readNumberInput(sourceDoc, "svg-window-start", 0),
@@ -84,6 +89,11 @@ function atlasSampleForMethod(method, defaults) {
       return {
         chordType: ATLAS_SAMPLES[method].chordType,
         chordRoot: ATLAS_SAMPLES[method].chordRoot,
+      };
+    case "lmt_svg_key_staff":
+      return {
+        keyTonic: ATLAS_SAMPLES[method].keyTonic,
+        keyQuality: ATLAS_SAMPLES[method].keyQuality,
       };
     default:
       return defaults;
@@ -270,6 +280,20 @@ function renderChordStaffBitmap(wasm, memory, arena, defaults) {
   };
 }
 
+function renderKeyStaffBitmap(wasm, memory, arena, defaults) {
+  const dims = BITMAP_TARGETS.lmt_svg_key_staff;
+  const rgbaBytes = dims.width * dims.height * 4;
+  const rgbaPtr = arena.alloc(rgbaBytes, 4);
+  const written = wasm.lmt_bitmap_key_staff_rgba(defaults.keyTonic, defaults.keyQuality, dims.width, dims.height, rgbaPtr, rgbaBytes);
+  if (written !== rgbaBytes) throw new Error(`lmt_bitmap_key_staff_rgba wrote ${written}/${rgbaBytes}`);
+  return {
+    width: dims.width,
+    height: dims.height,
+    rgba: copyRgba(memory, rgbaPtr, rgbaBytes),
+    meta: `key_tonic=${defaults.keyTonic} | key_quality=${defaults.keyQuality === 0 ? "major" : "minor"} | bitmap=${dims.width}x${dims.height}`,
+  };
+}
+
 function renderSvgString(entry, wasm, memory, defaults) {
   const arena = createScratchArena(wasm, memory);
   let total = 0;
@@ -298,6 +322,9 @@ function renderSvgString(entry, wasm, memory, defaults) {
     }
     case "lmt_svg_chord_staff":
       total = wasm.lmt_svg_chord_staff(defaults.chordType, defaults.chordRoot, 0, 0);
+      break;
+    case "lmt_svg_key_staff":
+      total = wasm.lmt_svg_key_staff(defaults.keyTonic, defaults.keyQuality, 0, 0);
       break;
     default:
       throw new Error(`unsupported svg method ${entry.method}`);
@@ -331,6 +358,9 @@ function renderSvgString(entry, wasm, memory, defaults) {
     case "lmt_svg_chord_staff":
       written = wasm.lmt_svg_chord_staff(defaults.chordType, defaults.chordRoot, svgPtr, total + 1);
       break;
+    case "lmt_svg_key_staff":
+      written = wasm.lmt_svg_key_staff(defaults.keyTonic, defaults.keyQuality, svgPtr, total + 1);
+      break;
     default:
       break;
   }
@@ -353,6 +383,9 @@ async function renderBitmapCard(entry, wasm, memory, defaults) {
       break;
     case "lmt_svg_chord_staff":
       rendered = renderChordStaffBitmap(wasm, memory, arena, defaults);
+      break;
+    case "lmt_svg_key_staff":
+      rendered = renderKeyStaffBitmap(wasm, memory, arena, defaults);
       break;
     default:
       throw new Error(`unsupported image method ${entry.method}`);
