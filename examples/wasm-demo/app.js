@@ -8,6 +8,7 @@ const outGuitar = document.getElementById("out-guitar");
 const outSvgMeta = document.getElementById("out-svg-meta");
 
 const svgClockHost = document.getElementById("svg-clock");
+const svgEvennessHost = document.getElementById("svg-evenness");
 const svgFretCompatHost = document.getElementById("svg-fret-compat");
 const svgFretHost = document.getElementById("svg-fret");
 const svgStaffHost = document.getElementById("svg-staff");
@@ -47,6 +48,7 @@ const REQUIRED_EXPORTS = [
   "lmt_frets_to_url_n",
   "lmt_url_to_frets_n",
   "lmt_svg_clock_optc",
+  "lmt_svg_evenness_chart",
   "lmt_svg_fret",
   "lmt_svg_fret_n",
   "lmt_svg_chord_staff",
@@ -73,6 +75,7 @@ function renderSectionError(label, target, err) {
 
 function clearSvgHosts() {
   svgClockHost.innerHTML = "";
+  svgEvennessHost.innerHTML = "";
   svgFretCompatHost.innerHTML = "";
   svgFretHost.innerHTML = "";
   svgStaffHost.innerHTML = "";
@@ -491,6 +494,9 @@ function runSvgApis() {
     const clockLen = wasm.lmt_svg_clock_optc(mainSet, svgBufPtr, C_STRING_CAPACITY);
     const clockSvg = readCString(svgBufPtr);
 
+    const evennessLen = wasm.lmt_svg_evenness_chart(svgBufPtr, C_STRING_CAPACITY);
+    const evennessSvg = readCString(svgBufPtr);
+
     const fretsPtr = writeI8Array(arena, fretValues);
     const compatFretLen = fretValues.length === 6 ? wasm.lmt_svg_fret(fretsPtr, svgBufPtr, C_STRING_CAPACITY) : null;
     const compatFretSvg = compatFretLen !== null ? readCString(svgBufPtr) : "";
@@ -505,6 +511,7 @@ function runSvgApis() {
 
     const lines = [
       `lmt_svg_clock_optc bytes: ${clockLen}`,
+      `lmt_svg_evenness_chart bytes: ${evennessLen}`,
       compatFretLen !== null ? `lmt_svg_fret bytes: ${compatFretLen}` : `lmt_svg_fret bytes: unavailable for string_count=${fretValues.length}`,
       `lmt_svg_fret_n bytes: ${fretLen}`,
       `lmt_svg_chord_staff bytes: ${staffLen}`,
@@ -523,12 +530,14 @@ function runSvgApis() {
     outSvgMeta.textContent = lines.join("\n");
 
     svgClockHost.innerHTML = clockSvg;
+    svgEvennessHost.innerHTML = evennessSvg;
     svgFretCompatHost.innerHTML = compatFretSvg;
     svgFretHost.innerHTML = fretSvg;
     svgStaffHost.innerHTML = staffSvg;
     svgKeyStaffHost.innerHTML = keyStaffSvg;
 
     normalizeSvgPreview(svgClockHost);
+    normalizeSvgPreview(svgEvennessHost, { maxHeight: 520, squareWidth: 420, mediumWidth: 500, wideWidth: 520, ultraWideWidth: 540, padXRatio: 0.06, padYRatio: 0.06 });
     normalizeSvgPreview(svgFretCompatHost);
     normalizeSvgPreview(svgFretHost);
     normalizeSvgPreview(svgStaffHost);
@@ -557,14 +566,24 @@ function arraysEqual(a, b) {
   return a.every((value, index) => value === b[index]);
 }
 
-function normalizeSvgPreview(host) {
+function normalizeSvgPreview(host, options = {}) {
+  const {
+    maxHeight = 160,
+    squareWidth = 220,
+    mediumWidth = 320,
+    wideWidth = 560,
+    ultraWideWidth = 560,
+    padXRatio = 0.08,
+    padYRatio = 0.12,
+    minPad = 4,
+  } = options;
   const svg = host.querySelector("svg");
   if (!svg) return;
 
   svg.style.display = "block";
   svg.style.height = "auto";
   svg.style.maxWidth = "100%";
-  svg.style.maxHeight = "160px";
+  svg.style.maxHeight = `${maxHeight}px`;
 
   const originalViewBox = svg.getAttribute("viewBox");
   if (originalViewBox && !svg.dataset.originalViewBox) {
@@ -580,15 +599,17 @@ function normalizeSvgPreview(host) {
 
     const aspect = bbox.width / bbox.height;
     if (aspect <= 1.5) {
-      svg.style.width = "220px";
+      svg.style.width = `${squareWidth}px`;
     } else if (aspect <= 2.8) {
-      svg.style.width = "320px";
+      svg.style.width = `${mediumWidth}px`;
+    } else if (aspect <= 4.4) {
+      svg.style.width = `${wideWidth}px`;
     } else {
-      svg.style.width = "560px";
+      svg.style.width = `${ultraWideWidth}px`;
     }
 
-    const padX = Math.max(4, bbox.width * 0.08);
-    const padY = Math.max(4, bbox.height * 0.12);
+    const padX = Math.max(minPad, bbox.width * padXRatio);
+    const padY = Math.max(minPad, bbox.height * padYRatio);
     const viewBox = [
       (bbox.x - padX).toFixed(2),
       (bbox.y - padY).toFixed(2),

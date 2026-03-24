@@ -7,6 +7,7 @@ const BITMAP_REVIEW_WIDTH = 840;
 const textDecoder = new TextDecoder();
 const BITMAP_TARGETS = {
   lmt_svg_clock_optc: { width: BITMAP_REVIEW_WIDTH, height: 840 },
+  lmt_svg_evenness_chart: { width: BITMAP_REVIEW_WIDTH, height: Math.round((BITMAP_REVIEW_WIDTH * 650) / 500) },
   lmt_svg_fret: { width: BITMAP_REVIEW_WIDTH, height: 840 },
   lmt_svg_fret_n: { width: BITMAP_REVIEW_WIDTH, height: 840 },
   lmt_svg_chord_staff: { width: BITMAP_REVIEW_WIDTH, height: Math.round((BITMAP_REVIEW_WIDTH * 126) / 210) },
@@ -23,6 +24,7 @@ const ATLAS_SAMPLES = {
 
 const IMAGE_METHODS = [
   { section: "SVG Diagram APIs", method: "lmt_svg_clock_optc", bitmapExport: "lmt_bitmap_clock_optc_rgba" },
+  { section: "SVG Diagram APIs", method: "lmt_svg_evenness_chart", bitmapExport: "lmt_bitmap_evenness_chart_rgba" },
   { section: "SVG Diagram APIs", method: "lmt_svg_fret", bitmapExport: "lmt_bitmap_fret_rgba" },
   { section: "SVG Diagram APIs", method: "lmt_svg_fret_n", bitmapExport: "lmt_bitmap_fret_n_rgba" },
   { section: "SVG Diagram APIs", method: "lmt_svg_chord_staff", bitmapExport: "lmt_bitmap_chord_staff_rgba" },
@@ -227,6 +229,20 @@ function renderClockBitmap(wasm, memory, arena, defaults) {
   };
 }
 
+function renderEvennessBitmap(wasm, memory, arena) {
+  const dims = BITMAP_TARGETS.lmt_svg_evenness_chart;
+  const rgbaBytes = dims.width * dims.height * 4;
+  const rgbaPtr = arena.alloc(rgbaBytes, 4);
+  const written = wasm.lmt_bitmap_evenness_chart_rgba(dims.width, dims.height, rgbaPtr, rgbaBytes);
+  if (written !== rgbaBytes) throw new Error(`lmt_bitmap_evenness_chart_rgba wrote ${written}/${rgbaBytes}`);
+  return {
+    width: dims.width,
+    height: dims.height,
+    rgba: copyRgba(memory, rgbaPtr, rgbaBytes),
+    meta: `bitmap=${dims.width}x${dims.height}`,
+  };
+}
+
 function renderFretBitmap(wasm, memory, arena, defaults) {
   const dims = BITMAP_TARGETS.lmt_svg_fret;
   const fretsPtr = writeI8Array(arena, defaults.svgFrets);
@@ -303,6 +319,9 @@ function renderSvgString(entry, wasm, memory, defaults) {
       total = wasm.lmt_svg_clock_optc(mainSet, 0, 0);
       break;
     }
+    case "lmt_svg_evenness_chart":
+      total = wasm.lmt_svg_evenness_chart(0, 0);
+      break;
     case "lmt_svg_fret": {
       const fretsPtr = writeI8Array(arena, defaults.svgFrets);
       total = wasm.lmt_svg_fret(fretsPtr, 0, 0);
@@ -338,6 +357,9 @@ function renderSvgString(entry, wasm, memory, defaults) {
       written = wasm.lmt_svg_clock_optc(mainSet, svgPtr, total + 1);
       break;
     }
+    case "lmt_svg_evenness_chart":
+      written = wasm.lmt_svg_evenness_chart(svgPtr, total + 1);
+      break;
     case "lmt_svg_fret": {
       const fretsPtr = writeI8Array(arena, defaults.svgFrets);
       written = wasm.lmt_svg_fret(fretsPtr, svgPtr, total + 1);
@@ -374,6 +396,9 @@ async function renderBitmapCard(entry, wasm, memory, defaults) {
   switch (entry.method) {
     case "lmt_svg_clock_optc":
       rendered = renderClockBitmap(wasm, memory, arena, defaults);
+      break;
+    case "lmt_svg_evenness_chart":
+      rendered = renderEvennessBitmap(wasm, memory, arena);
       break;
     case "lmt_svg_fret":
       rendered = renderFretBitmap(wasm, memory, arena, defaults);

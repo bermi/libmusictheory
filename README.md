@@ -45,7 +45,7 @@ This repository now has an explicit stable public surface.
   - scalar theory functions such as `lmt_pcs_*`, `lmt_scale`, `lmt_mode`, `lmt_chord`, `lmt_evenness_distance`
   - public string helpers such as `lmt_spell_note`, `lmt_chord_name`, `lmt_roman_numeral`
   - public fretboard helpers such as `lmt_fret_to_midi_n`, `lmt_midi_to_fret_positions_n`, `lmt_generate_voicings_n`, `lmt_pitch_class_guide_n`, `lmt_frets_to_url_n`, `lmt_url_to_frets_n`
-  - public SVG helpers such as `lmt_svg_clock_optc`, `lmt_svg_fret`, `lmt_svg_fret_n`, `lmt_svg_chord_staff`, `lmt_svg_key_staff`
+  - public SVG helpers such as `lmt_svg_clock_optc`, `lmt_svg_evenness_chart`, `lmt_svg_fret`, `lmt_svg_fret_n`, `lmt_svg_chord_staff`, `lmt_svg_key_staff`
 - Experimental:
   - `lmt_raster_is_enabled`
   - `lmt_raster_demo_rgba`
@@ -59,7 +59,7 @@ Return-value rules are explicit:
 
 - scalar theory functions return computed values directly
 - count-returning APIs such as `lmt_pcs_to_list`, `lmt_midi_to_fret_positions_n`, `lmt_pitch_class_guide_n`, and `lmt_url_to_frets_n` return the logical row/count result, even if you pass a smaller output buffer
-- SVG writers such as `lmt_svg_clock_optc`, `lmt_svg_fret`, `lmt_svg_fret_n`, `lmt_svg_chord_staff`, and `lmt_svg_key_staff` return the total SVG byte length required; pass `buf = NULL` and `buf_size = 0` to size the buffer first
+- SVG writers such as `lmt_svg_clock_optc`, `lmt_svg_evenness_chart`, `lmt_svg_fret`, `lmt_svg_fret_n`, `lmt_svg_chord_staff`, and `lmt_svg_key_staff` return the total SVG byte length required; pass `buf = NULL` and `buf_size = 0` to size the buffer first
 - `lmt_frets_to_url_n` returns the bytes actually written and requires a caller buffer up front
 - experimental raster writers return `0` on disabled-backend, invalid-input, or insufficient-buffer cases
 

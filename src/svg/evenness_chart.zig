@@ -16,6 +16,13 @@ pub const Dot = struct {
     evenness_distance: f32,
 };
 
+const Bounds = struct {
+    min_x: f32,
+    min_y: f32,
+    width: f32,
+    height: f32,
+};
+
 pub fn computeDots(out: *[MAX_DOTS]Dot) []Dot {
     var card_counts: [13]u16 = [_]u16{0} ** 13;
     var max_evenness: [13]f32 = [_]f32{0.0} ** 13;
@@ -55,32 +62,75 @@ pub fn computeDots(out: *[MAX_DOTS]Dot) []Dot {
     return out[0..set_class.SET_CLASSES.len];
 }
 
+fn chartBounds(dots: []const Dot) Bounds {
+    var min_x: f32 = -1453.4442;
+    var max_x: f32 = 1453.4442;
+    var min_y: f32 = -1453.4442;
+    var max_y: f32 = 1453.4442;
+
+    for (dots) |dot| {
+        min_x = @min(min_x, dot.x - 14.0);
+        max_x = @max(max_x, dot.x + 14.0);
+        min_y = @min(min_y, dot.y - 14.0);
+        max_y = @max(max_y, dot.y + 14.0);
+    }
+
+    const pad_x = @max(24.0, (max_x - min_x) * 0.04);
+    const pad_y = @max(24.0, (max_y - min_y) * 0.04);
+    return .{
+        .min_x = min_x - pad_x,
+        .min_y = min_y - pad_y,
+        .width = (max_x - min_x) + pad_x * 2.0,
+        .height = (max_y - min_y) + pad_y * 2.0,
+    };
+}
+
 pub fn renderEvennessChart(buf: []u8) []u8 {
     var stream = std.io.fixedBufferStream(buf);
     const w = stream.writer();
 
     var dots_buf: [MAX_DOTS]Dot = undefined;
     const dots = computeDots(&dots_buf);
+    const bounds = chartBounds(dots);
+    const target_width: f32 = 500.0;
+    const target_height: f32 = 650.0;
+    const pad_x: f32 = 34.0;
+    const pad_y: f32 = 38.0;
+    const scale = @min(
+        (target_width - pad_x * 2.0) / bounds.width,
+        (target_height - pad_y * 2.0) / bounds.height,
+    );
+    const center_x = bounds.min_x + bounds.width / 2.0;
+    const center_y = bounds.min_y + bounds.height / 2.0;
 
-    svg_quality.writeSvgPrelude(w, "500", "650", "-100 -40 1100 1320",
+    svg_quality.writeSvgPrelude(w, "500", "650", "0 0 500 650",
         \\.ring,.dot{vector-effect:non-scaling-stroke}
         \\.ring{fill:none;stroke:#8f949d;stroke-width:2;stroke-linecap:round}
         \\.dot{stroke:white;stroke-width:1.25}
         \\
     ) catch unreachable;
-    w.writeAll("<rect x=\"-100\" y=\"-40\" width=\"1100\" height=\"1320\" fill=\"white\" />\n") catch unreachable;
+    w.writeAll("<rect x=\"0\" y=\"0\" width=\"500\" height=\"650\" fill=\"white\" />\n") catch unreachable;
 
     var ring: u4 = 1;
     while (ring <= 5) : (ring += 1) {
-        const r = 290.68884 * @as(f32, @floatFromInt(ring));
-        w.print("<circle class=\"ring\" cx=\"0\" cy=\"0\" r=\"{d:.2}\" />\n", .{r}) catch unreachable;
+        const r = 290.68884 * @as(f32, @floatFromInt(ring)) * scale;
+        w.print("<circle class=\"ring\" cx=\"{d:.2}\" cy=\"{d:.2}\" r=\"{d:.2}\" />\n", .{
+            target_width / 2.0,
+            target_height / 2.0,
+            r,
+        }) catch unreachable;
     }
 
     for (dots) |dot| {
         const fill = if (dot.cluster_free) "#099" else "#999";
         w.print(
             "<circle class=\"dot\" data-cardinality=\"{d}\" cx=\"{d:.2}\" cy=\"{d:.2}\" r=\"9\" fill=\"{s}\" />\n",
-            .{ dot.cardinality, dot.x, dot.y, fill },
+            .{
+                dot.cardinality,
+                target_width / 2.0 + (dot.x - center_x) * scale,
+                target_height / 2.0 + (dot.y - center_y) * scale,
+                fill,
+            },
         ) catch unreachable;
     }
 

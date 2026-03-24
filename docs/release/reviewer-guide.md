@@ -82,7 +82,7 @@ Inspect:
 - `/Users/bermi/code/libmusictheory/zig-out/wasm-docs-qa/qa-atlas.png`
 - `/Users/bermi/code/libmusictheory/zig-out/wasm-docs-qa/qa-atlas.json`
 
-The atlas is a single labeled image that lays out only the public image-producing docs methods, one row per method, as direct PNGs encoded from RGBA buffers returned by the library. It is not an SVG preview sheet. The current public set includes the multi-bar `lmt_svg_key_staff` row.
+The atlas is a single labeled image that lays out only the public image-producing docs methods, one row per method, as direct PNGs encoded from RGBA buffers returned by the library. It is not an SVG preview sheet. The current public set includes the evenness chart and the multi-bar `lmt_svg_key_staff` row.
 
 ## Public API Review
 

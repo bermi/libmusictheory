@@ -262,6 +262,7 @@ export async function waitForGalleryReady(page) {
       captureMode: document.documentElement.dataset.captureMode || "",
       midiClockSvg: document.querySelector("#midi-clock svg")?.outerHTML || "",
       clockSvg: document.querySelector("#set-clock svg")?.outerHTML || "",
+      setEvennessSvg: document.querySelector("#set-evenness svg")?.outerHTML || "",
       keySvg: document.querySelector("#key-clock svg")?.outerHTML || "",
       chordSvg: document.querySelector("#chord-clock svg")?.outerHTML || "",
       staffSvg: document.querySelector("#chord-staff svg")?.outerHTML || "",
@@ -283,7 +284,7 @@ export async function waitForGalleryReady(page) {
       sceneCardCount: document.querySelectorAll(".scene-card").length,
       presetSelectCount: document.querySelectorAll("select[id$='-preset']").length,
       previewMetrics: Array.from(
-        document.querySelectorAll("#midi-clock svg, #set-clock svg, #key-clock svg, #key-staff svg, #chord-clock svg, #chord-staff svg, #progression-clock svg, #compare-left-clock svg, #compare-overlap-clock svg, #compare-right-clock svg, #fret-svg svg"),
+        document.querySelectorAll("#midi-clock svg, #set-clock svg, #set-evenness svg, #key-clock svg, #key-staff svg, #chord-clock svg, #chord-staff svg, #progression-clock svg, #compare-left-clock svg, #compare-overlap-clock svg, #compare-right-clock svg, #fret-svg svg"),
         (svg) => {
           const rect = svg.getBoundingClientRect();
           return {
@@ -340,6 +341,19 @@ export async function waitForGalleryReady(page) {
           barlineCount: svg.querySelectorAll(".staff-barline").length,
         };
       })(),
+      setEvennessFeatures: (() => {
+        const svg = document.querySelector("#set-evenness svg");
+        if (!svg) {
+          return {
+            ringCount: 0,
+            dotCount: 0,
+          };
+        }
+        return {
+          ringCount: svg.querySelectorAll(".ring").length,
+          dotCount: svg.querySelectorAll(".dot").length,
+        };
+      })(),
     }));
 
     if (snapshot.status.includes("Failed to initialize gallery")) {
@@ -362,6 +376,7 @@ export async function waitForGalleryReady(page) {
       summary.scenes?.fret?.rendered &&
       snapshot.midiClockSvg.includes("<svg") &&
       snapshot.clockSvg.includes("<svg") &&
+      snapshot.setEvennessSvg.includes("<svg") &&
       snapshot.keySvg.includes("<svg") &&
       snapshot.keyStaffSvg.includes("<svg") &&
       snapshot.chordSvg.includes("<svg") &&
@@ -379,12 +394,14 @@ export async function waitForGalleryReady(page) {
       snapshot.toggleCount === 12 &&
       snapshot.sceneCardCount >= 7 &&
       snapshot.presetSelectCount >= 6 &&
-      snapshot.previewMetrics.length >= 11 &&
+      snapshot.previewMetrics.length >= 12 &&
       snapshot.previewMetrics.every((metric) => metric.normalized === "1") &&
       snapshot.previewMetrics.find((metric) => metric.host === "midi-clock")?.width >= 360 &&
       snapshot.previewMetrics.find((metric) => metric.host === "midi-clock")?.height >= 360 &&
       snapshot.previewMetrics.find((metric) => metric.host === "set-clock")?.width >= 320 &&
       snapshot.previewMetrics.find((metric) => metric.host === "set-clock")?.height >= 320 &&
+      snapshot.previewMetrics.find((metric) => metric.host === "set-evenness")?.width >= 420 &&
+      snapshot.previewMetrics.find((metric) => metric.host === "set-evenness")?.height >= 500 &&
       snapshot.previewMetrics.find((metric) => metric.host === "key-clock")?.width >= 360 &&
       snapshot.previewMetrics.find((metric) => metric.host === "key-clock")?.height >= 360 &&
       snapshot.previewMetrics.find((metric) => metric.host === "key-staff")?.width >= 780 &&
@@ -409,7 +426,9 @@ export async function waitForGalleryReady(page) {
       snapshot.keyStaffFeatures.clefCount >= 1 &&
       snapshot.keyStaffFeatures.noteheadCount >= 8 &&
       snapshot.keyStaffFeatures.keyNoteheadCount >= 8 &&
-      snapshot.keyStaffFeatures.barlineCount >= 2;
+      snapshot.keyStaffFeatures.barlineCount >= 2 &&
+      snapshot.setEvennessFeatures.ringCount >= 5 &&
+      snapshot.setEvennessFeatures.dotCount >= 200;
 
     if (ready) return snapshot;
     if (Date.now() > deadline) {

@@ -14,6 +14,7 @@ const chord = @import("chord_construction.zig");
 const harmony = @import("harmony.zig");
 const guitar = @import("guitar.zig");
 const svg_clock = @import("svg/clock.zig");
+const svg_evenness_chart = @import("svg/evenness_chart.zig");
 const svg_fret = @import("svg/fret.zig");
 const svg_staff = @import("svg/staff.zig");
 const svg_compat = @import("harmonious_svg_compat.zig");
@@ -617,6 +618,12 @@ export fn lmt_svg_clock_optc(set: u16, buf: [*c]u8, buf_size: u32) callconv(.C) 
     return copySvgOut(svg, buf, buf_size);
 }
 
+export fn lmt_svg_evenness_chart(buf: [*c]u8, buf_size: u32) callconv(.C) u32 {
+    var svg_buf: [65536]u8 = undefined;
+    const svg = svg_evenness_chart.renderEvennessChart(&svg_buf);
+    return copySvgOut(svg, buf, buf_size);
+}
+
 export fn lmt_svg_fret(frets_ptr: [*c]const i8, buf: [*c]u8, buf_size: u32) callconv(.C) u32 {
     var frets: [guitar.NUM_STRINGS]i8 = [_]i8{-1} ** guitar.NUM_STRINGS;
     if (frets_ptr != null) {
@@ -736,6 +743,14 @@ export fn lmt_bitmap_clock_optc_rgba(set: u16, width: u32, height: u32, out_rgba
     const total = lmt_svg_clock_optc(set, null, 0);
     if (total == 0 or total >= compat_svg_buf.len) return 0;
     const written_total = lmt_svg_clock_optc(set, @ptrCast(&compat_svg_buf), @intCast(compat_svg_buf.len));
+    if (written_total != total) return 0;
+    return renderPublicSvgBitmap(compat_svg_buf[0..@as(usize, total)], width, height, out_rgba, out_rgba_size);
+}
+
+export fn lmt_bitmap_evenness_chart_rgba(width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.C) u32 {
+    const total = lmt_svg_evenness_chart(null, 0);
+    if (total == 0 or total >= compat_svg_buf.len) return 0;
+    const written_total = lmt_svg_evenness_chart(@ptrCast(&compat_svg_buf), @intCast(compat_svg_buf.len));
     if (written_total != total) return 0;
     return renderPublicSvgBitmap(compat_svg_buf[0..@as(usize, total)], width, height, out_rgba, out_rgba_size);
 }

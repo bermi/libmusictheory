@@ -16,6 +16,7 @@ const maxDrift = Number.parseFloat(process.env.LMT_WASM_DOCS_BITMAP_MAX_DRIFT ||
 const minInkPixels = Number.parseInt(process.env.LMT_WASM_DOCS_BITMAP_MIN_INK || "1000", 10);
 const expectedBitmapSizes = {
   lmt_svg_clock_optc: { width: 840, height: 840 },
+  lmt_svg_evenness_chart: { width: 840, height: 1092 },
   lmt_svg_fret: { width: 840, height: 840 },
   lmt_svg_fret_n: { width: 840, height: 840 },
   lmt_svg_chord_staff: { width: 840, height: 504 },
@@ -152,7 +153,7 @@ async function main() {
       const summary = await page.evaluate(() => window.__lmtQaAtlasSummary);
       if (!summary) throw new Error("qa atlas summary missing");
       if (!summary.rasterEnabled) throw new Error("qa atlas raster backend disabled");
-      if ((summary.methods || []).length !== 5) throw new Error(`qa atlas method count mismatch: ${(summary.methods || []).length}`);
+      if ((summary.methods || []).length !== 6) throw new Error(`qa atlas method count mismatch: ${(summary.methods || []).length}`);
 
       const failures = [];
       for (const method of summary.methods || []) {

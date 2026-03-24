@@ -52,8 +52,12 @@ int main(void) {
     uint8_t pos_count = lmt_midi_to_fret_positions(60, tuning, pos);
     assert(pos_count > 0);
 
-    char svg[8192] = {0};
+    char svg[65536] = {0};
     uint32_t svg_len = lmt_svg_clock_optc(c_major, svg, sizeof(svg));
+    assert(svg_len > 0);
+    assert(strncmp(svg, "<svg", 4) == 0);
+
+    svg_len = lmt_svg_evenness_chart(svg, sizeof(svg));
     assert(svg_len > 0);
     assert(strncmp(svg, "<svg", 4) == 0);
 

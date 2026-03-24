@@ -61,6 +61,7 @@ const REQUIRED_EXPORTS = [
   "lmt_frets_to_url_n",
   "lmt_url_to_frets_n",
   "lmt_svg_clock_optc",
+  "lmt_svg_evenness_chart",
   "lmt_svg_fret_n",
   "lmt_svg_chord_staff",
   "lmt_svg_key_staff",
@@ -112,6 +113,7 @@ const fretCaptionEl = document.getElementById("fret-caption");
 
 const setSummaryEl = document.getElementById("set-summary");
 const setClockEl = document.getElementById("set-clock");
+const setEvennessEl = document.getElementById("set-evenness");
 const keyNotesEl = document.getElementById("key-notes");
 const keyDegreesEl = document.getElementById("key-degrees");
 const keyClockEl = document.getElementById("key-clock");
@@ -1135,6 +1137,7 @@ function renderSetScene() {
   if (pcsList.length === 0) {
     setSummaryEl.textContent = "Select at least one pitch class.";
     setClockEl.innerHTML = "";
+    setEvennessEl.innerHTML = "";
     updateSummaryScene("set", { selectedCount: 0, setHex: "0x000" });
     return;
   }
@@ -1151,6 +1154,7 @@ function renderSetScene() {
     const evenness = wasm.lmt_evenness_distance(setValue);
     const chordName = friendlyChordName(readCString(wasm.lmt_chord_name(setValue)));
     const svg = svgString(arena, wasm.lmt_svg_clock_optc, setValue);
+    const evennessSvg = svgString(arena, wasm.lmt_svg_evenness_chart);
 
     setSummaryEl.textContent = [
       `set: 0x${setValue.toString(16).padStart(3, "0")} ${JSON.stringify(pcsToList(arena, setValue))}`,
@@ -1165,12 +1169,20 @@ function renderSetScene() {
       `chord reading: ${chordName}`,
     ].join("\n");
     setClockEl.innerHTML = svg;
+    setEvennessEl.innerHTML = evennessSvg;
     normalizeSvgPreview(setClockEl, { maxHeight: 420, squareWidth: 420, mediumWidth: 520 });
+    normalizeSvgPreview(setEvennessEl, { maxHeight: 520, squareWidth: 420, mediumWidth: 520, wideWidth: 620, ultraWideWidth: 680, padXRatio: 0.05, padYRatio: 0.04 });
+    const evennessSvgNode = setEvennessEl.querySelector("svg");
+    const setEvennessFeatures = evennessSvgNode ? {
+      ringCount: evennessSvgNode.querySelectorAll(".ring").length,
+      dotCount: evennessSvgNode.querySelectorAll(".dot").length,
+    } : { ringCount: 0, dotCount: 0 };
     updateSummaryScene("set", {
       selectedCount: pcsList.length,
       setHex: `0x${setValue.toString(16).padStart(3, "0")}`,
       chordName,
       primeHex: `0x${prime.toString(16).padStart(3, "0")}`,
+      setEvennessFeatures,
     });
   } finally {
     arena.release();
