@@ -68,7 +68,7 @@ pub fn renderOPTC(set: pcs.PitchClassSet, prime_label: []const u8, buf: []u8) []
     svg_quality.writeSvgPrelude(w, "70", "70", "-7 -7 114 114",
         \\.optc-ring,.optc-node{vector-effect:non-scaling-stroke}
         \\.optc-ring{fill:none;stroke:black;stroke-width:2}
-        \\.optc-node{stroke:black;stroke-width:3}
+        \\.optc-node{stroke-width:3}
         \\
     ) catch unreachable;
     w.writeAll("<circle class=\"optc-ring\" cx=\"50.00\" cy=\"50.00\" r=\"20\" fill=\"none\" stroke=\"black\" stroke-width=\"2\" />\n") catch unreachable;
@@ -80,16 +80,17 @@ pub fn renderOPTC(set: pcs.PitchClassSet, prime_label: []const u8, buf: []u8) []
         const present = (set & bit) != 0;
         const in_cluster = (cluster_info.cluster_mask & bit) != 0;
 
+        const stroke = OPC_STROKE_COLORS[pc];
         const fill = if (!present)
-            "transparent"
+            "white"
         else if (in_cluster)
-            "gray"
+            OPC_STROKE_COLORS[pc]
         else
-            "black";
+            OPC_FILL_COLORS[pc];
 
         w.print(
-            "<circle class=\"optc-node\" cx=\"{d:.2}\" cy=\"{d:.2}\" r=\"10\" stroke=\"black\" stroke-width=\"3\" fill=\"{s}\" />\n",
-            .{ p.x, p.y, fill },
+            "<circle class=\"optc-node\" cx=\"{d:.2}\" cy=\"{d:.2}\" r=\"10\" stroke=\"{s}\" stroke-width=\"3\" fill=\"{s}\" />\n",
+            .{ p.x, p.y, stroke, fill },
         ) catch unreachable;
     }
 

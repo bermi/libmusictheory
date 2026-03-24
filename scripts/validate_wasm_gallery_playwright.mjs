@@ -104,6 +104,19 @@ async function main() {
       await page.click("#render-compare");
       await page.click("#render-fret");
       const finalSnapshot = await waitForGalleryReady(page);
+      const clockPaletteMetrics = await page.evaluate(() => {
+        const palette = ["#00c", "#a4f", "#f0f", "#a16", "#e02", "#f91", "#ff0", "#1e0", "#094", "#0bb", "#16b", "#28f"];
+        const hosts = ["midi-clock", "set-clock", "key-clock", "chord-clock", "progression-clock", "compare-left-clock", "compare-overlap-clock", "compare-right-clock"];
+        return hosts.map((host) => {
+          const html = document.getElementById(host)?.innerHTML || "";
+          const paletteMatches = palette.filter((color) => html.includes(color));
+          return { host, paletteMatches, matchCount: paletteMatches.length };
+        });
+      });
+      const paletteFailures = clockPaletteMetrics.filter((one) => one.matchCount < 3);
+      if (paletteFailures.length > 0) {
+        throw new Error(`gallery clocks missing pitch-class palette coverage: ${paletteFailures.map((one) => `${one.host}:${one.paletteMatches.join(",") || "none"}`).join("; ")}`);
+      }
 
       console.log(
         JSON.stringify(
@@ -123,6 +136,7 @@ async function main() {
             progressionCards: finalSnapshot.progressionCards,
             compareChips: finalSnapshot.compareChips,
             voicingPills: finalSnapshot.voicingPills,
+            clockPaletteMetrics,
           },
           null,
           2,

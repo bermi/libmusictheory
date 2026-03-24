@@ -36,11 +36,14 @@ test "optc cluster coloring and center label" {
 
     try testing.expect(std.mem.startsWith(u8, svg, "<svg"));
 
-    const gray_top = "<circle class=\"optc-node\" cx=\"50.00\" cy=\"8.00\" r=\"10\" stroke=\"black\" stroke-width=\"3\" fill=\"gray\" />";
-    try testing.expect(std.mem.indexOf(u8, svg, gray_top) != null);
+    const dark_blue_top = "<circle class=\"optc-node\" cx=\"50.00\" cy=\"8.00\" r=\"10\" stroke=\"#00c\" stroke-width=\"3\" fill=\"#00c\" />";
+    try testing.expect(std.mem.indexOf(u8, svg, dark_blue_top) != null);
 
-    const black_pc5 = "<circle class=\"optc-node\" cx=\"71.00\" cy=\"86.37\" r=\"10\" stroke=\"black\" stroke-width=\"3\" fill=\"black\" />";
-    try testing.expect(std.mem.indexOf(u8, svg, black_pc5) != null);
+    const orange_pc5 = "<circle class=\"optc-node\" cx=\"71.00\" cy=\"86.37\" r=\"10\" stroke=\"#f91\" stroke-width=\"3\" fill=\"#f91\" />";
+    try testing.expect(std.mem.indexOf(u8, svg, orange_pc5) != null);
+
+    const hollow_pc3 = "<circle class=\"optc-node\" cx=\"92.00\" cy=\"50.00\" r=\"10\" stroke=\"#a16\" stroke-width=\"3\" fill=\"white\" />";
+    try testing.expect(std.mem.indexOf(u8, svg, hollow_pc3) != null);
 
     try testing.expect(std.mem.indexOf(u8, svg, "<g transform=\"translate(") != null);
     try testing.expect(std.mem.indexOf(u8, svg, ") scale(") != null);

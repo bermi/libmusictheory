@@ -180,7 +180,7 @@ Open [http://localhost:8002/index.html](http://localhost:8002/index.html).
 
 The standalone gallery is intentionally curated around concrete musical-discovery workflows:
 
-- `Live MIDI Compass`: listen to all browser MIDI inputs, honor sustain, choose the tonic/mode lens explicitly, save snapshots with the middle pedal, and see compatible next-note suggestions in real time
+- `Live MIDI Compass`: listen to all browser MIDI inputs, honor sustain, choose the tonic/mode lens explicitly, save snapshots with the middle pedal, and see compatible next-note suggestions over colored pitch-class diagrams in real time
 - `Set Observatory`: inspect a pitch-class set as a constellation with prime-form, complement, inversion, and evenness context
 - `Key Bloom`: watch one tonic generate a full diatonic orbit and its triadic degree field
 - `Chord Atelier`: read one sonority simultaneously as set, chord label, roman numeral, clock, and staff image
