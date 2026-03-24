@@ -25,6 +25,10 @@
         </div>
         <div class="hero-actions">
           <button id="shuffle-scenes" class="accent-button" type="button">Shuffle Presets</button>
+          <div class="preview-toggle" role="group" aria-label="Preview mode">
+            <button id="preview-mode-svg" class="ghost-button is-active" data-preview-mode="svg" type="button">SVG Preview</button>
+            <button id="preview-mode-bitmap" class="ghost-button" data-preview-mode="bitmap" type="button">Bitmap Preview</button>
+          </div>
           <div class="hero-metrics" aria-label="Gallery metrics">
             <article class="hero-metric">
               <strong>7</strong>
@@ -35,8 +39,8 @@
               <span>Standalone bundle</span>
             </article>
             <article class="hero-metric">
-              <strong>SVG</strong>
-              <span>Large vector previews</span>
+              <strong>SVG + RGBA</strong>
+              <span>Toggle vector and direct bitmap previews</span>
             </article>
           </div>
           <p id="status" class="status-text">Initializing gallery...</p>

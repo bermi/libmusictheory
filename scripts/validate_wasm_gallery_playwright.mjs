@@ -53,16 +53,43 @@ async function main() {
       await installFakeMidi(page);
       await page.goto(url, { waitUntil: "domcontentloaded" });
       await page.waitForSelector("#shuffle-scenes", { timeout: 30000 });
-      await waitForGalleryReady(page);
+      const svgReady = await waitForGalleryReady(page, "svg");
       await page.waitForFunction(() => window.__lmtGallerySummary?.scenes?.midi?.inputCount >= 2, { timeout: 30000 });
 
       await driveFakeMidiTriad(page);
-      const midiActive = await waitForMidiSceneActive(page);
-      if (midiActive.midiStaffFeatures?.staffMode !== "grand" || (midiActive.midiStaffFeatures?.clefCount || 0) < 2) {
-        throw new Error(`live midi scene did not render a grand staff: ${JSON.stringify(midiActive.midiStaffFeatures)}`);
+      const midiActiveSvg = await waitForMidiSceneActive(page, "svg");
+      await page.click("#preview-mode-bitmap");
+      const bitmapReady = await waitForGalleryReady(page, "bitmap");
+      const midiActive = await waitForMidiSceneActive(page, "bitmap");
+      const midiActiveStaffFeatures = midiActive.summary?.midiStaffFeatures ?? midiActive.midiStaffFeatures;
+      const midiActiveOpticKFeatures = midiActive.summary?.midiOpticKFeatures ?? midiActive.midiOpticKFeatures;
+      const midiActiveEvennessFeatures = midiActive.summary?.midiEvennessFeatures ?? midiActive.midiEvennessFeatures;
+      const previewModeDrift = (() => {
+        const hosts = ["midi-clock", "midi-optic-k", "midi-evenness", "midi-keyboard", "midi-staff", "set-clock", "set-optic-k", "set-evenness"];
+        const byHost = (snapshot, host) => snapshot.previewMetrics.find((one) => one.host === host) || null;
+        return hosts.map((host) => {
+          const svgMetric = byHost(svgReady, host);
+          const bitmapMetric = byHost(bitmapReady, host);
+          return {
+            host,
+            svgWidth: svgMetric?.width || 0,
+            svgHeight: svgMetric?.height || 0,
+            bitmapWidth: bitmapMetric?.width || 0,
+            bitmapHeight: bitmapMetric?.height || 0,
+            widthDelta: Math.abs((svgMetric?.width || 0) - (bitmapMetric?.width || 0)),
+            heightDelta: Math.abs((svgMetric?.height || 0) - (bitmapMetric?.height || 0)),
+          };
+        });
+      })();
+      const previewModeFailures = previewModeDrift.filter((one) => one.widthDelta > 6 || one.heightDelta > 6);
+      if (previewModeFailures.length > 0) {
+        throw new Error(`preview mode size drift too large: ${JSON.stringify(previewModeFailures)}`);
       }
-      if ((midiActive.midiOpticKFeatures?.clockCount || 0) < 2 || (midiActive.midiEvennessFeatures?.highlightCount || 0) < 1) {
-        throw new Error(`live midi scene did not render OPTIC/K and evenness focus correctly: ${JSON.stringify({ optic: midiActive.midiOpticKFeatures, evenness: midiActive.midiEvennessFeatures })}`);
+      if (midiActiveStaffFeatures?.staffMode !== "grand" || (midiActiveStaffFeatures?.clefCount || 0) < 2) {
+        throw new Error(`live midi scene did not render a grand staff: ${JSON.stringify(midiActiveStaffFeatures)}`);
+      }
+      if ((midiActiveOpticKFeatures?.clockCount || 0) < 2 || (midiActiveEvennessFeatures?.highlightCount || 0) < 1) {
+        throw new Error(`live midi scene did not render OPTIC/K and evenness focus correctly: ${JSON.stringify({ optic: midiActiveOpticKFeatures, evenness: midiActiveEvennessFeatures })}`);
       }
       const defaultContext = await page.evaluate(() => ({
         label: window.__lmtGallerySummary?.scenes?.midi?.contextLabel || "",
@@ -202,6 +229,8 @@ async function main() {
         const midi = window.__lmtGallerySummary?.scenes?.midi;
         return midi?.viewingSnapshot === false && midi?.liveCount === 0 && midi?.displayCount === 0;
       }, { timeout: 30000 }).then((handle) => handle.jsonValue());
+      await page.click("#preview-mode-svg");
+      const svgReadyAgain = await waitForGalleryReady(page, "svg");
 
       await page.click("#shuffle-scenes");
       await waitForGalleryReady(page);
@@ -233,6 +262,13 @@ async function main() {
             status: finalSnapshot.status,
             manifestLoaded: finalSnapshot.summary.manifestLoaded,
             sceneCount: finalSnapshot.summary.sceneCount,
+            svgPreviewMode: svgReady.summary.previewMode,
+            bitmapPreviewMode: bitmapReady.summary.previewMode,
+            svgPreviewKinds: svgReady.previewKinds,
+            bitmapPreviewKinds: bitmapReady.previewKinds,
+            svgReadyAgainPreviewMode: svgReadyAgain.summary.previewMode,
+            previewModeDrift,
+            midiActiveSvg,
             midiActive,
             contextChanged,
             keyboardSeamCheck,

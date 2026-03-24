@@ -104,7 +104,15 @@ const gallery_export_symbols = [_][]const u8{
     "lmt_svg_key_staff",
     "lmt_svg_keyboard",
     "lmt_svg_piano_staff",
+    "lmt_bitmap_clock_optc_rgba",
+    "lmt_bitmap_optic_k_group_rgba",
+    "lmt_bitmap_evenness_chart_rgba",
+    "lmt_bitmap_evenness_field_rgba",
+    "lmt_bitmap_fret_n_rgba",
+    "lmt_bitmap_chord_staff_rgba",
+    "lmt_bitmap_key_staff_rgba",
     "lmt_bitmap_keyboard_rgba",
+    "lmt_bitmap_piano_staff_rgba",
 };
 
 const render_compare_export_symbols = [_][]const u8{

@@ -7,9 +7,12 @@ const encoder = new TextEncoder();
 const CUSTOM_PRESET_VALUE = "custom";
 const captureMode = new URLSearchParams(window.location.search).get("capture") === "1";
 const MIDI_SNAPSHOT_STORAGE_KEY = "lmt.gallery.midi.snapshots";
+const GALLERY_PREVIEW_MODE_STORAGE_KEY = "lmt.gallery.preview.mode";
 const MIDI_SCENE_TITLE = "Live MIDI Compass";
 const MIDI_DEFAULT_TONIC = 0;
 const MIDI_DEFAULT_MODE = 0;
+const PREVIEW_MODE_SVG = "svg";
+const PREVIEW_MODE_BITMAP = "bitmap";
 const MODE_OPTIONS = [
   { id: 0, name: "Ionian" },
   { id: 1, name: "Dorian" },
@@ -69,10 +72,20 @@ const REQUIRED_EXPORTS = [
   "lmt_svg_key_staff",
   "lmt_svg_keyboard",
   "lmt_svg_piano_staff",
+  "lmt_bitmap_clock_optc_rgba",
+  "lmt_bitmap_optic_k_group_rgba",
+  "lmt_bitmap_evenness_chart_rgba",
+  "lmt_bitmap_evenness_field_rgba",
+  "lmt_bitmap_fret_n_rgba",
+  "lmt_bitmap_chord_staff_rgba",
+  "lmt_bitmap_key_staff_rgba",
   "lmt_bitmap_keyboard_rgba",
+  "lmt_bitmap_piano_staff_rgba",
 ];
 
 const statusEl = document.getElementById("status");
+const previewModeSvgEl = document.getElementById("preview-mode-svg");
+const previewModeBitmapEl = document.getElementById("preview-mode-bitmap");
 const pcsToggleGrid = document.getElementById("pcs-toggle-grid");
 const midiCaptionEl = document.getElementById("midi-caption");
 const midiStatusPillsEl = document.getElementById("midi-status-pills");
@@ -158,11 +171,15 @@ let currentFretPreset = 0;
 let jsScratchBase = 0;
 let jsScratchTop = 0;
 let jsScratchLimit = 0;
+const galleryUiState = {
+  previewMode: PREVIEW_MODE_SVG,
+};
 
 const gallerySummary = {
   ready: false,
   manifestLoaded: false,
   sceneCount: 0,
+  previewMode: PREVIEW_MODE_SVG,
   errors: [],
   scenes: {
     midi: {},
@@ -193,6 +210,44 @@ const midiState = {
 function setStatus(message, tone = "ready") {
   statusEl.textContent = message;
   statusEl.style.color = tone === "error" ? "#b03620" : "#1e7c84";
+}
+
+function loadPreviewModePreference() {
+  try {
+    const raw = window.localStorage?.getItem(GALLERY_PREVIEW_MODE_STORAGE_KEY);
+    if (raw === PREVIEW_MODE_BITMAP || raw === PREVIEW_MODE_SVG) return raw;
+  } catch (_error) {
+    // Ignore storage failures.
+  }
+  return PREVIEW_MODE_SVG;
+}
+
+function persistPreviewMode(mode) {
+  try {
+    window.localStorage?.setItem(GALLERY_PREVIEW_MODE_STORAGE_KEY, mode);
+  } catch (_error) {
+    // Ignore storage failures.
+  }
+}
+
+function updatePreviewModeUi() {
+  const isBitmap = galleryUiState.previewMode === PREVIEW_MODE_BITMAP;
+  previewModeSvgEl.classList.toggle("is-active", !isBitmap);
+  previewModeBitmapEl.classList.toggle("is-active", isBitmap);
+  previewModeSvgEl.setAttribute("aria-pressed", isBitmap ? "false" : "true");
+  previewModeBitmapEl.setAttribute("aria-pressed", isBitmap ? "true" : "false");
+  gallerySummary.previewMode = galleryUiState.previewMode;
+}
+
+function setPreviewMode(mode, { persist = true, rerender = true } = {}) {
+  galleryUiState.previewMode = mode === PREVIEW_MODE_BITMAP ? PREVIEW_MODE_BITMAP : PREVIEW_MODE_SVG;
+  updatePreviewModeUi();
+  if (persist) persistPreviewMode(galleryUiState.previewMode);
+  if (rerender && wasm && memory) renderAll();
+}
+
+function isBitmapPreviewMode() {
+  return galleryUiState.previewMode === PREVIEW_MODE_BITMAP;
 }
 
 class ScratchArena {
@@ -386,11 +441,6 @@ function svgString(arena, renderFn, ...args) {
   return readCString(bufPtr);
 }
 
-function keyboardSvgString(arena, notes, rangeLow, rangeHigh) {
-  const notesPtr = writeU8Array(arena, notes);
-  return svgString(arena, wasm.lmt_svg_keyboard, notesPtr, notes.length, rangeLow, rangeHigh);
-}
-
 function rgbaToPngDataUrl(rgbaBytes, width, height) {
   const canvas = document.createElement("canvas");
   canvas.width = width;
@@ -404,25 +454,15 @@ function rgbaToPngDataUrl(rgbaBytes, width, height) {
   return canvas.toDataURL("image/png");
 }
 
-function keyboardBitmapDataUrl(arena, notes, rangeLow, rangeHigh, width = 1160, height = 220) {
-  const notesPtr = writeU8Array(arena, notes);
+function bitmapDataUrlFromCall(arena, width, height, renderFn, label) {
   const rgbaBytes = width * height * 4;
   const rgbaPtr = arena.alloc(rgbaBytes, 1);
-  const written = wasm.lmt_bitmap_keyboard_rgba(notesPtr, notes.length, rangeLow, rangeHigh, width, height, rgbaPtr, rgbaBytes);
+  const written = renderFn(rgbaPtr, rgbaBytes);
   if (written !== rgbaBytes) {
-    throw new Error(`lmt_bitmap_keyboard_rgba wrote ${written}/${rgbaBytes}`);
+    throw new Error(`${label} wrote ${written}/${rgbaBytes}`);
   }
   const rgbaCopy = new Uint8Array(memory.buffer.slice(rgbaPtr, rgbaPtr + rgbaBytes));
   return rgbaToPngDataUrl(rgbaCopy, width, height);
-}
-
-function pianoStaffSvgString(arena, notes, tonic, quality) {
-  const notesPtr = writeU8Array(arena, notes);
-  return svgString(arena, wasm.lmt_svg_piano_staff, notesPtr, notes.length, tonic, quality);
-}
-
-function evennessFieldSvgString(arena, setValue) {
-  return svgString(arena, wasm.lmt_svg_evenness_field, setValue);
 }
 
 function normalizeSvgPreview(host, options = {}) {
@@ -488,8 +528,104 @@ function normalizeSvgPreview(host, options = {}) {
   }
 }
 
-function setBitmapPreview(host, dataUrl, width, height, alt) {
-  host.innerHTML = `<img class="bitmap-preview" data-preview-normalized="1" data-preview-aspect="${(width / height).toFixed(3)}" width="${width}" height="${height}" src="${dataUrl}" alt="${escapeHtml(alt)}" />`;
+function setSvgPreview(host, svgMarkup, options = {}) {
+  host.innerHTML = svgMarkup;
+  normalizeSvgPreview(host, options);
+}
+
+function measureSvgPreviewLayout(host, svgMarkup, options = {}) {
+  setSvgPreview(host, svgMarkup, options);
+  const svg = host.querySelector("svg");
+  if (!svg) {
+    throw new Error("missing svg preview during bitmap measurement");
+  }
+  const rect = svg.getBoundingClientRect();
+  return {
+    displayWidth: Math.max(1, Math.round(rect.width)),
+    displayHeight: Math.max(1, Math.round(rect.height)),
+  };
+}
+
+function setBitmapPreview(host, dataUrl, pixelWidth, pixelHeight, alt, displayWidth, displayHeight, options = {}) {
+  const aspect = pixelWidth / pixelHeight;
+  host.innerHTML = `<img class="bitmap-preview" data-preview-normalized="1" data-preview-aspect="${aspect.toFixed(3)}" width="${pixelWidth}" height="${pixelHeight}" src="${dataUrl}" alt="${escapeHtml(alt)}" />`;
+  const image = host.querySelector("img");
+  if (!image) return;
+  image.style.display = "block";
+  image.style.width = `${displayWidth}px`;
+  image.style.height = "auto";
+  image.style.maxWidth = "100%";
+  image.style.maxHeight = `${options.maxHeight || 320}px`;
+}
+
+function renderPreviewSvgOrBitmap(host, { svgMarkup, bitmapRenderer, alt, options = {} }) {
+  if (!isBitmapPreviewMode()) {
+    setSvgPreview(host, svgMarkup, options);
+    return;
+  }
+  const layout = measureSvgPreviewLayout(host, svgMarkup, options);
+  const deviceScale = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+  const pixelWidth = Math.max(1, Math.round(layout.displayWidth * deviceScale));
+  const pixelHeight = Math.max(1, Math.round(layout.displayHeight * deviceScale));
+  const dataUrl = bitmapRenderer.render(pixelWidth, pixelHeight);
+  setBitmapPreview(host, dataUrl, pixelWidth, pixelHeight, alt, layout.displayWidth, layout.displayHeight, options);
+}
+
+function clockBitmapDataUrl(arena, setValue, width, height) {
+  return bitmapDataUrlFromCall(arena, width, height, (rgbaPtr, rgbaBytes) =>
+    wasm.lmt_bitmap_clock_optc_rgba(setValue, width, height, rgbaPtr, rgbaBytes),
+  "lmt_bitmap_clock_optc_rgba");
+}
+
+function opticKBitmapDataUrl(arena, setValue, width, height) {
+  return bitmapDataUrlFromCall(arena, width, height, (rgbaPtr, rgbaBytes) =>
+    wasm.lmt_bitmap_optic_k_group_rgba(setValue, width, height, rgbaPtr, rgbaBytes),
+  "lmt_bitmap_optic_k_group_rgba");
+}
+
+function evennessChartBitmapDataUrl(arena, width, height) {
+  return bitmapDataUrlFromCall(arena, width, height, (rgbaPtr, rgbaBytes) =>
+    wasm.lmt_bitmap_evenness_chart_rgba(width, height, rgbaPtr, rgbaBytes),
+  "lmt_bitmap_evenness_chart_rgba");
+}
+
+function evennessFieldBitmapDataUrl(arena, setValue, width, height) {
+  return bitmapDataUrlFromCall(arena, width, height, (rgbaPtr, rgbaBytes) =>
+    wasm.lmt_bitmap_evenness_field_rgba(setValue, width, height, rgbaPtr, rgbaBytes),
+  "lmt_bitmap_evenness_field_rgba");
+}
+
+function chordStaffBitmapDataUrl(arena, chordType, root, width, height) {
+  return bitmapDataUrlFromCall(arena, width, height, (rgbaPtr, rgbaBytes) =>
+    wasm.lmt_bitmap_chord_staff_rgba(chordType, root, width, height, rgbaPtr, rgbaBytes),
+  "lmt_bitmap_chord_staff_rgba");
+}
+
+function keyStaffBitmapDataUrl(arena, tonic, quality, width, height) {
+  return bitmapDataUrlFromCall(arena, width, height, (rgbaPtr, rgbaBytes) =>
+    wasm.lmt_bitmap_key_staff_rgba(tonic, quality, width, height, rgbaPtr, rgbaBytes),
+  "lmt_bitmap_key_staff_rgba");
+}
+
+function keyboardBitmapDataUrl(arena, notes, rangeLow, rangeHigh, width, height) {
+  const notesPtr = writeU8Array(arena, notes);
+  return bitmapDataUrlFromCall(arena, width, height, (rgbaPtr, rgbaBytes) =>
+    wasm.lmt_bitmap_keyboard_rgba(notesPtr, notes.length, rangeLow, rangeHigh, width, height, rgbaPtr, rgbaBytes),
+  "lmt_bitmap_keyboard_rgba");
+}
+
+function pianoStaffBitmapDataUrl(arena, notes, tonic, quality, width, height) {
+  const notesPtr = writeU8Array(arena, notes);
+  return bitmapDataUrlFromCall(arena, width, height, (rgbaPtr, rgbaBytes) =>
+    wasm.lmt_bitmap_piano_staff_rgba(notesPtr, notes.length, tonic, quality, width, height, rgbaPtr, rgbaBytes),
+  "lmt_bitmap_piano_staff_rgba");
+}
+
+function fretBitmapDataUrl(arena, frets, windowStart, visibleFrets, width, height) {
+  const fretsPtr = writeI8Array(arena, frets);
+  return bitmapDataUrlFromCall(arena, width, height, (rgbaPtr, rgbaBytes) =>
+    wasm.lmt_bitmap_fret_n_rgba(fretsPtr, frets.length, windowStart, visibleFrets, width, height, rgbaPtr, rgbaBytes),
+  "lmt_bitmap_fret_n_rgba");
 }
 
 function inspectKeyboardSvg(svg) {
@@ -530,6 +666,11 @@ function inspectKeyboardNotes(notes, rangeLow, rangeHigh) {
   return { selectedKeyCount, echoKeyCount, blackKeyCount, blackEchoSelectedCount };
 }
 
+function parseSvgMarkup(svgMarkup) {
+  if (!svgMarkup || !svgMarkup.includes("<svg")) return null;
+  return new DOMParser().parseFromString(svgMarkup, "image/svg+xml").documentElement;
+}
+
 function inspectOpticKSvg(svg) {
   if (!svg) {
     return {
@@ -545,6 +686,10 @@ function inspectOpticKSvg(svg) {
   };
 }
 
+function inspectOpticKMarkup(svgMarkup) {
+  return inspectOpticKSvg(parseSvgMarkup(svgMarkup));
+}
+
 function inspectEvennessSvg(svg) {
   if (!svg) {
     return {
@@ -558,6 +703,10 @@ function inspectEvennessSvg(svg) {
     dotCount: svg.querySelectorAll(".dot").length,
     highlightCount: svg.querySelectorAll(".dot-highlight").length,
   };
+}
+
+function inspectEvennessMarkup(svgMarkup) {
+  return inspectEvennessSvg(parseSvgMarkup(svgMarkup));
 }
 
 function inspectStaffSvg(svg) {
@@ -603,6 +752,10 @@ function inspectStaffSvg(svg) {
     simultaneousCluster: chordNoteheadCount >= 2 && noteColumnSpan <= 12,
     barlineCount: svg.querySelectorAll(".staff-barline").length,
   };
+}
+
+function inspectStaffMarkup(svgMarkup) {
+  return inspectStaffSvg(parseSvgMarkup(svgMarkup));
 }
 
 function updateSummaryScene(name, data) {
@@ -1134,8 +1287,10 @@ function renderMidiScene() {
       ? displayNotes.map((midi) => midiName(midi, context.tonic, context.quality))
       : [];
     const orbitNames = orderedMembersFromSet(context.setValue, context.tonic).map((pc) => spellNote(pc, context.tonic, context.quality));
+    const clockSvg = svgString(arena, wasm.lmt_svg_clock_optc, setValue);
     const opticKSvg = svgString(arena, wasm.lmt_svg_optic_k_group, setValue);
-    const evennessFieldSvg = evennessFieldSvgString(arena, setValue);
+    const evennessFieldSvg = svgString(arena, wasm.lmt_svg_evenness_field, setValue);
+    const staffSvg = displayNotes.length > 0 ? svgString(arena, wasm.lmt_svg_piano_staff, writeU8Array(arena, displayNotes), displayNotes.length, context.tonic, context.quality) : "";
 
     midiSummaryEl.textContent = [
       `mode: ${viewingSnapshot ? "snapshot preview" : "live input"}`,
@@ -1155,17 +1310,48 @@ function renderMidiScene() {
       midiNotesEl.innerHTML = `<span class="pill">Play a chord or melodic fragment. Sustain is tracked; middle pedal saves snapshots.</span>`;
     }
 
-    midiClockEl.innerHTML = svgString(arena, wasm.lmt_svg_clock_optc, setValue);
-    normalizeSvgPreview(midiClockEl, { maxHeight: 420, squareWidth: 420, mediumWidth: 520 });
-    midiOpticKEl.innerHTML = opticKSvg;
-    normalizeSvgPreview(midiOpticKEl, { maxHeight: 300, squareWidth: 520, mediumWidth: 620, wideWidth: 720, ultraWideWidth: 760, padXRatio: 0.04, padYRatio: 0.08 });
-    midiEvennessEl.innerHTML = evennessFieldSvg;
-    normalizeSvgPreview(midiEvennessEl, { maxHeight: 440, squareWidth: 360, mediumWidth: 420, wideWidth: 500, ultraWideWidth: 560, padXRatio: 0.05, padYRatio: 0.05 });
-    setBitmapPreview(midiKeyboardEl, keyboardBitmapDataUrl(arena, keyboardNotes, keyboardRange.low, keyboardRange.high, 1160, 220), 1160, 220, "Live keyboard bitmap");
+    renderPreviewSvgOrBitmap(midiClockEl, {
+      svgMarkup: clockSvg,
+      bitmapRenderer: {
+        render: (width, height) => clockBitmapDataUrl(arena, setValue, width, height),
+      },
+      alt: "Live clock preview",
+      options: { maxHeight: 420, squareWidth: 420, mediumWidth: 520 },
+    });
+    renderPreviewSvgOrBitmap(midiOpticKEl, {
+      svgMarkup: opticKSvg,
+      bitmapRenderer: {
+        render: (width, height) => opticKBitmapDataUrl(arena, setValue, width, height),
+      },
+      alt: "Live OPTIC/K bitmap preview",
+      options: { maxHeight: 300, squareWidth: 520, mediumWidth: 620, wideWidth: 720, ultraWideWidth: 760, padXRatio: 0.04, padYRatio: 0.08 },
+    });
+    renderPreviewSvgOrBitmap(midiEvennessEl, {
+      svgMarkup: evennessFieldSvg,
+      bitmapRenderer: {
+        render: (width, height) => evennessFieldBitmapDataUrl(arena, setValue, width, height),
+      },
+      alt: "Live evenness bitmap preview",
+      options: { maxHeight: 440, squareWidth: 360, mediumWidth: 420, wideWidth: 500, ultraWideWidth: 560, padXRatio: 0.05, padYRatio: 0.05 },
+    });
+    renderPreviewSvgOrBitmap(midiKeyboardEl, {
+      svgMarkup: svgString(arena, wasm.lmt_svg_keyboard, writeU8Array(arena, keyboardNotes), keyboardNotes.length, keyboardRange.low, keyboardRange.high),
+      bitmapRenderer: {
+        render: (width, height) => keyboardBitmapDataUrl(arena, keyboardNotes, keyboardRange.low, keyboardRange.high, width, height),
+      },
+      alt: "Live keyboard bitmap preview",
+      options: { maxHeight: 220, squareWidth: 780, mediumWidth: 920, wideWidth: 1040, ultraWideWidth: 1160, padXRatio: 0.02, padYRatio: 0.08 },
+    });
 
     if (displayNotes.length > 0) {
-      midiStaffEl.innerHTML = pianoStaffSvgString(arena, displayNotes, context.tonic, context.quality);
-      normalizeSvgPreview(midiStaffEl, { maxHeight: 420, squareWidth: 700, mediumWidth: 840, wideWidth: 980, ultraWideWidth: 1120, padXRatio: 0.05, padYRatio: 0.12 });
+      renderPreviewSvgOrBitmap(midiStaffEl, {
+        svgMarkup: staffSvg,
+        bitmapRenderer: {
+          render: (width, height) => pianoStaffBitmapDataUrl(arena, displayNotes, context.tonic, context.quality, width, height),
+        },
+        alt: "Live piano staff bitmap preview",
+        options: { maxHeight: 420, squareWidth: 700, mediumWidth: 840, wideWidth: 980, ultraWideWidth: 1120, padXRatio: 0.05, padYRatio: 0.12 },
+      });
     } else {
       midiStaffEl.innerHTML = `<div class="output-block">Play notes across the keyboard to paint treble, bass, or grand staff directly from the live MIDI state.</div>`;
     }
@@ -1185,9 +1371,9 @@ function renderMidiScene() {
     }
 
     const keyboardFeatures = inspectKeyboardNotes(keyboardNotes, keyboardRange.low, keyboardRange.high);
-    const midiOpticKFeatures = inspectOpticKSvg(midiOpticKEl.querySelector("svg"));
-    const midiEvennessFeatures = inspectEvennessSvg(midiEvennessEl.querySelector("svg"));
-    const midiStaffFeatures = inspectStaffSvg(midiStaffEl.querySelector("svg"));
+    const midiOpticKFeatures = inspectOpticKMarkup(opticKSvg);
+    const midiEvennessFeatures = inspectEvennessMarkup(evennessFieldSvg);
+    const midiStaffFeatures = inspectStaffMarkup(staffSvg);
 
     updateSummaryScene("midi", {
       supported: midiState.supported,
@@ -1335,7 +1521,7 @@ function renderSetScene() {
     const chordName = friendlyChordName(readCString(wasm.lmt_chord_name(setValue)));
     const svg = svgString(arena, wasm.lmt_svg_clock_optc, setValue);
     const opticKSvg = svgString(arena, wasm.lmt_svg_optic_k_group, setValue);
-    const evennessSvg = evennessFieldSvgString(arena, setValue);
+    const evennessSvg = svgString(arena, wasm.lmt_svg_evenness_field, setValue);
 
     setSummaryEl.textContent = [
       `set: 0x${setValue.toString(16).padStart(3, "0")} ${JSON.stringify(pcsToList(arena, setValue))}`,
@@ -1349,16 +1535,32 @@ function renderSetScene() {
       `evenness distance: ${evenness.toFixed(6)}`,
       `chord reading: ${chordName}`,
     ].join("\n");
-    setClockEl.innerHTML = svg;
-    setOpticKEl.innerHTML = opticKSvg;
-    setEvennessEl.innerHTML = evennessSvg;
-    normalizeSvgPreview(setClockEl, { maxHeight: 420, squareWidth: 420, mediumWidth: 520 });
-    normalizeSvgPreview(setOpticKEl, { maxHeight: 320, squareWidth: 620, mediumWidth: 760, wideWidth: 840, ultraWideWidth: 920, padXRatio: 0.04, padYRatio: 0.08 });
-    normalizeSvgPreview(setEvennessEl, { maxHeight: 520, squareWidth: 420, mediumWidth: 520, wideWidth: 620, ultraWideWidth: 680, padXRatio: 0.05, padYRatio: 0.04 });
-    const opticKSvgNode = setOpticKEl.querySelector("svg");
-    const setOpticKFeatures = inspectOpticKSvg(opticKSvgNode);
-    const evennessSvgNode = setEvennessEl.querySelector("svg");
-    const setEvennessFeatures = inspectEvennessSvg(evennessSvgNode);
+    renderPreviewSvgOrBitmap(setClockEl, {
+      svgMarkup: svg,
+      bitmapRenderer: {
+        render: (width, height) => clockBitmapDataUrl(arena, setValue, width, height),
+      },
+      alt: "Set clock bitmap preview",
+      options: { maxHeight: 420, squareWidth: 420, mediumWidth: 520 },
+    });
+    renderPreviewSvgOrBitmap(setOpticKEl, {
+      svgMarkup: opticKSvg,
+      bitmapRenderer: {
+        render: (width, height) => opticKBitmapDataUrl(arena, setValue, width, height),
+      },
+      alt: "Set OPTIC/K bitmap preview",
+      options: { maxHeight: 320, squareWidth: 620, mediumWidth: 760, wideWidth: 840, ultraWideWidth: 920, padXRatio: 0.04, padYRatio: 0.08 },
+    });
+    renderPreviewSvgOrBitmap(setEvennessEl, {
+      svgMarkup: evennessSvg,
+      bitmapRenderer: {
+        render: (width, height) => evennessFieldBitmapDataUrl(arena, setValue, width, height),
+      },
+      alt: "Set evenness bitmap preview",
+      options: { maxHeight: 520, squareWidth: 420, mediumWidth: 520, wideWidth: 620, ultraWideWidth: 680, padXRatio: 0.05, padYRatio: 0.04 },
+    });
+    const setOpticKFeatures = inspectOpticKMarkup(opticKSvg);
+    const setEvennessFeatures = inspectEvennessMarkup(evennessSvg);
     updateSummaryScene("set", {
       selectedCount: pcsList.length,
       setHex: `0x${setValue.toString(16).padStart(3, "0")}`,
@@ -1389,13 +1591,34 @@ function renderKeyScene() {
 
     setChipRow(keyNotesEl, orbit.names);
     keyDegreesEl.innerHTML = degreeCards.join("");
-    keyClockEl.innerHTML = svgString(arena, wasm.lmt_svg_clock_optc, orbit.setValue);
-    normalizeSvgPreview(keyClockEl, { maxHeight: 440, squareWidth: 440, mediumWidth: 560 });
-    keyStaffEl.innerHTML = svgString(arena, wasm.lmt_svg_key_staff, tonic, quality);
-    normalizeSvgPreview(keyStaffEl, { maxHeight: 240, squareWidth: 780, mediumWidth: 920, wideWidth: 1040, ultraWideWidth: 1120, padXRatio: 0.04, padYRatio: 0.12 });
+    const keyClockSvg = svgString(arena, wasm.lmt_svg_clock_optc, orbit.setValue);
+    const keyStaffSvg = svgString(arena, wasm.lmt_svg_key_staff, tonic, quality);
+    renderPreviewSvgOrBitmap(keyClockEl, {
+      svgMarkup: keyClockSvg,
+      bitmapRenderer: {
+        render: (width, height) => clockBitmapDataUrl(arena, orbit.setValue, width, height),
+      },
+      alt: "Key orbit bitmap preview",
+      options: { maxHeight: 440, squareWidth: 440, mediumWidth: 560 },
+    });
+    renderPreviewSvgOrBitmap(keyStaffEl, {
+      svgMarkup: keyStaffSvg,
+      bitmapRenderer: {
+        render: (width, height) => keyStaffBitmapDataUrl(arena, tonic, quality, width, height),
+      },
+      alt: "Key staff bitmap preview",
+      options: { maxHeight: 240, squareWidth: 780, mediumWidth: 920, wideWidth: 1040, ultraWideWidth: 1120, padXRatio: 0.04, padYRatio: 0.12 },
+    });
     const keyKeyboardNotes = keyboardPreviewNotesForSet(orbit.setValue, orbit.tonic);
-    setBitmapPreview(keyKeyboardEl, keyboardBitmapDataUrl(arena, keyKeyboardNotes, 36, 96, 1160, 220), 1160, 220, "Key keyboard bitmap");
-    const keyStaffFeatures = inspectStaffSvg(keyStaffEl.querySelector("svg"));
+    renderPreviewSvgOrBitmap(keyKeyboardEl, {
+      svgMarkup: svgString(arena, wasm.lmt_svg_keyboard, writeU8Array(arena, keyKeyboardNotes), keyKeyboardNotes.length, 36, 96),
+      bitmapRenderer: {
+        render: (width, height) => keyboardBitmapDataUrl(arena, keyKeyboardNotes, 36, 96, width, height),
+      },
+      alt: "Key keyboard bitmap preview",
+      options: { maxHeight: 220, squareWidth: 780, mediumWidth: 920, wideWidth: 1040, ultraWideWidth: 1160, padXRatio: 0.02, padYRatio: 0.08 },
+    });
+    const keyStaffFeatures = inspectStaffMarkup(keyStaffSvg);
     const keyboardFeatures = inspectKeyboardNotes(keyKeyboardNotes, 36, 96);
 
     updateSummaryScene("key", {
@@ -1438,11 +1661,25 @@ function renderChordScene() {
     ].join("\n");
     setChipRow(chordNotesEl, orderedNotes);
 
-    chordClockEl.innerHTML = svgString(arena, wasm.lmt_svg_clock_optc, chordSet);
-    normalizeSvgPreview(chordClockEl, { maxHeight: 360, squareWidth: 320, mediumWidth: 380 });
-    chordStaffEl.innerHTML = svgString(arena, wasm.lmt_svg_chord_staff, chordType, root);
-    normalizeSvgPreview(chordStaffEl, { maxHeight: 320, squareWidth: 620, mediumWidth: 780, wideWidth: 920, ultraWideWidth: 1040, padXRatio: 0.05, padYRatio: 0.12 });
-    const staffFeatures = inspectStaffSvg(chordStaffEl.querySelector("svg"));
+    const chordClockSvg = svgString(arena, wasm.lmt_svg_clock_optc, chordSet);
+    const chordStaffSvg = svgString(arena, wasm.lmt_svg_chord_staff, chordType, root);
+    renderPreviewSvgOrBitmap(chordClockEl, {
+      svgMarkup: chordClockSvg,
+      bitmapRenderer: {
+        render: (width, height) => clockBitmapDataUrl(arena, chordSet, width, height),
+      },
+      alt: "Chord clock bitmap preview",
+      options: { maxHeight: 360, squareWidth: 320, mediumWidth: 380 },
+    });
+    renderPreviewSvgOrBitmap(chordStaffEl, {
+      svgMarkup: chordStaffSvg,
+      bitmapRenderer: {
+        render: (width, height) => chordStaffBitmapDataUrl(arena, chordType, root, width, height),
+      },
+      alt: "Chord staff bitmap preview",
+      options: { maxHeight: 320, squareWidth: 620, mediumWidth: 780, wideWidth: 920, ultraWideWidth: 1040, padXRatio: 0.05, padYRatio: 0.12 },
+    });
+    const staffFeatures = inspectStaffMarkup(chordStaffSvg);
 
     updateSummaryScene("chord", {
       root: noteName(root),
@@ -1496,10 +1733,17 @@ function renderProgressionScene() {
       `union set: 0x${unionSet.toString(16).padStart(3, "0")}`,
     ].join("\n");
     progressionCardsEl.innerHTML = cards.join("");
-    progressionClockEl.innerHTML = svgString(arena, wasm.lmt_svg_clock_optc, unionSet);
+    const progressionClockSvg = svgString(arena, wasm.lmt_svg_clock_optc, unionSet);
+    renderPreviewSvgOrBitmap(progressionClockEl, {
+      svgMarkup: progressionClockSvg,
+      bitmapRenderer: {
+        render: (width, height) => clockBitmapDataUrl(arena, unionSet, width, height),
+      },
+      alt: "Progression clock bitmap preview",
+      options: { maxHeight: 340, squareWidth: 320, mediumWidth: 460 },
+    });
     progressionNotesEl.innerHTML = unionNotes.map((note) => `<span class="chip">${escapeHtml(note)}</span>`).join("");
     normalizeSvgPreview(progressionCardsEl, { maxHeight: 132, squareWidth: 124, mediumWidth: 132, wideWidth: 146, ultraWideWidth: 146, padXRatio: 0.14, padYRatio: 0.18 });
-    normalizeSvgPreview(progressionClockEl, { maxHeight: 340, squareWidth: 320, mediumWidth: 460 });
 
     updateSummaryScene("progression", {
       tonic: noteName(preset.tonic),
@@ -1528,12 +1772,28 @@ function renderCompareScene() {
     const overlapNotes = pcsToList(arena, overlapSet).map(noteName);
     const unionNotes = pcsToList(arena, unionSet).map(noteName);
 
-    compareLeftClockEl.innerHTML = svgString(arena, wasm.lmt_svg_clock_optc, leftSet);
-    compareOverlapClockEl.innerHTML = svgString(arena, wasm.lmt_svg_clock_optc, overlapSet);
-    compareRightClockEl.innerHTML = svgString(arena, wasm.lmt_svg_clock_optc, rightSet);
-    normalizeSvgPreview(compareLeftClockEl, { maxHeight: 260, squareWidth: 260, mediumWidth: 280 });
-    normalizeSvgPreview(compareOverlapClockEl, { maxHeight: 260, squareWidth: 260, mediumWidth: 280 });
-    normalizeSvgPreview(compareRightClockEl, { maxHeight: 260, squareWidth: 260, mediumWidth: 280 });
+    const leftClockSvg = svgString(arena, wasm.lmt_svg_clock_optc, leftSet);
+    const overlapClockSvg = svgString(arena, wasm.lmt_svg_clock_optc, overlapSet);
+    const rightClockSvg = svgString(arena, wasm.lmt_svg_clock_optc, rightSet);
+    const comparePreviewOptions = { maxHeight: 260, squareWidth: 260, mediumWidth: 280 };
+    renderPreviewSvgOrBitmap(compareLeftClockEl, {
+      svgMarkup: leftClockSvg,
+      bitmapRenderer: { render: (width, height) => clockBitmapDataUrl(arena, leftSet, width, height) },
+      alt: "Compare left bitmap preview",
+      options: comparePreviewOptions,
+    });
+    renderPreviewSvgOrBitmap(compareOverlapClockEl, {
+      svgMarkup: overlapClockSvg,
+      bitmapRenderer: { render: (width, height) => clockBitmapDataUrl(arena, overlapSet, width, height) },
+      alt: "Compare overlap bitmap preview",
+      options: comparePreviewOptions,
+    });
+    renderPreviewSvgOrBitmap(compareRightClockEl, {
+      svgMarkup: rightClockSvg,
+      bitmapRenderer: { render: (width, height) => clockBitmapDataUrl(arena, rightSet, width, height) },
+      alt: "Compare right bitmap preview",
+      options: comparePreviewOptions,
+    });
 
     compareSummaryEl.textContent = [
       `left: 0x${leftSet.toString(16).padStart(3, "0")}`,
@@ -1651,8 +1911,15 @@ function renderFretScene() {
       }
     }
 
-    fretSvgEl.innerHTML = svgString(arena, wasm.lmt_svg_fret_n, fretsPtr, frets.length, windowStart, visibleFrets);
-    normalizeSvgPreview(fretSvgEl, { maxHeight: 420, squareWidth: 360, mediumWidth: 520, wideWidth: 680, ultraWideWidth: 760, padXRatio: 0.12, padYRatio: 0.18 });
+    const fretSvg = svgString(arena, wasm.lmt_svg_fret_n, fretsPtr, frets.length, windowStart, visibleFrets);
+    renderPreviewSvgOrBitmap(fretSvgEl, {
+      svgMarkup: fretSvg,
+      bitmapRenderer: {
+        render: (width, height) => fretBitmapDataUrl(arena, frets, windowStart, visibleFrets, width, height),
+      },
+      alt: "Fretboard bitmap preview",
+      options: { maxHeight: 420, squareWidth: 360, mediumWidth: 520, wideWidth: 680, ultraWideWidth: 760, padXRatio: 0.12, padYRatio: 0.18 },
+    });
     setChipRow(
       fretNotesEl,
       selected.map((one) => `s${one.string + 1}:f${one.fret} ${noteName(one.pc)} (${one.midi})`),
@@ -1710,10 +1977,17 @@ function renderAll() {
   }
 
   gallerySummary.ready = true;
-  setStatus("Gallery ready. Curated public API scenes rendered successfully.");
+  setStatus(`Gallery ready in ${galleryUiState.previewMode.toUpperCase()} preview mode. Curated public API scenes rendered successfully.`);
 }
 
 function wireSceneEvents() {
+  [previewModeSvgEl, previewModeBitmapEl].forEach((button) => {
+    button.addEventListener("click", () => {
+      const nextMode = button.dataset.previewMode === PREVIEW_MODE_BITMAP ? PREVIEW_MODE_BITMAP : PREVIEW_MODE_SVG;
+      if (nextMode === galleryUiState.previewMode) return;
+      setPreviewMode(nextMode);
+    });
+  });
   connectMidiEl.addEventListener("click", async () => {
     await connectMidi();
     if (midiState.accessState === "connected") {
@@ -1881,6 +2155,7 @@ function initializeUi() {
   hydrateMidiSnapshots();
   midiTonicEl.value = String(MIDI_DEFAULT_TONIC);
   midiModeEl.value = String(MIDI_DEFAULT_MODE);
+  setPreviewMode(loadPreviewModePreference(), { persist: false, rerender: false });
   midiCaptionEl.textContent = "Connect MIDI to listen to every browser MIDI input, sustain pedal, and middle-pedal snapshots.";
   populatePresetSelect(setPresetEl, manifestList("setPresets"));
   populatePresetSelect(keyPresetEl, manifestList("keyPresets"));

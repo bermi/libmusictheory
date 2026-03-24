@@ -228,11 +228,12 @@ export async function releaseFakeMidiSustain(page) {
   });
 }
 
-export async function waitForMidiSceneActive(page) {
+export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
   const deadline = Date.now() + timeoutMs;
   while (true) {
     const snapshot = await page.evaluate(() => ({
       summary: window.__lmtGallerySummary?.scenes?.midi || null,
+      galleryPreviewMode: window.__lmtGallerySummary?.previewMode || "",
       snapshotButtons: document.querySelectorAll("#midi-snapshots [data-midi-snapshot]").length,
       suggestionCards: document.querySelectorAll("#midi-suggestions .suggestion-card").length,
       noteChips: document.querySelectorAll("#midi-notes .chip").length,
@@ -289,9 +290,26 @@ export async function waitForMidiSceneActive(page) {
           barlineCount: svg.querySelectorAll(".staff-barline").length,
         };
       })(),
+      previewKinds: (() => {
+        const hostIds = ["midi-clock", "midi-optic-k", "midi-evenness", "midi-keyboard", "midi-staff"];
+        return Object.fromEntries(hostIds.map((id) => {
+          const host = document.getElementById(id);
+          const kind = host?.querySelector("img") ? "bitmap" : (host?.querySelector("svg") ? "svg" : "none");
+          return [id, kind];
+        }));
+      })(),
     }));
+    const previewModeOk = expectedPreviewMode == null
+      ? ["svg", "bitmap"].includes(snapshot.galleryPreviewMode)
+      : snapshot.galleryPreviewMode === expectedPreviewMode
+        && Object.values(snapshot.previewKinds).every((kind) => kind === expectedPreviewMode);
+    const midiOpticKFeatures = snapshot.summary?.midiOpticKFeatures ?? snapshot.midiOpticKFeatures;
+    const midiEvennessFeatures = snapshot.summary?.midiEvennessFeatures ?? snapshot.midiEvennessFeatures;
+    const midiStaffFeatures = snapshot.summary?.midiStaffFeatures ?? snapshot.midiStaffFeatures;
+    const keyboardFeatures = snapshot.summary?.keyboardFeatures ?? snapshot.keyboardFeaturesFallback;
     if (
       snapshot.summary?.rendered === true
+      && previewModeOk
       && snapshot.summary?.inputCount >= 2
       && snapshot.summary?.viewingSnapshot === false
       && snapshot.summary?.liveCount >= 4
@@ -300,23 +318,23 @@ export async function waitForMidiSceneActive(page) {
       && snapshot.summary?.suggestionCount >= 1
       && snapshot.noteChips >= 4
       && snapshot.suggestionCards >= 1
-      && snapshot.clockSvg.includes("<svg")
-      && snapshot.opticKSvg.includes("<svg")
-      && snapshot.evennessSvg.includes("<svg")
-      && (snapshot.keyboardImg.startsWith("data:image/png") || snapshot.keyboardSvg.includes("<svg"))
-      && snapshot.staffHtml.includes("<svg")
-      && snapshot.midiOpticKFeatures.clockCount >= 2
-      && snapshot.midiOpticKFeatures.linkCount >= 1
-      && snapshot.midiOpticKFeatures.labelCount >= 5
-      && snapshot.midiEvennessFeatures.ringCount >= 5
-      && snapshot.midiEvennessFeatures.dotCount >= 200
-      && snapshot.midiEvennessFeatures.highlightCount >= 1
-      && (snapshot.summary?.keyboardFeatures?.selectedKeyCount ?? snapshot.keyboardFeaturesFallback.selectedKeyCount) >= 4
-      && (snapshot.summary?.keyboardFeatures?.echoKeyCount ?? snapshot.keyboardFeaturesFallback.echoKeyCount) >= 4
-      && snapshot.midiStaffFeatures.staffMode === "grand"
-      && snapshot.midiStaffFeatures.clefCount >= 2
-      && snapshot.midiStaffFeatures.noteheadCount >= 4
-      && snapshot.midiStaffFeatures.barlineCount >= 2
+      && snapshot.previewKinds["midi-clock"] !== "none"
+      && snapshot.previewKinds["midi-optic-k"] !== "none"
+      && snapshot.previewKinds["midi-evenness"] !== "none"
+      && snapshot.previewKinds["midi-keyboard"] !== "none"
+      && snapshot.previewKinds["midi-staff"] !== "none"
+      && midiOpticKFeatures.clockCount >= 2
+      && midiOpticKFeatures.linkCount >= 1
+      && midiOpticKFeatures.labelCount >= 5
+      && midiEvennessFeatures.ringCount >= 5
+      && midiEvennessFeatures.dotCount >= 200
+      && midiEvennessFeatures.highlightCount >= 1
+      && keyboardFeatures.selectedKeyCount >= 4
+      && keyboardFeatures.echoKeyCount >= 4
+      && midiStaffFeatures.staffMode === "grand"
+      && midiStaffFeatures.clefCount >= 2
+      && midiStaffFeatures.noteheadCount >= 4
+      && midiStaffFeatures.barlineCount >= 2
     ) {
       return snapshot;
     }
@@ -327,7 +345,7 @@ export async function waitForMidiSceneActive(page) {
   }
 }
 
-export async function waitForGalleryReady(page) {
+export async function waitForGalleryReady(page, expectedPreviewMode = null) {
   const deadline = Date.now() + timeoutMs;
   while (true) {
     const snapshot = await page.evaluate(() => ({
@@ -496,6 +514,32 @@ export async function waitForGalleryReady(page) {
           labelCount: svg.querySelectorAll(".optic-k-label,.optic-k-set,.optic-k-chip,.optic-k-title").length,
         };
       })(),
+      previewKinds: (() => {
+        const hostIds = [
+          "midi-clock",
+          "midi-optic-k",
+          "midi-evenness",
+          "midi-keyboard",
+          "set-clock",
+          "set-optic-k",
+          "set-evenness",
+          "key-clock",
+          "key-staff",
+          "key-keyboard",
+          "chord-clock",
+          "chord-staff",
+          "progression-clock",
+          "compare-left-clock",
+          "compare-overlap-clock",
+          "compare-right-clock",
+          "fret-svg",
+        ];
+        return Object.fromEntries(hostIds.map((id) => {
+          const host = document.getElementById(id);
+          const kind = host?.querySelector("img") ? "bitmap" : (host?.querySelector("svg") ? "svg" : "none");
+          return [id, kind];
+        }));
+      })(),
     }));
 
     if (snapshot.status.includes("Failed to initialize gallery")) {
@@ -503,8 +547,21 @@ export async function waitForGalleryReady(page) {
     }
 
     const summary = snapshot.summary;
+    const previewModeOk = expectedPreviewMode == null
+      ? ["svg", "bitmap"].includes(summary?.previewMode)
+      : summary?.previewMode === expectedPreviewMode
+        && Object.values(snapshot.previewKinds).every((kind) => kind === expectedPreviewMode);
+    const chordStaffFeatures = summary?.scenes?.chord?.staffFeatures ?? snapshot.staffFeatures;
+    const keyStaffFeatures = summary?.scenes?.key?.keyStaffFeatures ?? snapshot.keyStaffFeatures;
+    const midiKeyboardFeatures = summary?.scenes?.midi?.keyboardFeatures ?? snapshot.midiKeyboardFeatures;
+    const keyKeyboardFeatures = summary?.scenes?.key?.keyboardFeatures ?? snapshot.keyKeyboardFeatures;
+    const setEvennessFeatures = summary?.scenes?.set?.setEvennessFeatures ?? snapshot.setEvennessFeatures;
+    const midiEvennessFeatures = summary?.scenes?.midi?.midiEvennessFeatures ?? snapshot.midiEvennessFeatures;
+    const midiOpticKFeatures = summary?.scenes?.midi?.midiOpticKFeatures ?? snapshot.midiOpticKFeatures;
+    const setOpticKFeatures = summary?.scenes?.set?.setOpticKFeatures ?? snapshot.setOpticKFeatures;
     const ready =
       summary?.ready === true &&
+      previewModeOk &&
       summary?.manifestLoaded === true &&
       summary?.sceneCount >= 7 &&
       Array.isArray(summary?.errors) &&
@@ -516,23 +573,7 @@ export async function waitForGalleryReady(page) {
       summary.scenes?.progression?.rendered &&
       summary.scenes?.compare?.rendered &&
       summary.scenes?.fret?.rendered &&
-      snapshot.midiClockSvg.includes("<svg") &&
-      snapshot.midiOpticKSvg.includes("<svg") &&
-      snapshot.midiEvennessSvg.includes("<svg") &&
-      (snapshot.midiKeyboardImg.startsWith("data:image/png") || snapshot.midiKeyboardSvg.includes("<svg")) &&
-      snapshot.clockSvg.includes("<svg") &&
-      snapshot.setOpticKSvg.includes("<svg") &&
-      snapshot.setEvennessSvg.includes("<svg") &&
-      snapshot.keySvg.includes("<svg") &&
-      snapshot.keyStaffSvg.includes("<svg") &&
-      (snapshot.keyKeyboardImg.startsWith("data:image/png") || snapshot.keyKeyboardSvg.includes("<svg")) &&
-      snapshot.chordSvg.includes("<svg") &&
-      snapshot.staffSvg.includes("<svg") &&
-      snapshot.progressionSvg.includes("<svg") &&
-      snapshot.compareLeftSvg.includes("<svg") &&
-      snapshot.compareOverlapSvg.includes("<svg") &&
-      snapshot.compareRightSvg.includes("<svg") &&
-      snapshot.fretSvg.includes("<svg") &&
+      Object.values(snapshot.previewKinds).every((kind) => kind !== "none") &&
       snapshot.degreeCards >= 7 &&
       snapshot.noteChips >= 7 &&
       snapshot.voicingPills >= 1 &&
@@ -574,31 +615,31 @@ export async function waitForGalleryReady(page) {
       snapshot.previewMetrics.find((metric) => metric.host === "compare-right-clock")?.width >= 220 &&
       snapshot.previewMetrics.find((metric) => metric.host === "fret-svg")?.width >= 360 &&
       snapshot.previewMetrics.find((metric) => metric.host === "fret-svg")?.height >= 300 &&
-      snapshot.staffFeatures.clefCount >= 1 &&
-      snapshot.staffFeatures.noteheadCount >= 3 &&
-      snapshot.staffFeatures.sharedStemCount === 1 &&
-      snapshot.staffFeatures.simultaneousCluster === true &&
-      snapshot.staffFeatures.noteColumnSpan <= 12 &&
-      snapshot.staffFeatures.barlineCount >= 1 &&
-      snapshot.keyStaffFeatures.clefCount >= 1 &&
-      snapshot.keyStaffFeatures.noteheadCount >= 8 &&
-      snapshot.keyStaffFeatures.keyNoteheadCount >= 8 &&
-      snapshot.keyStaffFeatures.barlineCount >= 2 &&
-      snapshot.midiKeyboardFeatures.selectedKeyCount >= 3 &&
-      snapshot.midiKeyboardFeatures.echoKeyCount >= 3 &&
-      snapshot.midiOpticKFeatures.clockCount >= 2 &&
-      snapshot.midiOpticKFeatures.linkCount >= 1 &&
-      snapshot.midiOpticKFeatures.labelCount >= 5 &&
-      snapshot.midiEvennessFeatures.ringCount >= 5 &&
-      snapshot.midiEvennessFeatures.dotCount >= 200 &&
-      snapshot.keyKeyboardFeatures.selectedKeyCount >= 7 &&
-      snapshot.keyKeyboardFeatures.echoKeyCount >= 20 &&
-      snapshot.setOpticKFeatures.clockCount >= 2 &&
-      snapshot.setOpticKFeatures.linkCount >= 1 &&
-      snapshot.setOpticKFeatures.labelCount >= 5 &&
-      snapshot.setEvennessFeatures.ringCount >= 5 &&
-      snapshot.setEvennessFeatures.dotCount >= 200 &&
-      snapshot.setEvennessFeatures.highlightCount >= 1;
+      chordStaffFeatures.clefCount >= 1 &&
+      chordStaffFeatures.noteheadCount >= 3 &&
+      chordStaffFeatures.sharedStemCount === 1 &&
+      chordStaffFeatures.simultaneousCluster === true &&
+      chordStaffFeatures.noteColumnSpan <= 12 &&
+      chordStaffFeatures.barlineCount >= 1 &&
+      keyStaffFeatures.clefCount >= 1 &&
+      keyStaffFeatures.noteheadCount >= 8 &&
+      keyStaffFeatures.keyNoteheadCount >= 8 &&
+      keyStaffFeatures.barlineCount >= 2 &&
+      midiKeyboardFeatures.selectedKeyCount >= 3 &&
+      midiKeyboardFeatures.echoKeyCount >= 3 &&
+      midiOpticKFeatures.clockCount >= 2 &&
+      midiOpticKFeatures.linkCount >= 1 &&
+      midiOpticKFeatures.labelCount >= 5 &&
+      midiEvennessFeatures.ringCount >= 5 &&
+      midiEvennessFeatures.dotCount >= 200 &&
+      keyKeyboardFeatures.selectedKeyCount >= 7 &&
+      keyKeyboardFeatures.echoKeyCount >= 20 &&
+      setOpticKFeatures.clockCount >= 2 &&
+      setOpticKFeatures.linkCount >= 1 &&
+      setOpticKFeatures.labelCount >= 5 &&
+      setEvennessFeatures.ringCount >= 5 &&
+      setEvennessFeatures.dotCount >= 200 &&
+      setEvennessFeatures.highlightCount >= 1;
 
     if (ready) return snapshot;
     if (Date.now() > deadline) {
