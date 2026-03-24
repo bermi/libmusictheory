@@ -10,6 +10,12 @@ pub const Clef = enum {
     bass,
 };
 
+pub const StaffMode = enum {
+    treble,
+    bass,
+    grand,
+};
+
 pub const StaffPosition = struct {
     y: f32,
     diatonic_step: i16,
@@ -39,7 +45,7 @@ const ClusterNote = struct {
 };
 
 const ChordClusterLayout = struct {
-    notes: [12]ClusterNote = undefined,
+    notes: [32]ClusterNote = undefined,
     count: usize = 0,
     stem_up: bool = true,
     stem_x: f32 = 0,
@@ -75,6 +81,22 @@ const compat_bass_clef_ref_top_y: f32 = 134.0;
 
 pub fn clefForGrandStaff(note: pitch.MidiNote) Clef {
     return if (note >= 60) .treble else .bass;
+}
+
+pub fn pianoStaffMode(notes: []const pitch.MidiNote) StaffMode {
+    if (notes.len == 0) return .treble;
+
+    var has_treble = false;
+    var has_bass = false;
+    for (notes) |note| {
+        switch (clefForGrandStaff(note)) {
+            .treble => has_treble = true,
+            .bass => has_bass = true,
+        }
+    }
+
+    if (has_treble and has_bass) return .grand;
+    return if (has_treble) .treble else .bass;
 }
 
 pub fn midiToStaffPosition(note: pitch.MidiNote, clef: Clef) StaffPosition {
@@ -113,6 +135,18 @@ pub fn keySignatureSymbolCount(k: key.Key) i8 {
 }
 
 pub fn renderChordStaff(notes: []const pitch.MidiNote, k: key.Key, buf: []u8) []u8 {
+    return renderSingleClefClusterStaff(notes, k, .treble, .treble, buf);
+}
+
+pub fn renderPianoStaff(notes: []const pitch.MidiNote, k: key.Key, buf: []u8) []u8 {
+    return switch (pianoStaffMode(notes)) {
+        .treble => renderSingleClefClusterStaff(notes, k, .treble, .treble, buf),
+        .bass => renderSingleClefClusterStaff(notes, k, .bass, .bass, buf),
+        .grand => renderGrandClusterStaff(notes, k, .grand, buf),
+    };
+}
+
+fn renderSingleClefClusterStaff(notes: []const pitch.MidiNote, k: key.Key, clef: Clef, mode: StaffMode, buf: []u8) []u8 {
     var stream = std.io.fixedBufferStream(buf);
     const w = stream.writer();
 
@@ -124,19 +158,25 @@ pub fn renderChordStaff(notes: []const pitch.MidiNote, k: key.Key, buf: []u8) []
     const cluster_x = 124.0 + keySignatureAdvance(k);
 
     writeSvgPrelude(w, width, "126", "0 0 210 126");
+    writeStaffSystemOpen(w, mode);
     drawStaffLines(w, staff_x0, staff_x1, top_y);
     drawEndBarline(w, staff_x1, top_y);
-    drawClef(w, .treble, staff_x0 + 5.0, top_y);
-    drawKeySignature(w, k, .treble, key_sig_x);
+    drawClef(w, clef, staff_x0 + 5.0, top_y);
+    drawKeySignature(w, k, clef, key_sig_x);
 
-    var cluster = layoutChordCluster(notes, k, .treble, cluster_x);
+    var cluster = layoutChordCluster(notes, k, clef, cluster_x);
     drawChordCluster(w, &cluster);
 
+    writeStaffSystemClose(w);
     w.writeAll("</svg>\n") catch unreachable;
     return buf[0..stream.pos];
 }
 
 pub fn renderGrandChordStaff(notes: []const pitch.MidiNote, k: key.Key, buf: []u8) []u8 {
+    return renderGrandClusterStaff(notes, k, .grand, buf);
+}
+
+fn renderGrandClusterStaff(notes: []const pitch.MidiNote, k: key.Key, mode: StaffMode, buf: []u8) []u8 {
     var stream = std.io.fixedBufferStream(buf);
     const w = stream.writer();
 
@@ -149,6 +189,7 @@ pub fn renderGrandChordStaff(notes: []const pitch.MidiNote, k: key.Key, buf: []u
     const cluster_x = 140.0 + keySignatureAdvance(k);
 
     writeSvgPrelude(w, width, "236", "0 0 228 236");
+    writeStaffSystemOpen(w, mode);
     drawGrandBrace(w, 24.0, top_top_y - 2.0, bottom_top_y + 42.0);
     drawStaffConnector(w, 44.0, top_top_y, bottom_top_y);
     drawStaffLines(w, staff_x0, staff_x1, top_top_y);
@@ -160,8 +201,8 @@ pub fn renderGrandChordStaff(notes: []const pitch.MidiNote, k: key.Key, buf: []u
     drawKeySignature(w, k, .treble, key_sig_x);
     drawKeySignature(w, k, .bass, key_sig_x);
 
-    var treble_notes: [12]pitch.MidiNote = undefined;
-    var bass_notes: [12]pitch.MidiNote = undefined;
+    var treble_notes: [32]pitch.MidiNote = undefined;
+    var bass_notes: [32]pitch.MidiNote = undefined;
     var treble_count: usize = 0;
     var bass_count: usize = 0;
     for (notes) |note| {
@@ -183,6 +224,7 @@ pub fn renderGrandChordStaff(notes: []const pitch.MidiNote, k: key.Key, buf: []u
     drawChordCluster(w, &treble_cluster);
     drawChordCluster(w, &bass_cluster);
 
+    writeStaffSystemClose(w);
     w.writeAll("</svg>\n") catch unreachable;
     return buf[0..stream.pos];
 }
@@ -412,6 +454,14 @@ fn drawSingleStaffNote(writer: anytype, x: f32, note: SpelledStaffNote, notehead
     } else {
         writer.print("<line class=\"stem {s}\" x1=\"{d:.2}\" y1=\"{d:.2}\" x2=\"{d:.2}\" y2=\"{d:.2}\" stroke=\"#111\" stroke-width=\"1.4\" stroke-linecap=\"round\" />\n", .{ stem_class, x - stem_to_head, y + 0.6, x - stem_to_head, y + 29.0 }) catch unreachable;
     }
+}
+
+fn writeStaffSystemOpen(writer: anytype, mode: StaffMode) void {
+    writer.print("<g class=\"staff-system staff-mode-{s}\">\n", .{@tagName(mode)}) catch unreachable;
+}
+
+fn writeStaffSystemClose(writer: anytype) void {
+    writer.writeAll("</g>\n") catch unreachable;
 }
 
 fn drawStaffLines(writer: anytype, x0: f32, x1: f32, top_y: f32) void {

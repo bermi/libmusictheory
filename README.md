@@ -45,7 +45,7 @@ This repository now has an explicit stable public surface.
   - scalar theory functions such as `lmt_pcs_*`, `lmt_scale`, `lmt_mode`, `lmt_chord`, `lmt_evenness_distance`
   - public string helpers such as `lmt_spell_note`, `lmt_chord_name`, `lmt_roman_numeral`
   - public fretboard helpers such as `lmt_fret_to_midi_n`, `lmt_midi_to_fret_positions_n`, `lmt_generate_voicings_n`, `lmt_pitch_class_guide_n`, `lmt_frets_to_url_n`, `lmt_url_to_frets_n`
-  - public SVG helpers such as `lmt_svg_clock_optc`, `lmt_svg_optic_k_group`, `lmt_svg_evenness_chart`, `lmt_svg_fret`, `lmt_svg_fret_n`, `lmt_svg_chord_staff`, `lmt_svg_key_staff`
+  - public SVG helpers such as `lmt_svg_clock_optc`, `lmt_svg_optic_k_group`, `lmt_svg_evenness_chart`, `lmt_svg_fret`, `lmt_svg_fret_n`, `lmt_svg_chord_staff`, `lmt_svg_key_staff`, `lmt_svg_piano_staff`, `lmt_svg_keyboard`
 - Experimental:
   - `lmt_raster_is_enabled`
   - `lmt_raster_demo_rgba`
@@ -180,7 +180,7 @@ Open [http://localhost:8002/index.html](http://localhost:8002/index.html).
 
 The standalone gallery is intentionally curated around concrete musical-discovery workflows:
 
-- `Live MIDI Compass`: listen to all browser MIDI inputs, honor sustain, choose the tonic/mode lens explicitly, save snapshots with the middle pedal, and see compatible next-note suggestions over colored pitch-class diagrams in real time
+- `Live MIDI Compass`: listen to all browser MIDI inputs, honor sustain, choose the tonic/mode lens explicitly, save snapshots with the middle pedal, and see compatible next-note suggestions over colored pitch-class diagrams, keyboard highlights, and treble/bass/grand staff rendering in real time
 - `Set Observatory`: inspect a pitch-class set as a constellation with prime-form, complement, inversion, OPTIC/K complement-pair context, and evenness context
 - `Key Bloom`: watch one tonic generate a full diatonic orbit and its triadic degree field
 - `Chord Atelier`: read one sonority simultaneously as set, chord label, roman numeral, clock, and staff image

@@ -59,6 +59,9 @@ async function main() {
 
       await driveFakeMidiTriad(page);
       const midiActive = await waitForMidiSceneActive(page);
+      if (midiActive.midiStaffFeatures?.staffMode !== "grand" || (midiActive.midiStaffFeatures?.clefCount || 0) < 2) {
+        throw new Error(`live midi scene did not render a grand staff: ${JSON.stringify(midiActive.midiStaffFeatures)}`);
+      }
       const defaultContext = await page.evaluate(() => ({
         label: window.__lmtGallerySummary?.scenes?.midi?.contextLabel || "",
         suggestionNames: window.__lmtGallerySummary?.scenes?.midi?.suggestionNames || [],
@@ -86,7 +89,7 @@ async function main() {
       await releaseFakeMidiSustain(page);
       await page.waitForFunction(() => {
         const midi = window.__lmtGallerySummary?.scenes?.midi;
-        return midi?.viewingSnapshot === true && midi?.liveCount === 0 && midi?.displayCount >= 3;
+        return midi?.viewingSnapshot === true && midi?.liveCount === 0 && midi?.displayCount >= 4;
       }, { timeout: 30000 });
       await page.click("#midi-return-live");
       const backToLive = await page.waitForFunction(() => {

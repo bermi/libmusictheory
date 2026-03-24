@@ -14,6 +14,7 @@ const BITMAP_TARGETS = {
   lmt_svg_chord_staff: { width: BITMAP_REVIEW_WIDTH, height: Math.round((BITMAP_REVIEW_WIDTH * 126) / 210) },
   lmt_svg_key_staff: { width: BITMAP_REVIEW_WIDTH, height: Math.round((BITMAP_REVIEW_WIDTH * 126) / 520) },
   lmt_svg_keyboard: { width: BITMAP_REVIEW_WIDTH, height: 220 },
+  lmt_svg_piano_staff: { width: BITMAP_REVIEW_WIDTH, height: Math.round((BITMAP_REVIEW_WIDTH * 236) / 228) },
 };
 
 const ATLAS_SAMPLES = {
@@ -25,6 +26,7 @@ const ATLAS_SAMPLES = {
   lmt_svg_chord_staff: { chordType: 0, chordRoot: 0 },
   lmt_svg_key_staff: { keyTonic: 0, keyQuality: 0 },
   lmt_svg_keyboard: { keyboardNotes: [60, 62, 64, 65, 67, 69, 71, 72], keyboardLow: 48, keyboardHigh: 84 },
+  lmt_svg_piano_staff: { pianoNotes: [43, 52, 60, 64], keyTonic: 0, keyQuality: 0 },
 };
 
 const IMAGE_METHODS = [
@@ -36,6 +38,7 @@ const IMAGE_METHODS = [
   { section: "SVG Diagram APIs", method: "lmt_svg_chord_staff", bitmapExport: "lmt_bitmap_chord_staff_rgba" },
   { section: "SVG Diagram APIs", method: "lmt_svg_key_staff", bitmapExport: "lmt_bitmap_key_staff_rgba" },
   { section: "SVG Diagram APIs", method: "lmt_svg_keyboard", bitmapExport: "lmt_bitmap_keyboard_rgba" },
+  { section: "SVG Diagram APIs", method: "lmt_svg_piano_staff", bitmapExport: "lmt_bitmap_piano_staff_rgba" },
 ];
 
 function setStatus(message, tone = "ready") {
@@ -113,6 +116,12 @@ function atlasSampleForMethod(method, defaults) {
         keyboardNotes: ATLAS_SAMPLES[method].keyboardNotes.slice(),
         keyboardLow: ATLAS_SAMPLES[method].keyboardLow,
         keyboardHigh: ATLAS_SAMPLES[method].keyboardHigh,
+      };
+    case "lmt_svg_piano_staff":
+      return {
+        pianoNotes: ATLAS_SAMPLES[method].pianoNotes.slice(),
+        keyTonic: ATLAS_SAMPLES[method].keyTonic,
+        keyQuality: ATLAS_SAMPLES[method].keyQuality,
       };
     default:
       return defaults;
@@ -366,6 +375,30 @@ function renderKeyboardBitmap(wasm, memory, arena, defaults) {
   };
 }
 
+function renderPianoStaffBitmap(wasm, memory, arena, defaults) {
+  const dims = BITMAP_TARGETS.lmt_svg_piano_staff;
+  const notesPtr = writeU8Array(arena, defaults.pianoNotes);
+  const rgbaBytes = dims.width * dims.height * 4;
+  const rgbaPtr = arena.alloc(rgbaBytes, 4);
+  const written = wasm.lmt_bitmap_piano_staff_rgba(
+    notesPtr,
+    defaults.pianoNotes.length,
+    defaults.keyTonic,
+    defaults.keyQuality,
+    dims.width,
+    dims.height,
+    rgbaPtr,
+    rgbaBytes,
+  );
+  if (written !== rgbaBytes) throw new Error(`lmt_bitmap_piano_staff_rgba wrote ${written}/${rgbaBytes}`);
+  return {
+    width: dims.width,
+    height: dims.height,
+    rgba: copyRgba(memory, rgbaPtr, rgbaBytes),
+    meta: `piano_notes=${defaults.pianoNotes.join(",")} | key=${defaults.keyTonic}:${defaults.keyQuality === 0 ? "major" : "minor"} | bitmap=${dims.width}x${dims.height}`,
+  };
+}
+
 function renderSvgString(entry, wasm, memory, defaults) {
   const arena = createScratchArena(wasm, memory);
   let total = 0;
@@ -409,6 +442,11 @@ function renderSvgString(entry, wasm, memory, defaults) {
     case "lmt_svg_keyboard": {
       const notesPtr = writeU8Array(arena, defaults.keyboardNotes);
       total = wasm.lmt_svg_keyboard(notesPtr, defaults.keyboardNotes.length, defaults.keyboardLow, defaults.keyboardHigh, 0, 0);
+      break;
+    }
+    case "lmt_svg_piano_staff": {
+      const notesPtr = writeU8Array(arena, defaults.pianoNotes);
+      total = wasm.lmt_svg_piano_staff(notesPtr, defaults.pianoNotes.length, defaults.keyTonic, defaults.keyQuality, 0, 0);
       break;
     }
     default:
@@ -459,6 +497,11 @@ function renderSvgString(entry, wasm, memory, defaults) {
       written = wasm.lmt_svg_keyboard(notesPtr, defaults.keyboardNotes.length, defaults.keyboardLow, defaults.keyboardHigh, svgPtr, total + 1);
       break;
     }
+    case "lmt_svg_piano_staff": {
+      const notesPtr = writeU8Array(arena, defaults.pianoNotes);
+      written = wasm.lmt_svg_piano_staff(notesPtr, defaults.pianoNotes.length, defaults.keyTonic, defaults.keyQuality, svgPtr, total + 1);
+      break;
+    }
     default:
       break;
   }
@@ -493,6 +536,9 @@ async function renderBitmapCard(entry, wasm, memory, defaults) {
       break;
     case "lmt_svg_keyboard":
       rendered = renderKeyboardBitmap(wasm, memory, arena, defaults);
+      break;
+    case "lmt_svg_piano_staff":
+      rendered = renderPianoStaffBitmap(wasm, memory, arena, defaults);
       break;
     default:
       throw new Error(`unsupported image method ${entry.method}`);

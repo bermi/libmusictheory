@@ -161,6 +161,7 @@ async function waitForRenderedOutputs(page) {
       fret: document.getElementById("svg-fret")?.innerHTML || "",
       staff: document.getElementById("svg-staff")?.innerHTML || "",
       keyStaff: document.getElementById("svg-key-staff")?.innerHTML || "",
+      pianoStaff: document.getElementById("svg-piano-staff")?.innerHTML || "",
       keyboard: document.getElementById("svg-keyboard")?.innerHTML || "",
       clockNormalized: document.querySelector("#svg-clock svg")?.dataset.previewNormalized || "",
       opticKNormalized: document.querySelector("#svg-optic-k svg")?.dataset.previewNormalized || "",
@@ -168,6 +169,7 @@ async function waitForRenderedOutputs(page) {
       fretNormalized: document.querySelector("#svg-fret svg")?.dataset.previewNormalized || "",
       staffNormalized: document.querySelector("#svg-staff svg")?.dataset.previewNormalized || "",
       keyStaffNormalized: document.querySelector("#svg-key-staff svg")?.dataset.previewNormalized || "",
+      pianoStaffNormalized: document.querySelector("#svg-piano-staff svg")?.dataset.previewNormalized || "",
       keyboardNormalized: document.querySelector("#svg-keyboard svg")?.dataset.previewNormalized || "",
       clockBounds: document.querySelector("#svg-clock svg")?.getBoundingClientRect?.() || null,
       opticKBounds: document.querySelector("#svg-optic-k svg")?.getBoundingClientRect?.() || null,
@@ -175,6 +177,7 @@ async function waitForRenderedOutputs(page) {
       fretBounds: document.querySelector("#svg-fret svg")?.getBoundingClientRect?.() || null,
       staffBounds: document.querySelector("#svg-staff svg")?.getBoundingClientRect?.() || null,
       keyStaffBounds: document.querySelector("#svg-key-staff svg")?.getBoundingClientRect?.() || null,
+      pianoStaffBounds: document.querySelector("#svg-piano-staff svg")?.getBoundingClientRect?.() || null,
       keyboardBounds: document.querySelector("#svg-keyboard svg")?.getBoundingClientRect?.() || null,
       keyboardFeatures: (() => {
         const svg = document.querySelector("#svg-keyboard svg");
@@ -213,6 +216,26 @@ async function waitForRenderedOutputs(page) {
           noteColumnSpan: noteXs.length > 0 ? maxX - minX : Number.POSITIVE_INFINITY,
         };
       })(),
+      pianoStaffFeatures: (() => {
+        const svg = document.querySelector("#svg-piano-staff svg");
+        if (!svg) {
+          return {
+            clefCount: 0,
+            noteheadCount: 0,
+            barlineCount: 0,
+            staffMode: "",
+          };
+        }
+        const system = svg.querySelector(".staff-system");
+        const classList = Array.from(system?.classList || []);
+        const staffModeClass = classList.find((name) => name.startsWith("staff-mode-")) || "";
+        return {
+          clefCount: svg.querySelectorAll(".clef").length,
+          noteheadCount: svg.querySelectorAll(".notehead").length,
+          barlineCount: svg.querySelectorAll(".staff-barline").length,
+          staffMode: staffModeClass.replace("staff-mode-", ""),
+        };
+      })(),
       status: document.getElementById("status")?.textContent || "",
     }));
 
@@ -235,6 +258,7 @@ async function waitForRenderedOutputs(page) {
       snapshot.svgMeta.includes("lmt_svg_evenness_chart bytes:") &&
       snapshot.svgMeta.includes("lmt_svg_fret_n bytes:") &&
       snapshot.svgMeta.includes("lmt_svg_key_staff bytes:") &&
+      snapshot.svgMeta.includes("lmt_svg_piano_staff bytes:") &&
       snapshot.svgMeta.includes("lmt_svg_keyboard bytes:") &&
       snapshot.svgMeta.includes("aligned: yes") &&
       snapshot.clock.includes("<svg") &&
@@ -243,6 +267,7 @@ async function waitForRenderedOutputs(page) {
       snapshot.fret.includes("<svg") &&
       snapshot.staff.includes("<svg") &&
       snapshot.keyStaff.includes("<svg") &&
+      snapshot.pianoStaff.includes("<svg") &&
       snapshot.keyboard.includes("<svg") &&
       snapshot.status.includes("All sections rendered successfully.") &&
       snapshot.clockNormalized === "1" &&
@@ -251,6 +276,7 @@ async function waitForRenderedOutputs(page) {
       snapshot.fretNormalized === "1" &&
       snapshot.staffNormalized === "1" &&
       snapshot.keyStaffNormalized === "1" &&
+      snapshot.pianoStaffNormalized === "1" &&
       snapshot.keyboardNormalized === "1" &&
       snapshot.clockBounds &&
       snapshot.opticKBounds &&
@@ -258,11 +284,16 @@ async function waitForRenderedOutputs(page) {
       snapshot.fretBounds &&
       snapshot.staffBounds &&
       snapshot.keyStaffBounds &&
+      snapshot.pianoStaffBounds &&
       snapshot.keyboardBounds &&
       snapshot.staffFeatures.clefCount >= 1 &&
       snapshot.staffFeatures.noteheadCount >= 3 &&
       snapshot.staffFeatures.sharedStemCount === 1 &&
       snapshot.staffFeatures.noteColumnSpan <= 12 &&
+      snapshot.pianoStaffFeatures.clefCount >= 2 &&
+      snapshot.pianoStaffFeatures.noteheadCount >= 4 &&
+      snapshot.pianoStaffFeatures.barlineCount >= 2 &&
+      snapshot.pianoStaffFeatures.staffMode === "grand" &&
       snapshot.keyboardFeatures.selectedKeyCount >= 3 &&
       snapshot.keyboardFeatures.echoKeyCount >= 3 &&
       snapshot.keyboardFeatures.blackKeyCount >= 10 &&
@@ -325,7 +356,7 @@ async function main() {
           const node = document.getElementById(id);
           if (node) node.textContent = "";
         }
-        for (const id of ["svg-clock", "svg-optic-k", "svg-evenness", "svg-fret", "svg-staff", "svg-key-staff", "svg-keyboard"]) {
+        for (const id of ["svg-clock", "svg-optic-k", "svg-evenness", "svg-fret", "svg-staff", "svg-key-staff", "svg-piano-staff", "svg-keyboard"]) {
           const node = document.getElementById(id);
           if (node) node.innerHTML = "";
         }
@@ -360,6 +391,8 @@ function visibleBoundsOk(snapshot) {
     snapshot.staffBounds.height >= 120 &&
     snapshot.keyStaffBounds.width >= 420 &&
     snapshot.keyStaffBounds.height >= 90 &&
+    snapshot.pianoStaffBounds.width >= 420 &&
+    snapshot.pianoStaffBounds.height >= 140 &&
     snapshot.keyboardBounds.width >= 420 &&
     snapshot.keyboardBounds.height >= 100
   );

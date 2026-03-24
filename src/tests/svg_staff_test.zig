@@ -14,6 +14,9 @@ test "staff positions and grand split" {
 
     try testing.expectEqual(staff.Clef.bass, staff.clefForGrandStaff(59));
     try testing.expectEqual(staff.Clef.treble, staff.clefForGrandStaff(60));
+    try testing.expectEqual(staff.StaffMode.bass, staff.pianoStaffMode(&[_]pitch.MidiNote{ 43, 47, 50 }));
+    try testing.expectEqual(staff.StaffMode.treble, staff.pianoStaffMode(&[_]pitch.MidiNote{ 60, 64, 67 }));
+    try testing.expectEqual(staff.StaffMode.grand, staff.pianoStaffMode(&[_]pitch.MidiNote{ 43, 52, 60, 64 }));
 }
 
 test "accidental detection respects key signature" {
@@ -66,6 +69,28 @@ test "key staff uses multiple bars" {
     const svg = staff.renderKeyStaff(&[_]pitch.MidiNote{ 60, 62, 64, 65, 67, 69, 71, 72 }, c_major, &buf);
     try testing.expect(std.mem.indexOf(u8, svg, "class=\"staff-barline\" x1=\"240.00\"") != null);
     try testing.expect(std.mem.indexOf(u8, svg, "class=\"staff-barline\" x1=\"406.00\"") != null);
+}
+
+test "piano staff switches between treble bass and grand layouts" {
+    const c_major = key.Key.init(pitch.pc.C, .major);
+
+    var treble_buf: [16384]u8 = undefined;
+    const treble_svg = staff.renderPianoStaff(&[_]pitch.MidiNote{ 60, 64, 67 }, c_major, &treble_buf);
+    try testing.expect(std.mem.indexOf(u8, treble_svg, "class=\"staff-system staff-mode-treble\"") != null);
+    try testing.expectEqual(@as(usize, 1), std.mem.count(u8, treble_svg, "class=\"clef "));
+    try testing.expect(std.mem.indexOf(u8, treble_svg, "clef-bass") == null);
+
+    var bass_buf: [16384]u8 = undefined;
+    const bass_svg = staff.renderPianoStaff(&[_]pitch.MidiNote{ 36, 40, 43 }, c_major, &bass_buf);
+    try testing.expect(std.mem.indexOf(u8, bass_svg, "class=\"staff-system staff-mode-bass\"") != null);
+    try testing.expect(std.mem.indexOf(u8, bass_svg, "class=\"clef clef-bass\"") != null);
+    try testing.expect(std.mem.indexOf(u8, bass_svg, "class=\"clef clef-treble\"") == null);
+
+    var grand_buf: [24576]u8 = undefined;
+    const grand_svg = staff.renderPianoStaff(&[_]pitch.MidiNote{ 43, 52, 60, 64 }, c_major, &grand_buf);
+    try testing.expect(std.mem.indexOf(u8, grand_svg, "class=\"staff-system staff-mode-grand\"") != null);
+    try testing.expectEqual(@as(usize, 2), std.mem.count(u8, grand_svg, "class=\"clef "));
+    try testing.expect(std.mem.count(u8, grand_svg, "class=\"staff-barline\"") >= 2);
 }
 
 test "lower C ledger line stays on C and stem overlaps notehead edge" {

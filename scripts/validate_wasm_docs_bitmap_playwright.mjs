@@ -22,6 +22,7 @@ const expectedBitmapSizes = {
   lmt_svg_fret_n: { width: 840, height: 840 },
   lmt_svg_chord_staff: { width: 840, height: 504 },
   lmt_svg_key_staff: { width: 840, height: 204 },
+  lmt_svg_piano_staff: { width: 840, height: 869 },
   lmt_svg_keyboard: { width: 840, height: 220 },
 };
 
@@ -155,7 +156,7 @@ async function main() {
       const summary = await page.evaluate(() => window.__lmtQaAtlasSummary);
       if (!summary) throw new Error("qa atlas summary missing");
       if (!summary.rasterEnabled) throw new Error("qa atlas raster backend disabled");
-      if ((summary.methods || []).length !== 8) throw new Error(`qa atlas method count mismatch: ${(summary.methods || []).length}`);
+      if ((summary.methods || []).length !== 9) throw new Error(`qa atlas method count mismatch: ${(summary.methods || []).length}`);
 
       const failures = [];
       for (const method of summary.methods || []) {

@@ -15,6 +15,7 @@ const outputDir = path.join(rootDir, "zig-out", "wasm-docs-qa");
 const host = "127.0.0.1";
 const maxDrift = Number.parseFloat(process.env.LMT_WASM_DOCS_BITMAP_MAX_DRIFT || "0.05");
 const minInkPixels = Number.parseInt(process.env.LMT_WASM_DOCS_BITMAP_MIN_INK || "1000", 10);
+const expectedImageMethodCount = 9;
 
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -191,17 +192,17 @@ async function main() {
       };
       fs.writeFileSync(path.join(outputDir, "qa-atlas.json"), `${JSON.stringify(manifest, null, 2)}\n`);
 
-      if ((summary.atlas?.imageMethodCount || 0) !== 8) {
+      if ((summary.atlas?.imageMethodCount || 0) !== expectedImageMethodCount) {
         throw new Error(`qa atlas captured wrong image method count: ${summary.atlas?.imageMethodCount || 0}`);
       }
       if ((summary.atlas?.svgCount || 0) !== 0) {
         throw new Error(`qa atlas unexpectedly reported svg panels: ${summary.atlas?.svgCount || 0}`);
       }
-      if ((summary.atlas?.renderedImageCount || 0) !== 8) {
-        throw new Error(`qa atlas captured missing image rows: ${summary.atlas?.renderedImageCount || 0}/8 rendered`);
+      if ((summary.atlas?.renderedImageCount || 0) !== expectedImageMethodCount) {
+        throw new Error(`qa atlas captured missing image rows: ${summary.atlas?.renderedImageCount || 0}/${expectedImageMethodCount} rendered`);
       }
-      if ((summary.rendered?.imageCount || 0) !== 8) {
-        throw new Error(`qa atlas DOM is missing bitmap images: ${summary.rendered?.imageCount || 0}/8`);
+      if ((summary.rendered?.imageCount || 0) !== expectedImageMethodCount) {
+        throw new Error(`qa atlas DOM is missing bitmap images: ${summary.rendered?.imageCount || 0}/${expectedImageMethodCount}`);
       }
       if ((summary.rendered?.svgCount || 0) !== 0) {
         throw new Error(`qa atlas DOM still contains svg elements: ${summary.rendered?.svgCount || 0}`);

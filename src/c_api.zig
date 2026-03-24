@@ -759,6 +759,18 @@ export fn lmt_svg_keyboard(notes_ptr: [*c]const u8, note_count: u32, range_low: 
     return copySvgOut(svg, buf, buf_size);
 }
 
+export fn lmt_svg_piano_staff(notes_ptr: [*c]const u8, note_count: u32, tonic: u8, quality_raw: u8, buf: [*c]u8, buf_size: u32) callconv(.C) u32 {
+    var notes_buf: [MAX_KEYBOARD_RENDER_NOTES]pitch.MidiNote = undefined;
+    const notes = decodeMidiNotes(notes_ptr, note_count, &notes_buf);
+    const tonic_pc = @as(pitch.PitchClass, @intCast(tonic % 12));
+    const quality: key.KeyQuality = if (quality_raw == KEY_MINOR) .minor else .major;
+    const k = key.Key.init(tonic_pc, quality);
+
+    var svg_buf: [32 * 1024]u8 = undefined;
+    const svg = svg_staff.renderPianoStaff(notes, k, &svg_buf);
+    return copySvgOut(svg, buf, buf_size);
+}
+
 export fn lmt_raster_is_enabled() callconv(.C) u32 {
     return if (build_options.enable_raster_backend) 1 else 0;
 }
@@ -844,6 +856,14 @@ export fn lmt_bitmap_keyboard_rgba(notes_ptr: [*c]const u8, note_count: u32, ran
     const total = lmt_svg_keyboard(notes_ptr, note_count, range_low, range_high, null, 0);
     if (total == 0 or total >= compat_svg_buf.len) return 0;
     const written_total = lmt_svg_keyboard(notes_ptr, note_count, range_low, range_high, @ptrCast(&compat_svg_buf), @intCast(compat_svg_buf.len));
+    if (written_total != total) return 0;
+    return renderPublicSvgBitmap(compat_svg_buf[0..@as(usize, total)], width, height, out_rgba, out_rgba_size);
+}
+
+export fn lmt_bitmap_piano_staff_rgba(notes_ptr: [*c]const u8, note_count: u32, tonic: u8, quality_raw: u8, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.C) u32 {
+    const total = lmt_svg_piano_staff(notes_ptr, note_count, tonic, quality_raw, null, 0);
+    if (total == 0 or total >= compat_svg_buf.len) return 0;
+    const written_total = lmt_svg_piano_staff(notes_ptr, note_count, tonic, quality_raw, @ptrCast(&compat_svg_buf), @intCast(compat_svg_buf.len));
     if (written_total != total) return 0;
     return renderPublicSvgBitmap(compat_svg_buf[0..@as(usize, total)], width, height, out_rgba, out_rgba_size);
 }

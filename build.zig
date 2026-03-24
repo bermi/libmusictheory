@@ -47,6 +47,7 @@ const full_demo_export_symbols = [_][]const u8{
     "lmt_svg_chord_staff",
     "lmt_svg_key_staff",
     "lmt_svg_keyboard",
+    "lmt_svg_piano_staff",
     "lmt_raster_is_enabled",
     "lmt_bitmap_clock_optc_rgba",
     "lmt_bitmap_optic_k_group_rgba",
@@ -56,6 +57,7 @@ const full_demo_export_symbols = [_][]const u8{
     "lmt_bitmap_chord_staff_rgba",
     "lmt_bitmap_key_staff_rgba",
     "lmt_bitmap_keyboard_rgba",
+    "lmt_bitmap_piano_staff_rgba",
     "lmt_wasm_scratch_ptr",
     "lmt_wasm_scratch_size",
     "lmt_svg_compat_kind_count",
@@ -98,6 +100,7 @@ const gallery_export_symbols = [_][]const u8{
     "lmt_svg_chord_staff",
     "lmt_svg_key_staff",
     "lmt_svg_keyboard",
+    "lmt_svg_piano_staff",
 };
 
 const render_compare_export_symbols = [_][]const u8{

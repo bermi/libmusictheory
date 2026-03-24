@@ -187,11 +187,13 @@ export async function driveFakeMidiTriad(page) {
 
     const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+    fake.noteOn(43, 100, 0, "fake-midi-a");
+    await delay(40);
+    fake.noteOn(52, 100, 0, "fake-midi-b");
+    await delay(40);
     fake.noteOn(60, 100, 0, "fake-midi-a");
     await delay(40);
     fake.noteOn(64, 100, 0, "fake-midi-b");
-    await delay(40);
-    fake.noteOn(67, 100, 0, "fake-midi-a");
     await delay(80);
     fake.cc(64, 127, 0, "fake-midi-a");
     fake.cc(64, 127, 0, "fake-midi-b");
@@ -200,9 +202,10 @@ export async function driveFakeMidiTriad(page) {
     await delay(40);
     fake.cc(66, 0, 0, "fake-midi-a");
     await delay(40);
+    fake.noteOff(43, 0, "fake-midi-a");
+    fake.noteOff(52, 0, "fake-midi-b");
     fake.noteOff(60, 0, "fake-midi-a");
     fake.noteOff(64, 0, "fake-midi-b");
-    fake.noteOff(67, 0, "fake-midi-a");
     await delay(80);
   });
 }
@@ -239,22 +242,46 @@ export async function waitForMidiSceneActive(page) {
           echoKeyCount: svg.querySelectorAll(".keyboard-key.is-echo").length,
         };
       })(),
+      midiStaffFeatures: (() => {
+        const svg = document.querySelector("#midi-staff svg");
+        if (!svg) {
+          return {
+            staffMode: "",
+            clefCount: 0,
+            noteheadCount: 0,
+            barlineCount: 0,
+          };
+        }
+        const system = svg.querySelector(".staff-system");
+        const classList = Array.from(system?.classList || []);
+        const staffModeClass = classList.find((name) => name.startsWith("staff-mode-")) || "";
+        return {
+          staffMode: staffModeClass.replace("staff-mode-", ""),
+          clefCount: svg.querySelectorAll(".clef").length,
+          noteheadCount: svg.querySelectorAll(".notehead").length,
+          barlineCount: svg.querySelectorAll(".staff-barline").length,
+        };
+      })(),
     }));
     if (
       snapshot.summary?.rendered === true
       && snapshot.summary?.inputCount >= 2
       && snapshot.summary?.viewingSnapshot === false
-      && snapshot.summary?.liveCount >= 3
-      && snapshot.summary?.displayCount >= 3
+      && snapshot.summary?.liveCount >= 4
+      && snapshot.summary?.displayCount >= 4
       && snapshot.summary?.snapshotCount >= 1
       && snapshot.summary?.suggestionCount >= 1
-      && snapshot.noteChips >= 3
+      && snapshot.noteChips >= 4
       && snapshot.suggestionCards >= 1
       && snapshot.clockSvg.includes("<svg")
       && snapshot.keyboardSvg.includes("<svg")
       && snapshot.staffHtml.includes("<svg")
-      && snapshot.keyboardFeatures.selectedKeyCount >= 3
-      && snapshot.keyboardFeatures.echoKeyCount >= 3
+      && snapshot.keyboardFeatures.selectedKeyCount >= 4
+      && snapshot.keyboardFeatures.echoKeyCount >= 4
+      && snapshot.midiStaffFeatures.staffMode === "grand"
+      && snapshot.midiStaffFeatures.clefCount >= 2
+      && snapshot.midiStaffFeatures.noteheadCount >= 4
+      && snapshot.midiStaffFeatures.barlineCount >= 2
     ) {
       return snapshot;
     }

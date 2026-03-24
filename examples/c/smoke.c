@@ -83,5 +83,10 @@ int main(void) {
     assert(svg_len > 0);
     assert(strncmp(svg, "<svg", 4) == 0);
 
+    const uint8_t piano_notes[4] = {43, 52, 60, 64};
+    svg_len = lmt_svg_piano_staff(piano_notes, 4, 0, LMT_KEY_MAJOR, svg, sizeof(svg));
+    assert(svg_len > 0);
+    assert(strncmp(svg, "<svg", 4) == 0);
+
     return 0;
 }

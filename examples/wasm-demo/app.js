@@ -15,6 +15,7 @@ const svgFretHost = document.getElementById("svg-fret");
 const svgStaffHost = document.getElementById("svg-staff");
 const svgKeyStaffHost = document.getElementById("svg-key-staff");
 const svgKeyboardHost = document.getElementById("svg-keyboard");
+const svgPianoStaffHost = document.getElementById("svg-piano-staff");
 
 let wasm = null;
 let memory = null;
@@ -57,6 +58,7 @@ const REQUIRED_EXPORTS = [
   "lmt_svg_chord_staff",
   "lmt_svg_key_staff",
   "lmt_svg_keyboard",
+  "lmt_svg_piano_staff",
 ];
 
 const C_STRING_CAPACITY = 64 * 1024;
@@ -86,6 +88,7 @@ function clearSvgHosts() {
   svgStaffHost.innerHTML = "";
   svgKeyStaffHost.innerHTML = "";
   svgKeyboardHost.innerHTML = "";
+  svgPianoStaffHost.innerHTML = "";
 }
 
 function executeSection(label, fn, onError = null) {
@@ -492,6 +495,7 @@ function runSvgApis() {
     const tuningPtr = writeU8Array(arena, tuningValues);
     const windowStart = getNumberInput("svg-window-start");
     const visibleFrets = getNumberInput("svg-visible-frets");
+    const pianoStaffNotes = [43, 52, 60, 64];
     const fretMidiNotes = fretValues
       .map((fret, stringIndex) => (fret < 0 || stringIndex >= tuningValues.length ? null : wasm.lmt_fret_to_midi_n(stringIndex, fret, tuningPtr, tuningValues.length)))
       .filter((value) => value !== null);
@@ -524,6 +528,9 @@ function runSvgApis() {
     const keyboardPtr = writeU8Array(arena, keyboardNotes);
     const keyboardLen = wasm.lmt_svg_keyboard(keyboardPtr, keyboardNotes.length, keyboardLow, keyboardHigh, svgBufPtr, C_STRING_CAPACITY);
     const keyboardSvg = readCString(svgBufPtr);
+    const pianoStaffPtr = writeU8Array(arena, pianoStaffNotes);
+    const pianoStaffLen = wasm.lmt_svg_piano_staff(pianoStaffPtr, pianoStaffNotes.length, keyTonic, keyQuality, svgBufPtr, C_STRING_CAPACITY);
+    const pianoStaffSvg = readCString(svgBufPtr);
 
     const lines = [
       `lmt_svg_clock_optc bytes: ${clockLen}`,
@@ -534,10 +541,12 @@ function runSvgApis() {
       `lmt_svg_chord_staff bytes: ${staffLen}`,
       `lmt_svg_key_staff bytes: ${keyStaffLen}`,
       `lmt_svg_keyboard bytes: ${keyboardLen}`,
+      `lmt_svg_piano_staff bytes: ${pianoStaffLen}`,
       `string_count: ${fretValues.length}`,
       `window_start: ${windowStart}`,
       `visible_frets: ${visibleFrets}`,
       `keyboard notes: ${JSON.stringify(keyboardNotes)}`,
+      `piano staff notes: ${JSON.stringify(pianoStaffNotes)}`,
       `keyboard range: ${Math.min(keyboardLow, keyboardHigh)}-${Math.max(keyboardLow, keyboardHigh)}`,
       `fret voicing midi: ${JSON.stringify(fretMidiNotes)}`,
       `chord staff midi: ${JSON.stringify(staffMidiNotes)}`,
@@ -557,6 +566,7 @@ function runSvgApis() {
     svgStaffHost.innerHTML = staffSvg;
     svgKeyStaffHost.innerHTML = keyStaffSvg;
     svgKeyboardHost.innerHTML = keyboardSvg;
+    svgPianoStaffHost.innerHTML = pianoStaffSvg;
 
     normalizeSvgPreview(svgClockHost);
     normalizeSvgPreview(svgOpticKHost, { maxHeight: 320, squareWidth: 620, mediumWidth: 760, wideWidth: 840, ultraWideWidth: 920, padXRatio: 0.04, padYRatio: 0.08 });
@@ -566,6 +576,7 @@ function runSvgApis() {
     normalizeSvgPreview(svgStaffHost);
     normalizeSvgPreview(svgKeyStaffHost);
     normalizeSvgPreview(svgKeyboardHost, { maxHeight: 240, squareWidth: 820, mediumWidth: 920, wideWidth: 1040, ultraWideWidth: 1160, padXRatio: 0.03, padYRatio: 0.08 });
+    normalizeSvgPreview(svgPianoStaffHost, { maxHeight: 340, squareWidth: 760, mediumWidth: 920, wideWidth: 1040, ultraWideWidth: 1160, padXRatio: 0.05, padYRatio: 0.12 });
   } finally {
     arena.release();
   }

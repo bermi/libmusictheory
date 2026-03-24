@@ -67,6 +67,7 @@ const REQUIRED_EXPORTS = [
   "lmt_svg_chord_staff",
   "lmt_svg_key_staff",
   "lmt_svg_keyboard",
+  "lmt_svg_piano_staff",
 ];
 
 const statusEl = document.getElementById("status");
@@ -352,6 +353,28 @@ function keyboardPreviewNotesForContext(context) {
   return keyboardPreviewNotesForSet(context.setValue, context.tonic);
 }
 
+function keyboardRangeForNotes(notes, fallbackLow = 48, fallbackHigh = 84) {
+  if (!Array.isArray(notes) || notes.length === 0) {
+    return { low: fallbackLow, high: fallbackHigh };
+  }
+
+  const minNote = Math.min(...notes);
+  const maxNote = Math.max(...notes);
+  let low = Math.max(21, Math.floor((minNote - 3) / 12) * 12);
+  let high = Math.min(108, (Math.ceil((maxNote + 4) / 12) * 12) - 1);
+
+  if (high - low < 35) {
+    const center = (minNote + maxNote) / 2;
+    low = Math.max(21, Math.floor((center - 18) / 12) * 12);
+    high = Math.min(108, low + 35);
+  }
+
+  if (high <= low) {
+    return { low: fallbackLow, high: fallbackHigh };
+  }
+  return { low, high };
+}
+
 function svgString(arena, renderFn, ...args) {
   const required = renderFn(...args, 0, 0);
   const bufPtr = arena.alloc(required + 1, 1);
@@ -362,6 +385,11 @@ function svgString(arena, renderFn, ...args) {
 function keyboardSvgString(arena, notes, rangeLow, rangeHigh) {
   const notesPtr = writeU8Array(arena, notes);
   return svgString(arena, wasm.lmt_svg_keyboard, notesPtr, notes.length, rangeLow, rangeHigh);
+}
+
+function pianoStaffSvgString(arena, notes, tonic, quality) {
+  const notesPtr = writeU8Array(arena, notes);
+  return svgString(arena, wasm.lmt_svg_piano_staff, notesPtr, notes.length, tonic, quality);
 }
 
 function normalizeSvgPreview(host, options = {}) {
@@ -445,6 +473,7 @@ function inspectKeyboardSvg(svg) {
 function inspectStaffSvg(svg) {
   if (!svg) {
     return {
+      staffMode: "",
       clefCount: 0,
       noteheadCount: 0,
       chordNoteheadCount: 0,
@@ -468,8 +497,12 @@ function inspectStaffSvg(svg) {
   const minX = noteXs.length > 0 ? Math.min(...noteXs) : 0;
   const maxX = noteXs.length > 0 ? Math.max(...noteXs) : 0;
   const noteColumnSpan = noteXs.length > 0 ? maxX - minX : Infinity;
+  const system = svg.querySelector(".staff-system");
+  const classList = Array.from(system?.classList || []);
+  const staffModeClass = classList.find((name) => name.startsWith("staff-mode-")) || "";
 
   return {
+    staffMode: staffModeClass.replace("staff-mode-", ""),
     clefCount: svg.querySelectorAll(".clef").length,
     noteheadCount: noteXs.length,
     chordNoteheadCount,
@@ -1002,8 +1035,8 @@ function renderMidiScene() {
   try {
     const setValue = midiListToSet(arena, displayNotes);
     const currentChord = friendlyChordName(rawChordName(setValue));
-    const triad = detectRenderableTriad(setValue);
     const keyboardNotes = displayNotes.length > 0 ? displayNotes : keyboardPreviewNotesForContext(context);
+    const keyboardRange = keyboardRangeForNotes(keyboardNotes, 48, 84);
     const contextOverlap = wasm.lmt_pcs_cardinality(setValue & context.setValue);
     const outsideCount = wasm.lmt_pcs_cardinality(setValue) - contextOverlap;
     const suggestions = buildMidiSuggestions(arena, setValue, displayNotes, context);
@@ -1032,14 +1065,14 @@ function renderMidiScene() {
 
     midiClockEl.innerHTML = svgString(arena, wasm.lmt_svg_clock_optc, setValue);
     normalizeSvgPreview(midiClockEl, { maxHeight: 420, squareWidth: 420, mediumWidth: 520 });
-    midiKeyboardEl.innerHTML = keyboardSvgString(arena, keyboardNotes, 48, 84);
+    midiKeyboardEl.innerHTML = keyboardSvgString(arena, keyboardNotes, keyboardRange.low, keyboardRange.high);
     normalizeSvgPreview(midiKeyboardEl, { maxHeight: 220, squareWidth: 780, mediumWidth: 920, wideWidth: 1040, ultraWideWidth: 1160, padXRatio: 0.02, padYRatio: 0.08 });
 
-    if (triad) {
-      midiStaffEl.innerHTML = svgString(arena, wasm.lmt_svg_chord_staff, triad.type, triad.root);
-      normalizeSvgPreview(midiStaffEl, { maxHeight: 340, squareWidth: 620, mediumWidth: 780, wideWidth: 920, ultraWideWidth: 1040, padXRatio: 0.05, padYRatio: 0.12 });
+    if (displayNotes.length > 0) {
+      midiStaffEl.innerHTML = pianoStaffSvgString(arena, displayNotes, context.tonic, context.quality);
+      normalizeSvgPreview(midiStaffEl, { maxHeight: 420, squareWidth: 700, mediumWidth: 840, wideWidth: 980, ultraWideWidth: 1120, padXRatio: 0.05, padYRatio: 0.12 });
     } else {
-      midiStaffEl.innerHTML = `<div class="output-block">Staff preview appears automatically for major, minor, diminished, and augmented triads.</div>`;
+      midiStaffEl.innerHTML = `<div class="output-block">Play notes across the keyboard to paint treble, bass, or grand staff directly from the live MIDI state.</div>`;
     }
 
     if (suggestions.length === 0) {
@@ -1057,6 +1090,7 @@ function renderMidiScene() {
     }
 
     const keyboardFeatures = inspectKeyboardSvg(midiKeyboardEl.querySelector("svg"));
+    const midiStaffFeatures = inspectStaffSvg(midiStaffEl.querySelector("svg"));
 
     updateSummaryScene("midi", {
       supported: midiState.supported,
@@ -1074,6 +1108,7 @@ function renderMidiScene() {
       chordName: setValue === 0 ? "" : currentChord,
       suggestionCount: suggestions.length,
       suggestionNames: suggestions.map((one) => one.name),
+      midiStaffFeatures,
       keyboardFeatures,
       rendered: true,
     });
