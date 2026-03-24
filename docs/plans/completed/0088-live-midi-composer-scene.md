@@ -70,7 +70,7 @@ Before implementation:
 
 ## Implementation History (Point-in-Time)
 
-- Commit: pending finalization in follow-up metadata-only commit
+- Commit: `1e0df85`
 - Date: 2026-03-24
 - Shipped behavior:
   - added a new above-the-fold `Live MIDI Compass` scene to the standalone gallery
