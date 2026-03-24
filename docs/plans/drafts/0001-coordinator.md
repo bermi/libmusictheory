@@ -370,6 +370,12 @@ The standalone surface is now structurally clean. The next phase is to make it p
 
 **Deliverable**: a polished standalone gallery with stronger curated scenes, reproducible local screenshots/captures, and a first release-candidate package/story that still stays strictly independent from Harmonious-specific regression infrastructure.
 
+## Phase 0088 (Planned): Live MIDI Composer Scene
+
+Add a first-class interactive gallery scene that listens to all browser MIDI inputs, respects sustain behavior, stores snapshots on middle-pedal presses, and gives composers an immediate visual/theory reading of what they are sounding plus compatible next-step suggestions.
+
+**Deliverable**: a Playwright-verified above-the-fold gallery scene driven by real Web MIDI at runtime and fake MIDI in verification, with snapshot recall, stable-public-API visual output, and screenshot coverage in the release capture pipeline.
+
 ## Research Documents Index
 
 ### Theme Research
