@@ -27,6 +27,7 @@ Release-candidate gallery screenshots are reproducible local review artifacts, n
 - include:
   - `gallery-overview.png`
   - `gallery-hero.png`
+  - `scene-midi.png`
   - `scene-*.png`
   - `captures.json`
 

@@ -130,6 +130,129 @@ export async function launchChromium() {
   });
 }
 
+export async function installFakeMidi(page) {
+  await page.addInitScript(() => {
+    class FakeMidiInput {
+      constructor(id, name) {
+        this.id = id;
+        this.name = name;
+        this.manufacturer = "libmusictheory";
+        this.type = "input";
+        this.state = "connected";
+        this.connection = "open";
+        this.onmidimessage = null;
+      }
+
+      emit(data) {
+        const payload = new Uint8Array(data);
+        const event = { data: payload, receivedTime: performance.now(), target: this };
+        if (typeof this.onmidimessage === "function") this.onmidimessage(event);
+      }
+    }
+
+    const inputA = new FakeMidiInput("fake-midi-a", "Fake MIDI A");
+    const inputB = new FakeMidiInput("fake-midi-b", "Fake MIDI B");
+    const inputs = new Map([
+      [inputA.id, inputA],
+      [inputB.id, inputB],
+    ]);
+    const access = {
+      sysexEnabled: false,
+      inputs,
+      outputs: new Map(),
+      onstatechange: null,
+    };
+
+    navigator.requestMIDIAccess = async () => access;
+    window.__lmtFakeMidi = {
+      inputs,
+      access,
+      noteOn(note, velocity = 100, channel = 0, inputId = inputA.id) {
+        inputs.get(inputId)?.emit([0x90 | (channel & 0x0f), note & 0x7f, velocity & 0x7f]);
+      },
+      noteOff(note, channel = 0, inputId = inputA.id) {
+        inputs.get(inputId)?.emit([0x80 | (channel & 0x0f), note & 0x7f, 0]);
+      },
+      cc(controller, value, channel = 0, inputId = inputA.id) {
+        inputs.get(inputId)?.emit([0xb0 | (channel & 0x0f), controller & 0x7f, value & 0x7f]);
+      },
+    };
+  });
+}
+
+export async function driveFakeMidiTriad(page) {
+  await page.evaluate(async () => {
+    const fake = window.__lmtFakeMidi;
+    if (!fake) throw new Error("missing fake midi harness");
+
+    const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    fake.noteOn(60, 100, 0, "fake-midi-a");
+    await delay(40);
+    fake.noteOn(64, 100, 0, "fake-midi-b");
+    await delay(40);
+    fake.noteOn(67, 100, 0, "fake-midi-a");
+    await delay(80);
+    fake.cc(64, 127, 0, "fake-midi-a");
+    fake.cc(64, 127, 0, "fake-midi-b");
+    await delay(40);
+    fake.cc(66, 127, 0, "fake-midi-a");
+    await delay(40);
+    fake.cc(66, 0, 0, "fake-midi-a");
+    await delay(40);
+    fake.noteOff(60, 0, "fake-midi-a");
+    fake.noteOff(64, 0, "fake-midi-b");
+    fake.noteOff(67, 0, "fake-midi-a");
+    await delay(80);
+  });
+}
+
+export async function releaseFakeMidiSustain(page) {
+  await page.evaluate(async () => {
+    const fake = window.__lmtFakeMidi;
+    if (!fake) throw new Error("missing fake midi harness");
+
+    const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    fake.cc(64, 0, 0, "fake-midi-a");
+    fake.cc(64, 0, 0, "fake-midi-b");
+    await delay(100);
+  });
+}
+
+export async function waitForMidiSceneActive(page) {
+  const deadline = Date.now() + timeoutMs;
+  while (true) {
+    const snapshot = await page.evaluate(() => ({
+      summary: window.__lmtGallerySummary?.scenes?.midi || null,
+      snapshotButtons: document.querySelectorAll("#midi-snapshots [data-midi-snapshot]").length,
+      suggestionCards: document.querySelectorAll("#midi-suggestions .suggestion-card").length,
+      noteChips: document.querySelectorAll("#midi-notes .chip").length,
+      clockSvg: document.querySelector("#midi-clock svg")?.outerHTML || "",
+      staffHtml: document.querySelector("#midi-staff")?.innerHTML || "",
+    }));
+    if (
+      snapshot.summary?.rendered === true
+      && snapshot.summary?.inputCount >= 2
+      && snapshot.summary?.viewingSnapshot === false
+      && snapshot.summary?.liveCount >= 3
+      && snapshot.summary?.displayCount >= 3
+      && snapshot.summary?.snapshotCount >= 1
+      && snapshot.summary?.suggestionCount >= 1
+      && snapshot.noteChips >= 3
+      && snapshot.suggestionCards >= 1
+      && snapshot.clockSvg.includes("<svg")
+      && snapshot.staffHtml.includes("<svg")
+    ) {
+      return snapshot;
+    }
+    if (Date.now() > deadline) {
+      throw new Error(`timed out waiting for active midi scene: ${JSON.stringify(snapshot)}`);
+    }
+    await delay(60);
+  }
+}
+
 export async function waitForGalleryReady(page) {
   const deadline = Date.now() + timeoutMs;
   while (true) {
@@ -137,6 +260,7 @@ export async function waitForGalleryReady(page) {
       status: document.getElementById("status")?.textContent || "",
       summary: window.__lmtGallerySummary || null,
       captureMode: document.documentElement.dataset.captureMode || "",
+      midiClockSvg: document.querySelector("#midi-clock svg")?.outerHTML || "",
       clockSvg: document.querySelector("#set-clock svg")?.outerHTML || "",
       keySvg: document.querySelector("#key-clock svg")?.outerHTML || "",
       chordSvg: document.querySelector("#chord-clock svg")?.outerHTML || "",
@@ -148,6 +272,9 @@ export async function waitForGalleryReady(page) {
       fretSvg: document.querySelector("#fret-svg svg")?.outerHTML || "",
       degreeCards: document.querySelectorAll("#key-degrees .degree-card").length,
       noteChips: document.querySelectorAll("#key-notes .chip").length,
+      midiNoteChips: document.querySelectorAll("#midi-notes .chip, #midi-notes .pill").length,
+      midiSnapshotCount: document.querySelectorAll("#midi-snapshots [data-midi-snapshot]").length,
+      midiSuggestionCount: document.querySelectorAll("#midi-suggestions .suggestion-card").length,
       voicingPills: document.querySelectorAll("#fret-voicings .pill").length,
       progressionCards: document.querySelectorAll("#progression-cards .progression-card").length,
       compareChips: document.querySelectorAll("#compare-chips .chip, #compare-chips .pill").length,
@@ -155,7 +282,7 @@ export async function waitForGalleryReady(page) {
       sceneCardCount: document.querySelectorAll(".scene-card").length,
       presetSelectCount: document.querySelectorAll("select[id$='-preset']").length,
       previewMetrics: Array.from(
-        document.querySelectorAll("#set-clock svg, #key-clock svg, #chord-clock svg, #chord-staff svg, #progression-clock svg, #compare-left-clock svg, #compare-overlap-clock svg, #compare-right-clock svg, #fret-svg svg"),
+        document.querySelectorAll("#midi-clock svg, #set-clock svg, #key-clock svg, #chord-clock svg, #chord-staff svg, #progression-clock svg, #compare-left-clock svg, #compare-overlap-clock svg, #compare-right-clock svg, #fret-svg svg"),
         (svg) => {
           const rect = svg.getBoundingClientRect();
           return {
@@ -205,15 +332,17 @@ export async function waitForGalleryReady(page) {
     const ready =
       summary?.ready === true &&
       summary?.manifestLoaded === true &&
-      summary?.sceneCount >= 6 &&
+      summary?.sceneCount >= 7 &&
       Array.isArray(summary?.errors) &&
       summary.errors.length === 0 &&
+      summary.scenes?.midi?.rendered &&
       summary.scenes?.set?.rendered &&
       summary.scenes?.key?.rendered &&
       summary.scenes?.chord?.rendered &&
       summary.scenes?.progression?.rendered &&
       summary.scenes?.compare?.rendered &&
       summary.scenes?.fret?.rendered &&
+      snapshot.midiClockSvg.includes("<svg") &&
       snapshot.clockSvg.includes("<svg") &&
       snapshot.keySvg.includes("<svg") &&
       snapshot.chordSvg.includes("<svg") &&
@@ -229,10 +358,12 @@ export async function waitForGalleryReady(page) {
       snapshot.progressionCards >= 4 &&
       snapshot.compareChips >= 4 &&
       snapshot.toggleCount === 12 &&
-      snapshot.sceneCardCount >= 6 &&
+      snapshot.sceneCardCount >= 7 &&
       snapshot.presetSelectCount >= 6 &&
-      snapshot.previewMetrics.length >= 9 &&
+      snapshot.previewMetrics.length >= 10 &&
       snapshot.previewMetrics.every((metric) => metric.normalized === "1") &&
+      snapshot.previewMetrics.find((metric) => metric.host === "midi-clock")?.width >= 360 &&
+      snapshot.previewMetrics.find((metric) => metric.host === "midi-clock")?.height >= 360 &&
       snapshot.previewMetrics.find((metric) => metric.host === "set-clock")?.width >= 320 &&
       snapshot.previewMetrics.find((metric) => metric.host === "set-clock")?.height >= 320 &&
       snapshot.previewMetrics.find((metric) => metric.host === "key-clock")?.width >= 360 &&

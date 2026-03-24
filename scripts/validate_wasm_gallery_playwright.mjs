@@ -5,12 +5,16 @@ import path from "node:path";
 import process from "node:process";
 import {
   delay,
+  driveFakeMidiTriad,
   galleryDir,
   galleryUrl,
+  installFakeMidi,
   launchChromium,
+  releaseFakeMidiSustain,
   resolveValidationPort,
   startGalleryServer,
   waitForGalleryReady,
+  waitForMidiSceneActive,
   waitForServer,
 } from "./lib/wasm_gallery_playwright_common.mjs";
 
@@ -43,10 +47,33 @@ async function main() {
     const browser = await launchChromium();
 
     try {
-      const page = await browser.newPage();
+      const page = await browser.newPage({
+        viewport: { width: 1680, height: 1200 },
+        deviceScaleFactor: 2,
+      });
+      await installFakeMidi(page);
       await page.goto(url, { waitUntil: "domcontentloaded" });
       await page.waitForSelector("#shuffle-scenes", { timeout: 30000 });
       await waitForGalleryReady(page);
+      await page.waitForFunction(() => window.__lmtGallerySummary?.scenes?.midi?.inputCount >= 2, { timeout: 30000 });
+
+      await driveFakeMidiTriad(page);
+      const midiActive = await waitForMidiSceneActive(page);
+      await page.click("#midi-snapshots [data-midi-snapshot]");
+      const snapshotView = await page.waitForFunction(() => {
+        const midi = window.__lmtGallerySummary?.scenes?.midi;
+        return midi?.viewingSnapshot === true && midi?.displayCount >= 3 && midi?.snapshotCount >= 1;
+      }, { timeout: 30000 }).then((handle) => handle.jsonValue());
+      await releaseFakeMidiSustain(page);
+      await page.waitForFunction(() => {
+        const midi = window.__lmtGallerySummary?.scenes?.midi;
+        return midi?.viewingSnapshot === true && midi?.liveCount === 0 && midi?.displayCount >= 3;
+      }, { timeout: 30000 });
+      await page.click("#midi-return-live");
+      const backToLive = await page.waitForFunction(() => {
+        const midi = window.__lmtGallerySummary?.scenes?.midi;
+        return midi?.viewingSnapshot === false && midi?.liveCount === 0 && midi?.displayCount === 0;
+      }, { timeout: 30000 }).then((handle) => handle.jsonValue());
 
       await page.click("#shuffle-scenes");
       await waitForGalleryReady(page);
@@ -65,6 +92,9 @@ async function main() {
             status: finalSnapshot.status,
             manifestLoaded: finalSnapshot.summary.manifestLoaded,
             sceneCount: finalSnapshot.summary.sceneCount,
+            midiActive,
+            snapshotView,
+            backToLive,
             scenes: finalSnapshot.summary.scenes,
             previewMetrics: finalSnapshot.previewMetrics,
             staffFeatures: finalSnapshot.staffFeatures,

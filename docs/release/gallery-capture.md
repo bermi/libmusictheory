@@ -2,6 +2,8 @@
 
 The standalone gallery is part of the public release surface. Its screenshots must be reproducible locally and must come from the public `wasm-gallery` bundle only.
 
+The capture flow also primes the live MIDI scene through a fake Web MIDI implementation so the public interactive composer workflow is visible in deterministic screenshots.
+
 ## Build And Capture
 
 ```bash
@@ -30,6 +32,7 @@ Artifacts produced:
 
 - captures must come from `/index.html?capture=1`
 - captures must use the public `wasm-gallery` bundle only
+- the live MIDI scene must be visible as `/Users/bermi/code/libmusictheory/zig-out/wasm-gallery-captures/scene-midi.png`
 - captures must not depend on:
   - local Harmonious reference trees
   - parity/proof bundles

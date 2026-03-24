@@ -14,7 +14,7 @@
           <p class="eyebrow">Standalone Gallery</p>
           <h1>libmusictheory as a creative instrument.</h1>
           <p class="hero-text">
-            Six curated scenes built on the stable public API only. No Harmonious compatibility
+            Seven curated scenes built on the stable public API only. No Harmonious compatibility
             helpers, no verification shims, no corpus mirroring.
           </p>
           <div class="hero-badges" aria-label="Gallery qualities">
@@ -27,7 +27,7 @@
           <button id="shuffle-scenes" class="accent-button" type="button">Shuffle Presets</button>
           <div class="hero-metrics" aria-label="Gallery metrics">
             <article class="hero-metric">
-              <strong>6</strong>
+              <strong>7</strong>
               <span>Curated scenes</span>
             </article>
             <article class="hero-metric">
@@ -44,6 +44,49 @@
       </header>
 
       <main class="gallery-grid">
+        <section class="panel reveal scene-card scene-card-featured" id="scene-midi" data-gallery-scene="midi">
+          <div class="scene-head">
+            <div>
+              <p class="eyebrow">Live MIDI Compass</p>
+              <h2>Hear what you are holding. See what fits next.</h2>
+            </div>
+            <div class="scene-head-actions">
+              <button id="connect-midi" class="accent-button" type="button">Connect MIDI</button>
+              <button id="midi-return-live" class="ghost-button" type="button" disabled>Return To Live</button>
+            </div>
+          </div>
+          <p id="midi-caption" class="scene-caption"></p>
+          <div class="scene-meta-row">
+            <div class="pill-list" id="midi-status-pills"></div>
+            <div class="pill-list" id="midi-devices"></div>
+          </div>
+          <div class="scene-grid scene-grid-midi">
+            <div class="note-card">
+              <h3>Current State</h3>
+              <pre id="midi-summary" class="mono output-block"></pre>
+              <div id="midi-notes" class="chip-row"></div>
+            </div>
+            <div class="art-card">
+              <h3>Live Clock</h3>
+              <div id="midi-clock" class="svg-frame midi-clock-frame"></div>
+            </div>
+            <div class="art-card">
+              <h3>Recognized Staff</h3>
+              <div id="midi-staff" class="svg-frame staff-frame midi-staff-frame"></div>
+            </div>
+            <div class="note-card">
+              <h3>Compatible Next Steps</h3>
+              <div id="midi-suggestions" class="suggestion-grid"></div>
+            </div>
+          </div>
+          <div class="scene-grid scene-grid-wide midi-snapshot-band">
+            <div class="note-card">
+              <h3>Snapshots Saved With Middle Pedal</h3>
+              <div id="midi-snapshots" class="snapshot-grid"></div>
+            </div>
+          </div>
+        </section>
+
         <section class="panel reveal scene-card" id="scene-set" data-gallery-scene="set">
           <div class="scene-head">
             <div>

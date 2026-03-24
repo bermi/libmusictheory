@@ -133,6 +133,63 @@ selection_to_pcs(selected_notes):
     return result
 ```
 
+### 7. Sustain-Aware Sounding State
+
+For live browser MIDI input the displayed sounding state is not just the currently depressed keys. Sustain pedal (`CC64`) keeps released notes sounding until the pedal comes back up.
+
+```
+state = {
+    held: set(),        // notes physically down
+    sustained: set(),   // released while CC64 is down
+    sustain_down: false,
+}
+
+note_on(midi):
+    held.add(midi)
+    sustained.remove(midi)
+
+note_off(midi):
+    held.remove(midi)
+    if sustain_down:
+        sustained.add(midi)
+    else:
+        sustained.remove(midi)
+
+cc64(value):
+    if value >= 64:
+        sustain_down = true
+    else:
+        sustain_down = false
+        sustained = sustained ∩ held
+
+sounding_notes():
+    return held ∪ sustained
+```
+
+### 8. Middle Pedal Snapshot Capture
+
+The interactive gallery uses middle pedal / sostenuto (`CC66`) as a composer snapshot command rather than as a playback-state modifier. On the rising edge of the pedal, save the current sounding notes so they can be recalled from the UI later.
+
+```
+cc66(value):
+    if value >= 64 and not sostenuto_down:
+        save_snapshot(sounding_notes())
+        sostenuto_down = true
+    elif value < 64:
+        sostenuto_down = false
+```
+
+### 9. Compatible Next-Step Suggestions
+
+Given the current sounding PCS, rank single pitch-class additions by:
+
+- whether the added tone stays inside the best-fitting major/minor orbit
+- whether the result remains cluster-free
+- whether the expanded set reads as a named chord
+- evenness distance
+
+This keeps the live gallery suggestions on the stable public theory surface instead of inventing a separate hidden harmonic engine.
+
 ## Data Structures Used
 
 - `KeyboardState`: struct { selected_notes: bounded set of MIDI notes, accid_pref: AccidentalPreference }

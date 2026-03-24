@@ -180,6 +180,7 @@ Open [http://localhost:8002/index.html](http://localhost:8002/index.html).
 
 The standalone gallery is intentionally curated around concrete musical-discovery workflows:
 
+- `Live MIDI Compass`: listen to all browser MIDI inputs, honor sustain, save snapshots with the middle pedal, and see compatible next-note suggestions in real time
 - `Set Observatory`: inspect a pitch-class set as a constellation with prime-form, complement, inversion, and evenness context
 - `Key Bloom`: watch one tonic generate a full diatonic orbit and its triadic degree field
 - `Chord Atelier`: read one sonority simultaneously as set, chord label, roman numeral, clock, and staff image
@@ -188,6 +189,8 @@ The standalone gallery is intentionally curated around concrete musical-discover
 - `Fret Atlas`: explore the same pitch logic across arbitrary tunings and string counts
 
 These scenes are driven by the authored preset manifest at `/Users/bermi/code/libmusictheory/examples/wasm-gallery/gallery-presets.json`.
+
+For the live MIDI scene, run the gallery in a Chromium-family browser with Web MIDI enabled on `localhost` or `https:`. Sustain (`CC64`) is tracked as sounding state, and middle pedal / sostenuto (`CC66`) stores clickable snapshots.
 
 ## Release Readiness
 

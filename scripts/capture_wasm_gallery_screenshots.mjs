@@ -5,13 +5,17 @@ import path from "node:path";
 import process from "node:process";
 import {
   delay,
+  driveFakeMidiTriad,
   galleryDir,
   galleryUrl,
+  installFakeMidi,
   launchChromium,
+  releaseFakeMidiSustain,
   resolveValidationPort,
   rootDir,
   startGalleryServer,
   waitForGalleryReady,
+  waitForMidiSceneActive,
   waitForServer,
 } from "./lib/wasm_gallery_playwright_common.mjs";
 
@@ -89,8 +93,15 @@ async function main() {
         viewport: { width: 1680, height: 1200 },
         deviceScaleFactor: 2,
       });
+      await installFakeMidi(page);
       await page.goto(url, { waitUntil: "domcontentloaded" });
       await waitForGalleryReady(page);
+      await page.waitForFunction(() => window.__lmtGallerySummary?.scenes?.midi?.inputCount >= 2, { timeout: 30000 });
+      await driveFakeMidiTriad(page);
+      await waitForMidiSceneActive(page);
+      await page.click("#midi-snapshots [data-midi-snapshot]");
+      await page.waitForFunction(() => window.__lmtGallerySummary?.scenes?.midi?.viewingSnapshot === true, { timeout: 30000 });
+      await releaseFakeMidiSustain(page);
       await page.evaluate(() => document.fonts?.ready ?? Promise.resolve());
       await delay(300);
 
@@ -107,6 +118,7 @@ async function main() {
 
       shots.hero = await captureElement(page, ".hero", path.join(outputDir, "gallery-hero.png"));
       const sceneMap = [
+        ["midi", "#scene-midi"],
         ["set", "#scene-set"],
         ["key", "#scene-key"],
         ["chord", "#scene-chord"],
@@ -133,7 +145,7 @@ async function main() {
       };
       fs.writeFileSync(path.join(outputDir, "captures.json"), `${JSON.stringify(manifest, null, 2)}\n`);
 
-      const requiredShots = ["overview", "hero", "set", "key", "chord", "progression", "compare", "fret"];
+      const requiredShots = ["overview", "hero", "midi", "set", "key", "chord", "progression", "compare", "fret"];
       for (const name of requiredShots) {
         const shot = shots[name];
         if (!shot) throw new Error(`missing screenshot metadata: ${name}`);

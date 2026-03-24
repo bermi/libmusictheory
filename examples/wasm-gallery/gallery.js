@@ -6,6 +6,8 @@ const decoder = new TextDecoder();
 const encoder = new TextEncoder();
 const CUSTOM_PRESET_VALUE = "custom";
 const captureMode = new URLSearchParams(window.location.search).get("capture") === "1";
+const MIDI_SNAPSHOT_STORAGE_KEY = "lmt.gallery.midi.snapshots";
+const MIDI_SCENE_TITLE = "Live MIDI Compass";
 
 if (captureMode) {
   document.documentElement.dataset.captureMode = "1";
@@ -44,6 +46,17 @@ const REQUIRED_EXPORTS = [
 
 const statusEl = document.getElementById("status");
 const pcsToggleGrid = document.getElementById("pcs-toggle-grid");
+const midiCaptionEl = document.getElementById("midi-caption");
+const midiStatusPillsEl = document.getElementById("midi-status-pills");
+const midiDevicesEl = document.getElementById("midi-devices");
+const midiSummaryEl = document.getElementById("midi-summary");
+const midiNotesEl = document.getElementById("midi-notes");
+const midiClockEl = document.getElementById("midi-clock");
+const midiStaffEl = document.getElementById("midi-staff");
+const midiSuggestionsEl = document.getElementById("midi-suggestions");
+const midiSnapshotsEl = document.getElementById("midi-snapshots");
+const connectMidiEl = document.getElementById("connect-midi");
+const midiReturnLiveEl = document.getElementById("midi-return-live");
 
 const setPresetEl = document.getElementById("set-preset");
 const keyPresetEl = document.getElementById("key-preset");
@@ -114,6 +127,7 @@ const gallerySummary = {
   sceneCount: 0,
   errors: [],
   scenes: {
+    midi: {},
     set: {},
     key: {},
     chord: {},
@@ -123,6 +137,20 @@ const gallerySummary = {
   },
 };
 window.__lmtGallerySummary = gallerySummary;
+
+const midiState = {
+  supported: typeof navigator !== "undefined" && typeof navigator.requestMIDIAccess === "function",
+  accessState: "idle",
+  access: null,
+  inputs: new Map(),
+  channels: new Map(),
+  snapshots: [],
+  activeSnapshotId: null,
+  renderQueued: false,
+  lastError: "",
+  lastEventText: "Awaiting MIDI note input.",
+  lastChangedAt: 0,
+};
 
 function setStatus(message, tone = "ready") {
   statusEl.textContent = message;
@@ -372,6 +400,205 @@ function friendlyChordName(name) {
   return !name || name === "Unknown" ? "set-class color" : name;
 }
 
+function rawChordName(setValue) {
+  if (setValue === 0) return "";
+  return readCString(wasm.lmt_chord_name(setValue));
+}
+
+function midiOctave(midi) {
+  return Math.floor(midi / 12) - 1;
+}
+
+function midiName(midi, tonic = midi % 12, quality = 0) {
+  return `${spellNote(midi % 12, tonic, quality)}${midiOctave(midi)}`;
+}
+
+function sortedAscendingNumbers(values) {
+  return Array.from(values).sort((a, b) => a - b);
+}
+
+function uniqueSortedPcsFromMidi(midiNotes) {
+  return [...new Set(midiNotes.map((midi) => midi % 12))].sort((a, b) => a - b);
+}
+
+function midiListToSet(arena, midiNotes) {
+  const pcs = uniqueSortedPcsFromMidi(midiNotes);
+  return pcs.length > 0 ? pcsFromList(arena, pcs) : 0;
+}
+
+function setMembers(setValue) {
+  const members = [];
+  for (let pc = 0; pc < 12; pc += 1) {
+    if ((setValue & (1 << pc)) !== 0) members.push(pc);
+  }
+  return members;
+}
+
+function detectRenderableTriad(setValue) {
+  if (setValue === 0) return null;
+  for (let type = 0; type < 4; type += 1) {
+    for (let root = 0; root < 12; root += 1) {
+      if (wasm.lmt_chord(type, root) === setValue) {
+        return { type, root };
+      }
+    }
+  }
+  return null;
+}
+
+function keyLabel(tonic, quality) {
+  return `${noteName(tonic)} ${quality === 0 ? "major" : "minor"}`;
+}
+
+function buildKeyCandidates(setValue) {
+  const setCardinality = wasm.lmt_pcs_cardinality(setValue);
+  const candidates = [];
+  for (let tonic = 0; tonic < 12; tonic += 1) {
+    for (let quality = 0; quality < 2; quality += 1) {
+      const orbit = quality === 0 ? wasm.lmt_scale(SCALE_DIATONIC, tonic) : wasm.lmt_mode(MODE_AEOLIAN, tonic);
+      const overlapSet = setValue & orbit;
+      const overlap = wasm.lmt_pcs_cardinality(overlapSet);
+      const outside = setCardinality - overlap;
+      const missing = wasm.lmt_pcs_cardinality(orbit & ~setValue);
+      let score = overlap * 24 - outside * 18 - missing;
+      if ((setValue & (1 << tonic)) !== 0) score += 4;
+      candidates.push({
+        tonic,
+        quality,
+        set: orbit,
+        overlap,
+        outside,
+        missing,
+        score,
+        label: keyLabel(tonic, quality),
+      });
+    }
+  }
+  candidates.sort((a, b) =>
+    b.score - a.score
+    || b.overlap - a.overlap
+    || a.outside - b.outside
+    || a.tonic - b.tonic
+    || a.quality - b.quality);
+  return candidates;
+}
+
+function midiChannelKey(inputId, channel) {
+  return `${inputId}:${channel}`;
+}
+
+function getMidiChannelState(inputId, channel) {
+  const key = midiChannelKey(inputId, channel);
+  let entry = midiState.channels.get(key);
+  if (!entry) {
+    entry = {
+      inputId,
+      channel,
+      held: new Set(),
+      sustained: new Set(),
+      sustainDown: false,
+      sostenutoDown: false,
+    };
+    midiState.channels.set(key, entry);
+  }
+  return entry;
+}
+
+function currentLiveMidiNotes() {
+  const aggregate = new Set();
+  for (const channel of midiState.channels.values()) {
+    for (const note of channel.held) aggregate.add(note);
+    for (const note of channel.sustained) aggregate.add(note);
+  }
+  return sortedAscendingNumbers(aggregate);
+}
+
+function currentDisplayMidiNotes() {
+  if (midiState.activeSnapshotId != null) {
+    const snapshot = midiState.snapshots.find((one) => one.id === midiState.activeSnapshotId);
+    if (snapshot) return snapshot.midiNotes.slice();
+  }
+  return currentLiveMidiNotes();
+}
+
+function persistMidiSnapshots() {
+  try {
+    window.localStorage?.setItem(MIDI_SNAPSHOT_STORAGE_KEY, JSON.stringify(midiState.snapshots));
+  } catch (_error) {
+    // Ignore storage failures.
+  }
+}
+
+function hydrateMidiSnapshots() {
+  try {
+    const raw = window.localStorage?.getItem(MIDI_SNAPSHOT_STORAGE_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return;
+    midiState.snapshots = parsed
+      .filter((one) => one && Array.isArray(one.midiNotes) && typeof one.id === "string")
+      .slice(0, 12)
+      .map((one) => ({
+        id: String(one.id),
+        createdAt: typeof one.createdAt === "number" ? one.createdAt : Date.now(),
+        chordName: typeof one.chordName === "string" ? one.chordName : "",
+        noteLabel: typeof one.noteLabel === "string" ? one.noteLabel : "",
+        midiNotes: sortedAscendingNumbers(one.midiNotes.map((value) => Number(value)).filter((value) => Number.isFinite(value) && value >= 0 && value <= 127)),
+      }))
+      .filter((one) => one.midiNotes.length > 0);
+  } catch (_error) {
+    midiState.snapshots = [];
+  }
+}
+
+function saveMidiSnapshot() {
+  const midiNotes = currentLiveMidiNotes();
+  if (midiNotes.length === 0) return false;
+  const duplicate = midiState.snapshots[0];
+  if (duplicate && JSON.stringify(duplicate.midiNotes) === JSON.stringify(midiNotes)) {
+    return false;
+  }
+
+  const arena = new ScratchArena();
+  try {
+    const setValue = midiListToSet(arena, midiNotes);
+    const keyCandidate = buildKeyCandidates(setValue)[0] || { tonic: midiNotes[0] % 12, quality: 0 };
+    const chordName = friendlyChordName(rawChordName(setValue));
+    const noteLabel = midiNotes.map((midi) => midiName(midi, keyCandidate.tonic, keyCandidate.quality)).join(" · ");
+    midiState.snapshots.unshift({
+      id: `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+      createdAt: Date.now(),
+      chordName,
+      noteLabel,
+      midiNotes,
+    });
+    midiState.snapshots = midiState.snapshots.slice(0, 12);
+    persistMidiSnapshots();
+    return true;
+  } finally {
+    arena.release();
+  }
+}
+
+function setMidiSnapshotPreview(snapshotId) {
+  midiState.activeSnapshotId = snapshotId;
+  renderMidiScene();
+}
+
+function returnMidiSceneToLive() {
+  midiState.activeSnapshotId = null;
+  renderMidiScene();
+}
+
+function scheduleMidiRender() {
+  if (midiState.renderQueued) return;
+  midiState.renderQueued = true;
+  window.requestAnimationFrame(() => {
+    midiState.renderQueued = false;
+    if (wasm && memory) renderMidiScene();
+  });
+}
+
 function manifestList(key) {
   const value = manifest?.[key];
   if (!Array.isArray(value) || value.length === 0) {
@@ -392,8 +619,8 @@ async function loadManifest() {
       throw new Error(`Invalid gallery manifest: ${key}`);
     }
   }
-  if (!loaded.meta || Number(loaded.meta.sceneCount) < 6) {
-    throw new Error("Invalid gallery manifest: meta.sceneCount must be >= 6");
+  if (!loaded.meta || Number(loaded.meta.sceneCount) < 7) {
+    throw new Error("Invalid gallery manifest: meta.sceneCount must be >= 7");
   }
   return loaded;
 }
@@ -543,6 +770,258 @@ function describeRelation(leftSet, rightSet) {
     }
   }
   return { transposeMatch, inversionMatch };
+}
+
+function summarizeMidiAccess() {
+  if (!midiState.supported) return "Web MIDI unavailable in this browser.";
+  switch (midiState.accessState) {
+    case "connected":
+      return midiState.inputs.size > 0
+        ? `Listening to ${midiState.inputs.size} MIDI input${midiState.inputs.size === 1 ? "" : "s"}.`
+        : "MIDI access granted. Waiting for input devices.";
+    case "connecting":
+      return "Connecting to browser MIDI access...";
+    case "denied":
+      return "MIDI access was denied. Click Connect MIDI to retry.";
+    case "error":
+      return midiState.lastError || "Unable to initialize MIDI access.";
+    default:
+      return "Connect MIDI to listen to every browser MIDI input, sustain pedal, and middle-pedal snapshots.";
+  }
+}
+
+function renderMidiSnapshotCards() {
+  if (midiState.snapshots.length === 0) {
+    midiSnapshotsEl.innerHTML = `<p class="snapshot-empty">Press the middle pedal while notes are sounding to save a snapshot you can recall later.</p>`;
+    return;
+  }
+  midiSnapshotsEl.innerHTML = midiState.snapshots
+    .map((snapshot, index) => `
+      <button class="snapshot-card${midiState.activeSnapshotId === snapshot.id ? " is-active" : ""}" type="button" data-midi-snapshot="${escapeHtml(snapshot.id)}">
+        <strong>${escapeHtml(String.fromCharCode(65 + index))}. ${escapeHtml(snapshot.chordName || "Snapshot")}</strong>
+        <span>${escapeHtml(snapshot.noteLabel)}</span>
+        <span>${new Date(snapshot.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>
+      </button>
+    `)
+    .join("");
+}
+
+function buildMidiSuggestions(arena, setValue, midiNotes, bestKey) {
+  if (setValue === 0) return [];
+  const lastPc = midiNotes.length > 0 ? midiNotes[midiNotes.length - 1] % 12 : null;
+  const suggestions = [];
+  for (let pc = 0; pc < 12; pc += 1) {
+    if ((setValue & (1 << pc)) !== 0) continue;
+    const expanded = setValue | (1 << pc);
+    const rawName = rawChordName(expanded);
+    const chordLabel = friendlyChordName(rawName);
+    const inBestKey = bestKey ? (bestKey.set & (1 << pc)) !== 0 : false;
+    const clusterFree = wasm.lmt_is_cluster_free(expanded) === 1;
+    const evenness = wasm.lmt_evenness_distance(expanded);
+    const stepDistance = lastPc == null
+      ? 0
+      : Math.min((pc - lastPc + 12) % 12, (lastPc - pc + 12) % 12);
+    let score = (inBestKey ? 12 : -4) + (clusterFree ? 3 : -3) + ((rawName && rawName !== "Unknown") ? 5 : 0) - (evenness * 0.12) - (stepDistance * 0.4);
+    if (bestKey && ((expanded & bestKey.set) === expanded)) score += 3;
+    if (midiNotes.length <= 2 && rawName && rawName !== "Unknown") score += 3;
+    const reason = [];
+    if (inBestKey && bestKey) reason.push(`stays inside ${bestKey.label}`);
+    if (rawName && rawName !== "Unknown") reason.push(`reads as ${rawName}`);
+    reason.push(clusterFree ? "avoids cluster pressure" : "adds cluster pressure");
+    suggestions.push({
+      pc,
+      name: bestKey ? spellNote(pc, bestKey.tonic, bestKey.quality) : noteName(pc),
+      chordLabel,
+      reason: reason.join(" · "),
+      score,
+      expanded,
+    });
+  }
+  suggestions.sort((a, b) => b.score - a.score || a.pc - b.pc);
+  return suggestions.slice(0, 4);
+}
+
+function renderMidiScene() {
+  const liveNotes = currentLiveMidiNotes();
+  const displayNotes = currentDisplayMidiNotes();
+  const viewingSnapshot = midiState.activeSnapshotId != null;
+
+  midiCaptionEl.textContent = summarizeMidiAccess();
+  connectMidiEl.disabled = midiState.accessState === "connecting";
+  midiReturnLiveEl.disabled = !viewingSnapshot;
+
+  const statusPills = [];
+  statusPills.push(`<span class="status-pill ${viewingSnapshot ? "is-snapshot" : "is-live"}">${viewingSnapshot ? "Viewing snapshot" : "Live input"}</span>`);
+  statusPills.push(`<span class="status-pill ${liveNotes.length > 0 ? "is-live" : "is-muted"}">${liveNotes.length} sounding</span>`);
+  statusPills.push(`<span class="status-pill ${midiState.snapshots.length > 0 ? "is-snapshot" : "is-muted"}">${midiState.snapshots.length} saved</span>`);
+  midiStatusPillsEl.innerHTML = statusPills.join("");
+  midiDevicesEl.innerHTML = Array.from(midiState.inputs.values()).map((input) =>
+    `<span class="pill">${escapeHtml(input.name || input.manufacturer || input.id || "MIDI input")}</span>`).join("")
+    || `<span class="pill">No MIDI input devices reported yet</span>`;
+
+  renderMidiSnapshotCards();
+
+  const arena = new ScratchArena();
+  try {
+    const setValue = midiListToSet(arena, displayNotes);
+    const bestKey = setValue === 0 ? null : buildKeyCandidates(setValue)[0];
+    const currentChord = friendlyChordName(rawChordName(setValue));
+    const triad = detectRenderableTriad(setValue);
+    const suggestions = buildMidiSuggestions(arena, setValue, displayNotes, bestKey);
+    const displayNotesLabel = displayNotes.length > 0
+      ? displayNotes.map((midi) => midiName(midi, bestKey?.tonic ?? (midi % 12), bestKey?.quality ?? 0))
+      : [];
+
+    midiSummaryEl.textContent = [
+      `mode: ${viewingSnapshot ? "snapshot preview" : "live input"}`,
+      `active MIDI notes: ${displayNotes.length > 0 ? displayNotes.join(", ") : "none"}`,
+      `set: ${setValue === 0 ? "0x000 []" : `0x${setValue.toString(16).padStart(3, "0")} ${JSON.stringify(setMembers(setValue))}`}`,
+      `hearing: ${setValue === 0 ? "awaiting notes" : currentChord}`,
+      `best key fit: ${bestKey ? `${bestKey.label} (overlap ${bestKey.overlap}, outside ${bestKey.outside})` : "n/a"}`,
+      `next-step suggestions: ${suggestions.length}`,
+      `last event: ${midiState.lastEventText}`,
+    ].join("\n");
+
+    if (displayNotesLabel.length > 0) {
+      setChipRow(midiNotesEl, displayNotesLabel);
+    } else {
+      midiNotesEl.innerHTML = `<span class="pill">Play a chord or melodic fragment. Sustain is tracked; middle pedal saves snapshots.</span>`;
+    }
+
+    midiClockEl.innerHTML = svgString(arena, wasm.lmt_svg_clock_optc, setValue);
+    normalizeSvgPreview(midiClockEl, { maxHeight: 420, squareWidth: 420, mediumWidth: 520 });
+
+    if (triad) {
+      midiStaffEl.innerHTML = svgString(arena, wasm.lmt_svg_chord_staff, triad.type, triad.root);
+      normalizeSvgPreview(midiStaffEl, { maxHeight: 340, squareWidth: 620, mediumWidth: 780, wideWidth: 920, ultraWideWidth: 1040, padXRatio: 0.05, padYRatio: 0.12 });
+    } else {
+      midiStaffEl.innerHTML = `<div class="output-block">Staff preview appears automatically for major, minor, diminished, and augmented triads.</div>`;
+    }
+
+    if (suggestions.length === 0) {
+      midiSuggestionsEl.innerHTML = `<p class="snapshot-empty">Once at least one note is sounding, libmusictheory will rank compatible pitch-class additions here.</p>`;
+    } else {
+      midiSuggestionsEl.innerHTML = suggestions.map((suggestion, index) => `
+        <article class="suggestion-card">
+          <strong>${String.fromCharCode(65 + index)}. Add ${escapeHtml(suggestion.name)}</strong>
+          <p>${escapeHtml(suggestion.chordLabel)}</p>
+          <p>${escapeHtml(suggestion.reason)}</p>
+          <div class="suggestion-art">${svgString(arena, wasm.lmt_svg_clock_optc, suggestion.expanded)}</div>
+        </article>
+      `).join("");
+      normalizeSvgPreview(midiSuggestionsEl, { maxHeight: 160, squareWidth: 160, mediumWidth: 180, wideWidth: 180, ultraWideWidth: 180, padXRatio: 0.08, padYRatio: 0.12 });
+    }
+
+    updateSummaryScene("midi", {
+      supported: midiState.supported,
+      accessState: midiState.accessState,
+      inputCount: midiState.inputs.size,
+      liveCount: liveNotes.length,
+      displayCount: displayNotes.length,
+      snapshotCount: midiState.snapshots.length,
+      viewingSnapshot,
+      chordName: setValue === 0 ? "" : currentChord,
+      suggestionCount: suggestions.length,
+      rendered: true,
+    });
+  } finally {
+    arena.release();
+  }
+}
+
+function handleMidiEvent(inputId, data) {
+  if (!data || data.length < 2) return;
+  const status = data[0];
+  const kind = status & 0xf0;
+  const channel = status & 0x0f;
+  const data1 = data[1];
+  const data2 = data.length > 2 ? data[2] : 0;
+  const state = getMidiChannelState(inputId, channel);
+
+  if (kind === 0x90 && data2 > 0) {
+    state.held.add(data1);
+    state.sustained.delete(data1);
+    midiState.lastEventText = `Note on ${midiName(data1)} on channel ${channel + 1}`;
+  } else if (kind === 0x80 || (kind === 0x90 && data2 === 0)) {
+    state.held.delete(data1);
+    if (state.sustainDown) {
+      state.sustained.add(data1);
+    } else {
+      state.sustained.delete(data1);
+    }
+    midiState.lastEventText = `Note off ${midiName(data1)} on channel ${channel + 1}`;
+  } else if (kind === 0xb0 && data1 === 64) {
+    const nextDown = data2 >= 64;
+    if (!nextDown && state.sustainDown) {
+      state.sustainDown = false;
+      state.sustained = new Set(Array.from(state.sustained).filter((note) => state.held.has(note)));
+      midiState.lastEventText = `Sustain pedal released on channel ${channel + 1}`;
+    } else if (nextDown && !state.sustainDown) {
+      state.sustainDown = true;
+      midiState.lastEventText = `Sustain pedal engaged on channel ${channel + 1}`;
+    }
+  } else if (kind === 0xb0 && data1 === 66) {
+    const nextDown = data2 >= 64;
+    if (nextDown && !state.sostenutoDown) {
+      state.sostenutoDown = true;
+      const saved = saveMidiSnapshot();
+      midiState.lastEventText = saved ? `Middle pedal saved snapshot on channel ${channel + 1}` : `Middle pedal ignored empty state on channel ${channel + 1}`;
+    } else if (!nextDown && state.sostenutoDown) {
+      state.sostenutoDown = false;
+    }
+  } else {
+    return;
+  }
+
+  midiState.lastChangedAt = Date.now();
+  scheduleMidiRender();
+}
+
+function syncMidiInputs() {
+  const nextInputs = new Map();
+  if (!midiState.access) {
+    midiState.inputs = nextInputs;
+    scheduleMidiRender();
+    return;
+  }
+
+  for (const input of midiState.access.inputs.values()) {
+    const wrapped = {
+      id: input.id,
+      name: input.name || input.manufacturer || input.id || "MIDI input",
+      raw: input,
+    };
+    input.onmidimessage = (event) => handleMidiEvent(input.id, event.data);
+    nextInputs.set(input.id, wrapped);
+  }
+  midiState.inputs = nextInputs;
+  scheduleMidiRender();
+}
+
+async function connectMidi() {
+  if (!midiState.supported) {
+    midiState.accessState = "unsupported";
+    renderMidiScene();
+    return;
+  }
+
+  midiState.accessState = "connecting";
+  renderMidiScene();
+  try {
+    midiState.access = await navigator.requestMIDIAccess();
+    midiState.accessState = "connected";
+    midiState.lastError = "";
+    midiState.access.onstatechange = () => {
+      syncMidiInputs();
+      midiState.lastEventText = "MIDI device topology changed.";
+      scheduleMidiRender();
+    };
+    syncMidiInputs();
+  } catch (error) {
+    midiState.accessState = error && /denied|security/i.test(String(error.message || error)) ? "denied" : "error";
+    midiState.lastError = error.message || String(error);
+    renderMidiScene();
+  }
 }
 
 function renderSetScene() {
@@ -894,6 +1373,7 @@ function renderFretScene() {
 function renderAll() {
   const errors = [];
   const tasks = [
+    ["midi", renderMidiScene],
     ["set", renderSetScene],
     ["key", renderKeyScene],
     ["chord", renderChordScene],
@@ -925,6 +1405,26 @@ function renderAll() {
 }
 
 function wireSceneEvents() {
+  connectMidiEl.addEventListener("click", async () => {
+    await connectMidi();
+    if (midiState.accessState === "connected") {
+      setStatus(`${MIDI_SCENE_TITLE} connected.`);
+    } else if (midiState.accessState === "unsupported") {
+      setStatus(`${MIDI_SCENE_TITLE} unavailable in this browser.`, "error");
+    } else if (midiState.accessState === "denied" || midiState.accessState === "error") {
+      setStatus(`${MIDI_SCENE_TITLE} error: ${midiState.lastError || "unable to connect"}`, "error");
+    }
+  });
+  midiReturnLiveEl.addEventListener("click", () => {
+    returnMidiSceneToLive();
+    setStatus(`${MIDI_SCENE_TITLE} returned to live input.`);
+  });
+  midiSnapshotsEl.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-midi-snapshot]");
+    if (!button) return;
+    setMidiSnapshotPreview(button.getAttribute("data-midi-snapshot"));
+    setStatus(`${MIDI_SCENE_TITLE} snapshot recalled.`);
+  });
   document.getElementById("render-set").addEventListener("click", () => {
     renderSetScene();
     setStatus("Set Observatory refreshed.");
@@ -1057,6 +1557,8 @@ function initializeUi() {
   createNoteSelectors(chordRootEl);
   createNoteSelectors(chordKeyTonicEl);
   buildToggleGrid();
+  hydrateMidiSnapshots();
+  midiCaptionEl.textContent = "Connect MIDI to listen to every browser MIDI input, sustain pedal, and middle-pedal snapshots.";
   populatePresetSelect(setPresetEl, manifestList("setPresets"));
   populatePresetSelect(keyPresetEl, manifestList("keyPresets"));
   populatePresetSelect(chordPresetEl, manifestList("chordPresets"));
@@ -1070,7 +1572,7 @@ function initializeUi() {
   applyComparePreset(0);
   applyFretPreset(0);
   wireSceneEvents();
-  gallerySummary.sceneCount = Number(manifest.meta.sceneCount);
+  gallerySummary.sceneCount = Math.max(Number(manifest.meta.sceneCount || 0), document.querySelectorAll(".scene-card").length);
 }
 
 async function main() {
@@ -1083,6 +1585,11 @@ async function main() {
     wasm = instance.exports;
     memory = wasm.memory;
     renderAll();
+    connectMidi().catch((error) => {
+      midiState.accessState = "error";
+      midiState.lastError = error.message || String(error);
+      renderMidiScene();
+    });
   } catch (error) {
     gallerySummary.ready = false;
     gallerySummary.errors = [error.message];

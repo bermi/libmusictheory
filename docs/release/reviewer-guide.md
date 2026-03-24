@@ -47,6 +47,8 @@ Open [http://localhost:8002/index.html](http://localhost:8002/index.html).
 Review points:
 
 - hero and scene cards load without layout breakage
+- the live MIDI scene appears above the fold and shows a ready/connected state
+- after connecting a MIDI controller, sustain (`CC64`) keeps sounding notes visible and middle pedal (`CC66`) stores a clickable snapshot
 - clock scenes are large, centered, and crisp
 - chord/staff scenes show proper clef opening, simultaneous cluster layout, and readable accidentals
 - fret scenes are centered and remain legible across arbitrary tuning/string-count examples
@@ -62,6 +64,7 @@ Inspect:
 
 - `/Users/bermi/code/libmusictheory/zig-out/wasm-gallery-captures/gallery-overview.png`
 - `/Users/bermi/code/libmusictheory/zig-out/wasm-gallery-captures/gallery-hero.png`
+- `/Users/bermi/code/libmusictheory/zig-out/wasm-gallery-captures/scene-midi.png`
 - `/Users/bermi/code/libmusictheory/zig-out/wasm-gallery-captures/scene-chord.png`
 - `/Users/bermi/code/libmusictheory/zig-out/wasm-gallery-captures/scene-fret.png`
 
