@@ -13,6 +13,11 @@ const MIDI_DEFAULT_TONIC = 0;
 const MIDI_DEFAULT_MODE = 0;
 const PREVIEW_MODE_SVG = "svg";
 const PREVIEW_MODE_BITMAP = "bitmap";
+const STANDARD_GUITAR_TUNING = Object.freeze([40, 45, 50, 55, 59, 64]);
+const STANDARD_GUITAR_LABEL = "EADGBE";
+const MIDI_FRET_MAX_FRET = 12;
+const MIDI_FRET_MAX_SPAN = 4;
+const MIDI_FRET_ROW_CAP = 48;
 const MODE_OPTIONS = [
   { id: 0, name: "Ionian" },
   { id: 1, name: "Dorian" },
@@ -97,6 +102,7 @@ const midiOpticKEl = document.getElementById("midi-optic-k");
 const midiEvennessEl = document.getElementById("midi-evenness");
 const midiStaffEl = document.getElementById("midi-staff");
 const midiKeyboardEl = document.getElementById("midi-keyboard");
+const midiCurrentFretEl = document.getElementById("midi-current-fret");
 const midiSuggestionsEl = document.getElementById("midi-suggestions");
 const midiSnapshotsEl = document.getElementById("midi-snapshots");
 const connectMidiEl = document.getElementById("connect-midi");
@@ -779,6 +785,114 @@ function fretBitmapRgba(arena, frets, windowStart, visibleFrets, width, height) 
   "lmt_bitmap_fret_n_rgba");
 }
 
+function fretWindowForVoicing(frets) {
+  const positiveFrets = frets.filter((fret) => fret > 0);
+  if (positiveFrets.length === 0) {
+    return { windowStart: 0, visibleFrets: 4 };
+  }
+  const minPositive = Math.min(...positiveFrets);
+  const maxPositive = Math.max(...positiveFrets);
+  if (maxPositive <= 4) {
+    return { windowStart: 0, visibleFrets: 4 };
+  }
+  const windowStart = Math.max(0, Math.min(minPositive - 1, maxPositive - 3));
+  const visibleFrets = Math.max(4, Math.min(7, maxPositive - windowStart + 1));
+  return { windowStart, visibleFrets };
+}
+
+function serializeFrets(arena, frets) {
+  const fretsPtr = writeI8Array(arena, frets);
+  const urlPtr = arena.alloc(128, 1);
+  const urlBytes = wasm.lmt_frets_to_url_n(fretsPtr, frets.length, urlPtr, 128);
+  return urlBytes > 0 ? readCString(urlPtr) : frets.join(",");
+}
+
+function fretBassMidi(frets, tuning) {
+  let bass = null;
+  for (let index = 0; index < Math.min(frets.length, tuning.length); index += 1) {
+    const fret = frets[index];
+    if (fret < 0) continue;
+    const midi = tuning[index] + fret;
+    if (bass == null || midi < bass) bass = midi;
+  }
+  return bass;
+}
+
+function scoreFretVoicing(frets, tuning, preferredBassPc = null) {
+  const activeFrets = frets.filter((fret) => fret >= 0);
+  if (activeFrets.length === 0) return Number.NEGATIVE_INFINITY;
+  const nonOpenFrets = activeFrets.filter((fret) => fret > 0);
+  const minPositive = nonOpenFrets.length > 0 ? Math.min(...nonOpenFrets) : 0;
+  const maxActive = Math.max(...activeFrets);
+  const span = nonOpenFrets.length > 0 ? Math.max(...nonOpenFrets) - minPositive : 0;
+  const openCount = activeFrets.filter((fret) => fret === 0).length;
+  const bassMidi = fretBassMidi(frets, tuning);
+  let score = activeFrets.length * 8 + openCount * 3 - minPositive * 2 - span * 4 - maxActive * 0.35;
+  if (preferredBassPc != null && bassMidi != null && (bassMidi % 12) === preferredBassPc) {
+    score += 6;
+  }
+  return score;
+}
+
+function generatePreferredFretVoicing(arena, setValue, {
+  tuning = STANDARD_GUITAR_TUNING,
+  tuningLabel = STANDARD_GUITAR_LABEL,
+  maxFret = MIDI_FRET_MAX_FRET,
+  maxSpan = MIDI_FRET_MAX_SPAN,
+  rowCap = MIDI_FRET_ROW_CAP,
+  preferredBassPc = null,
+} = {}) {
+  if (!setValue) return null;
+  const tuningPtr = writeU8Array(arena, tuning);
+  const voicingPtr = arena.alloc(Math.max(1, rowCap * tuning.length), 1);
+  const rowCount = wasm.lmt_generate_voicings_n(setValue, tuningPtr, tuning.length, maxFret, maxSpan, voicingPtr, rowCap);
+  if (rowCount === 0) {
+    return null;
+  }
+
+  let bestFrets = null;
+  let bestScore = Number.NEGATIVE_INFINITY;
+  for (let row = 0; row < rowCount; row += 1) {
+    const start = voicingPtr + row * tuning.length;
+    const frets = Array.from(i8().subarray(start, start + tuning.length));
+    const score = scoreFretVoicing(frets, tuning, preferredBassPc);
+    if (score > bestScore) {
+      bestScore = score;
+      bestFrets = frets;
+    }
+  }
+
+  if (!bestFrets) return null;
+  const { windowStart, visibleFrets } = fretWindowForVoicing(bestFrets);
+  return {
+    frets: bestFrets,
+    rowCount,
+    windowStart,
+    visibleFrets,
+    url: serializeFrets(arena, bestFrets),
+    tuningLabel,
+    bassMidi: fretBassMidi(bestFrets, tuning),
+  };
+}
+
+function renderFretVoicingPreview(arena, host, voicing, alt, options = {}) {
+  if (!voicing) {
+    host.innerHTML = `<div class="output-block">No compact ${escapeHtml(STANDARD_GUITAR_LABEL)} voicing within ${MIDI_FRET_MAX_FRET} frets / span ${MIDI_FRET_MAX_SPAN}.</div>`;
+    return false;
+  }
+  const fretsPtr = writeI8Array(arena, voicing.frets);
+  const svgMarkup = svgString(arena, wasm.lmt_svg_fret_n, fretsPtr, voicing.frets.length, voicing.windowStart, voicing.visibleFrets);
+  renderPreviewSvgOrBitmap(host, {
+    svgMarkup,
+    bitmapRenderer: {
+      renderRgba: (width, height) => fretBitmapRgba(arena, voicing.frets, voicing.windowStart, voicing.visibleFrets, width, height),
+    },
+    alt,
+    options,
+  });
+  return true;
+}
+
 function inspectKeyboardSvg(svg) {
   if (!svg) {
     return {
@@ -1431,9 +1545,17 @@ function renderMidiScene() {
     const currentChord = friendlyChordName(rawChordName(setValue));
     const keyboardNotes = displayNotes.length > 0 ? displayNotes : keyboardPreviewNotesForContext(context);
     const keyboardRange = keyboardRangeForNotes(keyboardNotes, 48, 84);
+    const lowestDisplayMidi = displayNotes.length > 0 ? Math.min(...displayNotes) : null;
+    const preferredBassPc = lowestDisplayMidi == null ? null : (lowestDisplayMidi % 12);
     const contextOverlap = wasm.lmt_pcs_cardinality(setValue & context.setValue);
     const outsideCount = wasm.lmt_pcs_cardinality(setValue) - contextOverlap;
-    const suggestions = buildMidiSuggestions(arena, setValue, displayNotes, context);
+    const currentFretVoicing = displayNotes.length > 0
+      ? generatePreferredFretVoicing(arena, setValue, { preferredBassPc })
+      : null;
+    const suggestions = buildMidiSuggestions(arena, setValue, displayNotes, context).map((suggestion) => ({
+      ...suggestion,
+      fretPreview: generatePreferredFretVoicing(arena, suggestion.expanded, { preferredBassPc }),
+    }));
     const displayNotesLabel = displayNotes.length > 0
       ? displayNotes.map((midi) => midiName(midi, context.tonic, context.quality))
       : [];
@@ -1507,6 +1629,18 @@ function renderMidiScene() {
       midiStaffEl.innerHTML = `<div class="output-block">Play notes across the keyboard to paint treble, bass, or grand staff directly from the live MIDI state.</div>`;
     }
 
+    if (currentFretVoicing) {
+      renderFretVoicingPreview(
+        arena,
+        midiCurrentFretEl,
+        currentFretVoicing,
+        "Current selection fretboard bitmap preview",
+        { maxHeight: 360, squareWidth: 360, mediumWidth: 460, wideWidth: 520, ultraWideWidth: 560, padXRatio: 0.12, padYRatio: 0.18 },
+      );
+    } else {
+      midiCurrentFretEl.innerHTML = `<div class="output-block">Current selection has no compact ${escapeHtml(STANDARD_GUITAR_LABEL)} voicing within ${MIDI_FRET_MAX_FRET} frets / span ${MIDI_FRET_MAX_SPAN}.</div>`;
+    }
+
     if (suggestions.length === 0) {
       midiSuggestionsEl.innerHTML = `<p class="snapshot-empty">Once at least one note is sounding, libmusictheory will rank pitch-class additions against ${escapeHtml(context.label)} here.</p>`;
     } else {
@@ -1515,10 +1649,41 @@ function renderMidiScene() {
           <strong>${String.fromCharCode(65 + index)}. Add ${escapeHtml(suggestion.name)}</strong>
           <p>${escapeHtml(suggestion.chordLabel)}</p>
           <p>${escapeHtml(suggestion.reason)}</p>
-          <div class="suggestion-art">${svgString(arena, wasm.lmt_svg_clock_optc, suggestion.expanded)}</div>
+          <div class="suggestion-art-grid">
+            <div class="suggestion-art" data-suggestion-clock="${index}"></div>
+            <div class="suggestion-art suggestion-art-fret" data-suggestion-fret="${index}"></div>
+          </div>
+          <div class="suggestion-fret-meta">${escapeHtml(
+            suggestion.fretPreview
+              ? `${suggestion.fretPreview.tuningLabel} · ${suggestion.fretPreview.url}`
+              : `No compact ${STANDARD_GUITAR_LABEL} voicing within ${MIDI_FRET_MAX_FRET} frets / span ${MIDI_FRET_MAX_SPAN}.`,
+          )}</div>
         </article>
       `).join("");
-      normalizeSvgPreview(midiSuggestionsEl, { maxHeight: 160, squareWidth: 160, mediumWidth: 180, wideWidth: 180, ultraWideWidth: 180, padXRatio: 0.08, padYRatio: 0.12 });
+      suggestions.forEach((suggestion, index) => {
+        const clockHost = midiSuggestionsEl.querySelector(`[data-suggestion-clock="${index}"]`);
+        if (clockHost) {
+          renderPreviewSvgOrBitmap(clockHost, {
+            svgMarkup: svgString(arena, wasm.lmt_svg_clock_optc, suggestion.expanded),
+            bitmapRenderer: {
+              renderRgba: (width, height) => clockBitmapRgba(arena, suggestion.expanded, width, height),
+            },
+            alt: `${suggestion.name} clock bitmap preview`,
+            options: { maxHeight: 160, squareWidth: 160, mediumWidth: 180, wideWidth: 180, ultraWideWidth: 180, padXRatio: 0.08, padYRatio: 0.12 },
+          });
+        }
+        const fretHost = midiSuggestionsEl.querySelector(`[data-suggestion-fret="${index}"]`);
+        if (fretHost) {
+          renderFretVoicingPreview(
+            arena,
+            fretHost,
+            suggestion.fretPreview,
+            `${suggestion.name} fretboard bitmap preview`,
+            { maxHeight: 160, squareWidth: 160, mediumWidth: 180, wideWidth: 180, ultraWideWidth: 180, padXRatio: 0.12, padYRatio: 0.18 },
+          );
+          fretHost.dataset.suggestionFretHost = "1";
+        }
+      });
     }
 
     const keyboardFeatures = inspectKeyboardNotes(keyboardNotes, keyboardRange.low, keyboardRange.high);
@@ -1542,6 +1707,10 @@ function renderMidiScene() {
       chordName: setValue === 0 ? "" : currentChord,
       suggestionCount: suggestions.length,
       suggestionNames: suggestions.map((one) => one.name),
+      currentFretRendered: currentFretVoicing != null,
+      currentFretUrl: currentFretVoicing?.url || "",
+      currentFretTuning: currentFretVoicing?.tuningLabel || "",
+      suggestionFretCount: suggestions.filter((one) => one.fretPreview != null).length,
       midiOpticKFeatures,
       midiEvennessFeatures,
       midiStaffFeatures,

@@ -164,6 +164,18 @@ fn configureWasmExe(exe: *std.Build.Step.Compile) void {
     exe.max_memory = 64 * 1024 * 1024;
 }
 
+fn createEmptyRootModule(
+    b: *std.Build,
+    target: std.Build.ResolvedTarget,
+    optimize: std.builtin.OptimizeMode,
+) *std.Build.Module {
+    return b.createModule(.{
+        .root_source_file = b.path("src/empty_root.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+}
+
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
@@ -561,10 +573,10 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_tests.step);
 
     // ── C ABI smoke tests (static/shared link) ──────────────────
+    const c_smoke_root_mod = createEmptyRootModule(b, target, optimize);
     const c_smoke_static = b.addExecutable(.{
         .name = "c_api_smoke_static",
-        .target = target,
-        .optimize = optimize,
+        .root_module = c_smoke_root_mod,
     });
     c_smoke_static.linkLibC();
     c_smoke_static.addIncludePath(b.path("include"));
@@ -577,8 +589,7 @@ pub fn build(b: *std.Build) void {
 
     const c_smoke_shared = b.addExecutable(.{
         .name = "c_api_smoke_shared",
-        .target = target,
-        .optimize = optimize,
+        .root_module = c_smoke_root_mod,
     });
     c_smoke_shared.linkLibC();
     c_smoke_shared.addIncludePath(b.path("include"));
@@ -591,8 +602,7 @@ pub fn build(b: *std.Build) void {
 
     const c_compat_smoke_static = b.addExecutable(.{
         .name = "c_api_compat_smoke_static",
-        .target = target,
-        .optimize = optimize,
+        .root_module = c_smoke_root_mod,
     });
     c_compat_smoke_static.linkLibC();
     c_compat_smoke_static.addIncludePath(b.path("include"));
@@ -605,8 +615,7 @@ pub fn build(b: *std.Build) void {
 
     const c_compat_smoke_shared = b.addExecutable(.{
         .name = "c_api_compat_smoke_shared",
-        .target = target,
-        .optimize = optimize,
+        .root_module = c_smoke_root_mod,
     });
     c_compat_smoke_shared.linkLibC();
     c_compat_smoke_shared.addIncludePath(b.path("include"));

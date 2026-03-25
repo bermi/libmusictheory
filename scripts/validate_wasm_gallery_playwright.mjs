@@ -111,6 +111,7 @@ async function main() {
         "midi-evenness",
         "midi-keyboard",
         "midi-staff",
+        "midi-current-fret",
         "set-clock",
         "set-optic-k",
         "set-evenness",
@@ -145,13 +146,18 @@ async function main() {
       const midiActiveStaffFeatures = midiActive.summary?.midiStaffFeatures ?? midiActive.midiStaffFeatures;
       const midiActiveOpticKFeatures = midiActive.summary?.midiOpticKFeatures ?? midiActive.midiOpticKFeatures;
       const midiActiveEvennessFeatures = midiActive.summary?.midiEvennessFeatures ?? midiActive.midiEvennessFeatures;
+      if (midiActive.summary?.currentFretRendered !== true || (midiActive.summary?.suggestionFretCount || 0) < 1) {
+        throw new Error(`live midi scene did not render current and suggestion fretboards: ${JSON.stringify(midiActive.summary)}`);
+      }
       traceStep("preview-compare");
       const previewModeDrift = (() => {
-        const hosts = ["midi-clock", "midi-optic-k", "midi-evenness", "midi-keyboard", "midi-staff", "set-clock", "set-optic-k", "set-evenness"];
+        const hosts = ["midi-clock", "midi-optic-k", "midi-evenness", "midi-keyboard", "midi-staff", "midi-current-fret", "set-clock", "set-optic-k", "set-evenness"];
         const byHost = (snapshot, host) => snapshot.previewMetrics.find((one) => one.host === host) || null;
         return hosts.map((host) => {
-          const svgMetric = byHost(svgReady, host);
-          const bitmapMetric = byHost(bitmapReady, host);
+          const svgSnapshot = host.startsWith("midi-") ? midiActiveSvg : svgReady;
+          const bitmapSnapshot = host.startsWith("midi-") ? midiActive : bitmapReady;
+          const svgMetric = byHost(svgSnapshot, host);
+          const bitmapMetric = byHost(bitmapSnapshot, host);
           return {
             host,
             svgWidth: svgMetric?.width || 0,

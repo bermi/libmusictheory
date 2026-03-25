@@ -418,6 +418,24 @@ select {
   max-height: 360px;
 }
 
+.fret-frame {
+  min-height: 320px;
+}
+
+.fret-frame svg,
+.fret-frame img {
+  max-height: 280px;
+}
+
+.midi-current-fret-frame {
+  min-height: 360px;
+}
+
+.midi-current-fret-frame svg,
+.midi-current-fret-frame img {
+  max-height: 300px;
+}
+
 .optic-k-frame {
   min-height: 320px;
 }
@@ -638,6 +656,12 @@ select {
   line-height: 1.45;
 }
 
+.suggestion-art-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
 .suggestion-art {
   display: grid;
   place-items: center;
@@ -649,6 +673,19 @@ select {
 
 .suggestion-art svg {
   max-height: 160px;
+}
+
+.suggestion-art img {
+  max-height: 160px;
+}
+
+.suggestion-art-fret {
+  min-height: 170px;
+}
+
+.suggestion-fret-meta {
+  font-size: 0.88rem;
+  color: var(--muted);
 }
 
 .snapshot-grid {
@@ -757,6 +794,10 @@ select {
   }
 
   .control-row-midi {
+    grid-template-columns: 1fr;
+  }
+
+  .suggestion-art-grid {
     grid-template-columns: 1fr;
   }
 
