@@ -20,6 +20,7 @@ import {
 } from "./lib/wasm_gallery_playwright_common.mjs";
 
 const maxPreviewDrift = Number.parseFloat(process.env.LMT_WASM_GALLERY_PREVIEW_MAX_DRIFT || "0.07");
+const trace = process.env.LMT_TRACE_GALLERY_VALIDATE === "1";
 const criticalPreviewHosts = new Set([
   "midi-clock",
   "midi-optic-k",
@@ -38,6 +39,29 @@ async function captureHostScreenshots(page, hostIds) {
   return out;
 }
 
+async function waitForPreviewAssets(page) {
+  await page.evaluate(async () => {
+    await (document.fonts?.ready ?? Promise.resolve());
+    const images = Array.from(document.querySelectorAll(
+      "#midi-clock img, #midi-optic-k img, #midi-evenness img, #midi-keyboard img, #midi-staff img, #set-clock img, #set-optic-k img, #set-evenness img, #key-clock img, #key-staff img, #key-keyboard img, #chord-clock img, #chord-staff img, #progression-clock img, #compare-left-clock img, #compare-overlap-clock img, #compare-right-clock img, #fret-svg img",
+    ));
+    await Promise.all(images.map(async (image) => {
+      try {
+        if (typeof image.decode === "function") {
+          await image.decode();
+        }
+      } catch (_error) {
+        // Ignore decode races for rapidly replaced preview images.
+      }
+    }));
+  });
+  await delay(120);
+}
+
+function traceStep(step) {
+  if (trace) console.error(`trace:${step}`);
+}
+
 async function main() {
   const indexPath = path.join(galleryDir, "index.html");
   if (!fs.existsSync(indexPath)) {
@@ -46,7 +70,7 @@ async function main() {
 
   const port = await resolveValidationPort();
   const { child: server, stderrRef } = startGalleryServer(port);
-  const url = galleryUrl(port);
+  const url = galleryUrl(port, "?capture=1");
 
   const cleanupServer = () => stopGalleryServer(server);
 
@@ -61,18 +85,25 @@ async function main() {
   });
 
   try {
+    traceStep("wait-for-server");
     await waitForServer(url, 15000);
     const browser = await launchChromium();
 
     try {
+      traceStep("new-page");
       const page = await browser.newPage({
         viewport: { width: 1680, height: 1200 },
         deviceScaleFactor: 2,
       });
       await installFakeMidi(page);
+      traceStep("goto");
       await page.goto(url, { waitUntil: "domcontentloaded" });
       await page.waitForSelector("#shuffle-scenes", { timeout: 30000 });
+      traceStep("gallery-ready-svg");
       const svgReady = await waitForGalleryReady(page, "svg");
+      traceStep("preview-assets-svg");
+      await waitForPreviewAssets(page);
+      traceStep("midi-inputs");
       await page.waitForFunction(() => window.__lmtGallerySummary?.scenes?.midi?.inputCount >= 2, { timeout: 30000 });
       const previewDiffHostIds = [
         "midi-clock",
@@ -95,16 +126,26 @@ async function main() {
         "fret-svg",
       ];
 
+      traceStep("drive-midi");
       await driveFakeMidiTriad(page);
+      traceStep("midi-active-svg");
       const midiActiveSvg = await waitForMidiSceneActive(page, "svg");
+      traceStep("capture-svg");
+      await waitForPreviewAssets(page);
       const svgPreviewScreenshots = await captureHostScreenshots(page, previewDiffHostIds);
+      traceStep("toggle-bitmap");
       await page.click("#preview-mode-bitmap");
+      traceStep("gallery-ready-bitmap");
       const bitmapReady = await waitForGalleryReady(page, "bitmap");
+      traceStep("midi-active-bitmap");
       const midiActive = await waitForMidiSceneActive(page, "bitmap");
+      traceStep("capture-bitmap");
+      await waitForPreviewAssets(page);
       const bitmapPreviewScreenshots = await captureHostScreenshots(page, previewDiffHostIds);
       const midiActiveStaffFeatures = midiActive.summary?.midiStaffFeatures ?? midiActive.midiStaffFeatures;
       const midiActiveOpticKFeatures = midiActive.summary?.midiOpticKFeatures ?? midiActive.midiOpticKFeatures;
       const midiActiveEvennessFeatures = midiActive.summary?.midiEvennessFeatures ?? midiActive.midiEvennessFeatures;
+      traceStep("preview-compare");
       const previewModeDrift = (() => {
         const hosts = ["midi-clock", "midi-optic-k", "midi-evenness", "midi-keyboard", "midi-staff", "set-clock", "set-optic-k", "set-evenness"];
         const byHost = (snapshot, host) => snapshot.previewMetrics.find((one) => one.host === host) || null;
@@ -194,6 +235,7 @@ async function main() {
       if ((midiActiveOpticKFeatures?.clockCount || 0) < 2 || (midiActiveEvennessFeatures?.highlightCount || 0) < 1) {
         throw new Error(`live midi scene did not render OPTIC/K and evenness focus correctly: ${JSON.stringify({ optic: midiActiveOpticKFeatures, evenness: midiActiveEvennessFeatures })}`);
       }
+      traceStep("context-change");
       const defaultContext = await page.evaluate(() => ({
         label: window.__lmtGallerySummary?.scenes?.midi?.contextLabel || "",
         suggestionNames: window.__lmtGallerySummary?.scenes?.midi?.suggestionNames || [],
@@ -206,11 +248,14 @@ async function main() {
         const nextFirstSuggestion = Array.isArray(midi.suggestionNames) ? (midi.suggestionNames[0] || "") : "";
         return midi.contextLabel !== beforeLabel && nextFirstSuggestion !== beforeFirstSuggestion && midi.displayCount >= 3;
       }, { beforeLabel: defaultContext.label, beforeFirstSuggestion: defaultContext.suggestionNames[0] || "" }, { timeout: 30000 }).then((handle) => handle.jsonValue());
+      traceStep("release-sustain");
       await releaseFakeMidiSustain(page);
       await page.waitForFunction(() => {
         const midi = window.__lmtGallerySummary?.scenes?.midi;
         return midi?.viewingSnapshot === false && midi?.liveCount === 0 && midi?.displayCount === 0 && midi?.contextLabel === "C Phrygian";
       }, { timeout: 30000 });
+      await waitForPreviewAssets(page);
+      traceStep("keyboard-seam");
       const keyboardSeamCheck = await page.evaluate(async () => {
         const host = document.querySelector("#midi-keyboard");
         const image = host?.querySelector("img");
@@ -269,8 +314,12 @@ async function main() {
 
         const sourceWidth = sample.marginX * 2 + countWhiteKeys(sample.low, sample.high) * sample.whiteKeyWidth;
         const sourceHeight = sample.marginY * 2 + sample.whiteKeyHeight;
-        const scaleX = rasterImage.naturalWidth / sourceWidth;
-        const scaleY = rasterImage.naturalHeight / sourceHeight;
+        const previewMinX = Number.parseFloat(rasterImage.dataset.previewMinX || "0");
+        const previewMinY = Number.parseFloat(rasterImage.dataset.previewMinY || "0");
+        const previewWidth = Number.parseFloat(rasterImage.dataset.previewWidth || String(sourceWidth));
+        const previewHeight = Number.parseFloat(rasterImage.dataset.previewHeight || String(sourceHeight));
+        const scaleX = rasterImage.naturalWidth / Math.max(previewWidth, 1);
+        const scaleY = rasterImage.naturalHeight / Math.max(previewHeight, 1);
 
         const canvas = document.createElement("canvas");
         canvas.width = rasterImage.naturalWidth;
@@ -283,38 +332,37 @@ async function main() {
         for (let midi = sample.low; midi <= sample.high; midi += 1) {
           if (!isBlackKey(midi) || !selectedPcs.has(midi % 12)) continue;
           const keyX = sample.marginX + whiteIndexBefore(sample.low, midi) * sample.whiteKeyWidth - sample.blackKeyWidth / 2;
-          const sampleX = Math.max(1, Math.min(canvas.width - 2, Math.round((keyX + sample.blackKeyWidth / 2) * scaleX)));
+          const sampleX = Math.max(1, Math.min(canvas.width - 2, Math.round(((keyX + sample.blackKeyWidth / 2) - previewMinX) * scaleX)));
           const sampleYs = [
             sample.marginY + sample.blackKeyHeight * 0.42,
             sample.marginY + sample.blackKeyHeight * 0.52,
             sample.marginY + sample.blackKeyHeight * 0.62,
-          ].map((value) => Math.max(0, Math.min(canvas.height - 1, Math.round(value * scaleY))));
-          const seamDeltas = sampleYs.map((sampleY) => {
+          ].map((value) => Math.max(0, Math.min(canvas.height - 1, Math.round((value - previewMinY) * scaleY))));
+          const seamLightness = sampleYs.map((sampleY) => {
             const center = ctx.getImageData(sampleX, sampleY, 1, 1).data;
-            const left = ctx.getImageData(sampleX - 1, sampleY, 1, 1).data;
-            const right = ctx.getImageData(sampleX + 1, sampleY, 1, 1).data;
             const centerLightness = (center[0] + center[1] + center[2]) / 3;
-            const neighborLightness = ((left[0] + left[1] + left[2]) + (right[0] + right[1] + right[2])) / 6;
-            return centerLightness - neighborLightness;
+            const chroma = Math.max(center[0], center[1], center[2]) - Math.min(center[0], center[1], center[2]);
+            return chroma < 24 ? centerLightness : 0;
           });
           samples.push({
             midi,
-            maxCenterSeamDelta: Math.max(...seamDeltas),
+            maxNeutralSeamLightness: Math.max(...seamLightness),
           });
         }
 
         if (samples.length === 0) return { ok: false, reason: "no black-key seam probes generated" };
-        const maxBlackEchoCenterSeamDelta = Math.max(...samples.map((one) => one.maxCenterSeamDelta));
+        const maxBlackEchoNeutralSeamLightness = Math.max(...samples.map((one) => one.maxNeutralSeamLightness));
         return {
-          ok: maxBlackEchoCenterSeamDelta < 18,
+          ok: maxBlackEchoNeutralSeamLightness < 110,
           blackEchoSelectedCount: samples.length,
-          maxBlackEchoCenterSeamDelta,
+          maxBlackEchoNeutralSeamLightness,
           samples,
         };
       });
       if (!keyboardSeamCheck?.ok) {
         throw new Error(`live keyboard seam check failed: ${JSON.stringify(keyboardSeamCheck)}`);
       }
+      traceStep("snapshot-restore");
       await page.click("#midi-snapshots [data-midi-snapshot]");
       const snapshotContextRestored = await page.waitForFunction(() => {
         const midi = window.__lmtGallerySummary?.scenes?.midi;
@@ -332,8 +380,12 @@ async function main() {
         const midi = window.__lmtGallerySummary?.scenes?.midi;
         return midi?.viewingSnapshot === false && midi?.liveCount === 0 && midi?.displayCount === 0;
       }, { timeout: 30000 }).then((handle) => handle.jsonValue());
+      traceStep("toggle-svg");
       await page.click("#preview-mode-svg");
+      traceStep("gallery-ready-svg-again");
       const svgReadyAgain = await waitForGalleryReady(page, "svg");
+      traceStep("shuffle");
+      await waitForPreviewAssets(page);
 
       await page.click("#shuffle-scenes");
       await waitForGalleryReady(page);
@@ -344,13 +396,24 @@ async function main() {
       await page.click("#render-progression");
       await page.click("#render-compare");
       await page.click("#render-fret");
+      traceStep("final-ready");
       const finalSnapshot = await waitForGalleryReady(page);
       const clockPaletteMetrics = await page.evaluate(() => {
         const palette = ["#00c", "#a4f", "#f0f", "#a16", "#e02", "#f91", "#ff0", "#1e0", "#094", "#0bb", "#16b", "#28f"];
         const hosts = ["midi-clock", "set-clock", "key-clock", "chord-clock", "progression-clock", "compare-left-clock", "compare-overlap-clock", "compare-right-clock"];
+        const decodeSvgDataUrl = (src) => {
+          const prefix = "data:image/svg+xml;charset=utf-8,";
+          if (!src || !src.startsWith(prefix)) return "";
+          try {
+            return decodeURIComponent(src.slice(prefix.length));
+          } catch (_error) {
+            return "";
+          }
+        };
         return hosts.map((host) => {
-          const html = document.getElementById(host)?.innerHTML || "";
-          const paletteMatches = palette.filter((color) => html.includes(color));
+          const image = document.querySelector(`#${host} img[data-preview-kind="svg"]`);
+          const html = image instanceof HTMLImageElement ? decodeSvgDataUrl(image.src) : (document.getElementById(host)?.innerHTML || "");
+          const paletteMatches = palette.filter((color) => html.toLowerCase().includes(color));
           return { host, paletteMatches, matchCount: paletteMatches.length };
         });
       });

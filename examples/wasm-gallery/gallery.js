@@ -498,19 +498,50 @@ function normalizeSvgPreview(host, options = {}) {
     padXRatio = 0.08,
     padYRatio = 0.12,
     minPad = 6,
+    preserveViewBox = false,
   } = options;
   const svgs = host.querySelectorAll("svg");
   for (const svg of svgs) {
     svg.style.display = "block";
     svg.style.maxWidth = "100%";
-    svg.style.maxHeight = `${maxHeight}px`;
-    svg.style.height = "auto";
     if (!svg.dataset.originalViewBox) {
       const originalViewBox = svg.getAttribute("viewBox");
       if (originalViewBox) svg.dataset.originalViewBox = originalViewBox;
     }
 
     try {
+      if (preserveViewBox) {
+        const viewBox = parseViewBox(svg.dataset.originalViewBox || svg.getAttribute("viewBox"));
+        if (!viewBox || viewBox.width <= 0 || viewBox.height <= 0) {
+          svg.dataset.previewNormalized = "0";
+          continue;
+        }
+
+        const aspect = viewBox.width / viewBox.height;
+        const availableWidth = Math.max(180, host.clientWidth - 32);
+        let targetWidth = mediumWidth;
+        if (aspect <= 1.15) {
+          targetWidth = squareWidth;
+        } else if (aspect <= 2.4) {
+          targetWidth = mediumWidth;
+        } else if (aspect <= 4.4) {
+          targetWidth = wideWidth;
+        } else {
+          targetWidth = ultraWideWidth;
+        }
+
+        const fitted = fitPreviewDisplaySize(Math.min(availableWidth, targetWidth), aspect, maxHeight);
+        svg.style.width = `${fitted.width}px`;
+        svg.style.height = `${fitted.height}px`;
+        svg.style.maxHeight = `${fitted.height}px`;
+        svg.setAttribute("width", String(fitted.width));
+        svg.setAttribute("height", String(fitted.height));
+        svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+        svg.dataset.previewNormalized = "1";
+        svg.dataset.previewAspect = aspect.toFixed(3);
+        continue;
+      }
+
       const bbox = svg.getBBox();
       if (!Number.isFinite(bbox.width) || !Number.isFinite(bbox.height) || bbox.width <= 0 || bbox.height <= 0) {
         svg.dataset.previewNormalized = "0";
@@ -532,7 +563,12 @@ function normalizeSvgPreview(host, options = {}) {
 
       const padX = Math.max(minPad, bbox.width * padXRatio);
       const padY = Math.max(minPad, bbox.height * padYRatio);
-      svg.style.width = `${Math.min(availableWidth, targetWidth)}px`;
+      const fitted = fitPreviewDisplaySize(Math.min(availableWidth, targetWidth), aspect, maxHeight);
+      svg.style.width = `${fitted.width}px`;
+      svg.style.height = `${fitted.height}px`;
+      svg.style.maxHeight = `${fitted.height}px`;
+      svg.setAttribute("width", String(fitted.width));
+      svg.setAttribute("height", String(fitted.height));
       svg.setAttribute(
         "viewBox",
         [
@@ -556,6 +592,10 @@ function setSvgPreview(host, svgMarkup, options = {}) {
   normalizeSvgPreview(host, options);
 }
 
+function svgMarkupToDataUrl(svgMarkup) {
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgMarkup)}`;
+}
+
 function measureSvgPreviewLayout(host, svgMarkup, options = {}) {
   setSvgPreview(host, svgMarkup, options);
   const svg = host.querySelector("svg");
@@ -573,16 +613,66 @@ function measureSvgPreviewLayout(host, svgMarkup, options = {}) {
   };
 }
 
-function setBitmapPreview(host, dataUrl, pixelWidth, pixelHeight, alt, displayWidth, displayHeight, options = {}) {
+function setSvgImagePreview(host, svgMarkup, alt, layout) {
+  host.innerHTML = `<img class="svg-preview" data-preview-kind="svg" data-preview-normalized="1" src="${svgMarkupToDataUrl(svgMarkup)}" alt="${escapeHtml(alt)}" />`;
+  const image = host.querySelector("img");
+  if (!image) return;
+  const aspect = layout.displayWidth / Math.max(layout.displayHeight, 1);
+  image.dataset.previewAspect = aspect.toFixed(3);
+  image.style.display = "block";
+  image.style.width = `${layout.displayWidth}px`;
+  image.style.height = `${layout.displayHeight}px`;
+  image.style.maxWidth = "100%";
+  image.style.maxHeight = `${layout.displayHeight}px`;
+  if (layout.originalViewBox) {
+    image.dataset.originalMinX = String(layout.originalViewBox.minX);
+    image.dataset.originalMinY = String(layout.originalViewBox.minY);
+    image.dataset.originalWidth = String(layout.originalViewBox.width);
+    image.dataset.originalHeight = String(layout.originalViewBox.height);
+  }
+  if (layout.previewViewBox) {
+    image.dataset.previewMinX = String(layout.previewViewBox.minX);
+    image.dataset.previewMinY = String(layout.previewViewBox.minY);
+    image.dataset.previewWidth = String(layout.previewViewBox.width);
+    image.dataset.previewHeight = String(layout.previewViewBox.height);
+  }
+}
+
+function setBitmapPreview(host, dataUrl, pixelWidth, pixelHeight, alt, displayWidth, displayHeight, layout = null) {
   const aspect = pixelWidth / pixelHeight;
-  host.innerHTML = `<img class="bitmap-preview" data-preview-normalized="1" data-preview-aspect="${aspect.toFixed(3)}" width="${pixelWidth}" height="${pixelHeight}" src="${dataUrl}" alt="${escapeHtml(alt)}" />`;
+  host.innerHTML = `<img class="bitmap-preview" data-preview-kind="bitmap" data-preview-normalized="1" data-preview-aspect="${aspect.toFixed(3)}" width="${pixelWidth}" height="${pixelHeight}" src="${dataUrl}" alt="${escapeHtml(alt)}" />`;
   const image = host.querySelector("img");
   if (!image) return;
   image.style.display = "block";
   image.style.width = `${displayWidth}px`;
-  image.style.height = "auto";
+  image.style.height = `${displayHeight}px`;
   image.style.maxWidth = "100%";
-  image.style.maxHeight = `${options.maxHeight || 320}px`;
+  image.style.maxHeight = `${displayHeight}px`;
+  if (layout?.originalViewBox) {
+    image.dataset.originalMinX = String(layout.originalViewBox.minX);
+    image.dataset.originalMinY = String(layout.originalViewBox.minY);
+    image.dataset.originalWidth = String(layout.originalViewBox.width);
+    image.dataset.originalHeight = String(layout.originalViewBox.height);
+  }
+  if (layout?.previewViewBox) {
+    image.dataset.previewMinX = String(layout.previewViewBox.minX);
+    image.dataset.previewMinY = String(layout.previewViewBox.minY);
+    image.dataset.previewWidth = String(layout.previewViewBox.width);
+    image.dataset.previewHeight = String(layout.previewViewBox.height);
+  }
+}
+
+function fitPreviewDisplaySize(targetWidth, aspect, maxHeight) {
+  let width = Math.max(1, targetWidth);
+  let height = width / Math.max(aspect, 0.0001);
+  if (height > maxHeight) {
+    height = maxHeight;
+    width = height * Math.max(aspect, 0.0001);
+  }
+  return {
+    width: Math.max(1, Math.round(width)),
+    height: Math.max(1, Math.round(height)),
+  };
 }
 
 function parseViewBox(raw) {
@@ -603,11 +693,14 @@ function parseViewBox(raw) {
 
 function renderPreviewSvgOrBitmap(host, { svgMarkup, bitmapRenderer, alt, options = {} }) {
   if (!isBitmapPreviewMode()) {
-    setSvgPreview(host, svgMarkup, options);
+    const layout = measureSvgPreviewLayout(host, svgMarkup, options);
+    const normalizedSvg = host.querySelector("svg")?.outerHTML || svgMarkup;
+    setSvgImagePreview(host, normalizedSvg, alt, layout);
     return;
   }
   const layout = measureSvgPreviewLayout(host, svgMarkup, options);
   const deviceScale = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+  const supersampleFactor = Math.max(1, options.supersampleFactor || 1);
   const pixelWidth = Math.max(1, Math.round(layout.displayWidth * deviceScale));
   const pixelHeight = Math.max(1, Math.round(layout.displayHeight * deviceScale));
   const widthScale = layout.originalViewBox && layout.previewViewBox
@@ -616,8 +709,8 @@ function renderPreviewSvgOrBitmap(host, { svgMarkup, bitmapRenderer, alt, option
   const heightScale = layout.originalViewBox && layout.previewViewBox
     ? layout.originalViewBox.height / Math.max(layout.previewViewBox.height, 1)
     : 1;
-  const sourcePixelWidth = Math.max(pixelWidth, Math.round(pixelWidth * widthScale));
-  const sourcePixelHeight = Math.max(pixelHeight, Math.round(pixelHeight * heightScale));
+  const sourcePixelWidth = Math.max(pixelWidth, Math.round(pixelWidth * widthScale * supersampleFactor));
+  const sourcePixelHeight = Math.max(pixelHeight, Math.round(pixelHeight * heightScale * supersampleFactor));
   const cropBox = layout.originalViewBox && layout.previewViewBox ? {
     x: ((layout.previewViewBox.minX - layout.originalViewBox.minX) / Math.max(layout.originalViewBox.width, 1)) * sourcePixelWidth,
     y: ((layout.previewViewBox.minY - layout.originalViewBox.minY) / Math.max(layout.originalViewBox.height, 1)) * sourcePixelHeight,
@@ -626,7 +719,7 @@ function renderPreviewSvgOrBitmap(host, { svgMarkup, bitmapRenderer, alt, option
   } : null;
   const sourceRgba = bitmapRenderer.renderRgba(sourcePixelWidth, sourcePixelHeight);
   const dataUrl = rgbaToPngDataUrl(sourceRgba, sourcePixelWidth, sourcePixelHeight, cropBox, pixelWidth, pixelHeight);
-  setBitmapPreview(host, dataUrl, pixelWidth, pixelHeight, alt, layout.displayWidth, layout.displayHeight, options);
+  setBitmapPreview(host, dataUrl, pixelWidth, pixelHeight, alt, layout.displayWidth, layout.displayHeight, layout);
 }
 
 function clockBitmapRgba(arena, setValue, width, height) {
@@ -1374,7 +1467,7 @@ function renderMidiScene() {
         renderRgba: (width, height) => clockBitmapRgba(arena, setValue, width, height),
       },
       alt: "Live clock preview",
-      options: { maxHeight: 420, squareWidth: 420, mediumWidth: 520 },
+      options: { maxHeight: 420, squareWidth: 420, mediumWidth: 520, preserveViewBox: true },
     });
     renderPreviewSvgOrBitmap(midiOpticKEl, {
       svgMarkup: opticKSvg,
@@ -1382,7 +1475,7 @@ function renderMidiScene() {
         renderRgba: (width, height) => opticKBitmapRgba(arena, setValue, width, height),
       },
       alt: "Live OPTIC/K bitmap preview",
-      options: { maxHeight: 300, squareWidth: 520, mediumWidth: 620, wideWidth: 720, ultraWideWidth: 760, padXRatio: 0.04, padYRatio: 0.08 },
+      options: { maxHeight: 300, squareWidth: 520, mediumWidth: 620, wideWidth: 720, ultraWideWidth: 760, preserveViewBox: true },
     });
     renderPreviewSvgOrBitmap(midiEvennessEl, {
       svgMarkup: evennessFieldSvg,
@@ -1390,7 +1483,7 @@ function renderMidiScene() {
         renderRgba: (width, height) => evennessFieldBitmapRgba(arena, setValue, width, height),
       },
       alt: "Live evenness bitmap preview",
-      options: { maxHeight: 440, squareWidth: 360, mediumWidth: 420, wideWidth: 500, ultraWideWidth: 560, padXRatio: 0.05, padYRatio: 0.05 },
+      options: { maxHeight: 560, squareWidth: 420, mediumWidth: 520, wideWidth: 620, ultraWideWidth: 680, preserveViewBox: true },
     });
     renderPreviewSvgOrBitmap(midiKeyboardEl, {
       svgMarkup: svgString(arena, wasm.lmt_svg_keyboard, writeU8Array(arena, keyboardNotes), keyboardNotes.length, keyboardRange.low, keyboardRange.high),
@@ -1398,7 +1491,7 @@ function renderMidiScene() {
         renderRgba: (width, height) => keyboardBitmapRgba(arena, keyboardNotes, keyboardRange.low, keyboardRange.high, width, height),
       },
       alt: "Live keyboard bitmap preview",
-      options: { maxHeight: 220, squareWidth: 780, mediumWidth: 920, wideWidth: 1040, ultraWideWidth: 1160, padXRatio: 0.02, padYRatio: 0.08 },
+      options: { maxHeight: 260, squareWidth: 780, mediumWidth: 920, wideWidth: 1040, ultraWideWidth: 1160, padXRatio: 0.02, padYRatio: 0.08 },
     });
 
     if (displayNotes.length > 0) {
@@ -1599,7 +1692,7 @@ function renderSetScene() {
         renderRgba: (width, height) => clockBitmapRgba(arena, setValue, width, height),
       },
       alt: "Set clock bitmap preview",
-      options: { maxHeight: 420, squareWidth: 420, mediumWidth: 520 },
+      options: { maxHeight: 420, squareWidth: 420, mediumWidth: 520, preserveViewBox: true },
     });
     renderPreviewSvgOrBitmap(setOpticKEl, {
       svgMarkup: opticKSvg,
@@ -1607,7 +1700,7 @@ function renderSetScene() {
         renderRgba: (width, height) => opticKBitmapRgba(arena, setValue, width, height),
       },
       alt: "Set OPTIC/K bitmap preview",
-      options: { maxHeight: 320, squareWidth: 620, mediumWidth: 760, wideWidth: 840, ultraWideWidth: 920, padXRatio: 0.04, padYRatio: 0.08 },
+      options: { maxHeight: 320, squareWidth: 620, mediumWidth: 760, wideWidth: 840, ultraWideWidth: 920, preserveViewBox: true },
     });
     renderPreviewSvgOrBitmap(setEvennessEl, {
       svgMarkup: evennessSvg,
@@ -1615,7 +1708,7 @@ function renderSetScene() {
         renderRgba: (width, height) => evennessFieldBitmapRgba(arena, setValue, width, height),
       },
       alt: "Set evenness bitmap preview",
-      options: { maxHeight: 520, squareWidth: 420, mediumWidth: 520, wideWidth: 620, ultraWideWidth: 680, padXRatio: 0.05, padYRatio: 0.04 },
+      options: { maxHeight: 560, squareWidth: 420, mediumWidth: 520, wideWidth: 620, ultraWideWidth: 680, preserveViewBox: true },
     });
     const setOpticKFeatures = inspectOpticKMarkup(opticKSvg);
     const setEvennessFeatures = inspectEvennessMarkup(evennessSvg);
@@ -1674,7 +1767,7 @@ function renderKeyScene() {
         renderRgba: (width, height) => keyboardBitmapRgba(arena, keyKeyboardNotes, 36, 96, width, height),
       },
       alt: "Key keyboard bitmap preview",
-      options: { maxHeight: 220, squareWidth: 780, mediumWidth: 920, wideWidth: 1040, ultraWideWidth: 1160, padXRatio: 0.02, padYRatio: 0.08 },
+      options: { maxHeight: 260, squareWidth: 780, mediumWidth: 920, wideWidth: 1040, ultraWideWidth: 1160, padXRatio: 0.02, padYRatio: 0.08 },
     });
     const keyStaffFeatures = inspectStaffMarkup(keyStaffSvg);
     const keyboardFeatures = inspectKeyboardNotes(keyKeyboardNotes, 36, 96);
@@ -1976,7 +2069,7 @@ function renderFretScene() {
         renderRgba: (width, height) => fretBitmapRgba(arena, frets, windowStart, visibleFrets, width, height),
       },
       alt: "Fretboard bitmap preview",
-      options: { maxHeight: 420, squareWidth: 360, mediumWidth: 520, wideWidth: 680, ultraWideWidth: 760, padXRatio: 0.12, padYRatio: 0.18 },
+      options: { maxHeight: 500, squareWidth: 360, mediumWidth: 520, wideWidth: 680, ultraWideWidth: 760, padXRatio: 0.12, padYRatio: 0.18 },
     });
     setChipRow(
       fretNotesEl,

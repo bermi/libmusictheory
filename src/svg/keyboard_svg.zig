@@ -61,8 +61,6 @@ pub fn renderKeyboard(notes: []const pitch.MidiNote, range_low: pitch.MidiNote, 
     const w = stream.writer();
     svg_quality.writeSvgPrelude(w, width_str, height_str, view_box,
         \\.keyboard-bg{fill:rgb(247,241,232)}
-        \\.keyboard-key,.keyboard-accent{vector-effect:non-scaling-stroke}
-        \\.keyboard-key{stroke-linejoin:round}
         \\
     ) catch unreachable;
 
@@ -156,10 +154,20 @@ fn drawBlackKeyBase(w: anytype, note: pitch.MidiNote, pc: u4, x: f32) void {
 }
 
 fn drawBlackKeyOverlay(w: anytype, state_class: []const u8, note: pitch.MidiNote, pc: u4, x: f32, color: PaletteColor, alpha: f32) void {
+    const blended = blendColor(BLACK_KEY_FILL, color, alpha);
     w.print(
-        "<rect class=\"keyboard-key black-key black-key-overlay is-{s}\" data-midi=\"{d}\" data-pc=\"{d}\" x=\"{d:.2}\" y=\"{d:.2}\" width=\"{d:.2}\" height=\"{d:.2}\" rx=\"{d:.2}\" fill=\"rgba({d},{d},{d},{d:.3})\" stroke=\"none\" />\n",
-        .{ state_class, note, pc, x, margin_y, black_key_width, black_key_height, 3.2, color.r, color.g, color.b, alpha },
+        "<rect class=\"keyboard-key black-key black-key-overlay is-{s}\" data-midi=\"{d}\" data-pc=\"{d}\" x=\"{d:.2}\" y=\"{d:.2}\" width=\"{d:.2}\" height=\"{d:.2}\" rx=\"{d:.2}\" fill=\"rgb({d},{d},{d})\" stroke=\"none\" />\n",
+        .{ state_class, note, pc, x, margin_y, black_key_width, black_key_height, 3.2, blended.r, blended.g, blended.b },
     ) catch unreachable;
+}
+
+fn blendColor(base: PaletteColor, overlay: PaletteColor, alpha: f32) PaletteColor {
+    const clamped = std.math.clamp(alpha, 0.0, 1.0);
+    return .{
+        .r = @intFromFloat(@round(@as(f32, @floatFromInt(base.r)) * (1.0 - clamped) + @as(f32, @floatFromInt(overlay.r)) * clamped)),
+        .g = @intFromFloat(@round(@as(f32, @floatFromInt(base.g)) * (1.0 - clamped) + @as(f32, @floatFromInt(overlay.g)) * clamped)),
+        .b = @intFromFloat(@round(@as(f32, @floatFromInt(base.b)) * (1.0 - clamped) + @as(f32, @floatFromInt(overlay.b)) * clamped)),
+    };
 }
 
 const NoteState = enum {

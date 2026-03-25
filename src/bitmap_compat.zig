@@ -286,6 +286,7 @@ const Paint = struct {
     stroke_width: f64 = 1.0,
     stroke_dash_on: f64 = 0.0,
     stroke_dash_off: f64 = 0.0,
+    non_scaling_stroke: bool = false,
 };
 
 const PathBuilder = struct {
@@ -1625,30 +1626,90 @@ fn renderRectTag(tag_text: []const u8, root: Matrix, surface: *Surface) Error!vo
     const y = parseAttrNumber(tag_text, "y") orelse return error.InvalidSvg;
     const width = parseAttrNumber(tag_text, "width") orelse return error.InvalidSvg;
     const height = parseAttrNumber(tag_text, "height") orelse return error.InvalidSvg;
+    var rx = parseAttrNumber(tag_text, "rx") orelse 0.0;
+    var ry = parseAttrNumber(tag_text, "ry") orelse 0.0;
+    if (rx > 0.0 and ry <= 0.0) ry = rx;
+    if (ry > 0.0 and rx <= 0.0) rx = ry;
+    rx = std.math.clamp(rx, 0.0, width / 2.0);
+    ry = std.math.clamp(ry, 0.0, height / 2.0);
+    const has_rounding = rx > 0.0 and ry > 0.0;
 
     const transform = if (parseTransformAttr(tag_text)) |element_transform|
         root.multiply(element_transform)
     else
         root;
 
-    if (isAxisAligned(transform)) {
+    if (!has_rounding and isAxisAligned(transform)) {
         const p = transform.apply(x, y);
         const sx = @sqrt(transform.a * transform.a + transform.b * transform.b);
         const sy = @sqrt(transform.c * transform.c + transform.d * transform.d);
-        drawRect(surface, p.x, p.y, width * sx, height * sy, paint.fill, paint.stroke, paint.stroke_width * @max(sx, sy));
+        const stroke_scale = if (paint.non_scaling_stroke) 1.0 else @max(sx, sy);
+        drawRect(surface, p.x, p.y, width * sx, height * sy, paint.fill, paint.stroke, paint.stroke_width * stroke_scale);
         return;
     }
 
-    var edges = [_]Edge{
-        .{ .a = transform.apply(x, y), .b = transform.apply(x + width, y) },
-        .{ .a = transform.apply(x + width, y), .b = transform.apply(x + width, y + height) },
-        .{ .a = transform.apply(x + width, y + height), .b = transform.apply(x, y + height) },
-        .{ .a = transform.apply(x, y + height), .b = transform.apply(x, y) },
+    var edges: [40]Edge = undefined;
+    const edge_count = if (has_rounding)
+        buildRoundedRectEdges(x, y, width, height, rx, ry, transform, &edges)
+    else blk: {
+        edges[0] = .{ .a = transform.apply(x, y), .b = transform.apply(x + width, y) };
+        edges[1] = .{ .a = transform.apply(x + width, y), .b = transform.apply(x + width, y + height) };
+        edges[2] = .{ .a = transform.apply(x + width, y + height), .b = transform.apply(x, y + height) };
+        edges[3] = .{ .a = transform.apply(x, y + height), .b = transform.apply(x, y) };
+        break :blk 4;
     };
-    if (paint.fill[3] > 0) fillEdges(surface, &edges, paint.fill);
+    if (paint.fill[3] > 0) fillEdges(surface, edges[0..edge_count], paint.fill);
     if (paint.stroke[3] > 0 and paint.stroke_width > 0.0) {
-        const scale = transform.approxUniformScale();
-        strokeEdges(surface, &edges, paint.stroke, paint.stroke_width * scale, paint.stroke_dash_on * scale, paint.stroke_dash_off * scale);
+        const scale = if (paint.non_scaling_stroke) 1.0 else transform.approxUniformScale();
+        strokeEdges(surface, edges[0..edge_count], paint.stroke, paint.stroke_width * scale, paint.stroke_dash_on * scale, paint.stroke_dash_off * scale);
+    }
+}
+
+fn buildRoundedRectEdges(x: f64, y: f64, width: f64, height: f64, rx: f64, ry: f64, transform: Matrix, edges: *[40]Edge) usize {
+    const arc_segments: usize = 8;
+
+    var points: [41]Point = undefined;
+    var point_count: usize = 0;
+
+    points[point_count] = transform.apply(x + rx, y);
+    point_count += 1;
+    points[point_count] = transform.apply(x + width - rx, y);
+    point_count += 1;
+
+    appendRoundedCornerPoints(&points, &point_count, transform, x + width - rx, y + ry, rx, ry, -std.math.pi / 2.0, 0.0, arc_segments);
+    points[point_count] = transform.apply(x + width, y + height - ry);
+    point_count += 1;
+
+    appendRoundedCornerPoints(&points, &point_count, transform, x + width - rx, y + height - ry, rx, ry, 0.0, std.math.pi / 2.0, arc_segments);
+    points[point_count] = transform.apply(x + rx, y + height);
+    point_count += 1;
+
+    appendRoundedCornerPoints(&points, &point_count, transform, x + rx, y + height - ry, rx, ry, std.math.pi / 2.0, std.math.pi, arc_segments);
+    points[point_count] = transform.apply(x, y + ry);
+    point_count += 1;
+
+    appendRoundedCornerPoints(&points, &point_count, transform, x + rx, y + ry, rx, ry, std.math.pi, 3.0 * std.math.pi / 2.0, arc_segments);
+
+    var edge_count: usize = 0;
+    var i: usize = 0;
+    while (i < point_count) : (i += 1) {
+        const next = (i + 1) % point_count;
+        edges[edge_count] = .{ .a = points[i], .b = points[next] };
+        edge_count += 1;
+    }
+    return edge_count;
+}
+
+fn appendRoundedCornerPoints(points: *[41]Point, point_count: *usize, transform: Matrix, cx: f64, cy: f64, rx: f64, ry: f64, start_angle: f64, end_angle: f64, segments: usize) void {
+    var segment: usize = 1;
+    while (segment <= segments) : (segment += 1) {
+        const t = @as(f64, @floatFromInt(segment)) / @as(f64, @floatFromInt(segments));
+        const angle = start_angle + (end_angle - start_angle) * t;
+        points[point_count.*] = transform.apply(
+            cx + std.math.cos(angle) * rx,
+            cy + std.math.sin(angle) * ry,
+        );
+        point_count.* += 1;
     }
 }
 
@@ -1665,7 +1726,8 @@ fn renderLineTag(tag_text: []const u8, parent_transform: Matrix, surface: *Surfa
         parent_transform.multiply(element_transform)
     else
         parent_transform;
-    drawLineSegment(surface, transform.apply(x1, y1), transform.apply(x2, y2), paint.stroke, paint.stroke_width * transform.approxUniformScale());
+    const scale = if (paint.non_scaling_stroke) 1.0 else transform.approxUniformScale();
+    drawLineSegment(surface, transform.apply(x1, y1), transform.apply(x2, y2), paint.stroke, paint.stroke_width * scale);
 }
 
 fn renderCircleTag(tag_text: []const u8, root: Matrix, surface: *Surface) Error!void {
@@ -1682,7 +1744,7 @@ fn renderCircleTag(tag_text: []const u8, root: Matrix, surface: *Surface) Error!
         root;
     const center = transform.apply(cx, cy);
     const radius = r * transform.approxUniformScale();
-    const stroke_width = paint.stroke_width * transform.approxUniformScale();
+    const stroke_width = paint.stroke_width * (if (paint.non_scaling_stroke) 1.0 else transform.approxUniformScale());
     drawCircle(surface, center.x, center.y, radius, paint.fill, paint.stroke, stroke_width);
 }
 
@@ -1703,7 +1765,8 @@ fn renderEllipseTag(tag_text: []const u8, parent_transform: Matrix, surface: *Su
     const edge_count = buildEllipseEdges(cx, cy, rx, ry, transform, &edges);
     if (paint.fill[3] > 0) fillEdges(surface, edges[0..edge_count], paint.fill);
     if (paint.stroke[3] > 0 and paint.stroke_width > 0.0) {
-        strokeEdges(surface, edges[0..edge_count], paint.stroke, paint.stroke_width * transform.approxUniformScale(), paint.stroke_dash_on * transform.approxUniformScale(), paint.stroke_dash_off * transform.approxUniformScale());
+        const scale = if (paint.non_scaling_stroke) 1.0 else transform.approxUniformScale();
+        strokeEdges(surface, edges[0..edge_count], paint.stroke, paint.stroke_width * scale, paint.stroke_dash_on * scale, paint.stroke_dash_off * scale);
     }
 }
 
@@ -1732,7 +1795,7 @@ fn renderPathTagExtended(tag_text: []const u8, parent_transform: Matrix, surface
         try renderPathFill(surface, d, transform, paint.fill);
     }
     if (paint.stroke[3] > 0 and paint.stroke_width > 0.0) {
-        const scale = transform.approxUniformScale();
+        const scale = if (paint.non_scaling_stroke) 1.0 else transform.approxUniformScale();
         try renderPathStroke(
             surface,
             d,
@@ -2444,7 +2507,14 @@ fn applyPaintAttrs(tag_text: []const u8, paint: *Paint) void {
                 paint.stroke_dash_on = dash.on;
                 paint.stroke_dash_off = dash.off;
             }
+            if (std.mem.eql(u8, key, "vector-effect") and std.mem.eql(u8, value, "non-scaling-stroke")) {
+                paint.non_scaling_stroke = true;
+            }
         }
+    }
+
+    if (parsePresentationValue(tag_text, "vector-effect")) |value| {
+        if (std.mem.eql(u8, value, "non-scaling-stroke")) paint.non_scaling_stroke = true;
     }
 
     const opacity = parseOpacityFactor(parsePresentationValue(tag_text, "opacity"));

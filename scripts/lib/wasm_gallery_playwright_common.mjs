@@ -294,7 +294,10 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
         const hostIds = ["midi-clock", "midi-optic-k", "midi-evenness", "midi-keyboard", "midi-staff"];
         return Object.fromEntries(hostIds.map((id) => {
           const host = document.getElementById(id);
-          const kind = host?.querySelector("img") ? "bitmap" : (host?.querySelector("svg") ? "svg" : "none");
+          const image = host?.querySelector("img");
+          const kind = image
+            ? (image.dataset.previewKind === "svg" ? "svg" : "bitmap")
+            : (host?.querySelector("svg") ? "svg" : "none");
           return [id, kind];
         }));
       })(),
@@ -536,7 +539,10 @@ export async function waitForGalleryReady(page, expectedPreviewMode = null) {
         ];
         return Object.fromEntries(hostIds.map((id) => {
           const host = document.getElementById(id);
-          const kind = host?.querySelector("img") ? "bitmap" : (host?.querySelector("svg") ? "svg" : "none");
+          const image = host?.querySelector("img");
+          const kind = image
+            ? (image.dataset.previewKind === "svg" ? "svg" : "bitmap")
+            : (host?.querySelector("svg") ? "svg" : "none");
           return [id, kind];
         }));
       })(),

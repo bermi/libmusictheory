@@ -653,13 +653,13 @@ export fn lmt_svg_optic_k_group(set: u16, buf: [*c]u8, buf_size: u32) callconv(.
 }
 
 export fn lmt_svg_evenness_chart(buf: [*c]u8, buf_size: u32) callconv(.C) u32 {
-    var svg_buf: [65536]u8 = undefined;
+    var svg_buf: [128 * 1024]u8 = undefined;
     const svg = svg_evenness_chart.renderEvennessChart(&svg_buf);
     return copySvgOut(svg, buf, buf_size);
 }
 
 export fn lmt_svg_evenness_field(set: u16, buf: [*c]u8, buf_size: u32) callconv(.C) u32 {
-    var svg_buf: [65536]u8 = undefined;
+    var svg_buf: [128 * 1024]u8 = undefined;
     const safe_set = maskPitchClassSet(set);
     const svg = svg_evenness_chart.renderEvennessField(safe_set, &svg_buf);
     return copySvgOut(svg, buf, buf_size);

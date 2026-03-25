@@ -38,7 +38,6 @@ pub fn renderOPC(set: pcs.PitchClassSet, buf: []u8) []u8 {
 
     svg_quality.writeSvgPrelude(w, "100", "100", "0 0 100 100",
         \\.opc-bg{fill:white}
-        \\.opc-node{vector-effect:non-scaling-stroke}
         \\
     ) catch unreachable;
     w.writeAll("<rect class=\"opc-bg\" x=\"0\" y=\"0\" width=\"100\" height=\"100\" />\n") catch unreachable;
@@ -63,12 +62,8 @@ pub fn renderOPTC(set: pcs.PitchClassSet, prime_label: []const u8, buf: []u8) []
     const w = stream.writer();
 
     const cluster_info = cluster.getClusters(set);
-    var label_path_buf: [8 * 1024]u8 = undefined;
-    const label_path = text_misc.horizontalPathData(prime_label, &label_path_buf);
-
     svg_quality.writeSvgPrelude(w, "70", "70", "-7 -7 114 114",
         \\.optc-bg{fill:white}
-        \\.optc-ring,.optc-node{vector-effect:non-scaling-stroke}
         \\.optc-ring{fill:none;stroke:black;stroke-width:2}
         \\.optc-node{stroke-width:3}
         \\
@@ -97,6 +92,8 @@ pub fn renderOPTC(set: pcs.PitchClassSet, prime_label: []const u8, buf: []u8) []
         ) catch unreachable;
     }
 
+    var label_path_buf: [8 * 1024]u8 = undefined;
+    const label_path = text_misc.horizontalPathData(prime_label, &label_path_buf);
     if (label_path) |horizontal| {
         const scale = @min(0.52, 22.0 / @max(horizontal.width, 1.0));
         const label_x = 50.0 - @as(f64, horizontal.width) * scale / 2.0;
@@ -145,7 +142,6 @@ pub fn renderOpticKGroup(set: pcs.PitchClassSet, buf: []u8) []u8 {
     svg_quality.writeSvgPrelude(w, "280", "140", "0 0 280 140",
         \\.optic-k-bg{fill:white}
         \\.optic-k-card{fill:rgba(255,255,255,0.94);stroke:rgba(17,24,39,0.08);stroke-width:1.2}
-        \\.optic-k-link,.optic-k-ring,.optic-k-node{vector-effect:non-scaling-stroke}
         \\.optic-k-link{fill:none;stroke:#8d7f74;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
         \\.optic-k-ring{fill:none;stroke:#111;stroke-width:1.75}
         \\.optic-k-node{stroke-width:2.8}

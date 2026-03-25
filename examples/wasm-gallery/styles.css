@@ -359,6 +359,10 @@ select {
   grid-column: 1 / -1;
 }
 
+.art-card-double {
+  grid-column: span 2;
+}
+
 .art-card > h3,
 .note-card > h3 {
   margin-bottom: 12px;
@@ -391,7 +395,8 @@ select {
   max-height: 440px;
 }
 
-.staff-frame svg {
+.staff-frame svg,
+.staff-frame img {
   max-height: 320px;
 }
 
@@ -399,7 +404,8 @@ select {
   min-height: 420px;
 }
 
-.midi-clock-frame svg {
+.midi-clock-frame svg,
+.midi-clock-frame img {
   max-height: 420px;
 }
 
@@ -407,7 +413,8 @@ select {
   min-height: 420px;
 }
 
-.midi-staff-frame svg {
+.midi-staff-frame svg,
+.midi-staff-frame img {
   max-height: 360px;
 }
 
@@ -415,7 +422,8 @@ select {
   min-height: 320px;
 }
 
-.optic-k-frame svg {
+.optic-k-frame svg,
+.optic-k-frame img {
   max-height: 280px;
 }
 
@@ -423,7 +431,8 @@ select {
   min-height: 420px;
 }
 
-.evenness-frame svg {
+.evenness-frame svg,
+.evenness-frame img {
   max-height: 420px;
 }
 
@@ -447,7 +456,8 @@ select {
   min-height: 250px;
 }
 
-.compact-frame svg {
+.compact-frame svg,
+.compact-frame img {
   max-height: 240px;
 }
 
@@ -718,6 +728,10 @@ select {
   }
 
   .wide-field {
+    grid-column: span 1;
+  }
+
+  .art-card-double {
     grid-column: span 1;
   }
 }

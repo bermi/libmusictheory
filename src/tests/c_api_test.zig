@@ -227,7 +227,7 @@ test "c abi guitar functions" {
 }
 
 test "c abi svg generators" {
-    var svg_buf: [65536]u8 = [_]u8{0} ** 65536;
+    var svg_buf: [128 * 1024]u8 = [_]u8{0} ** (128 * 1024);
     const c_major = lmt_chord(c.LMT_CHORD_MAJOR, 0);
 
     const len1 = lmt_svg_clock_optc(c_major, @ptrCast(&svg_buf), @intCast(svg_buf.len));

@@ -117,19 +117,13 @@ fn renderEvennessFieldInternal(highlight_set: ?pcs.PitchClassSet, buf: []u8) []u
     const center_x = bounds.min_x + bounds.width / 2.0;
     const center_y = bounds.min_y + bounds.height / 2.0;
 
-    svg_quality.writeSvgPrelude(w, "500", "650", "0 0 500 650",
-        \\.ring,.dot{vector-effect:non-scaling-stroke}
-        \\.ring{fill:none;stroke:#8f949d;stroke-width:2;stroke-linecap:round}
-        \\.dot{stroke:white;stroke-width:1.25}
-        \\.dot-highlight{fill:none;stroke:#18242f;stroke-width:3.25;vector-effect:non-scaling-stroke}
-        \\
-    ) catch unreachable;
+    svg_quality.writeSvgPrelude(w, "500", "650", "0 0 500 650", "") catch unreachable;
     w.writeAll("<rect x=\"0\" y=\"0\" width=\"500\" height=\"650\" fill=\"white\" />\n") catch unreachable;
 
     var ring: u4 = 1;
     while (ring <= 5) : (ring += 1) {
         const r = 290.68884 * @as(f32, @floatFromInt(ring)) * scale;
-        w.print("<circle class=\"ring\" cx=\"{d:.2}\" cy=\"{d:.2}\" r=\"{d:.2}\" />\n", .{
+        w.print("<circle class=\"ring\" cx=\"{d:.2}\" cy=\"{d:.2}\" r=\"{d:.2}\" fill=\"none\" stroke=\"#8f949d\" stroke-width=\"2\" stroke-linecap=\"round\" />\n", .{
             target_width / 2.0,
             target_height / 2.0,
             r,
@@ -139,7 +133,7 @@ fn renderEvennessFieldInternal(highlight_set: ?pcs.PitchClassSet, buf: []u8) []u
     for (dots) |dot| {
         const fill = if (dot.cluster_free) "#099" else "#999";
         w.print(
-            "<circle class=\"dot\" data-cardinality=\"{d}\" cx=\"{d:.2}\" cy=\"{d:.2}\" r=\"9\" fill=\"{s}\" />\n",
+            "<circle class=\"dot\" data-cardinality=\"{d}\" cx=\"{d:.2}\" cy=\"{d:.2}\" r=\"9\" fill=\"{s}\" stroke=\"white\" stroke-width=\"1.25\" />\n",
             .{
                 dot.cardinality,
                 target_width / 2.0 + (dot.x - center_x) * scale,
@@ -175,8 +169,8 @@ fn renderEvennessFieldInternal(highlight_set: ?pcs.PitchClassSet, buf: []u8) []u
             const cluster_free = !cluster.hasCluster(safe_set);
             const chip_fill = if (cluster_free) "#0f766e" else "#5b6470";
 
-            w.print("<circle class=\"dot-highlight\" cx=\"{d:.2}\" cy=\"{d:.2}\" r=\"15.5\" />\n", .{ highlight_x, highlight_y }) catch unreachable;
-            w.print("<circle class=\"dot-highlight\" cx=\"{d:.2}\" cy=\"{d:.2}\" r=\"21.5\" opacity=\"0.28\" />\n", .{ highlight_x, highlight_y }) catch unreachable;
+            w.print("<circle class=\"dot-highlight\" cx=\"{d:.2}\" cy=\"{d:.2}\" r=\"15.5\" fill=\"none\" stroke=\"#18242f\" stroke-width=\"3.25\" />\n", .{ highlight_x, highlight_y }) catch unreachable;
+            w.print("<circle class=\"dot-highlight\" cx=\"{d:.2}\" cy=\"{d:.2}\" r=\"21.5\" fill=\"none\" stroke=\"#18242f\" stroke-width=\"3.25\" opacity=\"0.28\" />\n", .{ highlight_x, highlight_y }) catch unreachable;
             w.print("<rect x=\"20\" y=\"20\" width=\"160\" height=\"48\" rx=\"16\" fill=\"rgba(255,255,255,0.92)\" stroke=\"rgba(24,36,47,0.12)\" stroke-width=\"1.1\" />\n", .{}) catch unreachable;
             var focus_text_buf: [24]u8 = undefined;
             const focus_text = std.fmt.bufPrint(&focus_text_buf, "FOCUS {s}", .{label}) catch unreachable;

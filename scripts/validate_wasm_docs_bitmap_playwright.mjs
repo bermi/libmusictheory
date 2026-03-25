@@ -13,7 +13,7 @@ const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, "..");
 const docsDir = path.join(rootDir, "zig-out", "wasm-docs");
 const host = process.env.LMT_VALIDATION_HOST || "127.0.0.1";
-const maxDrift = Number.parseFloat(process.env.LMT_WASM_DOCS_BITMAP_MAX_DRIFT || "0.05");
+const maxDrift = Number.parseFloat(process.env.LMT_WASM_DOCS_BITMAP_MAX_DRIFT || "0.005");
 const minInkPixels = Number.parseInt(process.env.LMT_WASM_DOCS_BITMAP_MIN_INK || "1000", 10);
 const expectedBitmapSizes = {
   lmt_svg_clock_optc: { width: 840, height: 840 },
@@ -37,7 +37,7 @@ const keyboardSeamSample = {
   whiteKeyHeight: 124,
   blackKeyWidth: 14,
   blackKeyHeight: 76,
-  maxBlackEchoCenterSeamDelta: 18,
+  maxBlackEchoNeutralSeamLightness: 110,
 };
 
 function delay(ms) {
@@ -243,25 +243,23 @@ async function main() {
             sample.marginY + sample.blackKeyHeight * 0.52,
             sample.marginY + sample.blackKeyHeight * 0.62,
           ].map((value) => Math.max(0, Math.min(canvas.height - 1, Math.round(value * scaleY))));
-          const seamDeltas = sampleYs.map((sampleY) => {
+          const seamLightness = sampleYs.map((sampleY) => {
             const center = ctx.getImageData(sampleX, sampleY, 1, 1).data;
-            const left = ctx.getImageData(sampleX - 1, sampleY, 1, 1).data;
-            const right = ctx.getImageData(sampleX + 1, sampleY, 1, 1).data;
             const centerLightness = (center[0] + center[1] + center[2]) / 3;
-            const neighborLightness = ((left[0] + left[1] + left[2]) + (right[0] + right[1] + right[2])) / 6;
-            return centerLightness - neighborLightness;
+            const chroma = Math.max(center[0], center[1], center[2]) - Math.min(center[0], center[1], center[2]);
+            return chroma < 24 ? centerLightness : 0;
           });
           samples.push({
             midi,
-            maxCenterSeamDelta: Math.max(...seamDeltas),
+            maxNeutralSeamLightness: Math.max(...seamLightness),
           });
         }
 
         if (samples.length === 0) return { ok: false, reason: "no black-key seam probes generated" };
-        const maxBlackEchoCenterSeamDelta = Math.max(...samples.map((one) => one.maxCenterSeamDelta));
+        const maxBlackEchoNeutralSeamLightness = Math.max(...samples.map((one) => one.maxNeutralSeamLightness));
         return {
-          ok: maxBlackEchoCenterSeamDelta < sample.maxBlackEchoCenterSeamDelta,
-          maxBlackEchoCenterSeamDelta,
+          ok: maxBlackEchoNeutralSeamLightness < sample.maxBlackEchoNeutralSeamLightness,
+          maxBlackEchoNeutralSeamLightness,
           samples,
         };
       }, keyboardSeamSample);
