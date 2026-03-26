@@ -111,6 +111,13 @@ pub const GenericVoicing = struct {
     }
 };
 
+pub const PreferredVoicing = struct {
+    voicing: GenericVoicing,
+    row_count: usize,
+    bass_midi: ?pitch.MidiNote,
+    score: i32,
+};
+
 pub const CAGEDShape = enum(u3) {
     C,
     A,
@@ -246,6 +253,101 @@ pub fn generateVoicingsGeneric(chord_pcs: pcs.PitchClassSet, tuning: []const pit
     }
 
     return out[0..count];
+}
+
+pub fn bassMidiGeneric(frets: []const i8, tuning: []const pitch.MidiNote) ?pitch.MidiNote {
+    var bass: ?pitch.MidiNote = null;
+    const count = @min(frets.len, tuning.len);
+    for (0..count) |string| {
+        const fret = frets[string];
+        if (fret < 0) continue;
+        const midi = fretToMidiGeneric(string, @as(u8, @intCast(fret)), tuning) orelse continue;
+        if (bass == null or midi < bass.?) {
+            bass = midi;
+        }
+    }
+    return bass;
+}
+
+pub fn scoreVoicingGeneric(voicing: GenericVoicing, preferred_bass_pc: ?pitch.PitchClass) i32 {
+    var active_count: i32 = 0;
+    var open_count: i32 = 0;
+    var has_positive = false;
+    var min_positive: i32 = 0;
+    var max_active: i32 = 0;
+
+    for (voicing.frets) |fret| {
+        if (fret < 0) continue;
+        active_count += 1;
+        const fret_i32 = @as(i32, fret);
+        if (fret_i32 == 0) {
+            open_count += 1;
+        } else if (!has_positive) {
+            has_positive = true;
+            min_positive = fret_i32;
+        } else if (fret_i32 < min_positive) {
+            min_positive = fret_i32;
+        }
+        if (fret_i32 > max_active) {
+            max_active = fret_i32;
+        }
+    }
+
+    if (active_count == 0) return std.math.minInt(i32);
+
+    var span: i32 = 0;
+    if (has_positive) {
+        for (voicing.frets) |fret| {
+            if (fret <= 0) continue;
+            const fret_i32 = @as(i32, fret);
+            if (fret_i32 - min_positive > span) {
+                span = fret_i32 - min_positive;
+            }
+        }
+    }
+
+    var score: i32 = active_count * 800 + open_count * 300 - min_positive * 200 - span * 400 - max_active * 35;
+    if (preferred_bass_pc) |pc| {
+        const bass_midi = bassMidiGeneric(voicing.frets, voicing.tuning);
+        if (bass_midi != null and @as(pitch.PitchClass, @intCast(bass_midi.? % 12)) == pc) {
+            score += 600;
+        }
+    }
+    return score;
+}
+
+pub fn preferredVoicingGeneric(
+    chord_pcs: pcs.PitchClassSet,
+    tuning: []const pitch.MidiNote,
+    max_fret: u8,
+    max_span: u8,
+    preferred_bass_pc: ?pitch.PitchClass,
+    out: []GenericVoicing,
+    out_fret_storage: []i8,
+) ?PreferredVoicing {
+    const generated = generateVoicingsGeneric(chord_pcs, tuning, max_fret, max_span, out, out_fret_storage);
+    if (generated.len == 0) return null;
+
+    var best = PreferredVoicing{
+        .voicing = generated[0],
+        .row_count = generated.len,
+        .bass_midi = bassMidiGeneric(generated[0].frets, tuning),
+        .score = scoreVoicingGeneric(generated[0], preferred_bass_pc),
+    };
+
+    for (generated[1..]) |voicing| {
+        const score = scoreVoicingGeneric(voicing, preferred_bass_pc);
+        if (score > best.score) {
+            best = .{
+                .voicing = voicing,
+                .row_count = generated.len,
+                .bass_midi = bassMidiGeneric(voicing.frets, tuning),
+                .score = score,
+            };
+        }
+    }
+
+    return best;
 }
 
 pub fn generateVoicings(chord_pcs: pcs.PitchClassSet, tuning: Tuning, max_span: u5, out: []GuitarVoicing) []GuitarVoicing {

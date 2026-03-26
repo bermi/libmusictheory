@@ -818,51 +818,23 @@ function fretBassMidi(frets, tuning) {
   return bass;
 }
 
-function scoreFretVoicing(frets, tuning, preferredBassPc = null) {
-  const activeFrets = frets.filter((fret) => fret >= 0);
-  if (activeFrets.length === 0) return Number.NEGATIVE_INFINITY;
-  const nonOpenFrets = activeFrets.filter((fret) => fret > 0);
-  const minPositive = nonOpenFrets.length > 0 ? Math.min(...nonOpenFrets) : 0;
-  const maxActive = Math.max(...activeFrets);
-  const span = nonOpenFrets.length > 0 ? Math.max(...nonOpenFrets) - minPositive : 0;
-  const openCount = activeFrets.filter((fret) => fret === 0).length;
-  const bassMidi = fretBassMidi(frets, tuning);
-  let score = activeFrets.length * 8 + openCount * 3 - minPositive * 2 - span * 4 - maxActive * 0.35;
-  if (preferredBassPc != null && bassMidi != null && (bassMidi % 12) === preferredBassPc) {
-    score += 6;
-  }
-  return score;
-}
-
-function generatePreferredFretVoicing(arena, setValue, {
+function preferredFretVoicing(arena, setValue, {
   tuning = STANDARD_GUITAR_TUNING,
   tuningLabel = STANDARD_GUITAR_LABEL,
   maxFret = MIDI_FRET_MAX_FRET,
   maxSpan = MIDI_FRET_MAX_SPAN,
-  rowCap = MIDI_FRET_ROW_CAP,
   preferredBassPc = null,
 } = {}) {
   if (!setValue) return null;
   const tuningPtr = writeU8Array(arena, tuning);
-  const voicingPtr = arena.alloc(Math.max(1, rowCap * tuning.length), 1);
-  const rowCount = wasm.lmt_generate_voicings_n(setValue, tuningPtr, tuning.length, maxFret, maxSpan, voicingPtr, rowCap);
+  const voicingPtr = arena.alloc(Math.max(1, tuning.length), 1);
+  const preferredBassValue = preferredBassPc == null ? 255 : preferredBassPc;
+  const rowCount = wasm.lmt_preferred_voicing_n(setValue, tuningPtr, tuning.length, maxFret, maxSpan, preferredBassValue, voicingPtr, tuning.length);
   if (rowCount === 0) {
     return null;
   }
 
-  let bestFrets = null;
-  let bestScore = Number.NEGATIVE_INFINITY;
-  for (let row = 0; row < rowCount; row += 1) {
-    const start = voicingPtr + row * tuning.length;
-    const frets = Array.from(i8().subarray(start, start + tuning.length));
-    const score = scoreFretVoicing(frets, tuning, preferredBassPc);
-    if (score > bestScore) {
-      bestScore = score;
-      bestFrets = frets;
-    }
-  }
-
-  if (!bestFrets) return null;
+  const bestFrets = Array.from(i8().subarray(voicingPtr, voicingPtr + tuning.length));
   const { windowStart, visibleFrets } = fretWindowForVoicing(bestFrets);
   return {
     frets: bestFrets,
@@ -1550,11 +1522,11 @@ function renderMidiScene() {
     const contextOverlap = wasm.lmt_pcs_cardinality(setValue & context.setValue);
     const outsideCount = wasm.lmt_pcs_cardinality(setValue) - contextOverlap;
     const currentFretVoicing = displayNotes.length > 0
-      ? generatePreferredFretVoicing(arena, setValue, { preferredBassPc })
+      ? preferredFretVoicing(arena, setValue, { preferredBassPc })
       : null;
     const suggestions = buildMidiSuggestions(arena, setValue, displayNotes, context).map((suggestion) => ({
       ...suggestion,
-      fretPreview: generatePreferredFretVoicing(arena, suggestion.expanded, { preferredBassPc }),
+      fretPreview: preferredFretVoicing(arena, suggestion.expanded, { preferredBassPc }),
     }));
     const displayNotesLabel = displayNotes.length > 0
       ? displayNotes.map((midi) => midiName(midi, context.tonic, context.quality))

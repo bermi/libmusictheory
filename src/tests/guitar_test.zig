@@ -65,6 +65,30 @@ test "generic voicing generation includes open major voicing on four strings" {
     try testing.expect(found_open);
 }
 
+test "preferred generic voicing returns a deterministic compact C-major shape in standard tuning" {
+    const tuning = guitar.tunings.STANDARD;
+    var voicings: [128]guitar.GenericVoicing = undefined;
+    var fret_storage: [128 * tuning.len]i8 = undefined;
+
+    const preferred = guitar.preferredVoicingGeneric(
+        pcs.C_MAJOR_TRIAD,
+        tuning[0..],
+        12,
+        4,
+        null,
+        &voicings,
+        &fret_storage,
+    ) orelse {
+        try testing.expect(false);
+        return;
+    };
+
+    try testing.expect(preferred.row_count > 0);
+    try testing.expectEqualSlices(i8, &[_]i8{ 0, 3, 2, 0, 1, 0 }, preferred.voicing.frets);
+    try testing.expectEqual(@as(?pitch.MidiNote, 40), preferred.bass_midi);
+    try testing.expect(preferred.score > 0);
+}
+
 test "generic pitch-class guide and url helpers support four strings" {
     const tuning = [_]pitch.MidiNote{ 55, 60, 64, 67 };
     const selected = [_]guitar.GenericFretPosition{

@@ -35,6 +35,7 @@ const lmt_fret_to_midi_n = api.lmt_fret_to_midi_n;
 const lmt_midi_to_fret_positions = api.lmt_midi_to_fret_positions;
 const lmt_midi_to_fret_positions_n = api.lmt_midi_to_fret_positions_n;
 const lmt_generate_voicings_n = api.lmt_generate_voicings_n;
+const lmt_preferred_voicing_n = api.lmt_preferred_voicing_n;
 const lmt_pitch_class_guide_n = api.lmt_pitch_class_guide_n;
 const lmt_frets_to_url_n = api.lmt_frets_to_url_n;
 const lmt_url_to_frets_n = api.lmt_url_to_frets_n;
@@ -177,6 +178,11 @@ test "c abi guitar functions" {
         }
     }
     try testing.expect(found_open);
+
+    var preferred_frets: [6]i8 = [_]i8{-1} ** 6;
+    const preferred_row_count = lmt_preferred_voicing_n(pcs.C_MAJOR_TRIAD, @ptrCast(&tuning), tuning.len, 12, 4, 255, @ptrCast(&preferred_frets), preferred_frets.len);
+    try testing.expect(preferred_row_count > 0);
+    try testing.expectEqualSlices(i8, &[_]i8{ 0, 3, 2, 0, 1, 0 }, preferred_frets[0..tuning.len]);
 
     const selected = [_]LmtFretPos{
         .{ .string = 0, .fret = 0 },

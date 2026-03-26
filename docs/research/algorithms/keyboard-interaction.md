@@ -198,6 +198,16 @@ Given the current sounding PCS and an explicit selected tonic/mode, rank single 
 
 This keeps the live gallery suggestions on the stable public theory surface instead of inventing a separate hidden harmonic engine. The user-facing result is intentionally deterministic: if the tonic/mode changes, spelling, summary text, suggestion ordering, and snapshot recall all change with it.
 
+### 10. Compact Guitar Preview Selection
+
+The live MIDI scene also shows compact `EADGBE` previews for the current sounding set and for ranked next-step suggestions. The gallery no longer generates every candidate voicing in JS and scores them there. It calls the experimental library helper `lmt_preferred_voicing_n`, which:
+
+- generates the playable candidate rows for the requested PCS and tuning
+- scores the rows inside Zig with the deterministic compact-voicing heuristic from `guitar-voicing.md`
+- writes only the chosen voicing back to the caller
+
+This keeps the preview policy consistent across the browser gallery and any future embedded host that needs the same “best compact fretboard” suggestion without running JS.
+
 ## Data Structures Used
 
 - `KeyboardState`: struct { selected_notes: bounded set of MIDI notes, accid_pref: AccidentalPreference }

@@ -38,6 +38,7 @@ Address the remaining small public-surface rough edges discovered during RC revi
   - replace the live MIDI scene's triad proxy with a real public piano-staff API that paints treble, bass, or grand staff from arbitrary MIDI note arrays
   - add live MIDI fret guidance in the gallery so the current held set and ranked next-step suggestions both expose compact `EADGBE` voicing previews
   - provide a stable Zig `0.15.x` wrapper for repo builds so `verify.sh`, release smoke, docs, and gallery commands do not depend on the broken host `zig build` path on macOS arm64
+  - move the live MIDI compact-fret voicing selector out of gallery JS and into an explicitly experimental library helper so browser and embedded hosts use the same deterministic selection policy
 
 ## Verification-First Guardrails
 

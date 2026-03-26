@@ -23,6 +23,7 @@ The stable public surface is intentionally smaller than the full repository.
 - Experimental surface:
   - `lmt_raster_is_enabled`
   - `lmt_raster_demo_rgba`
+  - `lmt_preferred_voicing_n`
 - Internal surface:
   - `/Users/bermi/code/libmusictheory/include/libmusictheory_compat.h`
   - Harmonious parity/proof/SPA bundles:
@@ -49,6 +50,7 @@ This repository now has an explicit stable public surface.
 - Experimental:
   - `lmt_raster_is_enabled`
   - `lmt_raster_demo_rgba`
+  - `lmt_preferred_voicing_n`
   - these are useful for demos and internal rendering work, but not yet the stable embedding contract
 - Internal:
   - everything declared only in `/Users/bermi/code/libmusictheory/include/libmusictheory_compat.h`
@@ -62,6 +64,7 @@ Return-value rules are explicit:
 - SVG writers such as `lmt_svg_clock_optc`, `lmt_svg_evenness_chart`, `lmt_svg_evenness_field`, `lmt_svg_fret`, `lmt_svg_fret_n`, `lmt_svg_chord_staff`, and `lmt_svg_key_staff` return the total SVG byte length required; pass `buf = NULL` and `buf_size = 0` to size the buffer first
 - `lmt_frets_to_url_n` returns the bytes actually written and requires a caller buffer up front
 - experimental raster writers return `0` on disabled-backend, invalid-input, or insufficient-buffer cases
+- experimental fret helpers such as `lmt_preferred_voicing_n` return `0` on invalid-input, no-result, or insufficient-buffer cases
 
 ## Memory And Lifetime
 

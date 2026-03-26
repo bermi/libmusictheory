@@ -540,6 +540,33 @@ pub export fn lmt_generate_voicings_n(chord_set: u16, tuning_ptr: [*c]const u8, 
     return @as(u32, @intCast(generated.len));
 }
 
+pub export fn lmt_preferred_voicing_n(chord_set: u16, tuning_ptr: [*c]const u8, tuning_count: u32, max_fret: u8, max_span: u8, preferred_bass_pc: u8, out_frets: [*c]i8, out_fret_cap: u32) callconv(.c) u32 {
+    var tuning_buf: [MAX_PARAMETRIC_FRET_STRINGS]pitch.MidiNote = undefined;
+    const tuning = decodeTuningGeneric(tuning_ptr, tuning_count, &tuning_buf);
+    if (tuning.len == 0 or out_frets == null) return 0;
+
+    const write_cap = @as(usize, @intCast(out_fret_cap));
+    if (write_cap < tuning.len) return 0;
+
+    const preferred_pc: ?pitch.PitchClass = if (preferred_bass_pc < 12)
+        @as(pitch.PitchClass, @intCast(preferred_bass_pc))
+    else
+        null;
+
+    const preferred = guitar.preferredVoicingGeneric(
+        maskPitchClassSet(chord_set),
+        tuning,
+        max_fret,
+        max_span,
+        preferred_pc,
+        generic_voicing_meta_buf[0..MAX_C_API_GENERIC_VOICINGS],
+        generic_voicing_fret_buf[0 .. MAX_C_API_GENERIC_VOICINGS * tuning.len],
+    ) orelse return 0;
+
+    @memcpy(out_frets[0..tuning.len], preferred.voicing.frets);
+    return @as(u32, @intCast(preferred.row_count));
+}
+
 pub export fn lmt_pitch_class_guide_n(selected_ptr: [*c]const LmtFretPos, selected_count: u32, min_fret: u8, max_fret: u8, tuning_ptr: [*c]const u8, tuning_count: u32, out: [*c]LmtGuideDot, out_cap: u32) callconv(.c) u32 {
     var tuning_buf: [MAX_PARAMETRIC_FRET_STRINGS]pitch.MidiNote = undefined;
     const tuning = decodeTuningGeneric(tuning_ptr, tuning_count, &tuning_buf);

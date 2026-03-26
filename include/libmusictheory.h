@@ -14,8 +14,9 @@ extern "C" {
  * Surface classes:
  * - Stable public C ABI: declarations in this header, except those marked as
  *   experimental.
- * - Experimental APIs: lmt_raster_is_enabled, lmt_raster_demo_rgba, and the
- *   method-specific RGBA bitmap renderers below.
+ * - Experimental APIs: lmt_raster_is_enabled, lmt_raster_demo_rgba,
+ *   lmt_preferred_voicing_n, and the method-specific RGBA bitmap renderers
+ *   below.
  * - Internal Harmonious verification/proof APIs: declarations in
  *   libmusictheory_compat.h.
  *
@@ -145,6 +146,8 @@ uint32_t lmt_svg_piano_staff(const lmt_midi_note *notes, uint32_t note_count, lm
 /* Experimental APIs: useful for demos and renderer work, not yet stable ABI. */
 uint32_t lmt_raster_is_enabled(void);
 uint32_t lmt_raster_demo_rgba(uint32_t width, uint32_t height, uint8_t *out_rgba, uint32_t out_rgba_size);
+/* preferred_bass_pc >= 12 means “no preferred bass pitch class” */
+uint32_t lmt_preferred_voicing_n(lmt_pitch_class_set chord_set, const uint8_t *tuning, uint32_t tuning_count, uint8_t max_fret, uint8_t max_span, uint8_t preferred_bass_pc, int8_t *out_frets, uint32_t out_fret_cap);
 uint32_t lmt_bitmap_clock_optc_rgba(lmt_pitch_class_set set, uint32_t width, uint32_t height, uint8_t *out_rgba, uint32_t out_rgba_size);
 uint32_t lmt_bitmap_optic_k_group_rgba(lmt_pitch_class_set set, uint32_t width, uint32_t height, uint8_t *out_rgba, uint32_t out_rgba_size);
 uint32_t lmt_bitmap_evenness_chart_rgba(uint32_t width, uint32_t height, uint8_t *out_rgba, uint32_t out_rgba_size);

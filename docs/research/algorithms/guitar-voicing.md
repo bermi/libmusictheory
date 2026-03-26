@@ -148,6 +148,36 @@ Note: Exhaustive generation is expensive. Practical implementations use CAGED sh
 
 **Complexity**: O(MAX_FRET * 6^MAX_SPAN) — bounded but large; pruning essential
 
+### 4b. Preferred Compact Voicing Selection
+
+The standalone gallery and public experimental helper `lmt_preferred_voicing_n` do not expose every generated voicing to the UI and then score them in JavaScript. The library now applies a deterministic compact-voicing scorer directly in Zig after `generate_voicings`.
+
+For each generated voicing:
+
+```
+score =
+    active_string_count * 800
+  + open_string_count * 300
+  - min_positive_fret * 200
+  - hand_span * 400
+  - max_active_fret * 35
+
+if preferred_bass_pc is set and bass_midi % 12 == preferred_bass_pc:
+    score += 600
+```
+
+Selection rules:
+
+- reject silent rows
+- prefer more sounding strings
+- prefer open strings
+- prefer lower fret windows
+- prefer narrower hand span
+- mildly penalize high absolute fret positions
+- optionally reward a bass note that matches the currently sounding lowest pitch class
+
+Tie-breaking stays generation-order deterministic: the first row with the highest score wins.
+
 ### 5. CAGED System Position Computation
 
 This section is intentionally six-string and standard-guitar specific.
