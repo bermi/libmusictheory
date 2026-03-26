@@ -26,6 +26,7 @@ const lmt_is_cluster_free = api.lmt_is_cluster_free;
 const lmt_evenness_distance = api.lmt_evenness_distance;
 const lmt_scale = api.lmt_scale;
 const lmt_mode = api.lmt_mode;
+const lmt_mode_spelling_quality = api.lmt_mode_spelling_quality;
 const lmt_spell_note = api.lmt_spell_note;
 const lmt_chord = api.lmt_chord;
 const lmt_chord_name = api.lmt_chord_name;
@@ -35,6 +36,7 @@ const lmt_fret_to_midi_n = api.lmt_fret_to_midi_n;
 const lmt_midi_to_fret_positions = api.lmt_midi_to_fret_positions;
 const lmt_midi_to_fret_positions_n = api.lmt_midi_to_fret_positions_n;
 const lmt_generate_voicings_n = api.lmt_generate_voicings_n;
+const lmt_rank_context_suggestions = api.lmt_rank_context_suggestions;
 const lmt_preferred_voicing_n = api.lmt_preferred_voicing_n;
 const lmt_pitch_class_guide_n = api.lmt_pitch_class_guide_n;
 const lmt_frets_to_url_n = api.lmt_frets_to_url_n;
@@ -74,11 +76,14 @@ test "c abi header layout and constants" {
     try testing.expectEqual(@as(usize, 2), @sizeOf(c.lmt_pitch_class_set));
     try testing.expectEqual(@as(usize, 2), @sizeOf(c.lmt_key_context));
     try testing.expectEqual(@as(usize, 8), @sizeOf(c.lmt_guide_dot));
+    try testing.expectEqual(@as(usize, 12), @sizeOf(c.lmt_context_suggestion));
     try testing.expectEqual(@as(usize, 0), @offsetOf(c.lmt_key_context, "tonic"));
     try testing.expectEqual(@as(usize, 1), @offsetOf(c.lmt_key_context, "quality"));
     try testing.expectEqual(@as(usize, 0), @offsetOf(c.lmt_guide_dot, "position"));
     try testing.expectEqual(@as(usize, 2), @offsetOf(c.lmt_guide_dot, "pitch_class"));
     try testing.expectEqual(@as(usize, 4), @offsetOf(c.lmt_guide_dot, "opacity"));
+    try testing.expectEqual(@as(usize, 4), @offsetOf(c.lmt_context_suggestion, "expanded_set"));
+    try testing.expectEqual(@as(usize, 6), @offsetOf(c.lmt_context_suggestion, "pitch_class"));
     try testing.expectEqual(@as(c_int, 0), c.LMT_SCALE_DIATONIC);
     try testing.expectEqual(@as(c_int, 16), c.LMT_MODE_WHOLE_TONE);
     try testing.expectEqual(@as(c_int, 3), c.LMT_CHORD_AUGMENTED);
@@ -123,10 +128,29 @@ test "c abi scales modes and spelling" {
 
     const dorian = lmt_mode(c.LMT_MODE_DORIAN, 0);
     try testing.expectEqual(@as(u16, pcs.fromList(&[_]u4{ 0, 2, 3, 5, 7, 9, 10 })), dorian);
+    try testing.expectEqual(@as(u8, c.LMT_KEY_MAJOR), lmt_mode_spelling_quality(0, c.LMT_MODE_IONIAN));
+    try testing.expectEqual(@as(u8, c.LMT_KEY_MINOR), lmt_mode_spelling_quality(2, c.LMT_MODE_DORIAN));
 
     const key_ctx = LmtKeyContext{ .tonic = 0, .quality = c.LMT_KEY_MAJOR };
     const spelled = std.mem.sliceTo(@as([*:0]const u8, @ptrCast(lmt_spell_note(1, key_ctx))), 0);
     try testing.expectEqualStrings("C#", spelled);
+}
+
+test "c abi context suggestion ranking" {
+    const notes = [_]u8{ 60, 64, 67 };
+    var out: [12]c.lmt_context_suggestion = undefined;
+    const total = lmt_rank_context_suggestions(pcs.C_MAJOR_TRIAD, @ptrCast(&notes), notes.len, 0, c.LMT_MODE_IONIAN, @ptrCast(&out), out.len);
+
+    try testing.expect(total >= 4);
+    try testing.expectEqual(@as(u8, 1), out[0].in_context);
+    try testing.expect(out[0].score >= out[1].score);
+
+    var pcs_found = [_]bool{false} ** 12;
+    for (out[0..4]) |row| pcs_found[row.pitch_class] = true;
+    try testing.expect(pcs_found[2]);
+    try testing.expect(pcs_found[5]);
+    try testing.expect(pcs_found[9]);
+    try testing.expect(pcs_found[11]);
 }
 
 test "c abi chords and roman numerals" {

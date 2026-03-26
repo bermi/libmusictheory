@@ -15,6 +15,7 @@ extern "C" {
  * - Stable public C ABI: declarations in this header, except those marked as
  *   experimental.
  * - Experimental APIs: lmt_raster_is_enabled, lmt_raster_demo_rgba,
+ *   lmt_mode_spelling_quality, lmt_rank_context_suggestions,
  *   lmt_preferred_voicing_n, and the method-specific RGBA bitmap renderers
  *   below.
  * - Internal Harmonious verification/proof APIs: declarations in
@@ -100,6 +101,17 @@ typedef struct {
     float opacity;
 } lmt_guide_dot;
 
+typedef struct {
+    int32_t score;
+    lmt_pitch_class_set expanded_set;
+    uint8_t pitch_class;
+    uint8_t overlap;
+    uint8_t outside_count;
+    uint8_t in_context;
+    uint8_t cluster_free;
+    uint8_t reads_as_named_chord;
+} lmt_context_suggestion;
+
 lmt_pitch_class_set lmt_pcs_from_list(const lmt_pitch_class *pcs, uint8_t count);
 uint8_t lmt_pcs_to_list(lmt_pitch_class_set set, lmt_pitch_class *out);
 uint8_t lmt_pcs_cardinality(lmt_pitch_class_set set);
@@ -146,6 +158,8 @@ uint32_t lmt_svg_piano_staff(const lmt_midi_note *notes, uint32_t note_count, lm
 /* Experimental APIs: useful for demos and renderer work, not yet stable ABI. */
 uint32_t lmt_raster_is_enabled(void);
 uint32_t lmt_raster_demo_rgba(uint32_t width, uint32_t height, uint8_t *out_rgba, uint32_t out_rgba_size);
+uint8_t lmt_mode_spelling_quality(lmt_pitch_class tonic, lmt_mode_type mode_type);
+uint32_t lmt_rank_context_suggestions(lmt_pitch_class_set set, const lmt_midi_note *midi_notes, uint32_t note_count, lmt_pitch_class tonic, lmt_mode_type mode_type, lmt_context_suggestion *out, uint32_t out_cap);
 /* preferred_bass_pc >= 12 means “no preferred bass pitch class” */
 uint32_t lmt_preferred_voicing_n(lmt_pitch_class_set chord_set, const uint8_t *tuning, uint32_t tuning_count, uint8_t max_fret, uint8_t max_span, uint8_t preferred_bass_pc, int8_t *out_frets, uint32_t out_fret_cap);
 uint32_t lmt_bitmap_clock_optc_rgba(lmt_pitch_class_set set, uint32_t width, uint32_t height, uint8_t *out_rgba, uint32_t out_rgba_size);

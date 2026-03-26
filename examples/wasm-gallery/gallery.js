@@ -2,6 +2,7 @@ const NOTE_NAMES = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", 
 const MODE_AEOLIAN = 5;
 const SCALE_DIATONIC = 0;
 const GUIDE_DOT_BYTES = 8;
+const CONTEXT_SUGGESTION_BYTES = 12;
 const decoder = new TextDecoder();
 const encoder = new TextEncoder();
 const CUSTOM_PRESET_VALUE = "custom";
@@ -56,6 +57,7 @@ const REQUIRED_EXPORTS = [
   "lmt_evenness_distance",
   "lmt_scale",
   "lmt_mode",
+  "lmt_mode_spelling_quality",
   "lmt_spell_note",
   "lmt_spell_note_parts",
   "lmt_chord",
@@ -65,6 +67,7 @@ const REQUIRED_EXPORTS = [
   "lmt_fret_to_midi_n",
   "lmt_midi_to_fret_positions_n",
   "lmt_generate_voicings_n",
+  "lmt_rank_context_suggestions",
   "lmt_pitch_class_guide_n",
   "lmt_frets_to_url_n",
   "lmt_url_to_frets_n",
@@ -383,18 +386,64 @@ function modeSet(tonic, modeType) {
   return wasm.lmt_mode(modeType, tonic);
 }
 
-function inferModeSpellingQuality(modeSetValue, tonic) {
-  const minorThird = (modeSetValue & (1 << ((tonic + 3) % 12))) !== 0;
-  const majorThird = (modeSetValue & (1 << ((tonic + 4) % 12))) !== 0;
-  if (minorThird && !majorThird) return 1;
-  return 0;
+function modeSpellingQuality(tonic, modeType) {
+  return wasm.lmt_mode_spelling_quality(tonic % 12, modeType);
+}
+
+function contextSuggestions(arena, setValue, midiNotes, context) {
+  if (setValue === 0) return [];
+  const midiPtr = writeU8Array(arena, midiNotes);
+  const outCap = 12;
+  const outPtr = arena.alloc(outCap * CONTEXT_SUGGESTION_BYTES, 4);
+  const total = wasm.lmt_rank_context_suggestions(
+    setValue,
+    midiPtr,
+    midiNotes.length,
+    context.tonic,
+    context.modeType,
+    outPtr,
+    outCap,
+  );
+  const count = Math.min(total, outCap);
+  const view = new DataView(memory.buffer, outPtr, count * CONTEXT_SUGGESTION_BYTES);
+  const suggestions = [];
+  for (let index = 0; index < count; index += 1) {
+    const offset = index * CONTEXT_SUGGESTION_BYTES;
+    const expanded = view.getUint16(offset + 4, true);
+    const pc = view.getUint8(offset + 6);
+    const overlap = view.getUint8(offset + 7);
+    const outsideCount = view.getUint8(offset + 8);
+    const inContext = view.getUint8(offset + 9) === 1;
+    const clusterFree = view.getUint8(offset + 10) === 1;
+    const readsAsNamedChord = view.getUint8(offset + 11) === 1;
+    const rawName = rawChordName(expanded);
+    const reason = [];
+    reason.push(inContext ? `inside ${context.label}` : `outside ${context.label}`);
+    reason.push(`context overlap ${overlap}/${wasm.lmt_pcs_cardinality(expanded)}`);
+    if (readsAsNamedChord && rawName && rawName !== "Unknown") reason.push(`reads as ${rawName}`);
+    reason.push(clusterFree ? "avoids cluster pressure" : "adds cluster pressure");
+    suggestions.push({
+      pc,
+      name: spellNote(pc, context.tonic, context.quality),
+      chordLabel: friendlyChordName(rawName),
+      reason: reason.join(" · "),
+      score: view.getInt32(offset, true),
+      expanded,
+      overlap,
+      outsideCount,
+      inContext,
+      clusterFree,
+      readsAsNamedChord,
+    });
+  }
+  return suggestions.slice(0, 4);
 }
 
 function currentMidiContext() {
   const tonic = Number.parseInt(midiTonicEl.value, 10);
   const modeType = Number.parseInt(midiModeEl.value, 10);
   const setValue = modeSet(tonic, modeType);
-  const quality = inferModeSpellingQuality(setValue, tonic);
+  const quality = modeSpellingQuality(tonic, modeType);
   return {
     tonic,
     modeType,
@@ -1447,47 +1496,6 @@ function renderMidiSnapshotCards() {
     .join("");
 }
 
-function buildMidiSuggestions(arena, setValue, midiNotes, context) {
-  if (setValue === 0) return [];
-  const lastPc = midiNotes.length > 0 ? midiNotes[midiNotes.length - 1] % 12 : null;
-  const currentOverlap = wasm.lmt_pcs_cardinality(setValue & context.setValue);
-  const suggestions = [];
-  for (let pc = 0; pc < 12; pc += 1) {
-    if ((setValue & (1 << pc)) !== 0) continue;
-    const expanded = setValue | (1 << pc);
-    const rawName = rawChordName(expanded);
-    const chordLabel = friendlyChordName(rawName);
-    const inContext = (context.setValue & (1 << pc)) !== 0;
-    const overlap = wasm.lmt_pcs_cardinality(expanded & context.setValue);
-    const outside = wasm.lmt_pcs_cardinality(expanded) - overlap;
-    const overlapGain = overlap - currentOverlap;
-    const clusterFree = wasm.lmt_is_cluster_free(expanded) === 1;
-    const evenness = wasm.lmt_evenness_distance(expanded);
-    const stepDistance = lastPc == null
-      ? 0
-      : Math.min((pc - lastPc + 12) % 12, (lastPc - pc + 12) % 12);
-    const rootDistance = Math.min((pc - context.tonic + 12) % 12, (context.tonic - pc + 12) % 12);
-    let score = (inContext ? 16 : -8) + (overlapGain * 8) - (outside * 4) + (clusterFree ? 3 : -4) + ((rawName && rawName !== "Unknown") ? 5 : 0) - (evenness * 0.12) - (stepDistance * 0.4) - (rootDistance * 0.15);
-    if ((expanded & context.setValue) === expanded) score += 5;
-    if (midiNotes.length <= 2 && rawName && rawName !== "Unknown") score += 3;
-    const reason = [];
-    reason.push(inContext ? `inside ${context.label}` : `outside ${context.label}`);
-    reason.push(`context overlap ${overlap}/${wasm.lmt_pcs_cardinality(expanded)}`);
-    if (rawName && rawName !== "Unknown") reason.push(`reads as ${rawName}`);
-    reason.push(clusterFree ? "avoids cluster pressure" : "adds cluster pressure");
-    suggestions.push({
-      pc,
-      name: spellNote(pc, context.tonic, context.quality),
-      chordLabel,
-      reason: reason.join(" · "),
-      score,
-      expanded,
-    });
-  }
-  suggestions.sort((a, b) => b.score - a.score || a.pc - b.pc);
-  return suggestions.slice(0, 4);
-}
-
 function renderMidiScene() {
   const liveNotes = currentLiveMidiNotes();
   const displayNotes = currentDisplayMidiNotes();
@@ -1524,7 +1532,7 @@ function renderMidiScene() {
     const currentFretVoicing = displayNotes.length > 0
       ? preferredFretVoicing(arena, setValue, { preferredBassPc })
       : null;
-    const suggestions = buildMidiSuggestions(arena, setValue, displayNotes, context).map((suggestion) => ({
+    const suggestions = contextSuggestions(arena, setValue, displayNotes, context).map((suggestion) => ({
       ...suggestion,
       fretPreview: preferredFretVoicing(arena, suggestion.expanded, { preferredBassPc }),
     }));

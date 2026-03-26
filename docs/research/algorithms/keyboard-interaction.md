@@ -196,7 +196,11 @@ Given the current sounding PCS and an explicit selected tonic/mode, rank single 
 - step distance from the last played tone
 - root distance from the selected tonic
 
-This keeps the live gallery suggestions on the stable public theory surface instead of inventing a separate hidden harmonic engine. The user-facing result is intentionally deterministic: if the tonic/mode changes, spelling, summary text, suggestion ordering, and snapshot recall all change with it.
+This ranking now lives in the experimental library helper `lmt_rank_context_suggestions`. The gallery no longer scores candidate additions in JS. It asks the library for the ranked rows, then only formats the returned facts into user-facing copy. The user-facing result is intentionally deterministic: if the tonic/mode changes, spelling, summary text, suggestion ordering, and snapshot recall all change with it.
+
+### 9.1. Mode Spelling Quality
+
+The live gallery also no longer infers “major-like vs minor-like” mode spelling in JS. It uses the experimental helper `lmt_mode_spelling_quality`, which classifies the selected tonic/mode lens by checking whether the active mode orbit contains a minor third without a major third above the tonic. This keeps note spelling policy aligned between the browser gallery and any other host using the same live-context surface.
 
 ### 10. Compact Guitar Preview Selection
 

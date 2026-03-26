@@ -50,6 +50,8 @@ This repository now has an explicit stable public surface.
 - Experimental:
   - `lmt_raster_is_enabled`
   - `lmt_raster_demo_rgba`
+  - `lmt_mode_spelling_quality`
+  - `lmt_rank_context_suggestions`
   - `lmt_preferred_voicing_n`
   - these are useful for demos and internal rendering work, but not yet the stable embedding contract
 - Internal:
@@ -193,7 +195,7 @@ The standalone gallery is intentionally curated around concrete musical-discover
 
 These scenes are driven by the authored preset manifest at `/Users/bermi/code/libmusictheory/examples/wasm-gallery/gallery-presets.json`.
 
-For the live MIDI scene, run the gallery in a Chromium-family browser with Web MIDI enabled on `localhost` or `https:`. Sustain (`CC64`) is tracked as sounding state, the selected tonic/mode drives spelling and suggestion ranking, and middle pedal / sostenuto (`CC66`) stores clickable snapshots that restore both notes and context. The gallery also exposes a global preview-mode toggle so every large visualization can switch between SVG large vector previews and direct RGBA bitmap previews rendered by the library itself.
+For the live MIDI scene, run the gallery in a Chromium-family browser with Web MIDI enabled on `localhost` or `https:`. Sustain (`CC64`) is tracked as sounding state, the selected tonic/mode drives spelling quality and next-step suggestion ranking through experimental library helpers, and middle pedal / sostenuto (`CC66`) stores clickable snapshots that restore both notes and context. The gallery also exposes a global preview-mode toggle so every large visualization can switch between SVG large vector previews and direct RGBA bitmap previews rendered by the library itself.
 
 On macOS arm64, use `/Users/bermi/code/libmusictheory/zigw` instead of a raw `zig` binary. The wrapper pins a working Zig `0.15.x` toolchain for this repo and avoids the host-side `zig build` linker failure that affects this machine.
 

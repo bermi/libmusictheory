@@ -56,3 +56,27 @@ test "playback style" {
     const diatonic = pcs.DIATONIC;
     try testing.expectEqual(keyboard.PlaybackMode.sequential, keyboard.playbackStyle(diatonic));
 }
+
+test "mode spelling quality follows modal third" {
+    try testing.expectEqual(@import("../key.zig").KeyQuality.major, keyboard.modeSpellingQuality(0, .ionian));
+    try testing.expectEqual(@import("../key.zig").KeyQuality.minor, keyboard.modeSpellingQuality(2, .dorian));
+}
+
+test "context suggestions stay inside selected mode first" {
+    const midi_notes = [_]pitch.MidiNote{ 60, 64, 67 };
+    var suggestions: [keyboard.MAX_CONTEXT_SUGGESTIONS]keyboard.ContextSuggestion = undefined;
+    const ranked = keyboard.rankContextSuggestions(pcs.C_MAJOR_TRIAD, &midi_notes, pitch.pc.C, .ionian, &suggestions);
+
+    try testing.expect(ranked.len >= 4);
+    try testing.expect(ranked[0].in_context);
+    try testing.expect(ranked[1].in_context);
+    try testing.expect(ranked[2].in_context);
+    try testing.expect(ranked[3].in_context);
+
+    var pcs_found = [_]bool{false} ** 12;
+    for (ranked[0..4]) |row| pcs_found[row.pitch_class] = true;
+    try testing.expect(pcs_found[pitch.pc.D]);
+    try testing.expect(pcs_found[pitch.pc.F]);
+    try testing.expect(pcs_found[pitch.pc.A]);
+    try testing.expect(pcs_found[pitch.pc.B]);
+}

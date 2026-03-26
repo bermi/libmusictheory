@@ -13,6 +13,7 @@ const chord_type = @import("chord_type.zig");
 const chord = @import("chord_construction.zig");
 const harmony = @import("harmony.zig");
 const guitar = @import("guitar.zig");
+const keyboard_logic = @import("keyboard.zig");
 const svg_clock = @import("svg/clock.zig");
 const svg_evenness_chart = @import("svg/evenness_chart.zig");
 const svg_fret = @import("svg/fret.zig");
@@ -36,6 +37,17 @@ pub const LmtGuideDot = extern struct {
     position: LmtFretPos,
     pitch_class: u8,
     opacity: f32,
+};
+
+pub const LmtContextSuggestion = extern struct {
+    score: i32,
+    expanded_set: u16,
+    pitch_class: u8,
+    overlap: u8,
+    outside_count: u8,
+    in_context: u8,
+    cluster_free: u8,
+    reads_as_named_chord: u8,
 };
 
 const SCALE_DIATONIC: u8 = 0;
@@ -414,6 +426,15 @@ pub export fn lmt_mode(mode_type: u8, root: u8) callconv(.c) u16 {
     return toCSet(pcs.transpose(base, tonic));
 }
 
+pub export fn lmt_mode_spelling_quality(tonic: u8, mode_type: u8) callconv(.c) u8 {
+    const mt = decodeModeType(mode_type) orelse return KEY_MAJOR;
+    const tonic_pc = @as(pitch.PitchClass, @intCast(tonic % 12));
+    return switch (keyboard_logic.modeSpellingQuality(tonic_pc, mt)) {
+        .minor => KEY_MINOR,
+        .major => KEY_MAJOR,
+    };
+}
+
 pub export fn lmt_spell_note(pc: u8, key_ctx: LmtKeyContext) callconv(.c) [*c]const u8 {
     var note_buf: [4]u8 = undefined;
     const k = decodeKeyContext(key_ctx);
@@ -565,6 +586,36 @@ pub export fn lmt_preferred_voicing_n(chord_set: u16, tuning_ptr: [*c]const u8, 
 
     @memcpy(out_frets[0..tuning.len], preferred.voicing.frets);
     return @as(u32, @intCast(preferred.row_count));
+}
+
+pub export fn lmt_rank_context_suggestions(set: u16, midi_notes_ptr: [*c]const u8, note_count: u32, tonic: u8, mode_type: u8, out: [*c]LmtContextSuggestion, out_cap: u32) callconv(.c) u32 {
+    const mt = decodeModeType(mode_type) orelse return 0;
+    const tonic_pc = @as(pitch.PitchClass, @intCast(tonic % 12));
+
+    var notes_buf: [MAX_KEYBOARD_RENDER_NOTES]pitch.MidiNote = undefined;
+    const notes = decodeMidiNotes(midi_notes_ptr, note_count, &notes_buf);
+
+    var ranked_buf: [keyboard_logic.MAX_CONTEXT_SUGGESTIONS]keyboard_logic.ContextSuggestion = undefined;
+    const ranked = keyboard_logic.rankContextSuggestions(maskPitchClassSet(set), notes, tonic_pc, mt, &ranked_buf);
+
+    const total = ranked.len;
+    const write_len = @min(total, @as(usize, @intCast(out_cap)));
+    if (out != null) {
+        for (ranked[0..write_len], 0..) |row, index| {
+            out[index] = .{
+                .score = row.score,
+                .expanded_set = toCSet(row.expanded_set),
+                .pitch_class = row.pitch_class,
+                .overlap = row.overlap,
+                .outside_count = row.outside_count,
+                .in_context = if (row.in_context) 1 else 0,
+                .cluster_free = if (row.cluster_free) 1 else 0,
+                .reads_as_named_chord = if (row.reads_as_named_chord) 1 else 0,
+            };
+        }
+    }
+
+    return @as(u32, @intCast(total));
 }
 
 pub export fn lmt_pitch_class_guide_n(selected_ptr: [*c]const LmtFretPos, selected_count: u32, min_fret: u8, max_fret: u8, tuning_ptr: [*c]const u8, tuning_count: u32, out: [*c]LmtGuideDot, out_cap: u32) callconv(.c) u32 {
