@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT_DIR"
+ZIG_CMD="$ROOT_DIR/zigw"
 
 FAIL=0
 RELEASE_SURFACE_SMOKE_STATUS="no"
@@ -30,7 +31,7 @@ unverified() {
 check_cmd() {
     local cmd="$1"
     local label="$2"
-    if bash -lc "$cmd"; then
+    if env LMT_ZIG_WRAPPER="$ZIG_CMD" bash -lc "zig(){ \"\$LMT_ZIG_WRAPPER\" \"\$@\"; }; export -f zig; $cmd"; then
         pass "$label"
     else
         fail "$label"
@@ -46,6 +47,12 @@ if [ -f "$ROOT_DIR/build.zig" ]; then
     pass "build.zig exists"
 else
     fail "build.zig missing"
+fi
+
+if [ -x "$ZIG_CMD" ]; then
+    pass "zigw exists"
+else
+    fail "zigw missing or not executable"
 fi
 
 if [ -f "$ROOT_DIR/CLAUDE.md" ]; then

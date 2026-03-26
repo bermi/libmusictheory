@@ -329,15 +329,15 @@ fn renderPublicSvgBitmap(svg: []const u8, width: u32, height: u32, out_rgba: [*c
     return @as(u32, @intCast(written));
 }
 
-export fn lmt_wasm_scratch_ptr() callconv(.C) [*c]u8 {
+pub export fn lmt_wasm_scratch_ptr() callconv(.c) [*c]u8 {
     return &wasm_client_scratch[0];
 }
 
-export fn lmt_wasm_scratch_size() callconv(.C) u32 {
+pub export fn lmt_wasm_scratch_size() callconv(.c) u32 {
     return @as(u32, @intCast(wasm_client_scratch.len));
 }
 
-export fn lmt_pcs_from_list(pcs_ptr: [*c]const u8, count: u8) callconv(.C) u16 {
+pub export fn lmt_pcs_from_list(pcs_ptr: [*c]const u8, count: u8) callconv(.c) u16 {
     if (pcs_ptr == null or count == 0) return 0;
 
     var list_buf: [12]pitch.PitchClass = undefined;
@@ -351,7 +351,7 @@ export fn lmt_pcs_from_list(pcs_ptr: [*c]const u8, count: u8) callconv(.C) u16 {
     return toCSet(pcs.fromList(list_buf[0..len]));
 }
 
-export fn lmt_pcs_to_list(set: u16, out: [*c]u8) callconv(.C) u8 {
+pub export fn lmt_pcs_to_list(set: u16, out: [*c]u8) callconv(.c) u8 {
     var tmp: [12]pitch.PitchClass = undefined;
     const list = pcs.toList(maskPitchClassSet(set), &tmp);
 
@@ -364,57 +364,57 @@ export fn lmt_pcs_to_list(set: u16, out: [*c]u8) callconv(.C) u8 {
     return @as(u8, @intCast(list.len));
 }
 
-export fn lmt_pcs_cardinality(set: u16) callconv(.C) u8 {
+pub export fn lmt_pcs_cardinality(set: u16) callconv(.c) u8 {
     return @as(u8, pcs.cardinality(maskPitchClassSet(set)));
 }
 
-export fn lmt_pcs_transpose(set: u16, semitones: u8) callconv(.C) u16 {
+pub export fn lmt_pcs_transpose(set: u16, semitones: u8) callconv(.c) u16 {
     const value = pcs.transpose(maskPitchClassSet(set), @as(u4, @intCast(semitones % 12)));
     return toCSet(value);
 }
 
-export fn lmt_pcs_invert(set: u16) callconv(.C) u16 {
+pub export fn lmt_pcs_invert(set: u16) callconv(.c) u16 {
     return toCSet(pcs.invert(maskPitchClassSet(set)));
 }
 
-export fn lmt_pcs_complement(set: u16) callconv(.C) u16 {
+pub export fn lmt_pcs_complement(set: u16) callconv(.c) u16 {
     return toCSet(pcs.complement(maskPitchClassSet(set)));
 }
 
-export fn lmt_pcs_is_subset(small: u16, big: u16) callconv(.C) bool {
+pub export fn lmt_pcs_is_subset(small: u16, big: u16) callconv(.c) bool {
     return pcs.isSubsetOf(maskPitchClassSet(small), maskPitchClassSet(big));
 }
 
-export fn lmt_prime_form(set: u16) callconv(.C) u16 {
+pub export fn lmt_prime_form(set: u16) callconv(.c) u16 {
     return toCSet(set_class.primeForm(maskPitchClassSet(set)));
 }
 
-export fn lmt_forte_prime(set: u16) callconv(.C) u16 {
+pub export fn lmt_forte_prime(set: u16) callconv(.c) u16 {
     return toCSet(set_class.fortePrime(maskPitchClassSet(set)));
 }
 
-export fn lmt_is_cluster_free(set: u16) callconv(.C) bool {
+pub export fn lmt_is_cluster_free(set: u16) callconv(.c) bool {
     return !cluster.hasCluster(maskPitchClassSet(set));
 }
 
-export fn lmt_evenness_distance(set: u16) callconv(.C) f32 {
+pub export fn lmt_evenness_distance(set: u16) callconv(.c) f32 {
     return evenness.evennessDistance(maskPitchClassSet(set));
 }
 
-export fn lmt_scale(scale_type: u8, tonic: u8) callconv(.C) u16 {
+pub export fn lmt_scale(scale_type: u8, tonic: u8) callconv(.c) u16 {
     const st = decodeScaleType(scale_type) orelse return 0;
     const root = @as(pitch.PitchClass, @intCast(tonic % 12));
     return toCSet(pcs.transpose(scale.pcsForType(st), root));
 }
 
-export fn lmt_mode(mode_type: u8, root: u8) callconv(.C) u16 {
+pub export fn lmt_mode(mode_type: u8, root: u8) callconv(.c) u16 {
     const mt = decodeModeType(mode_type) orelse return 0;
     const base = modeSet(mt);
     const tonic = @as(pitch.PitchClass, @intCast(root % 12));
     return toCSet(pcs.transpose(base, tonic));
 }
 
-export fn lmt_spell_note(pc: u8, key_ctx: LmtKeyContext) callconv(.C) [*c]const u8 {
+pub export fn lmt_spell_note(pc: u8, key_ctx: LmtKeyContext) callconv(.c) [*c]const u8 {
     var note_buf: [4]u8 = undefined;
     const k = decodeKeyContext(key_ctx);
     const note = note_spelling.spellNote(@as(pitch.PitchClass, @intCast(pc % 12)), k);
@@ -423,21 +423,21 @@ export fn lmt_spell_note(pc: u8, key_ctx: LmtKeyContext) callconv(.C) [*c]const 
 }
 
 // WASM-friendly helper to avoid JS struct-by-value ABI marshalling.
-export fn lmt_spell_note_parts(pc: u8, tonic: u8, quality: u8) callconv(.C) [*c]const u8 {
+pub export fn lmt_spell_note_parts(pc: u8, tonic: u8, quality: u8) callconv(.c) [*c]const u8 {
     return lmt_spell_note(pc, .{ .tonic = tonic, .quality = quality });
 }
 
-export fn lmt_chord(chord_kind: u8, root: u8) callconv(.C) u16 {
+pub export fn lmt_chord(chord_kind: u8, root: u8) callconv(.c) u16 {
     const root_pc = @as(pitch.PitchClass, @intCast(root % 12));
     return toCSet(pcs.transpose(chordTemplate(chord_kind), root_pc));
 }
 
-export fn lmt_chord_name(set: u16) callconv(.C) [*c]const u8 {
+pub export fn lmt_chord_name(set: u16) callconv(.c) [*c]const u8 {
     const name = chord.pcsToChordName(maskPitchClassSet(set)) orelse "Unknown";
     return writeCString(name);
 }
 
-export fn lmt_roman_numeral(chord_set: u16, key_ctx: LmtKeyContext) callconv(.C) [*c]const u8 {
+pub export fn lmt_roman_numeral(chord_set: u16, key_ctx: LmtKeyContext) callconv(.c) [*c]const u8 {
     var buf: [16]u8 = undefined;
 
     const set = maskPitchClassSet(chord_set);
@@ -455,11 +455,11 @@ export fn lmt_roman_numeral(chord_set: u16, key_ctx: LmtKeyContext) callconv(.C)
 }
 
 // WASM-friendly helper to avoid JS struct-by-value ABI marshalling.
-export fn lmt_roman_numeral_parts(chord_set: u16, tonic: u8, quality: u8) callconv(.C) [*c]const u8 {
+pub export fn lmt_roman_numeral_parts(chord_set: u16, tonic: u8, quality: u8) callconv(.c) [*c]const u8 {
     return lmt_roman_numeral(chord_set, .{ .tonic = tonic, .quality = quality });
 }
 
-export fn lmt_fret_to_midi(string: u8, fret: u8, tuning_ptr: [*c]const u8) callconv(.C) u8 {
+pub export fn lmt_fret_to_midi(string: u8, fret: u8, tuning_ptr: [*c]const u8) callconv(.c) u8 {
     if (string >= guitar.NUM_STRINGS) return 0;
 
     const tuning = decodeTuning(tuning_ptr);
@@ -468,14 +468,14 @@ export fn lmt_fret_to_midi(string: u8, fret: u8, tuning_ptr: [*c]const u8) callc
     return @as(u8, midi);
 }
 
-export fn lmt_fret_to_midi_n(string: u32, fret: u8, tuning_ptr: [*c]const u8, tuning_count: u32) callconv(.C) u8 {
+pub export fn lmt_fret_to_midi_n(string: u32, fret: u8, tuning_ptr: [*c]const u8, tuning_count: u32) callconv(.c) u8 {
     var tuning_buf: [MAX_PARAMETRIC_FRET_STRINGS]pitch.MidiNote = undefined;
     const tuning = decodeTuningGeneric(tuning_ptr, tuning_count, &tuning_buf);
     const midi = guitar.fretToMidiGeneric(@as(usize, @intCast(string)), fret, tuning) orelse return 0;
     return @as(u8, midi);
 }
 
-export fn lmt_midi_to_fret_positions(note: u8, tuning_ptr: [*c]const u8, out: [*c]LmtFretPos) callconv(.C) u8 {
+pub export fn lmt_midi_to_fret_positions(note: u8, tuning_ptr: [*c]const u8, out: [*c]LmtFretPos) callconv(.c) u8 {
     var tmp: [guitar.NUM_STRINGS]guitar.FretPosition = undefined;
     const tuning = decodeTuning(tuning_ptr);
 
@@ -494,7 +494,7 @@ export fn lmt_midi_to_fret_positions(note: u8, tuning_ptr: [*c]const u8, out: [*
     return @as(u8, @intCast(positions.len));
 }
 
-export fn lmt_midi_to_fret_positions_n(note: u8, tuning_ptr: [*c]const u8, tuning_count: u32, out: [*c]LmtFretPos, out_cap: u32) callconv(.C) u32 {
+pub export fn lmt_midi_to_fret_positions_n(note: u8, tuning_ptr: [*c]const u8, tuning_count: u32, out: [*c]LmtFretPos, out_cap: u32) callconv(.c) u32 {
     var tuning_buf: [MAX_PARAMETRIC_FRET_STRINGS]pitch.MidiNote = undefined;
     var tmp: [MAX_PARAMETRIC_FRET_STRINGS]guitar.GenericFretPosition = undefined;
     const tuning = decodeTuningGeneric(tuning_ptr, tuning_count, &tuning_buf);
@@ -515,7 +515,7 @@ export fn lmt_midi_to_fret_positions_n(note: u8, tuning_ptr: [*c]const u8, tunin
     return @as(u32, @intCast(positions.len));
 }
 
-export fn lmt_generate_voicings_n(chord_set: u16, tuning_ptr: [*c]const u8, tuning_count: u32, max_fret: u8, max_span: u8, out_frets: [*c]i8, out_voicing_cap: u32) callconv(.C) u32 {
+pub export fn lmt_generate_voicings_n(chord_set: u16, tuning_ptr: [*c]const u8, tuning_count: u32, max_fret: u8, max_span: u8, out_frets: [*c]i8, out_voicing_cap: u32) callconv(.c) u32 {
     var tuning_buf: [MAX_PARAMETRIC_FRET_STRINGS]pitch.MidiNote = undefined;
     const tuning = decodeTuningGeneric(tuning_ptr, tuning_count, &tuning_buf);
     if (tuning.len == 0 or out_frets == null or out_voicing_cap == 0) return 0;
@@ -540,7 +540,7 @@ export fn lmt_generate_voicings_n(chord_set: u16, tuning_ptr: [*c]const u8, tuni
     return @as(u32, @intCast(generated.len));
 }
 
-export fn lmt_pitch_class_guide_n(selected_ptr: [*c]const LmtFretPos, selected_count: u32, min_fret: u8, max_fret: u8, tuning_ptr: [*c]const u8, tuning_count: u32, out: [*c]LmtGuideDot, out_cap: u32) callconv(.C) u32 {
+pub export fn lmt_pitch_class_guide_n(selected_ptr: [*c]const LmtFretPos, selected_count: u32, min_fret: u8, max_fret: u8, tuning_ptr: [*c]const u8, tuning_count: u32, out: [*c]LmtGuideDot, out_cap: u32) callconv(.c) u32 {
     var tuning_buf: [MAX_PARAMETRIC_FRET_STRINGS]pitch.MidiNote = undefined;
     const tuning = decodeTuningGeneric(tuning_ptr, tuning_count, &tuning_buf);
     if (tuning.len == 0 or max_fret < min_fret) return 0;
@@ -587,7 +587,7 @@ export fn lmt_pitch_class_guide_n(selected_ptr: [*c]const LmtFretPos, selected_c
     return @as(u32, @intCast(total));
 }
 
-export fn lmt_frets_to_url_n(frets_ptr: [*c]const i8, fret_count: u32, buf: [*c]u8, buf_size: u32) callconv(.C) u32 {
+pub export fn lmt_frets_to_url_n(frets_ptr: [*c]const i8, fret_count: u32, buf: [*c]u8, buf_size: u32) callconv(.c) u32 {
     if (buf == null or buf_size == 0) return 0;
 
     const out = buf[0..@as(usize, @intCast(buf_size))];
@@ -615,7 +615,7 @@ export fn lmt_frets_to_url_n(frets_ptr: [*c]const i8, fret_count: u32, buf: [*c]
     return @as(u32, @intCast(stream.pos));
 }
 
-export fn lmt_url_to_frets_n(url_ptr: [*c]const u8, out: [*c]i8, out_cap: u32) callconv(.C) u32 {
+pub export fn lmt_url_to_frets_n(url_ptr: [*c]const u8, out: [*c]i8, out_cap: u32) callconv(.c) u32 {
     if (url_ptr == null) return 0;
 
     const url = std.mem.sliceTo(@as([*:0]const u8, @ptrCast(url_ptr)), 0);
@@ -634,7 +634,7 @@ export fn lmt_url_to_frets_n(url_ptr: [*c]const u8, out: [*c]i8, out_cap: u32) c
     return @as(u32, @intCast(count));
 }
 
-export fn lmt_svg_clock_optc(set: u16, buf: [*c]u8, buf_size: u32) callconv(.C) u32 {
+pub export fn lmt_svg_clock_optc(set: u16, buf: [*c]u8, buf_size: u32) callconv(.c) u32 {
     var svg_buf: [16384]u8 = undefined;
     var label_buf: [12]u8 = undefined;
 
@@ -645,27 +645,27 @@ export fn lmt_svg_clock_optc(set: u16, buf: [*c]u8, buf_size: u32) callconv(.C) 
     return copySvgOut(svg, buf, buf_size);
 }
 
-export fn lmt_svg_optic_k_group(set: u16, buf: [*c]u8, buf_size: u32) callconv(.C) u32 {
+pub export fn lmt_svg_optic_k_group(set: u16, buf: [*c]u8, buf_size: u32) callconv(.c) u32 {
     var svg_buf: [128 * 1024]u8 = undefined;
     const safe_set = maskPitchClassSet(set);
     const svg = svg_clock.renderOpticKGroup(safe_set, &svg_buf);
     return copySvgOut(svg, buf, buf_size);
 }
 
-export fn lmt_svg_evenness_chart(buf: [*c]u8, buf_size: u32) callconv(.C) u32 {
+pub export fn lmt_svg_evenness_chart(buf: [*c]u8, buf_size: u32) callconv(.c) u32 {
     var svg_buf: [128 * 1024]u8 = undefined;
     const svg = svg_evenness_chart.renderEvennessChart(&svg_buf);
     return copySvgOut(svg, buf, buf_size);
 }
 
-export fn lmt_svg_evenness_field(set: u16, buf: [*c]u8, buf_size: u32) callconv(.C) u32 {
+pub export fn lmt_svg_evenness_field(set: u16, buf: [*c]u8, buf_size: u32) callconv(.c) u32 {
     var svg_buf: [128 * 1024]u8 = undefined;
     const safe_set = maskPitchClassSet(set);
     const svg = svg_evenness_chart.renderEvennessField(safe_set, &svg_buf);
     return copySvgOut(svg, buf, buf_size);
 }
 
-export fn lmt_svg_fret(frets_ptr: [*c]const i8, buf: [*c]u8, buf_size: u32) callconv(.C) u32 {
+pub export fn lmt_svg_fret(frets_ptr: [*c]const i8, buf: [*c]u8, buf_size: u32) callconv(.c) u32 {
     var frets: [guitar.NUM_STRINGS]i8 = [_]i8{-1} ** guitar.NUM_STRINGS;
     if (frets_ptr != null) {
         var i: usize = 0;
@@ -685,7 +685,7 @@ export fn lmt_svg_fret(frets_ptr: [*c]const i8, buf: [*c]u8, buf_size: u32) call
     return copySvgOut(svg, buf, buf_size);
 }
 
-export fn lmt_svg_fret_n(frets_ptr: [*c]const i8, string_count: u32, window_start: u32, visible_frets: u32, buf: [*c]u8, buf_size: u32) callconv(.C) u32 {
+pub export fn lmt_svg_fret_n(frets_ptr: [*c]const i8, string_count: u32, window_start: u32, visible_frets: u32, buf: [*c]u8, buf_size: u32) callconv(.c) u32 {
     if (frets_ptr == null or string_count == 0) {
         var empty_svg_buf: [256]u8 = undefined;
         const svg = svg_fret.renderDiagram(.{ .frets = &[_]i8{} }, &empty_svg_buf);
@@ -704,7 +704,7 @@ export fn lmt_svg_fret_n(frets_ptr: [*c]const i8, string_count: u32, window_star
     return copySvgOut(svg, buf, buf_size);
 }
 
-export fn lmt_svg_chord_staff(chord_kind: u8, root: u8, buf: [*c]u8, buf_size: u32) callconv(.C) u32 {
+pub export fn lmt_svg_chord_staff(chord_kind: u8, root: u8, buf: [*c]u8, buf_size: u32) callconv(.c) u32 {
     const root_pc = @as(pitch.PitchClass, @intCast(root % 12));
     const root_midi: pitch.MidiNote = @as(pitch.MidiNote, @intCast(60 + @as(u8, root_pc)));
 
@@ -743,7 +743,7 @@ export fn lmt_svg_chord_staff(chord_kind: u8, root: u8, buf: [*c]u8, buf_size: u
     return copySvgOut(svg, buf, buf_size);
 }
 
-export fn lmt_svg_key_staff(tonic: u8, quality_raw: u8, buf: [*c]u8, buf_size: u32) callconv(.C) u32 {
+pub export fn lmt_svg_key_staff(tonic: u8, quality_raw: u8, buf: [*c]u8, buf_size: u32) callconv(.c) u32 {
     const tonic_pc = @as(pitch.PitchClass, @intCast(tonic % 12));
     const quality: key.KeyQuality = if (quality_raw == KEY_MINOR) .minor else .major;
     const k = key.Key.init(tonic_pc, quality);
@@ -756,7 +756,7 @@ export fn lmt_svg_key_staff(tonic: u8, quality_raw: u8, buf: [*c]u8, buf_size: u
     return copySvgOut(svg, buf, buf_size);
 }
 
-export fn lmt_svg_keyboard(notes_ptr: [*c]const u8, note_count: u32, range_low: u8, range_high: u8, buf: [*c]u8, buf_size: u32) callconv(.C) u32 {
+pub export fn lmt_svg_keyboard(notes_ptr: [*c]const u8, note_count: u32, range_low: u8, range_high: u8, buf: [*c]u8, buf_size: u32) callconv(.c) u32 {
     var notes_buf: [MAX_KEYBOARD_RENDER_NOTES]pitch.MidiNote = undefined;
     const notes = decodeMidiNotes(notes_ptr, note_count, &notes_buf);
     const range = sanitizeKeyboardRange(range_low, range_high);
@@ -766,7 +766,7 @@ export fn lmt_svg_keyboard(notes_ptr: [*c]const u8, note_count: u32, range_low: 
     return copySvgOut(svg, buf, buf_size);
 }
 
-export fn lmt_svg_piano_staff(notes_ptr: [*c]const u8, note_count: u32, tonic: u8, quality_raw: u8, buf: [*c]u8, buf_size: u32) callconv(.C) u32 {
+pub export fn lmt_svg_piano_staff(notes_ptr: [*c]const u8, note_count: u32, tonic: u8, quality_raw: u8, buf: [*c]u8, buf_size: u32) callconv(.c) u32 {
     var notes_buf: [MAX_KEYBOARD_RENDER_NOTES]pitch.MidiNote = undefined;
     const notes = decodeMidiNotes(notes_ptr, note_count, &notes_buf);
     const tonic_pc = @as(pitch.PitchClass, @intCast(tonic % 12));
@@ -778,11 +778,11 @@ export fn lmt_svg_piano_staff(notes_ptr: [*c]const u8, note_count: u32, tonic: u
     return copySvgOut(svg, buf, buf_size);
 }
 
-export fn lmt_raster_is_enabled() callconv(.C) u32 {
+pub export fn lmt_raster_is_enabled() callconv(.c) u32 {
     return if (build_options.enable_raster_backend) 1 else 0;
 }
 
-export fn lmt_raster_demo_rgba(width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.C) u32 {
+pub export fn lmt_raster_demo_rgba(width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32 {
     if (!build_options.enable_raster_backend) return 0;
     if (out_rgba == null or width == 0 or height == 0) return 0;
 
@@ -802,7 +802,7 @@ export fn lmt_raster_demo_rgba(width: u32, height: u32, out_rgba: [*c]u8, out_rg
     return @as(u32, @intCast(required));
 }
 
-export fn lmt_bitmap_clock_optc_rgba(set: u16, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.C) u32 {
+pub export fn lmt_bitmap_clock_optc_rgba(set: u16, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32 {
     const total = lmt_svg_clock_optc(set, null, 0);
     if (total == 0 or total >= compat_svg_buf.len) return 0;
     const written_total = lmt_svg_clock_optc(set, @ptrCast(&compat_svg_buf), @intCast(compat_svg_buf.len));
@@ -810,7 +810,7 @@ export fn lmt_bitmap_clock_optc_rgba(set: u16, width: u32, height: u32, out_rgba
     return renderPublicSvgBitmap(compat_svg_buf[0..@as(usize, total)], width, height, out_rgba, out_rgba_size);
 }
 
-export fn lmt_bitmap_optic_k_group_rgba(set: u16, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.C) u32 {
+pub export fn lmt_bitmap_optic_k_group_rgba(set: u16, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32 {
     const total = lmt_svg_optic_k_group(set, null, 0);
     if (total == 0 or total >= compat_svg_buf.len) return 0;
     const written_total = lmt_svg_optic_k_group(set, @ptrCast(&compat_svg_buf), @intCast(compat_svg_buf.len));
@@ -818,7 +818,7 @@ export fn lmt_bitmap_optic_k_group_rgba(set: u16, width: u32, height: u32, out_r
     return renderPublicSvgBitmap(compat_svg_buf[0..@as(usize, total)], width, height, out_rgba, out_rgba_size);
 }
 
-export fn lmt_bitmap_evenness_chart_rgba(width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.C) u32 {
+pub export fn lmt_bitmap_evenness_chart_rgba(width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32 {
     const total = lmt_svg_evenness_chart(null, 0);
     if (total == 0 or total >= compat_svg_buf.len) return 0;
     const written_total = lmt_svg_evenness_chart(@ptrCast(&compat_svg_buf), @intCast(compat_svg_buf.len));
@@ -826,7 +826,7 @@ export fn lmt_bitmap_evenness_chart_rgba(width: u32, height: u32, out_rgba: [*c]
     return renderPublicSvgBitmap(compat_svg_buf[0..@as(usize, total)], width, height, out_rgba, out_rgba_size);
 }
 
-export fn lmt_bitmap_evenness_field_rgba(set: u16, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.C) u32 {
+pub export fn lmt_bitmap_evenness_field_rgba(set: u16, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32 {
     const total = lmt_svg_evenness_field(set, null, 0);
     if (total == 0 or total >= compat_svg_buf.len) return 0;
     const written_total = lmt_svg_evenness_field(set, @ptrCast(&compat_svg_buf), @intCast(compat_svg_buf.len));
@@ -834,7 +834,7 @@ export fn lmt_bitmap_evenness_field_rgba(set: u16, width: u32, height: u32, out_
     return renderPublicSvgBitmap(compat_svg_buf[0..@as(usize, total)], width, height, out_rgba, out_rgba_size);
 }
 
-export fn lmt_bitmap_fret_rgba(frets_ptr: [*c]const i8, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.C) u32 {
+pub export fn lmt_bitmap_fret_rgba(frets_ptr: [*c]const i8, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32 {
     const total = lmt_svg_fret(frets_ptr, null, 0);
     if (total == 0 or total >= compat_svg_buf.len) return 0;
     const written_total = lmt_svg_fret(frets_ptr, @ptrCast(&compat_svg_buf), @intCast(compat_svg_buf.len));
@@ -842,7 +842,7 @@ export fn lmt_bitmap_fret_rgba(frets_ptr: [*c]const i8, width: u32, height: u32,
     return renderPublicSvgBitmap(compat_svg_buf[0..@as(usize, total)], width, height, out_rgba, out_rgba_size);
 }
 
-export fn lmt_bitmap_fret_n_rgba(frets_ptr: [*c]const i8, string_count: u32, window_start: u32, visible_frets: u32, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.C) u32 {
+pub export fn lmt_bitmap_fret_n_rgba(frets_ptr: [*c]const i8, string_count: u32, window_start: u32, visible_frets: u32, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32 {
     const total = lmt_svg_fret_n(frets_ptr, string_count, window_start, visible_frets, null, 0);
     if (total == 0 or total >= compat_svg_buf.len) return 0;
     const written_total = lmt_svg_fret_n(frets_ptr, string_count, window_start, visible_frets, @ptrCast(&compat_svg_buf), @intCast(compat_svg_buf.len));
@@ -850,7 +850,7 @@ export fn lmt_bitmap_fret_n_rgba(frets_ptr: [*c]const i8, string_count: u32, win
     return renderPublicSvgBitmap(compat_svg_buf[0..@as(usize, total)], width, height, out_rgba, out_rgba_size);
 }
 
-export fn lmt_bitmap_chord_staff_rgba(chord_kind: u8, root: u8, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.C) u32 {
+pub export fn lmt_bitmap_chord_staff_rgba(chord_kind: u8, root: u8, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32 {
     const total = lmt_svg_chord_staff(chord_kind, root, null, 0);
     if (total == 0 or total >= compat_svg_buf.len) return 0;
     const written_total = lmt_svg_chord_staff(chord_kind, root, @ptrCast(&compat_svg_buf), @intCast(compat_svg_buf.len));
@@ -858,7 +858,7 @@ export fn lmt_bitmap_chord_staff_rgba(chord_kind: u8, root: u8, width: u32, heig
     return renderPublicSvgBitmap(compat_svg_buf[0..@as(usize, total)], width, height, out_rgba, out_rgba_size);
 }
 
-export fn lmt_bitmap_key_staff_rgba(tonic: u8, quality_raw: u8, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.C) u32 {
+pub export fn lmt_bitmap_key_staff_rgba(tonic: u8, quality_raw: u8, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32 {
     const total = lmt_svg_key_staff(tonic, quality_raw, null, 0);
     if (total == 0 or total >= compat_svg_buf.len) return 0;
     const written_total = lmt_svg_key_staff(tonic, quality_raw, @ptrCast(&compat_svg_buf), @intCast(compat_svg_buf.len));
@@ -866,7 +866,7 @@ export fn lmt_bitmap_key_staff_rgba(tonic: u8, quality_raw: u8, width: u32, heig
     return renderPublicSvgBitmap(compat_svg_buf[0..@as(usize, total)], width, height, out_rgba, out_rgba_size);
 }
 
-export fn lmt_bitmap_keyboard_rgba(notes_ptr: [*c]const u8, note_count: u32, range_low: u8, range_high: u8, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.C) u32 {
+pub export fn lmt_bitmap_keyboard_rgba(notes_ptr: [*c]const u8, note_count: u32, range_low: u8, range_high: u8, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32 {
     const total = lmt_svg_keyboard(notes_ptr, note_count, range_low, range_high, null, 0);
     if (total == 0 or total >= compat_svg_buf.len) return 0;
     const written_total = lmt_svg_keyboard(notes_ptr, note_count, range_low, range_high, @ptrCast(&compat_svg_buf), @intCast(compat_svg_buf.len));
@@ -874,7 +874,7 @@ export fn lmt_bitmap_keyboard_rgba(notes_ptr: [*c]const u8, note_count: u32, ran
     return renderPublicSvgBitmap(compat_svg_buf[0..@as(usize, total)], width, height, out_rgba, out_rgba_size);
 }
 
-export fn lmt_bitmap_piano_staff_rgba(notes_ptr: [*c]const u8, note_count: u32, tonic: u8, quality_raw: u8, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.C) u32 {
+pub export fn lmt_bitmap_piano_staff_rgba(notes_ptr: [*c]const u8, note_count: u32, tonic: u8, quality_raw: u8, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32 {
     const total = lmt_svg_piano_staff(notes_ptr, note_count, tonic, quality_raw, null, 0);
     if (total == 0 or total >= compat_svg_buf.len) return 0;
     const written_total = lmt_svg_piano_staff(notes_ptr, note_count, tonic, quality_raw, @ptrCast(&compat_svg_buf), @intCast(compat_svg_buf.len));
@@ -882,55 +882,55 @@ export fn lmt_bitmap_piano_staff_rgba(notes_ptr: [*c]const u8, note_count: u32, 
     return renderPublicSvgBitmap(compat_svg_buf[0..@as(usize, total)], width, height, out_rgba, out_rgba_size);
 }
 
-export fn lmt_bitmap_proof_scale_numerator() callconv(.C) u32 {
+pub export fn lmt_bitmap_proof_scale_numerator() callconv(.c) u32 {
     return bitmap_compat.SCALE_NUMERATOR;
 }
 
-export fn lmt_bitmap_proof_scale_denominator() callconv(.C) u32 {
+pub export fn lmt_bitmap_proof_scale_denominator() callconv(.c) u32 {
     return bitmap_compat.SCALE_DENOMINATOR;
 }
 
-export fn lmt_bitmap_compat_kind_supported(kind_index: u32) callconv(.C) u32 {
+pub export fn lmt_bitmap_compat_kind_supported(kind_index: u32) callconv(.c) u32 {
     if (!build_options.enable_raster_backend) return 0;
     return if (bitmap_compat.kindSupported(@as(usize, kind_index))) 1 else 0;
 }
 
-export fn lmt_bitmap_compat_candidate_backend_name(kind_index: u32) callconv(.C) [*:0]const u8 {
+pub export fn lmt_bitmap_compat_candidate_backend_name(kind_index: u32) callconv(.c) [*:0]const u8 {
     if (!build_options.enable_raster_backend) return "".ptr;
     return (bitmap_compat.candidateBackendName(@as(usize, kind_index)) orelse "").ptr;
 }
 
-export fn lmt_bitmap_compat_target_width_scaled(kind_index: u32, image_index: u32, scale_numerator: u32, scale_denominator: u32) callconv(.C) u32 {
+pub export fn lmt_bitmap_compat_target_width_scaled(kind_index: u32, image_index: u32, scale_numerator: u32, scale_denominator: u32) callconv(.c) u32 {
     if (!build_options.enable_raster_backend) return 0;
     return bitmap_compat.targetWidthScaled(@as(usize, kind_index), @as(usize, image_index), scale_numerator, scale_denominator);
 }
 
-export fn lmt_bitmap_compat_target_width(kind_index: u32, image_index: u32) callconv(.C) u32 {
+pub export fn lmt_bitmap_compat_target_width(kind_index: u32, image_index: u32) callconv(.c) u32 {
     if (!build_options.enable_raster_backend) return 0;
     return bitmap_compat.targetWidth(@as(usize, kind_index), @as(usize, image_index));
 }
 
-export fn lmt_bitmap_compat_target_height_scaled(kind_index: u32, image_index: u32, scale_numerator: u32, scale_denominator: u32) callconv(.C) u32 {
+pub export fn lmt_bitmap_compat_target_height_scaled(kind_index: u32, image_index: u32, scale_numerator: u32, scale_denominator: u32) callconv(.c) u32 {
     if (!build_options.enable_raster_backend) return 0;
     return bitmap_compat.targetHeightScaled(@as(usize, kind_index), @as(usize, image_index), scale_numerator, scale_denominator);
 }
 
-export fn lmt_bitmap_compat_target_height(kind_index: u32, image_index: u32) callconv(.C) u32 {
+pub export fn lmt_bitmap_compat_target_height(kind_index: u32, image_index: u32) callconv(.c) u32 {
     if (!build_options.enable_raster_backend) return 0;
     return bitmap_compat.targetHeight(@as(usize, kind_index), @as(usize, image_index));
 }
 
-export fn lmt_bitmap_compat_required_rgba_bytes_scaled(kind_index: u32, image_index: u32, scale_numerator: u32, scale_denominator: u32) callconv(.C) u32 {
+pub export fn lmt_bitmap_compat_required_rgba_bytes_scaled(kind_index: u32, image_index: u32, scale_numerator: u32, scale_denominator: u32) callconv(.c) u32 {
     if (!build_options.enable_raster_backend) return 0;
     return bitmap_compat.requiredRgbaBytesScaled(@as(usize, kind_index), @as(usize, image_index), scale_numerator, scale_denominator);
 }
 
-export fn lmt_bitmap_compat_required_rgba_bytes(kind_index: u32, image_index: u32) callconv(.C) u32 {
+pub export fn lmt_bitmap_compat_required_rgba_bytes(kind_index: u32, image_index: u32) callconv(.c) u32 {
     if (!build_options.enable_raster_backend) return 0;
     return bitmap_compat.requiredRgbaBytes(@as(usize, kind_index), @as(usize, image_index));
 }
 
-export fn lmt_bitmap_compat_render_candidate_rgba_scaled(kind_index: u32, image_index: u32, scale_numerator: u32, scale_denominator: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.C) u32 {
+pub export fn lmt_bitmap_compat_render_candidate_rgba_scaled(kind_index: u32, image_index: u32, scale_numerator: u32, scale_denominator: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32 {
     if (!build_options.enable_raster_backend) return 0;
     if (out_rgba == null) return 0;
     const out = out_rgba[0..@as(usize, out_rgba_size)];
@@ -938,7 +938,7 @@ export fn lmt_bitmap_compat_render_candidate_rgba_scaled(kind_index: u32, image_
     return @as(u32, @intCast(len));
 }
 
-export fn lmt_bitmap_compat_render_candidate_rgba(kind_index: u32, image_index: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.C) u32 {
+pub export fn lmt_bitmap_compat_render_candidate_rgba(kind_index: u32, image_index: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32 {
     if (!build_options.enable_raster_backend) return 0;
     if (out_rgba == null) return 0;
     const out = out_rgba[0..@as(usize, out_rgba_size)];
@@ -946,7 +946,7 @@ export fn lmt_bitmap_compat_render_candidate_rgba(kind_index: u32, image_index: 
     return @as(u32, @intCast(len));
 }
 
-export fn lmt_bitmap_compat_render_reference_svg_rgba_scaled(kind_index: u32, scale_numerator: u32, scale_denominator: u32, svg_ptr: [*c]const u8, svg_len: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.C) u32 {
+pub export fn lmt_bitmap_compat_render_reference_svg_rgba_scaled(kind_index: u32, scale_numerator: u32, scale_denominator: u32, svg_ptr: [*c]const u8, svg_len: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32 {
     if (!build_options.enable_raster_backend) return 0;
     if (svg_ptr == null or out_rgba == null or svg_len == 0) return 0;
     const svg = svg_ptr[0..@as(usize, svg_len)];
@@ -955,7 +955,7 @@ export fn lmt_bitmap_compat_render_reference_svg_rgba_scaled(kind_index: u32, sc
     return @as(u32, @intCast(len));
 }
 
-export fn lmt_bitmap_compat_render_reference_svg_rgba(kind_index: u32, svg_ptr: [*c]const u8, svg_len: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.C) u32 {
+pub export fn lmt_bitmap_compat_render_reference_svg_rgba(kind_index: u32, svg_ptr: [*c]const u8, svg_len: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32 {
     if (!build_options.enable_raster_backend) return 0;
     if (svg_ptr == null or out_rgba == null or svg_len == 0) return 0;
     const svg = svg_ptr[0..@as(usize, svg_len)];
@@ -964,30 +964,30 @@ export fn lmt_bitmap_compat_render_reference_svg_rgba(kind_index: u32, svg_ptr: 
     return @as(u32, @intCast(len));
 }
 
-export fn lmt_svg_compat_kind_count() callconv(.C) u32 {
+pub export fn lmt_svg_compat_kind_count() callconv(.c) u32 {
     return @as(u32, @intCast(svg_compat.kindCount()));
 }
 
-export fn lmt_svg_compat_kind_name(kind_index: u32) callconv(.C) [*c]const u8 {
+pub export fn lmt_svg_compat_kind_name(kind_index: u32) callconv(.c) [*c]const u8 {
     const name = svg_compat.kindName(@as(usize, kind_index)) orelse return writeCString("");
     return writeCString(name);
 }
 
-export fn lmt_svg_compat_kind_directory(kind_index: u32) callconv(.C) [*c]const u8 {
+pub export fn lmt_svg_compat_kind_directory(kind_index: u32) callconv(.c) [*c]const u8 {
     const directory = svg_compat.kindDirectory(@as(usize, kind_index)) orelse return writeCString("");
     return writeCString(directory);
 }
 
-export fn lmt_svg_compat_image_count(kind_index: u32) callconv(.C) u32 {
+pub export fn lmt_svg_compat_image_count(kind_index: u32) callconv(.c) u32 {
     return @as(u32, @intCast(svg_compat.imageCount(@as(usize, kind_index))));
 }
 
-export fn lmt_svg_compat_image_name(kind_index: u32, image_index: u32, buf: [*c]u8, buf_size: u32) callconv(.C) u32 {
+pub export fn lmt_svg_compat_image_name(kind_index: u32, image_index: u32, buf: [*c]u8, buf_size: u32) callconv(.c) u32 {
     const name = svg_compat.imageName(@as(usize, kind_index), @as(usize, image_index)) orelse return 0;
     return copySvgOut(name, buf, buf_size);
 }
 
-export fn lmt_svg_compat_generate(kind_index: u32, image_index: u32, buf: [*c]u8, buf_size: u32) callconv(.C) u32 {
+pub export fn lmt_svg_compat_generate(kind_index: u32, image_index: u32, buf: [*c]u8, buf_size: u32) callconv(.c) u32 {
     const svg = svg_compat.generateByIndex(@as(usize, kind_index), @as(usize, image_index), &compat_svg_buf);
     if (svg.len == 0) return 0;
     return copySvgOut(svg, buf, buf_size);

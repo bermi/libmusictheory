@@ -17,9 +17,9 @@ The stable public surface is intentionally smaller than the full repository.
 - Stable public surface:
   - `/Users/bermi/code/libmusictheory/include/libmusictheory.h`
   - `/Users/bermi/code/libmusictheory/src/root.zig` for core Zig consumers
-  - `zig build`, `zig build test`, `zig build verify`
-  - `zig build wasm-docs` as the standalone browser bundle
-  - `zig build wasm-gallery` as the standalone creative example bundle
+  - `./zigw build`, `./zigw build test`, `./zigw build verify`
+  - `./zigw build wasm-docs` as the standalone browser bundle
+  - `./zigw build wasm-gallery` as the standalone creative example bundle
 - Experimental surface:
   - `lmt_raster_is_enabled`
   - `lmt_raster_demo_rgba`
@@ -86,7 +86,7 @@ Build the native artifacts:
 
 ```bash
 cd /Users/bermi/code/libmusictheory
-zig build
+./zigw build
 ```
 
 The installed outputs land under:
@@ -151,7 +151,7 @@ The public browser-facing entries today are the standalone docs bundle and the s
 
 ```bash
 cd /Users/bermi/code/libmusictheory
-zig build wasm-docs
+./zigw build wasm-docs
 python3 -m http.server --directory /Users/bermi/code/libmusictheory/zig-out/wasm-docs 8001
 ```
 
@@ -170,7 +170,7 @@ For a gallery that uses only the stable public APIs:
 
 ```bash
 cd /Users/bermi/code/libmusictheory
-zig build wasm-gallery
+./zigw build wasm-gallery
 python3 -m http.server --directory /Users/bermi/code/libmusictheory/zig-out/wasm-gallery 8002
 ```
 
@@ -191,6 +191,8 @@ The standalone gallery is intentionally curated around concrete musical-discover
 These scenes are driven by the authored preset manifest at `/Users/bermi/code/libmusictheory/examples/wasm-gallery/gallery-presets.json`.
 
 For the live MIDI scene, run the gallery in a Chromium-family browser with Web MIDI enabled on `localhost` or `https:`. Sustain (`CC64`) is tracked as sounding state, the selected tonic/mode drives spelling and suggestion ranking, and middle pedal / sostenuto (`CC66`) stores clickable snapshots that restore both notes and context. The gallery also exposes a global preview-mode toggle so every large visualization can switch between SVG large vector previews and direct RGBA bitmap previews rendered by the library itself.
+
+On macOS arm64, use `/Users/bermi/code/libmusictheory/zigw` instead of a raw `zig` binary. The wrapper pins a working Zig `0.15.x` toolchain for this repo and avoids the host-side `zig build` linker failure that affects this machine.
 
 ## Release Readiness
 

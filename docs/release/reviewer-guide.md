@@ -8,10 +8,10 @@ This guide is for local review of the standalone `libmusictheory` release candid
 
 Review only the standalone surfaces:
 
-- native build outputs from `zig build`
+- native build outputs from `./zigw build`
 - the public C ABI in `/Users/bermi/code/libmusictheory/include/libmusictheory.h`
-- the standalone docs bundle from `zig build wasm-docs`
-- the standalone gallery bundle from `zig build wasm-gallery`
+- the standalone docs bundle from `./zigw build wasm-docs`
+- the standalone gallery bundle from `./zigw build wasm-gallery`
 
 Do not use internal Harmonious validation/proof bundles for release-candidate signoff.
 
@@ -38,7 +38,7 @@ Run:
 
 ```bash
 cd /Users/bermi/code/libmusictheory
-zig build wasm-gallery
+./zigw build wasm-gallery
 python3 -m http.server --directory /Users/bermi/code/libmusictheory/zig-out/wasm-gallery 8002
 ```
 
@@ -91,9 +91,9 @@ Run:
 
 ```bash
 cd /Users/bermi/code/libmusictheory
-zig build
-zig build c-smoke
-zig build wasm-docs
+./zigw build
+./zigw build c-smoke
+./zigw build wasm-docs
 ```
 
 Check:

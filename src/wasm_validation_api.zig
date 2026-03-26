@@ -29,38 +29,38 @@ fn copyOut(bytes: []const u8, buf: [*c]u8, buf_size: u32) u32 {
     return total;
 }
 
-export fn lmt_wasm_scratch_ptr() callconv(.C) [*c]u8 {
+pub export fn lmt_wasm_scratch_ptr() callconv(.c) [*c]u8 {
     return &wasm_client_scratch[0];
 }
 
-export fn lmt_wasm_scratch_size() callconv(.C) u32 {
+pub export fn lmt_wasm_scratch_size() callconv(.c) u32 {
     return @as(u32, @intCast(wasm_client_scratch.len));
 }
 
-export fn lmt_svg_compat_kind_count() callconv(.C) u32 {
+pub export fn lmt_svg_compat_kind_count() callconv(.c) u32 {
     return @as(u32, @intCast(svg_compat.kindCount()));
 }
 
-export fn lmt_svg_compat_kind_name(kind_index: u32) callconv(.C) [*c]const u8 {
+pub export fn lmt_svg_compat_kind_name(kind_index: u32) callconv(.c) [*c]const u8 {
     const name = svg_compat.kindName(@as(usize, kind_index)) orelse return writeCString("");
     return writeCString(name);
 }
 
-export fn lmt_svg_compat_kind_directory(kind_index: u32) callconv(.C) [*c]const u8 {
+pub export fn lmt_svg_compat_kind_directory(kind_index: u32) callconv(.c) [*c]const u8 {
     const directory = svg_compat.kindDirectory(@as(usize, kind_index)) orelse return writeCString("");
     return writeCString(directory);
 }
 
-export fn lmt_svg_compat_image_count(kind_index: u32) callconv(.C) u32 {
+pub export fn lmt_svg_compat_image_count(kind_index: u32) callconv(.c) u32 {
     return @as(u32, @intCast(svg_compat.imageCount(@as(usize, kind_index))));
 }
 
-export fn lmt_svg_compat_image_name(kind_index: u32, image_index: u32, buf: [*c]u8, buf_size: u32) callconv(.C) u32 {
+pub export fn lmt_svg_compat_image_name(kind_index: u32, image_index: u32, buf: [*c]u8, buf_size: u32) callconv(.c) u32 {
     const name = svg_compat.imageName(@as(usize, kind_index), @as(usize, image_index)) orelse return 0;
     return copyOut(name, buf, buf_size);
 }
 
-export fn lmt_svg_compat_generate(kind_index: u32, image_index: u32, buf: [*c]u8, buf_size: u32) callconv(.C) u32 {
+pub export fn lmt_svg_compat_generate(kind_index: u32, image_index: u32, buf: [*c]u8, buf_size: u32) callconv(.c) u32 {
     const svg = svg_compat.generateByIndex(@as(usize, kind_index), @as(usize, image_index), &compat_svg_buf);
     if (svg.len == 0) return 0;
     return copyOut(svg, buf, buf_size);

@@ -170,7 +170,20 @@ fn createEmptyRootModule(
     optimize: std.builtin.OptimizeMode,
 ) *std.Build.Module {
     return b.createModule(.{
-        .root_source_file = b.path("src/empty_root.zig"),
+        .root_source_file = null,
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+}
+
+fn createAbiRootModule(
+    b: *std.Build,
+    target: std.Build.ResolvedTarget,
+    optimize: std.builtin.OptimizeMode,
+) *std.Build.Module {
+    return b.createModule(.{
+        .root_source_file = b.path("src/c_api.zig"),
         .target = target,
         .optimize = optimize,
     });
@@ -192,11 +205,7 @@ pub fn build(b: *std.Build) void {
     lib_mod.addOptions("build_options", native_build_options);
 
     // ── Static library (C ABI) ──────────────────────────────────
-    const static_mod = b.createModule(.{
-        .root_source_file = b.path("src/root.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
+    const static_mod = createAbiRootModule(b, target, optimize);
     static_mod.addOptions("build_options", native_build_options);
 
     const static_lib = b.addLibrary(.{
@@ -208,11 +217,7 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(static_lib);
 
     // ── Shared library (C ABI) ──────────────────────────────────
-    const shared_mod = b.createModule(.{
-        .root_source_file = b.path("src/root.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
+    const shared_mod = createAbiRootModule(b, target, optimize);
     shared_mod.addOptions("build_options", native_build_options);
 
     const shared_lib = b.addLibrary(.{
@@ -291,11 +296,7 @@ pub fn build(b: *std.Build) void {
     wasm_demo_step.dependOn(&install_app_stub.step);
     maybeInstallDirectory(b, wasm_demo_step, "tmp/harmoniousapp.net", "wasm-demo/tmp/harmoniousapp.net");
 
-    const wasm_docs_mod = b.createModule(.{
-        .root_source_file = b.path("src/root.zig"),
-        .target = wasm_target,
-        .optimize = .ReleaseSmall,
-    });
+    const wasm_docs_mod = createAbiRootModule(b, wasm_target, .ReleaseSmall);
     const wasm_docs_build_options = b.addOptions();
     wasm_docs_build_options.addOption(bool, "enable_raster_backend", true);
     wasm_docs_build_options.addOption(bool, "enable_harmonious_generic_fallbacks", true);
@@ -367,11 +368,7 @@ pub fn build(b: *std.Build) void {
     wasm_docs_step.dependOn(&install_docs_qa_atlas_css.step);
     maybeInstallDirectory(b, wasm_docs_step, "tmp/harmoniousapp.net", "wasm-docs/tmp/harmoniousapp.net");
 
-    const wasm_gallery_mod = b.createModule(.{
-        .root_source_file = b.path("src/root.zig"),
-        .target = wasm_target,
-        .optimize = .ReleaseSmall,
-    });
+    const wasm_gallery_mod = createAbiRootModule(b, wasm_target, .ReleaseSmall);
     const wasm_gallery_build_options = b.addOptions();
     wasm_gallery_build_options.addOption(bool, "enable_raster_backend", true);
     wasm_gallery_build_options.addOption(bool, "enable_harmonious_generic_fallbacks", false);
@@ -573,10 +570,9 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_tests.step);
 
     // ── C ABI smoke tests (static/shared link) ──────────────────
-    const c_smoke_root_mod = createEmptyRootModule(b, target, optimize);
     const c_smoke_static = b.addExecutable(.{
         .name = "c_api_smoke_static",
-        .root_module = c_smoke_root_mod,
+        .root_module = createEmptyRootModule(b, target, optimize),
     });
     c_smoke_static.linkLibC();
     c_smoke_static.addIncludePath(b.path("include"));
@@ -589,7 +585,7 @@ pub fn build(b: *std.Build) void {
 
     const c_smoke_shared = b.addExecutable(.{
         .name = "c_api_smoke_shared",
-        .root_module = c_smoke_root_mod,
+        .root_module = createEmptyRootModule(b, target, optimize),
     });
     c_smoke_shared.linkLibC();
     c_smoke_shared.addIncludePath(b.path("include"));
@@ -602,7 +598,7 @@ pub fn build(b: *std.Build) void {
 
     const c_compat_smoke_static = b.addExecutable(.{
         .name = "c_api_compat_smoke_static",
-        .root_module = c_smoke_root_mod,
+        .root_module = createEmptyRootModule(b, target, optimize),
     });
     c_compat_smoke_static.linkLibC();
     c_compat_smoke_static.addIncludePath(b.path("include"));
@@ -615,7 +611,7 @@ pub fn build(b: *std.Build) void {
 
     const c_compat_smoke_shared = b.addExecutable(.{
         .name = "c_api_compat_smoke_shared",
-        .root_module = c_smoke_root_mod,
+        .root_module = createEmptyRootModule(b, target, optimize),
     });
     c_compat_smoke_shared.linkLibC();
     c_compat_smoke_shared.addIncludePath(b.path("include"));

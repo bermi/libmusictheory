@@ -4,12 +4,12 @@ The standalone release smoke path verifies the public library surface without de
 
 | Surface | Command | Expected Result |
 | --- | --- | --- |
-| Native build | `zig build` | native headers and libraries install to `zig-out/` |
-| Public C ABI smoke | `zig build c-smoke` | C smoke binaries pass |
-| Standalone docs bundle | `zig build wasm-docs` | docs bundle installs to `zig-out/wasm-docs` |
+| Native build | `./zigw build` | native headers and libraries install to `zig-out/` |
+| Public C ABI smoke | `./zigw build c-smoke` | C smoke binaries pass |
+| Standalone docs bundle | `./zigw build wasm-docs` | docs bundle installs to `zig-out/wasm-docs` |
 | Docs export profile | `node scripts/check_wasm_exports.mjs --profile full_demo --wasm zig-out/wasm-docs/libmusictheory.wasm` | required docs wasm exports present |
 | Docs browser smoke | `node scripts/validate_wasm_docs_playwright.mjs` | interactive docs render successfully |
-| Standalone gallery bundle | `zig build wasm-gallery` | gallery bundle installs to `zig-out/wasm-gallery` |
+| Standalone gallery bundle | `./zigw build wasm-gallery` | gallery bundle installs to `zig-out/wasm-gallery` |
 | Gallery export profile | `node scripts/check_wasm_exports.mjs --profile gallery --wasm zig-out/wasm-gallery/libmusictheory.wasm` | required gallery wasm exports present |
 | Gallery browser smoke | `node scripts/validate_wasm_gallery_playwright.mjs` | gallery scenes render successfully, including fake-MIDI validation of the live composer scene |
 | Gallery screenshot capture | `node scripts/capture_wasm_gallery_screenshots.mjs` | release-candidate screenshots and `captures.json` regenerate successfully, including `scene-midi.png` |

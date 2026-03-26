@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ZIG_VERSION="${LMT_ZIG_VERSION:-0.15.2}"
+CACHE_DIR="${LMT_ZIG_CACHE_DIR:-$HOME/.cache/zig-official}"
+
+download_zig() {
+    local archive_name="$1"
+    local archive_path="$CACHE_DIR/$archive_name.tar.xz"
+    local install_dir="$CACHE_DIR/$archive_name"
+    local url="https://ziglang.org/download/$ZIG_VERSION/$archive_name.tar.xz"
+
+    mkdir -p "$CACHE_DIR"
+    if [ ! -x "$install_dir/zig" ]; then
+        curl -fsSL "$url" -o "$archive_path"
+        rm -rf "$install_dir"
+        tar -xf "$archive_path" -C "$CACHE_DIR"
+    fi
+
+    printf '%s\n' "$install_dir/zig"
+}
+
+exec_with_x86_rosetta() {
+    local zig_bin="$1"
+    shift
+    if command -v arch >/dev/null 2>&1 && arch -x86_64 /usr/bin/true >/dev/null 2>&1; then
+        exec arch -x86_64 "$zig_bin" "$@"
+    fi
+    return 1
+}
+
+if [ -n "${LMT_ZIG_BIN:-}" ]; then
+    exec "$LMT_ZIG_BIN" "$@"
+fi
+
+host_os="$(uname -s)"
+host_arch="$(uname -m)"
+
+if [ "$host_os" = "Darwin" ] && [ "$host_arch" = "arm64" ]; then
+    x86_zig="$(download_zig "zig-x86_64-macos-$ZIG_VERSION")"
+    if exec_with_x86_rosetta "$x86_zig" "$@"; then
+        exit 0
+    fi
+
+    arm_zig="$(download_zig "zig-aarch64-macos-$ZIG_VERSION")"
+    exec "$arm_zig" "$@"
+fi
+
+if command -v zig >/dev/null 2>&1; then
+    exec zig "$@"
+fi
+
+echo "zigw: unable to resolve a usable Zig $ZIG_VERSION toolchain" >&2
+exit 1

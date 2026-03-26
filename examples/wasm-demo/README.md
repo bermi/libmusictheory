@@ -23,7 +23,7 @@ This directory now contains two kinds of browser surfaces:
 ## Exact SVG Parity
 
 ```bash
-zig build wasm-demo
+./zigw build wasm-demo
 python3 -m http.server --directory zig-out/wasm-demo 8000
 ```
 
@@ -42,7 +42,7 @@ That makes the default validation reference root `/tmp/harmoniousapp.net` work w
 ## Scaled Render Parity
 
 ```bash
-zig build wasm-scaled-render-parity
+./zigw build wasm-scaled-render-parity
 python3 -m http.server --directory zig-out/wasm-scaled-render-parity 8002
 ```
 
@@ -60,7 +60,7 @@ This lane is useful and required, but it is not sufficient to call the project v
 ## Native RGBA Proof
 
 ```bash
-zig build wasm-native-rgba-proof
+./zigw build wasm-native-rgba-proof
 python3 -m http.server --directory zig-out/wasm-native-rgba-proof 8003
 ```
 
@@ -80,7 +80,7 @@ The displayed proof/parity bitmaps are not browser-smoothed placeholders. They a
 ## Full Interactive API Docs
 
 ```bash
-zig build wasm-docs
+./zigw build wasm-docs
 python3 -m http.server --directory zig-out/wasm-docs 8001
 ```
 
@@ -98,7 +98,7 @@ Core non-compat SVG generators in the docs bundle now share a common quality pre
 ## Harmonious SPA
 
 ```bash
-zig build wasm-harmonious-spa
+./zigw build wasm-harmonious-spa
 python3 -m http.server --directory zig-out/wasm-harmonious-spa 8004
 ```
 

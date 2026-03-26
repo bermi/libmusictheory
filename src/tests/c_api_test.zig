@@ -8,82 +8,66 @@ const c = @cImport({
     @cInclude("libmusictheory_compat.h");
 });
 
-const LmtKeyContext = extern struct {
-    tonic: u8,
-    quality: u8,
-};
+const api = @import("../c_api.zig");
+const LmtKeyContext = api.LmtKeyContext;
+const LmtFretPos = api.LmtFretPos;
+const LmtGuideDot = api.LmtGuideDot;
 
-const LmtFretPos = extern struct {
-    string: u8,
-    fret: u8,
-};
-
-const LmtGuideDot = extern struct {
-    position: LmtFretPos,
-    pitch_class: u8,
-    opacity: f32,
-};
-
-extern fn lmt_pcs_from_list(pcs_ptr: [*c]const u8, count: u8) callconv(.c) u16;
-extern fn lmt_pcs_to_list(set: u16, out: [*c]u8) callconv(.c) u8;
-extern fn lmt_pcs_cardinality(set: u16) callconv(.c) u8;
-extern fn lmt_pcs_transpose(set: u16, semitones: u8) callconv(.c) u16;
-extern fn lmt_pcs_invert(set: u16) callconv(.c) u16;
-extern fn lmt_pcs_complement(set: u16) callconv(.c) u16;
-extern fn lmt_pcs_is_subset(small: u16, big: u16) callconv(.c) bool;
-
-extern fn lmt_prime_form(set: u16) callconv(.c) u16;
-extern fn lmt_forte_prime(set: u16) callconv(.c) u16;
-extern fn lmt_is_cluster_free(set: u16) callconv(.c) bool;
-extern fn lmt_evenness_distance(set: u16) callconv(.c) f32;
-
-extern fn lmt_scale(scale_type: u8, tonic: u8) callconv(.c) u16;
-extern fn lmt_mode(mode_type: u8, root: u8) callconv(.c) u16;
-extern fn lmt_spell_note(pc: u8, key_ctx: LmtKeyContext) callconv(.c) [*c]const u8;
-
-extern fn lmt_chord(chord_kind: u8, root: u8) callconv(.c) u16;
-extern fn lmt_chord_name(set: u16) callconv(.c) [*c]const u8;
-extern fn lmt_roman_numeral(chord_set: u16, key_ctx: LmtKeyContext) callconv(.c) [*c]const u8;
-
-extern fn lmt_fret_to_midi(string: u8, fret: u8, tuning_ptr: [*c]const u8) callconv(.c) u8;
-extern fn lmt_fret_to_midi_n(string: u32, fret: u8, tuning_ptr: [*c]const u8, tuning_count: u32) callconv(.c) u8;
-extern fn lmt_midi_to_fret_positions(note: u8, tuning_ptr: [*c]const u8, out: [*c]LmtFretPos) callconv(.c) u8;
-extern fn lmt_midi_to_fret_positions_n(note: u8, tuning_ptr: [*c]const u8, tuning_count: u32, out: [*c]LmtFretPos, out_cap: u32) callconv(.c) u32;
-extern fn lmt_generate_voicings_n(chord_set: u16, tuning_ptr: [*c]const u8, tuning_count: u32, max_fret: u8, max_span: u8, out_frets: [*c]i8, out_voicing_cap: u32) callconv(.c) u32;
-extern fn lmt_pitch_class_guide_n(selected_ptr: [*c]const LmtFretPos, selected_count: u32, min_fret: u8, max_fret: u8, tuning_ptr: [*c]const u8, tuning_count: u32, out: [*c]LmtGuideDot, out_cap: u32) callconv(.c) u32;
-extern fn lmt_frets_to_url_n(frets_ptr: [*c]const i8, fret_count: u32, buf: [*c]u8, buf_size: u32) callconv(.c) u32;
-extern fn lmt_url_to_frets_n(url_ptr: [*c]const u8, out: [*c]i8, out_cap: u32) callconv(.c) u32;
-
-extern fn lmt_svg_clock_optc(set: u16, buf: [*c]u8, buf_size: u32) callconv(.c) u32;
-extern fn lmt_svg_optic_k_group(set: u16, buf: [*c]u8, buf_size: u32) callconv(.c) u32;
-extern fn lmt_svg_evenness_chart(buf: [*c]u8, buf_size: u32) callconv(.c) u32;
-extern fn lmt_svg_evenness_field(set: u16, buf: [*c]u8, buf_size: u32) callconv(.c) u32;
-extern fn lmt_svg_fret(frets_ptr: [*c]const i8, buf: [*c]u8, buf_size: u32) callconv(.c) u32;
-extern fn lmt_svg_fret_n(frets_ptr: [*c]const i8, string_count: u32, window_start: u32, visible_frets: u32, buf: [*c]u8, buf_size: u32) callconv(.c) u32;
-extern fn lmt_svg_chord_staff(chord_kind: u8, root: u8, buf: [*c]u8, buf_size: u32) callconv(.c) u32;
-extern fn lmt_svg_key_staff(tonic: u8, quality: u8, buf: [*c]u8, buf_size: u32) callconv(.c) u32;
-extern fn lmt_svg_keyboard(notes_ptr: [*c]const u8, note_count: u32, range_low: u8, range_high: u8, buf: [*c]u8, buf_size: u32) callconv(.c) u32;
-extern fn lmt_svg_piano_staff(notes_ptr: [*c]const u8, note_count: u32, tonic: u8, quality: u8, buf: [*c]u8, buf_size: u32) callconv(.c) u32;
-extern fn lmt_raster_is_enabled() callconv(.c) u32;
-extern fn lmt_raster_demo_rgba(width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32;
-extern fn lmt_bitmap_clock_optc_rgba(set: u16, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32;
-extern fn lmt_bitmap_optic_k_group_rgba(set: u16, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32;
-extern fn lmt_bitmap_evenness_chart_rgba(width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32;
-extern fn lmt_bitmap_evenness_field_rgba(set: u16, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32;
-extern fn lmt_bitmap_fret_rgba(frets_ptr: [*c]const i8, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32;
-extern fn lmt_bitmap_fret_n_rgba(frets_ptr: [*c]const i8, string_count: u32, window_start: u32, visible_frets: u32, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32;
-extern fn lmt_bitmap_chord_staff_rgba(chord_kind: u8, root: u8, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32;
-extern fn lmt_bitmap_key_staff_rgba(tonic: u8, quality: u8, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32;
-extern fn lmt_bitmap_keyboard_rgba(notes_ptr: [*c]const u8, note_count: u32, range_low: u8, range_high: u8, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32;
-extern fn lmt_bitmap_piano_staff_rgba(notes_ptr: [*c]const u8, note_count: u32, tonic: u8, quality: u8, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32;
-extern fn lmt_wasm_scratch_ptr() callconv(.c) [*c]u8;
-extern fn lmt_wasm_scratch_size() callconv(.c) u32;
-extern fn lmt_svg_compat_kind_count() callconv(.c) u32;
-extern fn lmt_svg_compat_kind_name(kind_index: u32) callconv(.c) [*c]const u8;
-extern fn lmt_svg_compat_kind_directory(kind_index: u32) callconv(.c) [*c]const u8;
-extern fn lmt_svg_compat_image_count(kind_index: u32) callconv(.c) u32;
-extern fn lmt_svg_compat_image_name(kind_index: u32, image_index: u32, buf: [*c]u8, buf_size: u32) callconv(.c) u32;
-extern fn lmt_svg_compat_generate(kind_index: u32, image_index: u32, buf: [*c]u8, buf_size: u32) callconv(.c) u32;
+const lmt_pcs_from_list = api.lmt_pcs_from_list;
+const lmt_pcs_to_list = api.lmt_pcs_to_list;
+const lmt_pcs_cardinality = api.lmt_pcs_cardinality;
+const lmt_pcs_transpose = api.lmt_pcs_transpose;
+const lmt_pcs_invert = api.lmt_pcs_invert;
+const lmt_pcs_complement = api.lmt_pcs_complement;
+const lmt_pcs_is_subset = api.lmt_pcs_is_subset;
+const lmt_prime_form = api.lmt_prime_form;
+const lmt_forte_prime = api.lmt_forte_prime;
+const lmt_is_cluster_free = api.lmt_is_cluster_free;
+const lmt_evenness_distance = api.lmt_evenness_distance;
+const lmt_scale = api.lmt_scale;
+const lmt_mode = api.lmt_mode;
+const lmt_spell_note = api.lmt_spell_note;
+const lmt_chord = api.lmt_chord;
+const lmt_chord_name = api.lmt_chord_name;
+const lmt_roman_numeral = api.lmt_roman_numeral;
+const lmt_fret_to_midi = api.lmt_fret_to_midi;
+const lmt_fret_to_midi_n = api.lmt_fret_to_midi_n;
+const lmt_midi_to_fret_positions = api.lmt_midi_to_fret_positions;
+const lmt_midi_to_fret_positions_n = api.lmt_midi_to_fret_positions_n;
+const lmt_generate_voicings_n = api.lmt_generate_voicings_n;
+const lmt_pitch_class_guide_n = api.lmt_pitch_class_guide_n;
+const lmt_frets_to_url_n = api.lmt_frets_to_url_n;
+const lmt_url_to_frets_n = api.lmt_url_to_frets_n;
+const lmt_svg_clock_optc = api.lmt_svg_clock_optc;
+const lmt_svg_optic_k_group = api.lmt_svg_optic_k_group;
+const lmt_svg_evenness_chart = api.lmt_svg_evenness_chart;
+const lmt_svg_evenness_field = api.lmt_svg_evenness_field;
+const lmt_svg_fret = api.lmt_svg_fret;
+const lmt_svg_fret_n = api.lmt_svg_fret_n;
+const lmt_svg_chord_staff = api.lmt_svg_chord_staff;
+const lmt_svg_key_staff = api.lmt_svg_key_staff;
+const lmt_svg_keyboard = api.lmt_svg_keyboard;
+const lmt_svg_piano_staff = api.lmt_svg_piano_staff;
+const lmt_raster_is_enabled = api.lmt_raster_is_enabled;
+const lmt_raster_demo_rgba = api.lmt_raster_demo_rgba;
+const lmt_bitmap_clock_optc_rgba = api.lmt_bitmap_clock_optc_rgba;
+const lmt_bitmap_optic_k_group_rgba = api.lmt_bitmap_optic_k_group_rgba;
+const lmt_bitmap_evenness_chart_rgba = api.lmt_bitmap_evenness_chart_rgba;
+const lmt_bitmap_evenness_field_rgba = api.lmt_bitmap_evenness_field_rgba;
+const lmt_bitmap_fret_rgba = api.lmt_bitmap_fret_rgba;
+const lmt_bitmap_fret_n_rgba = api.lmt_bitmap_fret_n_rgba;
+const lmt_bitmap_chord_staff_rgba = api.lmt_bitmap_chord_staff_rgba;
+const lmt_bitmap_key_staff_rgba = api.lmt_bitmap_key_staff_rgba;
+const lmt_bitmap_keyboard_rgba = api.lmt_bitmap_keyboard_rgba;
+const lmt_bitmap_piano_staff_rgba = api.lmt_bitmap_piano_staff_rgba;
+const lmt_wasm_scratch_ptr = api.lmt_wasm_scratch_ptr;
+const lmt_wasm_scratch_size = api.lmt_wasm_scratch_size;
+const lmt_svg_compat_kind_count = api.lmt_svg_compat_kind_count;
+const lmt_svg_compat_kind_name = api.lmt_svg_compat_kind_name;
+const lmt_svg_compat_kind_directory = api.lmt_svg_compat_kind_directory;
+const lmt_svg_compat_image_count = api.lmt_svg_compat_image_count;
+const lmt_svg_compat_image_name = api.lmt_svg_compat_image_name;
+const lmt_svg_compat_generate = api.lmt_svg_compat_generate;
 
 test "c abi header layout and constants" {
     try testing.expectEqual(@as(usize, 2), @sizeOf(c.lmt_pitch_class_set));
