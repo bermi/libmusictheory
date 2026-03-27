@@ -112,6 +112,58 @@ typedef struct {
     uint8_t reads_as_named_chord;
 } lmt_context_suggestion;
 
+typedef uint8_t lmt_cadence_state;
+enum {
+    LMT_CADENCE_NONE = 0,
+    LMT_CADENCE_STABLE = 1,
+    LMT_CADENCE_PRE_DOMINANT = 2,
+    LMT_CADENCE_DOMINANT = 3,
+    LMT_CADENCE_CADENTIAL_SIX_FOUR = 4,
+    LMT_CADENCE_AUTHENTIC_ARRIVAL = 5,
+    LMT_CADENCE_HALF_ARRIVAL = 6,
+    LMT_CADENCE_DECEPTIVE_PULL = 7,
+};
+
+typedef struct {
+    uint8_t beat_in_bar;
+    uint8_t beats_per_bar;
+    uint8_t subdivision;
+    uint8_t reserved;
+} lmt_metric_position;
+
+typedef struct {
+    uint8_t id;
+    uint8_t midi;
+    int8_t octave;
+    uint8_t pitch_class;
+    uint8_t sustained;
+    uint8_t reserved0;
+    uint8_t reserved1;
+    uint8_t reserved2;
+} lmt_voice;
+
+typedef struct {
+    lmt_pitch_class_set set_value;
+    uint8_t voice_count;
+    uint8_t tonic;
+    uint8_t mode_type;
+    uint8_t key_quality;
+    lmt_metric_position metric;
+    uint8_t cadence_state;
+    uint8_t state_index;
+    uint8_t next_voice_id;
+    uint8_t reserved;
+    lmt_voice voices[8];
+} lmt_voiced_state;
+
+typedef struct {
+    uint8_t len;
+    uint8_t next_voice_id;
+    uint8_t reserved0;
+    uint8_t reserved1;
+    lmt_voiced_state states[4];
+} lmt_voiced_history;
+
 lmt_pitch_class_set lmt_pcs_from_list(const lmt_pitch_class *pcs, uint8_t count);
 uint8_t lmt_pcs_to_list(lmt_pitch_class_set set, lmt_pitch_class *out);
 uint8_t lmt_pcs_cardinality(lmt_pitch_class_set set);
@@ -158,6 +210,9 @@ uint32_t lmt_svg_piano_staff(const lmt_midi_note *notes, uint32_t note_count, lm
 /* Experimental APIs: useful for demos and renderer work, not yet stable ABI. */
 uint32_t lmt_raster_is_enabled(void);
 uint32_t lmt_raster_demo_rgba(uint32_t width, uint32_t height, uint8_t *out_rgba, uint32_t out_rgba_size);
+void lmt_voiced_history_reset(lmt_voiced_history *history);
+uint32_t lmt_build_voiced_state(const lmt_midi_note *notes, uint32_t note_count, const lmt_midi_note *sustained_notes, uint32_t sustained_count, lmt_pitch_class tonic, lmt_mode_type mode_type, uint8_t beat_in_bar, uint8_t beats_per_bar, uint8_t subdivision, lmt_cadence_state cadence_hint, const lmt_voiced_state *previous, lmt_voiced_state *out);
+uint32_t lmt_voiced_history_push(lmt_voiced_history *history, const lmt_midi_note *notes, uint32_t note_count, const lmt_midi_note *sustained_notes, uint32_t sustained_count, lmt_pitch_class tonic, lmt_mode_type mode_type, uint8_t beat_in_bar, uint8_t beats_per_bar, uint8_t subdivision, lmt_cadence_state cadence_hint, lmt_voiced_state *out);
 uint8_t lmt_mode_spelling_quality(lmt_pitch_class tonic, lmt_mode_type mode_type);
 uint32_t lmt_rank_context_suggestions(lmt_pitch_class_set set, const lmt_midi_note *midi_notes, uint32_t note_count, lmt_pitch_class tonic, lmt_mode_type mode_type, lmt_context_suggestion *out, uint32_t out_cap);
 /* preferred_bass_pc >= 12 means “no preferred bass pitch class” */

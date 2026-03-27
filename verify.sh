@@ -163,6 +163,12 @@ if [ -f "$ROOT_DIR/docs/plans/in_progress/0089-live-midi-context-and-snapshot-ux
     check_cmd "cd '$ROOT_DIR' && rg -n 'selectOption\\(\"#midi-tonic\"|selectOption\\(\"#midi-mode\"|contextChanged|snapshotContextRestored' scripts/validate_wasm_gallery_playwright.mjs >/dev/null" "0089 live MIDI context guardrail (playwright proves tonic/mode changes alter the scene and snapshot recall restores context)"
 fi
 
+if [ -f "$ROOT_DIR/docs/plans/in_progress/0091-voiced-state-and-temporal-memory.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0091-voiced-state-and-temporal-memory.md" ]; then
+    check_cmd "cd '$ROOT_DIR' && test -f src/counterpoint.zig && rg -n 'pub const counterpoint|tests/counterpoint_test\\.zig' src/root.zig >/dev/null" "0091 counterpoint core guardrail (module and focused tests are wired into the root surface)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'VoicedState|VoicedHistoryWindow|buildVoicedState|inferCadenceState' src/counterpoint.zig src/tests/counterpoint_test.zig docs/research/algorithms/voice-leading.md >/dev/null" "0091 counterpoint state guardrail (state/history logic and research docs are present)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'lmt_metric_position|lmt_voice|lmt_voiced_state|lmt_voiced_history|lmt_voiced_history_reset|lmt_build_voiced_state|lmt_voiced_history_push' include/libmusictheory.h src/c_api.zig build.zig scripts/check_wasm_exports.mjs src/tests/c_api_test.zig >/dev/null" "0091 counterpoint ABI guardrail (experimental state/history ABI is declared, exported, and tested)"
+fi
+
 if [ -f "$ROOT_DIR/scripts/release_smoke.sh" ]; then
     check_cmd "cd '$ROOT_DIR' && test -x scripts/release_smoke.sh" "0078 release smoke guardrail (script is executable)"
     check_cmd "cd '$ROOT_DIR' && ! rg -n 'tmp/harmoniousapp\\.net|validate_harmonious_|wasm-demo|wasm-scaled-render-parity|wasm-native-rgba-proof|wasm-harmonious-spa' scripts/release_smoke.sh" "0078 release smoke guardrail (script stays on standalone surfaces and does not depend on local harmonious data)"

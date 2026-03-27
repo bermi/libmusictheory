@@ -190,6 +190,24 @@ orbifold_layout(chords, C):
 - `VoiceLeading`: struct { from: PitchClassSet, to: PitchClassSet, assignment: [MAX_CARD]struct{from: u4, to: u4}, distance: u8 }
 - `VLGraph`: struct { nodes: []PitchClassSet, edges: []struct{a: u16, b: u16, distance: u8} }
 
+## Time-Aware Counterpoint State
+
+The standalone library now also needs a register-aware, time-aware layer on top of pitch-class voice-leading. The current `VoicedState` work adds fixed-capacity primitives for:
+
+- persistent voice identity across adjacent MIDI snapshots
+- current MIDI notes and sustained-note flags
+- recent temporal memory through a `VoicedHistoryWindow`
+- tonic/mode context and derived key quality
+- metric position (`beat_in_bar`, `beats_per_bar`, `subdivision`)
+- lightweight cadence-state inference
+
+This is intentionally a separate layer from pure PCS voice-leading distance:
+
+- PCS voice-leading treats voices as anonymous and equal-cardinality
+- counterpoint state keeps concrete MIDI register, voice ids, and recent history
+
+The implementation uses a deterministic assignment step with insertion/deletion costs so the same note sequence always yields the same voice ids. That state then becomes the input for later motion classification and next-step ranking.
+
 ## Dependencies
 
 - [Pitch Class Set Operations](pitch-class-set-operations.md)

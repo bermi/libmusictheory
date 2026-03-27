@@ -12,6 +12,8 @@ const api = @import("../c_api.zig");
 const LmtKeyContext = api.LmtKeyContext;
 const LmtFretPos = api.LmtFretPos;
 const LmtGuideDot = api.LmtGuideDot;
+const LmtVoicedState = api.LmtVoicedState;
+const LmtVoicedHistory = api.LmtVoicedHistory;
 
 const lmt_pcs_from_list = api.lmt_pcs_from_list;
 const lmt_pcs_to_list = api.lmt_pcs_to_list;
@@ -53,6 +55,9 @@ const lmt_svg_keyboard = api.lmt_svg_keyboard;
 const lmt_svg_piano_staff = api.lmt_svg_piano_staff;
 const lmt_raster_is_enabled = api.lmt_raster_is_enabled;
 const lmt_raster_demo_rgba = api.lmt_raster_demo_rgba;
+const lmt_voiced_history_reset = api.lmt_voiced_history_reset;
+const lmt_build_voiced_state = api.lmt_build_voiced_state;
+const lmt_voiced_history_push = api.lmt_voiced_history_push;
 const lmt_bitmap_clock_optc_rgba = api.lmt_bitmap_clock_optc_rgba;
 const lmt_bitmap_optic_k_group_rgba = api.lmt_bitmap_optic_k_group_rgba;
 const lmt_bitmap_evenness_chart_rgba = api.lmt_bitmap_evenness_chart_rgba;
@@ -77,6 +82,8 @@ test "c abi header layout and constants" {
     try testing.expectEqual(@as(usize, 2), @sizeOf(c.lmt_key_context));
     try testing.expectEqual(@as(usize, 8), @sizeOf(c.lmt_guide_dot));
     try testing.expectEqual(@as(usize, 12), @sizeOf(c.lmt_context_suggestion));
+    try testing.expectEqual(@as(usize, 4), @sizeOf(c.lmt_metric_position));
+    try testing.expectEqual(@as(usize, 8), @sizeOf(c.lmt_voice));
     try testing.expectEqual(@as(usize, 0), @offsetOf(c.lmt_key_context, "tonic"));
     try testing.expectEqual(@as(usize, 1), @offsetOf(c.lmt_key_context, "quality"));
     try testing.expectEqual(@as(usize, 0), @offsetOf(c.lmt_guide_dot, "position"));
@@ -84,6 +91,7 @@ test "c abi header layout and constants" {
     try testing.expectEqual(@as(usize, 4), @offsetOf(c.lmt_guide_dot, "opacity"));
     try testing.expectEqual(@as(usize, 4), @offsetOf(c.lmt_context_suggestion, "expanded_set"));
     try testing.expectEqual(@as(usize, 6), @offsetOf(c.lmt_context_suggestion, "pitch_class"));
+    try testing.expectEqual(@as(usize, 10), @offsetOf(c.lmt_voiced_state, "cadence_state"));
     try testing.expectEqual(@as(c_int, 0), c.LMT_SCALE_DIATONIC);
     try testing.expectEqual(@as(c_int, 16), c.LMT_MODE_WHOLE_TONE);
     try testing.expectEqual(@as(c_int, 3), c.LMT_CHORD_AUGMENTED);
@@ -151,6 +159,52 @@ test "c abi context suggestion ranking" {
     try testing.expect(pcs_found[5]);
     try testing.expect(pcs_found[9]);
     try testing.expect(pcs_found[11]);
+}
+
+test "c abi voiced state and history" {
+    var state: LmtVoicedState = undefined;
+    const first_notes = [_]u8{ 60, 64, 67 };
+    try testing.expectEqual(@as(u32, 3), lmt_build_voiced_state(
+        @ptrCast(&first_notes),
+        first_notes.len,
+        null,
+        0,
+        0,
+        c.LMT_MODE_IONIAN,
+        0,
+        4,
+        0,
+        255,
+        null,
+        @ptrCast(&state),
+    ));
+    try testing.expectEqual(@as(u8, 3), state.voice_count);
+    try testing.expectEqual(@as(u8, 0), state.voices[0].id);
+    try testing.expectEqual(@as(u8, c.LMT_CADENCE_STABLE), state.cadence_state);
+
+    var history: LmtVoicedHistory = undefined;
+    lmt_voiced_history_reset(@ptrCast(&history));
+    try testing.expectEqual(@as(u8, 0), history.len);
+
+    const second_notes = [_]u8{ 59, 60, 64, 67 };
+    var pushed: LmtVoicedState = undefined;
+    try testing.expectEqual(@as(u32, 4), lmt_voiced_history_push(
+        @ptrCast(&history),
+        @ptrCast(&second_notes),
+        second_notes.len,
+        @ptrCast(&[_]u8{59}),
+        1,
+        0,
+        c.LMT_MODE_IONIAN,
+        1,
+        4,
+        0,
+        255,
+        @ptrCast(&pushed),
+    ));
+    try testing.expectEqual(@as(u8, 1), history.len);
+    try testing.expectEqual(@as(u8, 4), pushed.voice_count);
+    try testing.expectEqual(@as(u8, 1), pushed.voices[0].sustained);
 }
 
 test "c abi chords and roman numerals" {

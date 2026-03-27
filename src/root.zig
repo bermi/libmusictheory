@@ -25,6 +25,7 @@ pub const chord_type = @import("chord_type.zig");
 pub const chord_construction = @import("chord_construction.zig");
 pub const harmony = @import("harmony.zig");
 pub const voice_leading = @import("voice_leading.zig");
+pub const counterpoint = @import("counterpoint.zig");
 pub const guitar = @import("guitar.zig");
 pub const keyboard = @import("keyboard.zig");
 pub const slider = @import("slider.zig");
@@ -65,6 +66,7 @@ test {
     _ = @import("tests/chord_construction_test.zig");
     _ = @import("tests/harmony_analysis_test.zig");
     _ = @import("tests/voice_leading_test.zig");
+    _ = @import("tests/counterpoint_test.zig");
     _ = @import("tests/guitar_test.zig");
     _ = @import("tests/keyboard_test.zig");
     _ = @import("tests/svg_clock_test.zig");

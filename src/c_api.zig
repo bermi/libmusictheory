@@ -12,6 +12,7 @@ const note_spelling = @import("note_spelling.zig");
 const chord_type = @import("chord_type.zig");
 const chord = @import("chord_construction.zig");
 const harmony = @import("harmony.zig");
+const counterpoint = @import("counterpoint.zig");
 const guitar = @import("guitar.zig");
 const keyboard_logic = @import("keyboard.zig");
 const svg_clock = @import("svg/clock.zig");
@@ -48,6 +49,46 @@ pub const LmtContextSuggestion = extern struct {
     in_context: u8,
     cluster_free: u8,
     reads_as_named_chord: u8,
+};
+
+pub const LmtMetricPosition = extern struct {
+    beat_in_bar: u8,
+    beats_per_bar: u8,
+    subdivision: u8,
+    reserved: u8,
+};
+
+pub const LmtVoice = extern struct {
+    id: u8,
+    midi: u8,
+    octave: i8,
+    pitch_class: u8,
+    sustained: u8,
+    reserved0: u8,
+    reserved1: u8,
+    reserved2: u8,
+};
+
+pub const LmtVoicedState = extern struct {
+    set_value: u16,
+    voice_count: u8,
+    tonic: u8,
+    mode_type: u8,
+    key_quality: u8,
+    metric: LmtMetricPosition,
+    cadence_state: u8,
+    state_index: u8,
+    next_voice_id: u8,
+    reserved: u8,
+    voices: [counterpoint.MAX_VOICES]LmtVoice,
+};
+
+pub const LmtVoicedHistory = extern struct {
+    len: u8,
+    next_voice_id: u8,
+    reserved0: u8,
+    reserved1: u8,
+    states: [counterpoint.HISTORY_CAPACITY]LmtVoicedState,
 };
 
 const SCALE_DIATONIC: u8 = 0;
@@ -260,6 +301,115 @@ fn sanitizeKeyboardRange(low_raw: u8, high_raw: u8) KeyboardRange {
         .{ .low = clamped_high, .high = clamped_low };
 }
 
+fn decodeCadenceState(raw: u8) ?counterpoint.CadenceState {
+    return std.meta.intToEnum(counterpoint.CadenceState, raw) catch null;
+}
+
+fn decodeMetricPosition(beat_in_bar: u8, beats_per_bar: u8, subdivision: u8) counterpoint.MetricPosition {
+    return counterpoint.MetricPosition.normalized(beat_in_bar, beats_per_bar, subdivision);
+}
+
+fn decodeVoicedState(raw: LmtVoicedState) counterpoint.VoicedState {
+    var state = counterpoint.VoicedState.initEmpty(
+        @as(pitch.PitchClass, @intCast(raw.tonic % 12)),
+        decodeModeType(raw.mode_type) orelse .ionian,
+        decodeMetricPosition(raw.metric.beat_in_bar, raw.metric.beats_per_bar, raw.metric.subdivision),
+    );
+    state.set_value = maskPitchClassSet(raw.set_value);
+    state.voice_count = @as(u8, @intCast(@min(raw.voice_count, counterpoint.MAX_VOICES)));
+    state.key_quality = if (raw.key_quality == KEY_MINOR) .minor else .major;
+    state.cadence_state = decodeCadenceState(raw.cadence_state) orelse .none;
+    state.state_index = raw.state_index;
+    state.next_voice_id = raw.next_voice_id;
+
+    var index: usize = 0;
+    while (index < state.voice_count) : (index += 1) {
+        const voice = raw.voices[index];
+        state.voices[index] = .{
+            .id = voice.id,
+            .midi = @as(pitch.MidiNote, @intCast(@min(voice.midi, @as(u8, 127)))),
+            .pitch_class = @as(pitch.PitchClass, @intCast(voice.pitch_class % 12)),
+            .octave = voice.octave,
+            .sustained = voice.sustained == 1,
+        };
+    }
+    while (index < counterpoint.MAX_VOICES) : (index += 1) {
+        state.voices[index] = .{ .id = 0, .midi = 0, .pitch_class = 0, .octave = -1, .sustained = false };
+    }
+    return state;
+}
+
+fn writeVoicedState(out: *LmtVoicedState, state: counterpoint.VoicedState) void {
+    out.* = .{
+        .set_value = toCSet(state.set_value),
+        .voice_count = state.voice_count,
+        .tonic = state.tonic,
+        .mode_type = @intFromEnum(state.mode_type),
+        .key_quality = switch (state.key_quality) {
+            .minor => KEY_MINOR,
+            .major => KEY_MAJOR,
+        },
+        .metric = .{
+            .beat_in_bar = state.metric.beat_in_bar,
+            .beats_per_bar = state.metric.beats_per_bar,
+            .subdivision = state.metric.subdivision,
+            .reserved = 0,
+        },
+        .cadence_state = @intFromEnum(state.cadence_state),
+        .state_index = state.state_index,
+        .next_voice_id = state.next_voice_id,
+        .reserved = 0,
+        .voices = [_]LmtVoice{.{
+            .id = 0,
+            .midi = 0,
+            .octave = -1,
+            .pitch_class = 0,
+            .sustained = 0,
+            .reserved0 = 0,
+            .reserved1 = 0,
+            .reserved2 = 0,
+        }} ** counterpoint.MAX_VOICES,
+    };
+
+    for (state.slice(), 0..) |voice, index| {
+        out.voices[index] = .{
+            .id = voice.id,
+            .midi = voice.midi,
+            .octave = voice.octave,
+            .pitch_class = voice.pitch_class,
+            .sustained = if (voice.sustained) 1 else 0,
+            .reserved0 = 0,
+            .reserved1 = 0,
+            .reserved2 = 0,
+        };
+    }
+}
+
+fn decodeVoicedHistory(raw: LmtVoicedHistory) counterpoint.VoicedHistoryWindow {
+    var history = counterpoint.VoicedHistoryWindow.init();
+    history.len = @as(u8, @intCast(@min(raw.len, counterpoint.HISTORY_CAPACITY)));
+    history.next_voice_id = raw.next_voice_id;
+    var index: usize = 0;
+    while (index < history.len) : (index += 1) {
+        history.states[index] = decodeVoicedState(raw.states[index]);
+    }
+    return history;
+}
+
+fn writeVoicedHistory(out: *LmtVoicedHistory, history: counterpoint.VoicedHistoryWindow) void {
+    out.* = .{
+        .len = history.len,
+        .next_voice_id = history.next_voice_id,
+        .reserved0 = 0,
+        .reserved1 = 0,
+        .states = [_]LmtVoicedState{undefined} ** counterpoint.HISTORY_CAPACITY,
+    };
+    var index: usize = 0;
+    while (index < counterpoint.HISTORY_CAPACITY) : (index += 1) {
+        writeVoicedState(&out.states[index], history.states[index]);
+    }
+}
+
 fn isSelectedGuidePosition(selected_ptr: [*c]const LmtFretPos, selected_count: usize, string: usize, fret: u8) bool {
     if (selected_ptr == null) return false;
 
@@ -424,6 +574,92 @@ pub export fn lmt_mode(mode_type: u8, root: u8) callconv(.c) u16 {
     const base = modeSet(mt);
     const tonic = @as(pitch.PitchClass, @intCast(root % 12));
     return toCSet(pcs.transpose(base, tonic));
+}
+
+pub export fn lmt_voiced_history_reset(history: [*c]LmtVoicedHistory) callconv(.c) void {
+    if (history == null) return;
+    const out_history: *LmtVoicedHistory = @ptrCast(history);
+    writeVoicedHistory(out_history, counterpoint.VoicedHistoryWindow.init());
+}
+
+pub export fn lmt_build_voiced_state(
+    notes_ptr: [*c]const u8,
+    note_count: u32,
+    sustained_ptr: [*c]const u8,
+    sustained_count: u32,
+    tonic: u8,
+    mode_type: u8,
+    beat_in_bar: u8,
+    beats_per_bar: u8,
+    subdivision: u8,
+    cadence_hint: u8,
+    previous: [*c]const LmtVoicedState,
+    out: [*c]LmtVoicedState,
+) callconv(.c) u32 {
+    if (out == null) return 0;
+    const out_state: *LmtVoicedState = @ptrCast(out);
+    const mt = decodeModeType(mode_type) orelse return 0;
+    const tonic_pc = @as(pitch.PitchClass, @intCast(tonic % 12));
+    var notes_buf: [MAX_KEYBOARD_RENDER_NOTES]pitch.MidiNote = undefined;
+    var sustained_buf: [MAX_KEYBOARD_RENDER_NOTES]pitch.MidiNote = undefined;
+    const notes = decodeMidiNotes(notes_ptr, note_count, &notes_buf);
+    const sustained_notes = decodeMidiNotes(sustained_ptr, sustained_count, &sustained_buf);
+    var previous_state_storage: counterpoint.VoicedState = undefined;
+    const previous_state: ?*const counterpoint.VoicedState = if (previous != null) blk: {
+        previous_state_storage = decodeVoicedState(previous[0]);
+        break :blk &previous_state_storage;
+    } else null;
+    const built = counterpoint.buildVoicedState(
+        notes,
+        sustained_notes,
+        tonic_pc,
+        mt,
+        decodeMetricPosition(beat_in_bar, beats_per_bar, subdivision),
+        decodeCadenceState(cadence_hint),
+        previous_state,
+        if (previous != null) previous[0].next_voice_id else 0,
+    );
+    writeVoicedState(out_state, built);
+    return built.voice_count;
+}
+
+pub export fn lmt_voiced_history_push(
+    history_ptr: [*c]LmtVoicedHistory,
+    notes_ptr: [*c]const u8,
+    note_count: u32,
+    sustained_ptr: [*c]const u8,
+    sustained_count: u32,
+    tonic: u8,
+    mode_type: u8,
+    beat_in_bar: u8,
+    beats_per_bar: u8,
+    subdivision: u8,
+    cadence_hint: u8,
+    out: [*c]LmtVoicedState,
+) callconv(.c) u32 {
+    if (history_ptr == null) return 0;
+    const out_history: *LmtVoicedHistory = @ptrCast(history_ptr);
+    const mt = decodeModeType(mode_type) orelse return 0;
+    const tonic_pc = @as(pitch.PitchClass, @intCast(tonic % 12));
+    var notes_buf: [MAX_KEYBOARD_RENDER_NOTES]pitch.MidiNote = undefined;
+    var sustained_buf: [MAX_KEYBOARD_RENDER_NOTES]pitch.MidiNote = undefined;
+    const notes = decodeMidiNotes(notes_ptr, note_count, &notes_buf);
+    const sustained_notes = decodeMidiNotes(sustained_ptr, sustained_count, &sustained_buf);
+    var history = decodeVoicedHistory(out_history.*);
+    const built = history.push(
+        notes,
+        sustained_notes,
+        tonic_pc,
+        mt,
+        decodeMetricPosition(beat_in_bar, beats_per_bar, subdivision),
+        decodeCadenceState(cadence_hint),
+    );
+    writeVoicedHistory(out_history, history);
+    if (out != null) {
+        const out_state: *LmtVoicedState = @ptrCast(out);
+        writeVoicedState(out_state, built);
+    }
+    return built.voice_count;
 }
 
 pub export fn lmt_mode_spelling_quality(tonic: u8, mode_type: u8) callconv(.c) u8 {
