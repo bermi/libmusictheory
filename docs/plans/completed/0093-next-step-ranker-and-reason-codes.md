@@ -3,7 +3,7 @@
 > Dependencies: 0091, 0092
 > Follow-up: 0094
 
-Status: In Progress
+Status: Completed
 
 ## Summary
 
@@ -26,21 +26,13 @@ Rank plausible next moves from a `VoicedState`, using recent history and a selec
 
 ## Reason Model
 
-Each ranked suggestion should support at least:
+Each ranked suggestion supports at least:
 
 - total score
 - dominant contributing reasons
 - warnings / penalties
 - cadence direction label
 - tension delta label
-
-## Verification-First Guardrails
-
-Before implementation:
-
-- `./verify.sh` must gain checks for exported reason-code tables or manifest consistency
-- tests must prove that the same input state under different profiles yields different rankings for coherent reasons
-- tests must cover temporal-memory effects so the scorer is not reducible to the current chord alone
 
 ## Exit Criteria
 
@@ -49,3 +41,19 @@ Before implementation:
 - temporal memory affects ranking in tests
 - the gallery can consume the ABI without re-implementing ranking policy
 - `./verify.sh` passes
+
+## Verification Commands
+
+- `./verify.sh`
+- `./zigw build test`
+
+## Implementation History (Point-in-Time)
+
+- `5b0a7ef` — 2026-03-27
+- Shipped behavior:
+  - added profile-aware next-step ranking, reason/warning tables, and cadence/tension labeling in `/Users/bermi/code/libmusictheory/src/counterpoint.zig`
+  - exported ranked suggestion ABI surfaces and manifest helpers in `/Users/bermi/code/libmusictheory/src/c_api.zig`, `/Users/bermi/code/libmusictheory/include/libmusictheory.h`, `/Users/bermi/code/libmusictheory/build.zig`, and `/Users/bermi/code/libmusictheory/scripts/check_wasm_exports.mjs`
+  - proved temporal-memory-sensitive ranking and reason consistency in `/Users/bermi/code/libmusictheory/src/tests/counterpoint_test.zig`, `/Users/bermi/code/libmusictheory/src/tests/c_api_test.zig`, and `/Users/bermi/code/libmusictheory/verify.sh`
+- Completion gates used:
+  - `./verify.sh`
+  - `./zigw build test`

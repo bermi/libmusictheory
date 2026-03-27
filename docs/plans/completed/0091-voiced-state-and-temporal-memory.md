@@ -3,7 +3,7 @@
 > Dependencies: 0010, 0011, 0090
 > Follow-up: 0092, 0093
 
-Status: Draft
+Status: Completed
 
 ## Summary
 
@@ -11,7 +11,7 @@ Introduce a real time-aware counterpoint state object that preserves voice ident
 
 ## Why
 
-Current library analyses are mostly snapshot-oriented. Counterpoint and serious voice-leading require a model where meaning depends on what happened just before.
+Current library analyses were mostly snapshot-oriented. Counterpoint and serious voice-leading require a model where meaning depends on what happened just before.
 
 ## Scope
 
@@ -34,13 +34,6 @@ Current library analyses are mostly snapshot-oriented. Counterpoint and serious 
 - voice identity assignment must be deterministic
 - history window size should support at least the last 1-3 states
 
-## Verification-First Guardrails
-
-Before implementation:
-
-- `./verify.sh` must gain checks for the new experimental ABI exposure and docs classification
-- tests must cover deterministic voice assignment and history roll-forward behavior
-
 ## Exit Criteria
 
 - `VoicedState` exists in core Zig
@@ -48,3 +41,19 @@ Before implementation:
 - current-state + recent-history reconstruction is deterministic for the same input sequence
 - experimental ABI/docs are explicit about status and buffer ownership
 - `./verify.sh` passes
+
+## Verification Commands
+
+- `./verify.sh`
+- `./zigw build test`
+
+## Implementation History (Point-in-Time)
+
+- `fc8998b` — 2026-03-27
+- Shipped behavior:
+  - added deterministic `VoicedState` and caller-owned `VoicedHistoryWindow` primitives plus cadence-state inference in `/Users/bermi/code/libmusictheory/src/counterpoint.zig`
+  - exported experimental ABI helpers and size/manifest functions in `/Users/bermi/code/libmusictheory/src/c_api.zig`, `/Users/bermi/code/libmusictheory/include/libmusictheory.h`, and `/Users/bermi/code/libmusictheory/build.zig`
+  - added state/history verification in `/Users/bermi/code/libmusictheory/src/tests/counterpoint_test.zig`, `/Users/bermi/code/libmusictheory/src/tests/c_api_test.zig`, and `/Users/bermi/code/libmusictheory/verify.sh`
+- Completion gates used:
+  - `./verify.sh`
+  - `./zigw build test`

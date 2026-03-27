@@ -3,7 +3,7 @@
 > Dependencies: 0091
 > Follow-up: 0093, 0094
 
-Status: In Progress
+Status: Completed
 
 ## Summary
 
@@ -35,7 +35,7 @@ Provide multiple reusable profiles instead of one hidden rule set:
 - jazz close-leading
 - free contemporary
 
-Each profile should specify at least:
+Each profile specifies at least:
 
 - which motion classes are preferred, penalized, or disallowed
 - spacing expectations
@@ -43,17 +43,25 @@ Each profile should specify at least:
 - cadence weighting hooks
 - dissonance/tendency-tone expectations where already available
 
-## Verification-First Guardrails
-
-Before implementation:
-
-- `./verify.sh` must gain explicit coverage that all declared profiles are exported/documented consistently
-- tests must cover each motion class with small deterministic fixtures
-- tests must prove that profile weights actually alter scoring outcomes
-
 ## Exit Criteria
 
 - adjacent-state motion classes are available as deterministic library results
 - multiple rule profiles exist and change evaluation behavior in tests
 - the library can explain motion semantics without relying on gallery JS heuristics
 - `./verify.sh` passes
+
+## Verification Commands
+
+- `./verify.sh`
+- `./zigw build test`
+
+## Implementation History (Point-in-Time)
+
+- `5b0a7ef` — 2026-03-27
+- Shipped behavior:
+  - added deterministic motion classification, profile evaluation, and exported profile metadata in `/Users/bermi/code/libmusictheory/src/counterpoint.zig`, `/Users/bermi/code/libmusictheory/src/c_api.zig`, `/Users/bermi/code/libmusictheory/include/libmusictheory.h`, `/Users/bermi/code/libmusictheory/build.zig`, and `/Users/bermi/code/libmusictheory/scripts/check_wasm_exports.mjs`
+  - shipped profile-sensitive fixtures covering contrary, similar, parallel, oblique, crossing, overlap, leaps, and common-tone retention in `/Users/bermi/code/libmusictheory/src/tests/counterpoint_test.zig` and `/Users/bermi/code/libmusictheory/src/tests/c_api_test.zig`
+  - documented the library-side motion semantics in `/Users/bermi/code/libmusictheory/docs/research/algorithms/voice-leading.md`
+- Completion gates used:
+  - `./verify.sh`
+  - `./zigw build test`
