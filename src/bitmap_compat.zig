@@ -2,10 +2,12 @@ const std = @import("std");
 
 const svg_compat = @import("harmonious_svg_compat.zig");
 const cluster = @import("cluster.zig");
+const guitar = @import("guitar.zig");
 const pcs = @import("pitch_class_set.zig");
 const set_class = @import("set_class.zig");
 const oc_templates = @import("generated/harmonious_oc_templates.zig");
 const fret_compat = @import("svg/fret_compat.zig");
+const svg_fret = @import("svg/fret.zig");
 const chord_compat = @import("svg/chord_compat.zig");
 const svg_clock_compat = @import("svg/clock_compat.zig");
 const text_misc = @import("svg/text_misc.zig");
@@ -119,7 +121,7 @@ pub fn renderSvgMarkupRgba(width: u32, height: u32, svg: []const u8, out_rgba: [
         .height = height,
         .stride = width * 4,
     };
-    clear(&surface, .{ 255, 255, 255, 255 });
+    clear(&surface, .{ 0, 0, 0, 0 });
     try renderSvgDocumentExtended(&surface, svg);
     return @as(usize, @intCast(required));
 }
@@ -134,7 +136,7 @@ pub fn renderPublicOpticKGroupRgba(width: u32, height: u32, set: pcs.PitchClassS
         .height = height,
         .stride = width * 4,
     };
-    clear(&surface, .{ 255, 255, 255, 255 });
+    clear(&surface, .{ 0, 0, 0, 0 });
 
     const nominal_width = 280.0;
     const nominal_height = 140.0;
@@ -186,6 +188,145 @@ pub fn renderPublicOpticKGroupRgba(width: u32, height: u32, set: pcs.PitchClassS
     return @as(usize, @intCast(required));
 }
 
+pub fn renderPublicStandardFretDiagramRgba(width: u32, height: u32, frets: []const i8, out_rgba: []u8) Error!usize {
+    const required: u64 = @as(u64, width) * @as(u64, height) * 4;
+    if (width == 0 or height == 0 or required == 0 or required > out_rgba.len) return error.OutputTooSmall;
+    if (frets.len == 0) return error.InvalidImage;
+
+    var surface = Surface{
+        .pixels = out_rgba[0..@as(usize, @intCast(required))],
+        .width = width,
+        .height = height,
+        .stride = width * 4,
+    };
+    clear(&surface, .{ 0, 0, 0, 0 });
+
+    const nominal_width = 100.0;
+    const nominal_height = 100.0;
+    const scale = @min(
+        @as(f64, @floatFromInt(width)) / nominal_width,
+        @as(f64, @floatFromInt(height)) / nominal_height,
+    );
+    const offset_x = (@as(f64, @floatFromInt(width)) - nominal_width * scale) / 2.0;
+    const offset_y = (@as(f64, @floatFromInt(height)) - nominal_height * scale) / 2.0;
+
+    const window = publicFretWindow(frets, null, svg_fret.DEFAULT_VISIBLE_FRETS);
+
+    var string: usize = 0;
+    while (string < frets.len) : (string += 1) {
+        const x = publicStringX(string, frets.len);
+        drawLineSegment(
+            &surface,
+            .{ .x = offset_x + x * scale, .y = offset_y + 20.0 * scale },
+            .{ .x = offset_x + x * scale, .y = offset_y + publicGridBottom(window) * scale },
+            hexColor("#171717"),
+            1.1 * scale,
+        );
+    }
+
+    const line_count = window.end - window.start;
+    var i: u32 = 0;
+    while (i <= line_count) : (i += 1) {
+        const y = 20.0 + @as(f64, @floatFromInt(i)) * 15.0;
+        const stroke_width: f64 = if (window.start == 0 and i == 0) 3.6 else 1.35;
+        const stroke_color = if (window.start == 0 and i == 0) hexColor("#101010") else hexColor("#171717");
+        drawLineSegment(
+            &surface,
+            .{ .x = offset_x + 20.0 * scale, .y = offset_y + y * scale },
+            .{ .x = offset_x + 80.0 * scale, .y = offset_y + y * scale },
+            stroke_color,
+            stroke_width * scale,
+        );
+    }
+
+    if (svg_fret.detectBarreForFrets(frets)) |barre| {
+        if (barre.fret > window.start and barre.fret <= window.end) {
+            const y = publicDotY(barre.fret, window);
+            const x0 = publicStringX(barre.low_string, frets.len) - 4.0;
+            const x1 = publicStringX(barre.high_string, frets.len) + 4.0;
+            const radius = 4.35;
+            const fill = .{ 17, 17, 17, 66 };
+            if (x1 - x0 > radius * 2.0) {
+                drawRect(
+                    &surface,
+                    offset_x + (x0 + radius) * scale,
+                    offset_y + (y - radius) * scale,
+                    (x1 - x0 - radius * 2.0) * scale,
+                    (radius * 2.0) * scale,
+                    fill,
+                    .{ 0, 0, 0, 0 },
+                    0.0,
+                );
+            }
+            drawCircle(
+                &surface,
+                offset_x + (x0 + radius) * scale,
+                offset_y + y * scale,
+                radius * scale,
+                fill,
+                .{ 0, 0, 0, 0 },
+                0.0,
+            );
+            drawCircle(
+                &surface,
+                offset_x + (x1 - radius) * scale,
+                offset_y + y * scale,
+                radius * scale,
+                fill,
+                .{ 0, 0, 0, 0 },
+                0.0,
+            );
+        }
+    }
+
+    for (frets, 0..) |fret, string_index| {
+        const x = publicStringX(string_index, frets.len);
+        if (fret < 0) {
+            const marker_x = offset_x + x * scale;
+            const marker_y = offset_y + 10.0 * scale;
+            drawLineSegment(
+                &surface,
+                .{ .x = marker_x - 3.6 * scale, .y = marker_y - 3.6 * scale },
+                .{ .x = marker_x + 3.6 * scale, .y = marker_y + 3.6 * scale },
+                hexColor("#111"),
+                1.9 * scale,
+            );
+            drawLineSegment(
+                &surface,
+                .{ .x = marker_x - 3.6 * scale, .y = marker_y + 3.6 * scale },
+                .{ .x = marker_x + 3.6 * scale, .y = marker_y - 3.6 * scale },
+                hexColor("#111"),
+                1.9 * scale,
+            );
+        } else if (fret == 0) {
+            drawCircle(
+                &surface,
+                offset_x + x * scale,
+                offset_y + 10.0 * scale,
+                4.3 * scale,
+                .{ 255, 255, 255, 255 },
+                hexColor("#111"),
+                1.7 * scale,
+            );
+        } else {
+            const ufret = @as(u32, @intCast(fret));
+            if (ufret <= window.start or ufret > window.end) continue;
+            const midi = guitar.fretToMidiGeneric(string_index, @as(u8, @intCast(ufret)), guitar.tunings.STANDARD[0..]) orelse continue;
+            drawCircle(
+                &surface,
+                offset_x + x * scale,
+                offset_y + publicDotY(ufret, window) * scale,
+                4.35 * scale,
+                OPC_FILL_COLORS[midi % 12],
+                hexColor("#101010"),
+                1.1 * scale,
+            );
+        }
+    }
+
+    return @as(usize, @intCast(required));
+}
+
 fn renderOpticKWheelDirect(surface: *Surface, set: pcs.PitchClassSet, center_x: f64, center_y: f64, radius: f64, node_radius: f64, ring_radius: f64, scale: f64, offset_x: f64, offset_y: f64) Error!void {
     const cluster_info = cluster.getClusters(set);
     drawCircle(
@@ -223,6 +364,44 @@ fn renderOpticKWheelDirect(surface: *Surface, set: pcs.PitchClassSet, center_x: 
             2.8 * scale,
         );
     }
+}
+
+const PublicFretWindow = struct {
+    start: u32,
+    end: u32,
+};
+
+fn publicFretWindow(frets: []const i8, explicit_start: ?u32, explicit_visible_frets: u32) PublicFretWindow {
+    const visible_frets = if (explicit_visible_frets == 0) svg_fret.DEFAULT_VISIBLE_FRETS else explicit_visible_frets;
+    if (explicit_start) |start| return .{ .start = start, .end = start + visible_frets };
+
+    var min_fret: u32 = std.math.maxInt(u32);
+    var max_fret: u32 = 0;
+    var has_fretted = false;
+    for (frets) |fret| {
+        if (fret <= 0) continue;
+        has_fretted = true;
+        const ufret = @as(u32, @intCast(fret));
+        min_fret = @min(min_fret, ufret);
+        max_fret = @max(max_fret, ufret);
+    }
+    if (!has_fretted) return .{ .start = 0, .end = visible_frets };
+
+    const start: u32 = if (min_fret <= 1) 0 else min_fret - 1;
+    return .{ .start = start, .end = @max(start + visible_frets, max_fret + 1) };
+}
+
+fn publicStringX(string: usize, string_count: usize) f64 {
+    if (string_count <= 1) return 50.0;
+    return 20.0 + (@as(f64, @floatFromInt(string)) * (60.0 / @as(f64, @floatFromInt(string_count - 1))));
+}
+
+fn publicDotY(fret: u32, window: PublicFretWindow) f64 {
+    return 20.0 + (@as(f64, @floatFromInt(fret - window.start)) - 0.5) * 15.0;
+}
+
+fn publicGridBottom(window: PublicFretWindow) f64 {
+    return 20.0 + @as(f64, @floatFromInt(window.end - window.start)) * 15.0;
 }
 
 const Point = struct {

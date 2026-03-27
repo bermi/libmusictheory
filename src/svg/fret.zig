@@ -1,5 +1,6 @@
 const std = @import("std");
 const guitar = @import("../guitar.zig");
+const pitch = @import("../pitch.zig");
 const svg_quality = @import("quality.zig");
 
 const GRID_LEFT: f32 = 20.0;
@@ -9,6 +10,10 @@ const FRET_SPACING: f32 = 15.0;
 pub const DEFAULT_VISIBLE_FRETS: u32 = 4;
 const MAX_DIAGRAM_FRET: u32 = std.math.maxInt(u8);
 const MARKER_Y: f32 = 10.0;
+const PC_FILL_COLORS = [_][]const u8{
+    "#00C", "#a4f", "#f0f", "#a16", "#e02", "#f91",
+    "#ff0", "#1e0", "#094", "#0bb", "#16b", "#28f",
+};
 
 pub const Barre = struct {
     fret: u5,
@@ -36,10 +41,11 @@ pub const DiagramSpec = struct {
     frets: []const i8,
     window_start: ?u32 = null,
     visible_frets: u32 = DEFAULT_VISIBLE_FRETS,
+    tuning: ?[]const pitch.MidiNote = null,
 };
 
 pub fn renderFretDiagram(voicing: guitar.GuitarVoicing, buf: []u8) []u8 {
-    return renderDiagram(.{ .frets = voicing.frets[0..] }, buf);
+    return renderDiagram(.{ .frets = voicing.frets[0..], .tuning = voicing.tuning[0..] }, buf);
 }
 
 pub fn renderDiagram(spec: DiagramSpec, buf: []u8) []u8 {
@@ -58,8 +64,8 @@ pub fn renderDiagram(spec: DiagramSpec, buf: []u8) []u8 {
         \\.string{stroke:#171717;stroke-width:1.1;stroke-linecap:round}
         \\.fret{stroke:#171717;stroke-width:1.35;stroke-linecap:round}
         \\.nut{stroke:#101010;stroke-width:3.6;stroke-linecap:round}
-        \\.dot{fill:#111}
-        \\.barre{fill:#111}
+        \\.dot{stroke:#101010;stroke-width:1.1}
+        \\.barre{fill:#111;fill-opacity:0.26}
         \\.marker-open{fill:#fff;stroke:#111;stroke-width:1.7}
         \\.marker-muted{stroke:#111;stroke-width:1.9;stroke-linecap:round}
         \\.position{fill:#4b4338;font-size:10px;font-weight:600;font-family:"Avenir Next","Avenir","SF Pro Display","Segoe UI","Helvetica Neue",Arial,sans-serif}
@@ -67,6 +73,16 @@ pub fn renderDiagram(spec: DiagramSpec, buf: []u8) []u8 {
     ) catch unreachable;
 
     drawGrid(w, spec.frets.len, window);
+
+    if (detectBarreForFrets(spec.frets)) |barre| {
+        if (barre.fret > window.start and barre.fret <= window.end) {
+            const y = dotY(barre.fret, window);
+            const x0 = stringX(barre.low_string, spec.frets.len) - 4.0;
+            const x1 = stringX(barre.high_string, spec.frets.len) + 4.0;
+            const width = x1 - x0;
+            w.print("<rect class=\"barre\" x=\"{d:.2}\" y=\"{d:.2}\" width=\"{d:.2}\" height=\"8.7\" rx=\"4.35\" fill=\"#111\" fill-opacity=\"0.26\" />\n", .{ x0, y - 4.35, width }) catch unreachable;
+        }
+    }
 
     for (spec.frets, 0..) |fret, string| {
         const x = stringX(string, spec.frets.len);
@@ -79,17 +95,8 @@ pub fn renderDiagram(spec: DiagramSpec, buf: []u8) []u8 {
             const ufret = @as(u32, @intCast(fret));
             if (ufret <= window.start or ufret > window.end) continue;
             const y = dotY(ufret, window);
-            w.print("<circle class=\"dot\" cx=\"{d:.2}\" cy=\"{d:.2}\" r=\"4.35\" fill=\"#111\" />\n", .{ x, y }) catch unreachable;
-        }
-    }
-
-    if (detectBarreForFrets(spec.frets)) |barre| {
-        if (barre.fret > window.start and barre.fret <= window.end) {
-            const y = dotY(barre.fret, window);
-            const x0 = stringX(barre.low_string, spec.frets.len) - 4.0;
-            const x1 = stringX(barre.high_string, spec.frets.len) + 4.0;
-            const width = x1 - x0;
-            w.print("<rect class=\"barre\" x=\"{d:.2}\" y=\"{d:.2}\" width=\"{d:.2}\" height=\"8.7\" rx=\"4.35\" fill=\"#111\" />\n", .{ x0, y - 4.35, width }) catch unreachable;
+            const fill = noteFillColor(spec.tuning, string, ufret);
+            w.print("<circle class=\"dot\" cx=\"{d:.2}\" cy=\"{d:.2}\" r=\"4.35\" fill=\"{s}\" stroke=\"#101010\" stroke-width=\"1.1\" />\n", .{ x, y, fill }) catch unreachable;
         }
     }
 
@@ -239,4 +246,11 @@ fn gridBottom(window: GenericFretWindow) f32 {
 
 fn normalizeVisibleFrets(explicit_visible_frets: u32) u32 {
     return if (explicit_visible_frets == 0) DEFAULT_VISIBLE_FRETS else explicit_visible_frets;
+}
+
+fn noteFillColor(tuning: ?[]const pitch.MidiNote, string: usize, fret: u32) []const u8 {
+    const tuning_slice = tuning orelse return "#111";
+    if (string >= tuning_slice.len or fret > std.math.maxInt(u8)) return "#111";
+    const midi = guitar.fretToMidiGeneric(string, @as(u8, @intCast(fret)), tuning_slice) orelse return "#111";
+    return PC_FILL_COLORS[midi % 12];
 }

@@ -91,6 +91,63 @@ pub const LmtVoicedHistory = extern struct {
     states: [counterpoint.HISTORY_CAPACITY]LmtVoicedState,
 };
 
+pub const LmtVoiceMotion = extern struct {
+    voice_id: u8,
+    from_midi: u8,
+    to_midi: u8,
+    delta: i8,
+    abs_delta: u8,
+    motion_class: u8,
+    retained: u8,
+    reserved: u8,
+};
+
+pub const LmtMotionSummary = extern struct {
+    voice_motion_count: u8,
+    common_tone_count: u8,
+    step_count: u8,
+    leap_count: u8,
+    contrary_count: u8,
+    similar_count: u8,
+    parallel_count: u8,
+    oblique_count: u8,
+    crossing_count: u8,
+    overlap_count: u8,
+    total_motion: u16,
+    outer_interval_before: i8,
+    outer_interval_after: i8,
+    outer_motion: u8,
+    previous_cadence_state: u8,
+    current_cadence_state: u8,
+    voice_motions: [counterpoint.MAX_VOICES]LmtVoiceMotion,
+};
+
+pub const LmtMotionEvaluation = extern struct {
+    score: i32,
+    preferred_score: i16,
+    penalty_score: i16,
+    cadence_score: i16,
+    spacing_penalty: i16,
+    leap_penalty: i16,
+    disallowed_count: u8,
+    disallowed: u8,
+};
+
+pub const LmtNextStepSuggestion = extern struct {
+    score: i32,
+    reason_mask: u32,
+    warning_mask: u32,
+    cadence_effect: u8,
+    tension_delta: i8,
+    note_count: u8,
+    reserved0: u8,
+    reserved1: u8,
+    set_value: u16,
+    notes: [counterpoint.MAX_VOICES]u8,
+    motion: LmtMotionSummary,
+    evaluation: LmtMotionEvaluation,
+};
+
 const SCALE_DIATONIC: u8 = 0;
 const SCALE_ACOUSTIC: u8 = 1;
 const SCALE_DIMINISHED: u8 = 2;
@@ -124,6 +181,13 @@ const CHORD_AUGMENTED: u8 = 3;
 
 const KEY_MAJOR: u8 = 0;
 const KEY_MINOR: u8 = 1;
+const COUNTERPOINT_RULE_PROFILE_NAMES = [_][]const u8{
+    "species",
+    "tonal-chorale",
+    "modal-polyphony",
+    "jazz-close-leading",
+    "free-contemporary",
+};
 
 const MAJOR_TRIAD = pcs.C_MAJOR_TRIAD;
 const MINOR_TRIAD = pcs.C_MINOR_TRIAD;
@@ -305,6 +369,10 @@ fn decodeCadenceState(raw: u8) ?counterpoint.CadenceState {
     return std.meta.intToEnum(counterpoint.CadenceState, raw) catch null;
 }
 
+fn decodeCounterpointRuleProfile(raw: u8) ?counterpoint.CounterpointRuleProfile {
+    return std.meta.intToEnum(counterpoint.CounterpointRuleProfile, raw) catch null;
+}
+
 fn decodeMetricPosition(beat_in_bar: u8, beats_per_bar: u8, subdivision: u8) counterpoint.MetricPosition {
     return counterpoint.MetricPosition.normalized(beat_in_bar, beats_per_bar, subdivision);
 }
@@ -408,6 +476,107 @@ fn writeVoicedHistory(out: *LmtVoicedHistory, history: counterpoint.VoicedHistor
     while (index < counterpoint.HISTORY_CAPACITY) : (index += 1) {
         writeVoicedState(&out.states[index], history.states[index]);
     }
+}
+
+fn writeMotionSummary(out: *LmtMotionSummary, summary: counterpoint.MotionSummary) void {
+    out.* = .{
+        .voice_motion_count = summary.voice_motion_count,
+        .common_tone_count = summary.common_tone_count,
+        .step_count = summary.step_count,
+        .leap_count = summary.leap_count,
+        .contrary_count = summary.contrary_count,
+        .similar_count = summary.similar_count,
+        .parallel_count = summary.parallel_count,
+        .oblique_count = summary.oblique_count,
+        .crossing_count = summary.crossing_count,
+        .overlap_count = summary.overlap_count,
+        .total_motion = summary.total_motion,
+        .outer_interval_before = summary.outer_interval_before,
+        .outer_interval_after = summary.outer_interval_after,
+        .outer_motion = @intFromEnum(summary.outer_motion),
+        .previous_cadence_state = @intFromEnum(summary.previous_cadence_state),
+        .current_cadence_state = @intFromEnum(summary.current_cadence_state),
+        .voice_motions = [_]LmtVoiceMotion{undefined} ** counterpoint.MAX_VOICES,
+    };
+
+    for (summary.voice_motions, 0..) |motion, index| {
+        out.voice_motions[index] = .{
+            .voice_id = motion.voice_id,
+            .from_midi = motion.from_midi,
+            .to_midi = motion.to_midi,
+            .delta = motion.delta,
+            .abs_delta = motion.abs_delta,
+            .motion_class = @intFromEnum(motion.motion_class),
+            .retained = if (motion.retained) 1 else 0,
+            .reserved = 0,
+        };
+    }
+}
+
+fn decodeMotionSummary(raw: LmtMotionSummary) counterpoint.MotionSummary {
+    var summary = counterpoint.MotionSummary.init();
+    summary.voice_motion_count = @min(raw.voice_motion_count, counterpoint.MAX_VOICES);
+    summary.common_tone_count = raw.common_tone_count;
+    summary.step_count = raw.step_count;
+    summary.leap_count = raw.leap_count;
+    summary.contrary_count = raw.contrary_count;
+    summary.similar_count = raw.similar_count;
+    summary.parallel_count = raw.parallel_count;
+    summary.oblique_count = raw.oblique_count;
+    summary.crossing_count = raw.crossing_count;
+    summary.overlap_count = raw.overlap_count;
+    summary.total_motion = raw.total_motion;
+    summary.outer_interval_before = raw.outer_interval_before;
+    summary.outer_interval_after = raw.outer_interval_after;
+    summary.outer_motion = std.meta.intToEnum(counterpoint.PairMotionClass, raw.outer_motion) catch .none;
+    summary.previous_cadence_state = decodeCadenceState(raw.previous_cadence_state) orelse .none;
+    summary.current_cadence_state = decodeCadenceState(raw.current_cadence_state) orelse .none;
+    for (0..summary.voice_motion_count) |index| {
+        const motion = raw.voice_motions[index];
+        summary.voice_motions[index] = .{
+            .voice_id = motion.voice_id,
+            .from_midi = @as(pitch.MidiNote, @intCast(@min(motion.from_midi, @as(u8, 127)))),
+            .to_midi = @as(pitch.MidiNote, @intCast(@min(motion.to_midi, @as(u8, 127)))),
+            .delta = motion.delta,
+            .abs_delta = motion.abs_delta,
+            .motion_class = std.meta.intToEnum(counterpoint.VoiceMotionClass, motion.motion_class) catch .stationary,
+            .retained = motion.retained != 0,
+        };
+    }
+    return summary;
+}
+
+fn writeMotionEvaluation(out: *LmtMotionEvaluation, evaluation: counterpoint.MotionEvaluation) void {
+    out.* = .{
+        .score = evaluation.score,
+        .preferred_score = evaluation.preferred_score,
+        .penalty_score = evaluation.penalty_score,
+        .cadence_score = evaluation.cadence_score,
+        .spacing_penalty = evaluation.spacing_penalty,
+        .leap_penalty = evaluation.leap_penalty,
+        .disallowed_count = evaluation.disallowed_count,
+        .disallowed = if (evaluation.disallowed) 1 else 0,
+    };
+}
+
+fn writeNextStepSuggestion(out: *LmtNextStepSuggestion, suggestion: counterpoint.NextStepSuggestion) void {
+    out.* = .{
+        .score = suggestion.score,
+        .reason_mask = suggestion.reason_mask,
+        .warning_mask = suggestion.warning_mask,
+        .cadence_effect = @intFromEnum(suggestion.cadence_effect),
+        .tension_delta = suggestion.tension_delta,
+        .note_count = suggestion.note_count,
+        .reserved0 = 0,
+        .reserved1 = 0,
+        .set_value = toCSet(suggestion.set_value),
+        .notes = [_]u8{0} ** counterpoint.MAX_VOICES,
+        .motion = undefined,
+        .evaluation = undefined,
+    };
+    for (suggestion.notes, 0..) |note, index| out.notes[index] = note;
+    writeMotionSummary(&out.motion, suggestion.motion);
+    writeMotionEvaluation(&out.evaluation, suggestion.evaluation);
 }
 
 fn isSelectedGuidePosition(selected_ptr: [*c]const LmtFretPos, selected_count: usize, string: usize, fret: u8) bool {
@@ -576,6 +745,36 @@ pub export fn lmt_mode(mode_type: u8, root: u8) callconv(.c) u16 {
     return toCSet(pcs.transpose(base, tonic));
 }
 
+pub export fn lmt_counterpoint_max_voices() callconv(.c) u32 {
+    return @as(u32, counterpoint.MAX_VOICES);
+}
+
+pub export fn lmt_counterpoint_history_capacity() callconv(.c) u32 {
+    return @as(u32, counterpoint.HISTORY_CAPACITY);
+}
+
+pub export fn lmt_counterpoint_rule_profile_count() callconv(.c) u32 {
+    return @as(u32, @intCast(COUNTERPOINT_RULE_PROFILE_NAMES.len));
+}
+
+pub export fn lmt_counterpoint_rule_profile_name(index: u32) callconv(.c) [*c]const u8 {
+    const idx = @as(usize, @intCast(index));
+    if (idx >= COUNTERPOINT_RULE_PROFILE_NAMES.len) return null;
+    return writeCString(COUNTERPOINT_RULE_PROFILE_NAMES[idx]);
+}
+
+pub export fn lmt_sizeof_voiced_state() callconv(.c) u32 {
+    return @as(u32, @intCast(@sizeOf(LmtVoicedState)));
+}
+
+pub export fn lmt_sizeof_voiced_history() callconv(.c) u32 {
+    return @as(u32, @intCast(@sizeOf(LmtVoicedHistory)));
+}
+
+pub export fn lmt_sizeof_next_step_suggestion() callconv(.c) u32 {
+    return @as(u32, @intCast(@sizeOf(LmtNextStepSuggestion)));
+}
+
 pub export fn lmt_voiced_history_reset(history: [*c]LmtVoicedHistory) callconv(.c) void {
     if (history == null) return;
     const out_history: *LmtVoicedHistory = @ptrCast(history);
@@ -660,6 +859,70 @@ pub export fn lmt_voiced_history_push(
         writeVoicedState(out_state, built);
     }
     return built.voice_count;
+}
+
+pub export fn lmt_classify_motion(previous: [*c]const LmtVoicedState, current: [*c]const LmtVoicedState, out: [*c]LmtMotionSummary) callconv(.c) u32 {
+    if (previous == null or current == null or out == null) return 0;
+
+    const previous_state: *const LmtVoicedState = @ptrCast(previous);
+    const current_state: *const LmtVoicedState = @ptrCast(current);
+    const out_summary: *LmtMotionSummary = @ptrCast(out);
+
+    const previous_value = decodeVoicedState(previous_state.*);
+    const current_value = decodeVoicedState(current_state.*);
+    const summary = counterpoint.classifyMotion(&previous_value, &current_value);
+    writeMotionSummary(out_summary, summary);
+    return 1;
+}
+
+pub export fn lmt_evaluate_motion_profile(profile: u8, summary: [*c]const LmtMotionSummary, out: [*c]LmtMotionEvaluation) callconv(.c) u32 {
+    if (summary == null or out == null) return 0;
+
+    const profile_value = decodeCounterpointRuleProfile(profile) orelse return 0;
+    const raw_summary: *const LmtMotionSummary = @ptrCast(summary);
+    const out_evaluation: *LmtMotionEvaluation = @ptrCast(out);
+
+    const evaluation = counterpoint.evaluateMotionProfile(decodeMotionSummary(raw_summary.*), profile_value);
+    writeMotionEvaluation(out_evaluation, evaluation);
+    return 1;
+}
+
+pub export fn lmt_rank_next_steps(history: [*c]const LmtVoicedHistory, profile: u8, out: [*c]LmtNextStepSuggestion, out_cap: u32) callconv(.c) u32 {
+    if (history == null or out == null or out_cap == 0) return 0;
+
+    const profile_value = decodeCounterpointRuleProfile(profile) orelse return 0;
+    const raw_history: *const LmtVoicedHistory = @ptrCast(history);
+    const decoded_history = decodeVoicedHistory(raw_history.*);
+    const write_cap = @min(@as(usize, @intCast(out_cap)), counterpoint.MAX_NEXT_STEP_SUGGESTIONS);
+
+    var suggestions_buf: [counterpoint.MAX_NEXT_STEP_SUGGESTIONS]counterpoint.NextStepSuggestion = undefined;
+    const ranked = counterpoint.rankNextSteps(&decoded_history, profile_value, suggestions_buf[0..write_cap]);
+
+    for (ranked, 0..) |suggestion, index| {
+        const out_suggestion: *LmtNextStepSuggestion = @ptrCast(&out[index]);
+        writeNextStepSuggestion(out_suggestion, suggestion);
+    }
+    return @as(u32, @intCast(ranked.len));
+}
+
+pub export fn lmt_next_step_reason_count() callconv(.c) u32 {
+    return @as(u32, @intCast(counterpoint.NEXT_STEP_REASON_NAMES.len));
+}
+
+pub export fn lmt_next_step_reason_name(index: u32) callconv(.c) [*c]const u8 {
+    const idx = @as(usize, @intCast(index));
+    if (idx >= counterpoint.NEXT_STEP_REASON_NAMES.len) return null;
+    return writeCString(counterpoint.NEXT_STEP_REASON_NAMES[idx]);
+}
+
+pub export fn lmt_next_step_warning_count() callconv(.c) u32 {
+    return @as(u32, @intCast(counterpoint.NEXT_STEP_WARNING_NAMES.len));
+}
+
+pub export fn lmt_next_step_warning_name(index: u32) callconv(.c) [*c]const u8 {
+    const idx = @as(usize, @intCast(index));
+    if (idx >= counterpoint.NEXT_STEP_WARNING_NAMES.len) return null;
+    return writeCString(counterpoint.NEXT_STEP_WARNING_NAMES[idx]);
 }
 
 pub export fn lmt_mode_spelling_quality(tonic: u8, mode_type: u8) callconv(.c) u8 {
@@ -1018,6 +1281,37 @@ pub export fn lmt_svg_fret_n(frets_ptr: [*c]const i8, string_count: u32, window_
     return copySvgOut(svg, buf, buf_size);
 }
 
+pub export fn lmt_svg_fret_tuned_n(
+    frets_ptr: [*c]const i8,
+    string_count: u32,
+    tuning_ptr: [*c]const u8,
+    tuning_count: u32,
+    window_start: u32,
+    visible_frets: u32,
+    buf: [*c]u8,
+    buf_size: u32,
+) callconv(.c) u32 {
+    if (frets_ptr == null or string_count == 0) {
+        var empty_svg_buf: [256]u8 = undefined;
+        const svg = svg_fret.renderDiagram(.{ .frets = &[_]i8{} }, &empty_svg_buf);
+        return copySvgOut(svg, buf, buf_size);
+    }
+
+    const count = @as(usize, @intCast(string_count));
+    const raw_frets = frets_ptr[0..count];
+    var tuning_buf: [MAX_PARAMETRIC_FRET_STRINGS]pitch.MidiNote = undefined;
+    const tuning = decodeTuningGeneric(tuning_ptr, tuning_count, &tuning_buf);
+
+    var svg_buf: [8192]u8 = undefined;
+    const svg = svg_fret.renderDiagram(.{
+        .frets = raw_frets,
+        .window_start = if (window_start == 0 and visible_frets == 0) null else window_start,
+        .visible_frets = visible_frets,
+        .tuning = tuning,
+    }, &svg_buf);
+    return copySvgOut(svg, buf, buf_size);
+}
+
 pub export fn lmt_svg_chord_staff(chord_kind: u8, root: u8, buf: [*c]u8, buf_size: u32) callconv(.c) u32 {
     const root_pc = @as(pitch.PitchClass, @intCast(root % 12));
     const root_midi: pitch.MidiNote = @as(pitch.MidiNote, @intCast(60 + @as(u8, root_pc)));
@@ -1149,17 +1443,37 @@ pub export fn lmt_bitmap_evenness_field_rgba(set: u16, width: u32, height: u32, 
 }
 
 pub export fn lmt_bitmap_fret_rgba(frets_ptr: [*c]const i8, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32 {
-    const total = lmt_svg_fret(frets_ptr, null, 0);
-    if (total == 0 or total >= compat_svg_buf.len) return 0;
-    const written_total = lmt_svg_fret(frets_ptr, @ptrCast(&compat_svg_buf), @intCast(compat_svg_buf.len));
-    if (written_total != total) return 0;
-    return renderPublicSvgBitmap(compat_svg_buf[0..@as(usize, total)], width, height, out_rgba, out_rgba_size);
+    if (frets_ptr == null or out_rgba == null or width == 0 or height == 0) return 0;
+    const required: u64 = @as(u64, width) * @as(u64, height) * 4;
+    if (required == 0 or required > @as(u64, out_rgba_size)) return 0;
+    const out = out_rgba[0..@as(usize, @intCast(required))];
+    const rendered = bitmap_compat.renderPublicStandardFretDiagramRgba(width, height, frets_ptr[0..guitar.tunings.STANDARD.len], out) catch return 0;
+    return @as(u32, @intCast(rendered));
 }
 
 pub export fn lmt_bitmap_fret_n_rgba(frets_ptr: [*c]const i8, string_count: u32, window_start: u32, visible_frets: u32, width: u32, height: u32, out_rgba: [*c]u8, out_rgba_size: u32) callconv(.c) u32 {
     const total = lmt_svg_fret_n(frets_ptr, string_count, window_start, visible_frets, null, 0);
     if (total == 0 or total >= compat_svg_buf.len) return 0;
     const written_total = lmt_svg_fret_n(frets_ptr, string_count, window_start, visible_frets, @ptrCast(&compat_svg_buf), @intCast(compat_svg_buf.len));
+    if (written_total != total) return 0;
+    return renderPublicSvgBitmap(compat_svg_buf[0..@as(usize, total)], width, height, out_rgba, out_rgba_size);
+}
+
+pub export fn lmt_bitmap_fret_tuned_n_rgba(
+    frets_ptr: [*c]const i8,
+    string_count: u32,
+    tuning_ptr: [*c]const u8,
+    tuning_count: u32,
+    window_start: u32,
+    visible_frets: u32,
+    width: u32,
+    height: u32,
+    out_rgba: [*c]u8,
+    out_rgba_size: u32,
+) callconv(.c) u32 {
+    const total = lmt_svg_fret_tuned_n(frets_ptr, string_count, tuning_ptr, tuning_count, window_start, visible_frets, null, 0);
+    if (total == 0 or total >= compat_svg_buf.len) return 0;
+    const written_total = lmt_svg_fret_tuned_n(frets_ptr, string_count, tuning_ptr, tuning_count, window_start, visible_frets, @ptrCast(&compat_svg_buf), @intCast(compat_svg_buf.len));
     if (written_total != total) return 0;
     return renderPublicSvgBitmap(compat_svg_buf[0..@as(usize, total)], width, height, out_rgba, out_rgba_size);
 }

@@ -9,16 +9,38 @@ const CUSTOM_PRESET_VALUE = "custom";
 const captureMode = new URLSearchParams(window.location.search).get("capture") === "1";
 const MIDI_SNAPSHOT_STORAGE_KEY = "lmt.gallery.midi.snapshots";
 const GALLERY_PREVIEW_MODE_STORAGE_KEY = "lmt.gallery.preview.mode";
+const GALLERY_MINI_INSTRUMENT_STORAGE_KEY = "lmt.gallery.mini.instrument";
 const MIDI_SCENE_TITLE = "Live MIDI Compass";
 const MIDI_DEFAULT_TONIC = 0;
 const MIDI_DEFAULT_MODE = 0;
+const MIDI_DEFAULT_PROFILE = 0;
 const PREVIEW_MODE_SVG = "svg";
 const PREVIEW_MODE_BITMAP = "bitmap";
+const MINI_INSTRUMENT_OFF = "off";
+const MINI_INSTRUMENT_PIANO = "piano";
+const MINI_INSTRUMENT_FRET = "fret";
 const STANDARD_GUITAR_TUNING = Object.freeze([40, 45, 50, 55, 59, 64]);
 const STANDARD_GUITAR_LABEL = "EADGBE";
 const MIDI_FRET_MAX_FRET = 12;
 const MIDI_FRET_MAX_SPAN = 4;
 const MIDI_FRET_ROW_CAP = 48;
+const DEFAULT_COUNTERPOINT_PROFILE_NAMES = Object.freeze([
+  "species",
+  "tonal-chorale",
+  "modal-polyphony",
+  "jazz-close-leading",
+  "free-contemporary",
+]);
+const CADENCE_LABELS = Object.freeze([
+  "none",
+  "stable",
+  "pre-dominant",
+  "dominant",
+  "cadential six-four",
+  "authentic arrival",
+  "half arrival",
+  "deceptive pull",
+]);
 const MODE_OPTIONS = [
   { id: 0, name: "Ionian" },
   { id: 1, name: "Dorian" },
@@ -57,6 +79,23 @@ const REQUIRED_EXPORTS = [
   "lmt_evenness_distance",
   "lmt_scale",
   "lmt_mode",
+  "lmt_counterpoint_max_voices",
+  "lmt_counterpoint_history_capacity",
+  "lmt_counterpoint_rule_profile_count",
+  "lmt_counterpoint_rule_profile_name",
+  "lmt_sizeof_voiced_state",
+  "lmt_sizeof_voiced_history",
+  "lmt_sizeof_next_step_suggestion",
+  "lmt_voiced_history_reset",
+  "lmt_build_voiced_state",
+  "lmt_voiced_history_push",
+  "lmt_classify_motion",
+  "lmt_evaluate_motion_profile",
+  "lmt_rank_next_steps",
+  "lmt_next_step_reason_count",
+  "lmt_next_step_reason_name",
+  "lmt_next_step_warning_count",
+  "lmt_next_step_warning_name",
   "lmt_mode_spelling_quality",
   "lmt_spell_note",
   "lmt_spell_note_parts",
@@ -75,7 +114,9 @@ const REQUIRED_EXPORTS = [
   "lmt_svg_optic_k_group",
   "lmt_svg_evenness_chart",
   "lmt_svg_evenness_field",
+  "lmt_svg_fret",
   "lmt_svg_fret_n",
+  "lmt_svg_fret_tuned_n",
   "lmt_svg_chord_staff",
   "lmt_svg_key_staff",
   "lmt_svg_keyboard",
@@ -84,7 +125,9 @@ const REQUIRED_EXPORTS = [
   "lmt_bitmap_optic_k_group_rgba",
   "lmt_bitmap_evenness_chart_rgba",
   "lmt_bitmap_evenness_field_rgba",
+  "lmt_bitmap_fret_rgba",
   "lmt_bitmap_fret_n_rgba",
+  "lmt_bitmap_fret_tuned_n_rgba",
   "lmt_bitmap_chord_staff_rgba",
   "lmt_bitmap_key_staff_rgba",
   "lmt_bitmap_keyboard_rgba",
@@ -94,12 +137,14 @@ const REQUIRED_EXPORTS = [
 const statusEl = document.getElementById("status");
 const previewModeSvgEl = document.getElementById("preview-mode-svg");
 const previewModeBitmapEl = document.getElementById("preview-mode-bitmap");
+const miniInstrumentModeEl = document.getElementById("mini-instrument-mode");
 const pcsToggleGrid = document.getElementById("pcs-toggle-grid");
 const midiCaptionEl = document.getElementById("midi-caption");
 const midiStatusPillsEl = document.getElementById("midi-status-pills");
 const midiDevicesEl = document.getElementById("midi-devices");
 const midiSummaryEl = document.getElementById("midi-summary");
 const midiNotesEl = document.getElementById("midi-notes");
+const midiHistoryEl = document.getElementById("midi-history");
 const midiClockEl = document.getElementById("midi-clock");
 const midiOpticKEl = document.getElementById("midi-optic-k");
 const midiEvennessEl = document.getElementById("midi-evenness");
@@ -113,6 +158,7 @@ const midiSaveSnapshotEl = document.getElementById("midi-save-snapshot");
 const midiReturnLiveEl = document.getElementById("midi-return-live");
 const midiTonicEl = document.getElementById("midi-tonic");
 const midiModeEl = document.getElementById("midi-mode");
+const midiProfileEl = document.getElementById("midi-profile");
 
 const setPresetEl = document.getElementById("set-preset");
 const keyPresetEl = document.getElementById("key-preset");
@@ -145,28 +191,34 @@ const setSummaryEl = document.getElementById("set-summary");
 const setClockEl = document.getElementById("set-clock");
 const setOpticKEl = document.getElementById("set-optic-k");
 const setEvennessEl = document.getElementById("set-evenness");
+const setMiniEl = document.getElementById("set-mini");
 const keyNotesEl = document.getElementById("key-notes");
 const keyDegreesEl = document.getElementById("key-degrees");
 const keyClockEl = document.getElementById("key-clock");
 const keyStaffEl = document.getElementById("key-staff");
 const keyKeyboardEl = document.getElementById("key-keyboard");
+const keyMiniEl = document.getElementById("key-mini");
 const chordSummaryEl = document.getElementById("chord-summary");
 const chordNotesEl = document.getElementById("chord-notes");
 const chordClockEl = document.getElementById("chord-clock");
 const chordStaffEl = document.getElementById("chord-staff");
+const chordMiniEl = document.getElementById("chord-mini");
 const progressionSummaryEl = document.getElementById("progression-summary");
 const progressionCardsEl = document.getElementById("progression-cards");
 const progressionClockEl = document.getElementById("progression-clock");
 const progressionNotesEl = document.getElementById("progression-notes");
+const progressionMiniEl = document.getElementById("progression-mini");
 const compareLeftClockEl = document.getElementById("compare-left-clock");
 const compareOverlapClockEl = document.getElementById("compare-overlap-clock");
 const compareRightClockEl = document.getElementById("compare-right-clock");
 const compareSummaryEl = document.getElementById("compare-summary");
 const compareChipsEl = document.getElementById("compare-chips");
+const compareMiniEl = document.getElementById("compare-mini");
 const fretSvgEl = document.getElementById("fret-svg");
 const fretSummaryEl = document.getElementById("fret-summary");
 const fretNotesEl = document.getElementById("fret-notes");
 const fretVoicingsEl = document.getElementById("fret-voicings");
+const fretMiniEl = document.getElementById("fret-mini");
 
 let wasm = null;
 let memory = null;
@@ -180,8 +232,13 @@ let currentFretPreset = 0;
 let jsScratchBase = 0;
 let jsScratchTop = 0;
 let jsScratchLimit = 0;
+let counterpointReasonNames = [];
+let counterpointWarningNames = [];
+let counterpointProfileNames = DEFAULT_COUNTERPOINT_PROFILE_NAMES.slice();
+let counterpointStructSizes = { voicedState: 0, voicedHistory: 0, nextStepSuggestion: 0, maxVoices: 8, historyCapacity: 4 };
 const galleryUiState = {
   previewMode: PREVIEW_MODE_SVG,
+  miniInstrument: MINI_INSTRUMENT_OFF,
 };
 
 const gallerySummary = {
@@ -208,6 +265,7 @@ const midiState = {
   access: null,
   inputs: new Map(),
   channels: new Map(),
+  historyFrames: [],
   snapshots: [],
   activeSnapshotId: null,
   renderQueued: false,
@@ -239,6 +297,24 @@ function persistPreviewMode(mode) {
   }
 }
 
+function loadMiniInstrumentPreference() {
+  try {
+    const raw = window.localStorage?.getItem(GALLERY_MINI_INSTRUMENT_STORAGE_KEY);
+    if (raw === MINI_INSTRUMENT_PIANO || raw === MINI_INSTRUMENT_FRET || raw === MINI_INSTRUMENT_OFF) return raw;
+  } catch (_error) {
+    // Ignore storage failures.
+  }
+  return MINI_INSTRUMENT_OFF;
+}
+
+function persistMiniInstrument(mode) {
+  try {
+    window.localStorage?.setItem(GALLERY_MINI_INSTRUMENT_STORAGE_KEY, mode);
+  } catch (_error) {
+    // Ignore storage failures.
+  }
+}
+
 function updatePreviewModeUi() {
   const isBitmap = galleryUiState.previewMode === PREVIEW_MODE_BITMAP;
   previewModeSvgEl.classList.toggle("is-active", !isBitmap);
@@ -257,6 +333,21 @@ function setPreviewMode(mode, { persist = true, rerender = true } = {}) {
 
 function isBitmapPreviewMode() {
   return galleryUiState.previewMode === PREVIEW_MODE_BITMAP;
+}
+
+function setMiniInstrumentMode(mode, { persist = true, rerender = true } = {}) {
+  if (mode !== MINI_INSTRUMENT_PIANO && mode !== MINI_INSTRUMENT_FRET) {
+    galleryUiState.miniInstrument = MINI_INSTRUMENT_OFF;
+  } else {
+    galleryUiState.miniInstrument = mode;
+  }
+  miniInstrumentModeEl.value = galleryUiState.miniInstrument;
+  if (persist) persistMiniInstrument(galleryUiState.miniInstrument);
+  if (rerender && wasm && memory) renderAll();
+}
+
+function miniInstrumentMode() {
+  return galleryUiState.miniInstrument;
 }
 
 class ScratchArena {
@@ -382,12 +473,61 @@ function populateModeSelect(select) {
   select.innerHTML = MODE_OPTIONS.map((one) => `<option value="${one.id}">${escapeHtml(one.name)}</option>`).join("");
 }
 
+function populateCounterpointProfileSelect(select) {
+  select.innerHTML = counterpointProfileNames.map((name, index) =>
+    `<option value="${index}">${escapeHtml(name)}</option>`).join("");
+}
+
+function readCStringPtr(ptr) {
+  return ptr ? readCString(ptr) : "";
+}
+
+function loadCounterpointMetadata() {
+  const profileCount = wasm.lmt_counterpoint_rule_profile_count();
+  counterpointProfileNames = Array.from({ length: profileCount }, (_unused, index) =>
+    readCStringPtr(wasm.lmt_counterpoint_rule_profile_name(index))) || DEFAULT_COUNTERPOINT_PROFILE_NAMES.slice();
+  if (counterpointProfileNames.length === 0) {
+    counterpointProfileNames = DEFAULT_COUNTERPOINT_PROFILE_NAMES.slice();
+  }
+
+  const reasonCount = wasm.lmt_next_step_reason_count();
+  counterpointReasonNames = Array.from({ length: reasonCount }, (_unused, index) =>
+    readCStringPtr(wasm.lmt_next_step_reason_name(index)));
+  const warningCount = wasm.lmt_next_step_warning_count();
+  counterpointWarningNames = Array.from({ length: warningCount }, (_unused, index) =>
+    readCStringPtr(wasm.lmt_next_step_warning_name(index)));
+
+  counterpointStructSizes = {
+    maxVoices: wasm.lmt_counterpoint_max_voices(),
+    historyCapacity: wasm.lmt_counterpoint_history_capacity(),
+    voicedState: wasm.lmt_sizeof_voiced_state(),
+    voicedHistory: wasm.lmt_sizeof_voiced_history(),
+    nextStepSuggestion: wasm.lmt_sizeof_next_step_suggestion(),
+  };
+}
+
 function modeSet(tonic, modeType) {
   return wasm.lmt_mode(modeType, tonic);
 }
 
 function modeSpellingQuality(tonic, modeType) {
   return wasm.lmt_mode_spelling_quality(tonic % 12, modeType);
+}
+
+function currentMidiProfile() {
+  return Number.parseInt(midiProfileEl.value || String(MIDI_DEFAULT_PROFILE), 10);
+}
+
+function cadenceLabel(value) {
+  return CADENCE_LABELS[value] || "none";
+}
+
+function namesFromMask(mask, names) {
+  const out = [];
+  for (let index = 0; index < names.length; index += 1) {
+    if ((mask & (1 << index)) !== 0) out.push(names[index]);
+  }
+  return out;
 }
 
 function contextSuggestions(arena, setValue, midiNotes, context) {
@@ -827,11 +967,32 @@ function pianoStaffBitmapRgba(arena, notes, tonic, quality, width, height) {
   "lmt_bitmap_piano_staff_rgba");
 }
 
+function standardFretBitmapRgba(arena, frets, width, height) {
+  const fretsPtr = writeI8Array(arena, frets);
+  return bitmapRgbaFromCall(arena, width, height, (rgbaPtr, rgbaBytes) =>
+    wasm.lmt_bitmap_fret_rgba(fretsPtr, width, height, rgbaPtr, rgbaBytes),
+  "lmt_bitmap_fret_rgba");
+}
+
 function fretBitmapRgba(arena, frets, windowStart, visibleFrets, width, height) {
   const fretsPtr = writeI8Array(arena, frets);
   return bitmapRgbaFromCall(arena, width, height, (rgbaPtr, rgbaBytes) =>
     wasm.lmt_bitmap_fret_n_rgba(fretsPtr, frets.length, windowStart, visibleFrets, width, height, rgbaPtr, rgbaBytes),
   "lmt_bitmap_fret_n_rgba");
+}
+
+function tunedFretBitmapRgba(arena, frets, tuning, windowStart, visibleFrets, width, height) {
+  const fretsPtr = writeI8Array(arena, frets);
+  const tuningPtr = writeU8Array(arena, tuning);
+  return bitmapRgbaFromCall(arena, width, height, (rgbaPtr, rgbaBytes) =>
+    wasm.lmt_bitmap_fret_tuned_n_rgba(fretsPtr, frets.length, tuningPtr, tuning.length, windowStart, visibleFrets, width, height, rgbaPtr, rgbaBytes),
+  "lmt_bitmap_fret_tuned_n_rgba");
+}
+
+function isStandardTuning(tuning) {
+  return Array.isArray(tuning)
+    && tuning.length === STANDARD_GUITAR_TUNING.length
+    && tuning.every((value, index) => value === STANDARD_GUITAR_TUNING[index]);
 }
 
 function fretWindowForVoicing(frets) {
@@ -892,7 +1053,32 @@ function preferredFretVoicing(arena, setValue, {
     visibleFrets,
     url: serializeFrets(arena, bestFrets),
     tuningLabel,
+    tuning: tuning.slice(),
+    isStandardTuning: isStandardTuning(tuning),
     bassMidi: fretBassMidi(bestFrets, tuning),
+  };
+}
+
+function genericFretVoicingForNotes(notes, tuningLabel = "Generic fret") {
+  const ordered = Array.from(new Set((notes || []).filter((note) => Number.isFinite(note)))).sort((left, right) => left - right);
+  if (ordered.length === 0) return null;
+  const preferredFrets = [2, 4, 5, 7, 9, 11, 12, 14];
+  const frets = ordered.map((midi, index) => {
+    const preferred = preferredFrets[index % preferredFrets.length];
+    return Math.max(0, Math.min(preferred, midi));
+  });
+  const tuning = ordered.map((midi, index) => Math.max(0, midi - frets[index]));
+  const { windowStart, visibleFrets } = fretWindowForVoicing(frets);
+  return {
+    frets,
+    rowCount: frets.length,
+    windowStart,
+    visibleFrets,
+    url: frets.join(","),
+    tuningLabel,
+    tuning,
+    isStandardTuning: false,
+    bassMidi: ordered[0],
   };
 }
 
@@ -902,11 +1088,22 @@ function renderFretVoicingPreview(arena, host, voicing, alt, options = {}) {
     return false;
   }
   const fretsPtr = writeI8Array(arena, voicing.frets);
-  const svgMarkup = svgString(arena, wasm.lmt_svg_fret_n, fretsPtr, voicing.frets.length, voicing.windowStart, voicing.visibleFrets);
+  const useStandard = voicing.isStandardTuning === true;
+  const useTunedGeneric = !useStandard && Array.isArray(voicing.tuning) && voicing.tuning.length === voicing.frets.length;
+  const tuningPtr = useTunedGeneric ? writeU8Array(arena, voicing.tuning) : 0;
+  const svgMarkup = useStandard
+    ? svgString(arena, wasm.lmt_svg_fret, fretsPtr)
+    : (useTunedGeneric
+      ? svgString(arena, wasm.lmt_svg_fret_tuned_n, fretsPtr, voicing.frets.length, tuningPtr, voicing.tuning.length, voicing.windowStart, voicing.visibleFrets)
+      : svgString(arena, wasm.lmt_svg_fret_n, fretsPtr, voicing.frets.length, voicing.windowStart, voicing.visibleFrets));
   renderPreviewSvgOrBitmap(host, {
     svgMarkup,
     bitmapRenderer: {
-      renderRgba: (width, height) => fretBitmapRgba(arena, voicing.frets, voicing.windowStart, voicing.visibleFrets, width, height),
+      renderRgba: (width, height) => (useStandard
+        ? standardFretBitmapRgba(arena, voicing.frets, width, height)
+        : (useTunedGeneric
+          ? tunedFretBitmapRgba(arena, voicing.frets, voicing.tuning, voicing.windowStart, voicing.visibleFrets, width, height)
+          : fretBitmapRgba(arena, voicing.frets, voicing.windowStart, voicing.visibleFrets, width, height))),
     },
     alt,
     options,
@@ -1182,6 +1379,72 @@ function currentLiveMidiNotes() {
   return sortedAscendingNumbers(aggregate);
 }
 
+function currentSustainedOnlyMidiNotes() {
+  const aggregate = new Set();
+  for (const channel of midiState.channels.values()) {
+    for (const note of channel.sustained) {
+      if (!channel.held.has(note)) aggregate.add(note);
+    }
+  }
+  return sortedAscendingNumbers(aggregate);
+}
+
+function sameNumberArray(left, right) {
+  if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) return false;
+  for (let index = 0; index < left.length; index += 1) {
+    if (left[index] !== right[index]) return false;
+  }
+  return true;
+}
+
+function cloneHistoryFrame(frame) {
+  return {
+    notes: frame.notes.slice(),
+    sustained: frame.sustained.slice(),
+    timestamp: frame.timestamp,
+    stepIndex: frame.stepIndex,
+  };
+}
+
+function sanitizeHistoryFrames(raw) {
+  if (!Array.isArray(raw)) return [];
+  const frames = [];
+  for (const entry of raw) {
+    const notes = sortedAscendingNumbers((entry?.notes || []).map((value) => Number(value)).filter((value) => Number.isFinite(value) && value >= 0 && value <= 127));
+    const sustained = sortedAscendingNumbers((entry?.sustained || []).map((value) => Number(value)).filter((value) => Number.isFinite(value) && value >= 0 && value <= 127));
+    if (notes.length === 0) continue;
+    frames.push({
+      notes,
+      sustained,
+      timestamp: Number.isFinite(Number(entry?.timestamp)) ? Number(entry.timestamp) : Date.now(),
+      stepIndex: Number.isFinite(Number(entry?.stepIndex)) ? Number(entry.stepIndex) : frames.length,
+    });
+  }
+  return frames.slice(-Math.max(1, counterpointStructSizes.historyCapacity || 4));
+}
+
+function captureMidiHistoryFrame(force = false) {
+  const notes = currentLiveMidiNotes();
+  const sustained = currentSustainedOnlyMidiNotes();
+  if (!force && notes.length === 0) return;
+
+  const nextFrame = {
+    notes,
+    sustained,
+    timestamp: Date.now(),
+    stepIndex: midiState.historyFrames.length > 0 ? (midiState.historyFrames[midiState.historyFrames.length - 1].stepIndex + 1) : 0,
+  };
+  const last = midiState.historyFrames[midiState.historyFrames.length - 1];
+  if (!force && last && sameNumberArray(last.notes, nextFrame.notes) && sameNumberArray(last.sustained, nextFrame.sustained)) {
+    return;
+  }
+  midiState.historyFrames.push(nextFrame);
+  const cap = Math.max(1, counterpointStructSizes.historyCapacity || 4);
+  if (midiState.historyFrames.length > cap) {
+    midiState.historyFrames = midiState.historyFrames.slice(-cap);
+  }
+}
+
 function currentDisplayMidiNotes() {
   if (midiState.activeSnapshotId != null) {
     const snapshot = midiState.snapshots.find((one) => one.id === midiState.activeSnapshotId);
@@ -1192,6 +1455,183 @@ function currentDisplayMidiNotes() {
 
 function currentDisplayMidiContext() {
   return currentMidiContext();
+}
+
+function currentDisplayHistoryFrames() {
+  if (midiState.activeSnapshotId != null) {
+    const snapshot = midiState.snapshots.find((one) => one.id === midiState.activeSnapshotId);
+    if (snapshot?.historyFrames?.length > 0) return snapshot.historyFrames.map(cloneHistoryFrame);
+    if (snapshot?.midiNotes?.length > 0) {
+      return [{ notes: snapshot.midiNotes.slice(), sustained: [], timestamp: snapshot.createdAt || Date.now(), stepIndex: 0 }];
+    }
+  }
+  return midiState.historyFrames.map(cloneHistoryFrame);
+}
+
+function effectiveHistoryFrames(displayNotes) {
+  const frames = currentDisplayHistoryFrames();
+  if (displayNotes.length === 0) return [];
+  if (frames.length === 0 || !sameNumberArray(frames[frames.length - 1].notes, displayNotes)) {
+    frames.push({
+      notes: displayNotes.slice(),
+      sustained: midiState.activeSnapshotId == null ? currentSustainedOnlyMidiNotes() : [],
+      timestamp: Date.now(),
+      stepIndex: frames.length > 0 ? frames[frames.length - 1].stepIndex + 1 : 0,
+    });
+  }
+  const cap = Math.max(1, counterpointStructSizes.historyCapacity || 4);
+  return frames.slice(-cap);
+}
+
+function bestSetAnchor(setValue) {
+  if (!setValue) return { tonic: 0, quality: 0 };
+  const candidates = buildKeyCandidates(setValue);
+  if (candidates.length > 0) {
+    return { tonic: candidates[0].tonic, quality: candidates[0].quality };
+  }
+  for (let pc = 0; pc < 12; pc += 1) {
+    if ((setValue & (1 << pc)) !== 0) return { tonic: pc, quality: 0 };
+  }
+  return { tonic: 0, quality: 0 };
+}
+
+function defaultMiniInstrumentOptions() {
+  return {
+    maxHeight: 190,
+    squareWidth: 220,
+    mediumWidth: 240,
+    wideWidth: 260,
+    ultraWideWidth: 280,
+    padXRatio: 0.08,
+    padYRatio: 0.12,
+  };
+}
+
+function mergePreviewOptions(base, extra = {}) {
+  return { ...base, ...extra };
+}
+
+function renderMiniInstrumentPreview(arena, host, spec, alt, options = {}) {
+  if (!host) return false;
+  const mode = options.modeOverride || miniInstrumentMode();
+  host.dataset.miniInstrument = mode;
+
+  if (mode === MINI_INSTRUMENT_OFF) {
+    host.innerHTML = `<div class="output-block">Mini instrument off.</div>`;
+    return false;
+  }
+
+  const previewOptions = mergePreviewOptions(defaultMiniInstrumentOptions(), options);
+  if (mode === MINI_INSTRUMENT_PIANO) {
+    const notes = spec.midiNotes?.length > 0
+      ? spec.midiNotes.slice()
+      : (spec.setValue ? keyboardPreviewNotesForSet(spec.setValue, spec.tonic ?? 0) : []);
+    if (notes.length === 0) {
+      host.innerHTML = `<div class="output-block">No note material for piano mini view.</div>`;
+      return false;
+    }
+    const range = keyboardRangeForNotes(notes, spec.fallbackLow ?? 36, spec.fallbackHigh ?? 96);
+    renderPreviewSvgOrBitmap(host, {
+      svgMarkup: svgString(arena, wasm.lmt_svg_keyboard, writeU8Array(arena, notes), notes.length, range.low, range.high),
+      bitmapRenderer: {
+        renderRgba: (width, height) => keyboardBitmapRgba(arena, notes, range.low, range.high, width, height),
+      },
+      alt,
+      options: previewOptions,
+    });
+    return true;
+  }
+
+  const setValue = spec.setValue || (spec.midiNotes?.length > 0 ? midiListToSet(arena, spec.midiNotes) : 0);
+  if (!setValue) {
+    host.innerHTML = `<div class="output-block">No fret view for an empty set.</div>`;
+    return false;
+  }
+  const preferredBassPc = spec.preferredBassPc ?? (spec.midiNotes?.length > 0 ? Math.min(...spec.midiNotes) % 12 : null);
+  const midiNotes = spec.midiNotes?.length > 0 ? spec.midiNotes.slice() : keyboardPreviewNotesForSet(setValue, spec.tonic ?? 0);
+  const voicing = spec.fretVoicing
+    || preferredFretVoicing(arena, setValue, { preferredBassPc })
+    || genericFretVoicingForNotes(midiNotes, "Generic fret");
+  return renderFretVoicingPreview(arena, host, voicing, alt, previewOptions);
+}
+
+function buildCounterpointHistory(arena, frames, context) {
+  const historyPtr = arena.alloc(counterpointStructSizes.voicedHistory || 1024, 4);
+  const statePtr = arena.alloc(counterpointStructSizes.voicedState || 256, 4);
+  wasm.lmt_voiced_history_reset(historyPtr);
+  const beatsPerBar = 4;
+  for (const frame of frames) {
+    const notesPtr = writeU8Array(arena, frame.notes);
+    const sustainedPtr = writeU8Array(arena, frame.sustained);
+    const beatInBar = ((frame.stepIndex ?? 0) % beatsPerBar + beatsPerBar) % beatsPerBar;
+    wasm.lmt_voiced_history_push(
+      historyPtr,
+      notesPtr,
+      frame.notes.length,
+      sustainedPtr,
+      frame.sustained.length,
+      context.tonic,
+      context.modeType,
+      beatInBar,
+      beatsPerBar,
+      0,
+      255,
+      statePtr,
+    );
+  }
+  return { historyPtr, statePtr };
+}
+
+function decodeRankedNextSteps(arena, historyPtr, profile, context) {
+  const cap = 8;
+  const rowBytes = counterpointStructSizes.nextStepSuggestion || 160;
+  const outPtr = arena.alloc(rowBytes * cap, 4);
+  const total = wasm.lmt_rank_next_steps(historyPtr, profile, outPtr, cap);
+  const count = Math.min(total, cap);
+  const view = new DataView(memory.buffer, outPtr, count * rowBytes);
+  const suggestions = [];
+  const maxVoices = counterpointStructSizes.maxVoices || 8;
+  for (let index = 0; index < count; index += 1) {
+    const base = index * rowBytes;
+    const score = view.getInt32(base + 0, true);
+    const reasonMask = view.getUint32(base + 4, true);
+    const warningMask = view.getUint32(base + 8, true);
+    const cadenceEffect = view.getUint8(base + 12);
+    const tensionDelta = view.getInt8(base + 13);
+    const noteCount = view.getUint8(base + 14);
+    const setValue = view.getUint16(base + 18, true);
+    const notes = [];
+    for (let voiceIndex = 0; voiceIndex < Math.min(noteCount, maxVoices); voiceIndex += 1) {
+      notes.push(view.getUint8(base + 20 + voiceIndex));
+    }
+    const reasonNames = namesFromMask(reasonMask, counterpointReasonNames);
+    const warningNames = namesFromMask(warningMask, counterpointWarningNames);
+    suggestions.push({
+      score,
+      reasonMask,
+      warningMask,
+      cadenceEffect,
+      cadenceLabel: cadenceLabel(cadenceEffect),
+      tensionDelta,
+      noteCount,
+      setValue,
+      notes,
+      noteNames: notes.map((midi) => midiName(midi, context.tonic, context.quality)),
+      chordLabel: friendlyChordName(rawChordName(setValue)),
+      reasonNames,
+      warningNames,
+      fretPreview: preferredFretVoicing(arena, setValue, {
+        preferredBassPc: notes.length > 0 ? Math.min(...notes) % 12 : null,
+      }),
+    });
+  }
+  return suggestions;
+}
+
+function historyFrameDescription(frame, context) {
+  const notes = frame.notes.map((midi) => midiName(midi, context.tonic, context.quality));
+  const sustained = frame.sustained.length > 0 ? ` · sustain ${frame.sustained.length}` : "";
+  return `${notes.join(" · ")}${sustained}`;
 }
 
 function persistMidiSnapshots() {
@@ -1218,7 +1658,9 @@ function hydrateMidiSnapshots() {
         noteLabel: typeof one.noteLabel === "string" ? one.noteLabel : "",
         tonic: Number.isFinite(Number(one.tonic)) ? Number(one.tonic) : MIDI_DEFAULT_TONIC,
         modeType: Number.isFinite(Number(one.modeType)) ? Number(one.modeType) : MIDI_DEFAULT_MODE,
+        profile: Number.isFinite(Number(one.profile)) ? Number(one.profile) : MIDI_DEFAULT_PROFILE,
         contextLabel: typeof one.contextLabel === "string" ? one.contextLabel : "",
+        historyFrames: sanitizeHistoryFrames(one.historyFrames),
         midiNotes: sortedAscendingNumbers(one.midiNotes.map((value) => Number(value)).filter((value) => Number.isFinite(value) && value >= 0 && value <= 127)),
       }))
       .filter((one) => one.midiNotes.length > 0);
@@ -1231,12 +1673,14 @@ function saveMidiSnapshot() {
   const midiNotes = currentLiveMidiNotes();
   if (midiNotes.length === 0) return false;
   const context = currentMidiContext();
+  const profile = currentMidiProfile();
   const duplicate = midiState.snapshots[0];
   if (
     duplicate
     && JSON.stringify(duplicate.midiNotes) === JSON.stringify(midiNotes)
     && duplicate.tonic === context.tonic
     && duplicate.modeType === context.modeType
+    && duplicate.profile === profile
   ) {
     return false;
   }
@@ -1249,13 +1693,15 @@ function saveMidiSnapshot() {
     midiState.snapshots.unshift({
       id: `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
       createdAt: Date.now(),
-      chordName,
-      noteLabel,
-      tonic: context.tonic,
-      modeType: context.modeType,
-      contextLabel: context.label,
-      midiNotes,
-    });
+        chordName,
+        noteLabel,
+        tonic: context.tonic,
+        modeType: context.modeType,
+        profile,
+        contextLabel: context.label,
+        historyFrames: midiState.historyFrames.map(cloneHistoryFrame),
+        midiNotes,
+      });
     midiState.snapshots = midiState.snapshots.slice(0, 12);
     persistMidiSnapshots();
     return true;
@@ -1269,6 +1715,7 @@ function setMidiSnapshotPreview(snapshotId) {
   if (snapshot) {
     midiTonicEl.value = String(snapshot.tonic);
     midiModeEl.value = String(snapshot.modeType);
+    midiProfileEl.value = String(snapshot.profile ?? MIDI_DEFAULT_PROFILE);
   }
   midiState.activeSnapshotId = snapshotId;
   renderMidiScene();
@@ -1489,6 +1936,7 @@ function renderMidiSnapshotCards() {
       <button class="snapshot-card${midiState.activeSnapshotId === snapshot.id ? " is-active" : ""}" type="button" data-midi-snapshot="${escapeHtml(snapshot.id)}">
         <strong>${escapeHtml(String.fromCharCode(65 + index))}. ${escapeHtml(snapshot.chordName || "Snapshot")}</strong>
         <span class="snapshot-context">${escapeHtml(snapshot.contextLabel || "Context pending")}</span>
+        <span>${escapeHtml(counterpointProfileNames[snapshot.profile ?? MIDI_DEFAULT_PROFILE] || "species")}</span>
         <span>${escapeHtml(snapshot.noteLabel)}</span>
         <span>${new Date(snapshot.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>
       </button>
@@ -1501,6 +1949,8 @@ function renderMidiScene() {
   const displayNotes = currentDisplayMidiNotes();
   const context = currentDisplayMidiContext();
   const viewingSnapshot = midiState.activeSnapshotId != null;
+  const profile = currentMidiProfile();
+  const profileLabel = counterpointProfileNames[profile] || DEFAULT_COUNTERPOINT_PROFILE_NAMES[profile] || "species";
 
   midiCaptionEl.textContent = summarizeMidiAccess();
   connectMidiEl.disabled = midiState.accessState === "connecting";
@@ -1512,6 +1962,8 @@ function renderMidiScene() {
   statusPills.push(`<span class="status-pill ${liveNotes.length > 0 ? "is-live" : "is-muted"}">${liveNotes.length} sounding</span>`);
   statusPills.push(`<span class="status-pill ${midiState.snapshots.length > 0 ? "is-snapshot" : "is-muted"}">${midiState.snapshots.length} saved</span>`);
   statusPills.push(`<span class="status-pill is-live">${escapeHtml(context.label)}</span>`);
+  statusPills.push(`<span class="status-pill is-live">${escapeHtml(profileLabel)}</span>`);
+  statusPills.push(`<span class="status-pill ${miniInstrumentMode() === MINI_INSTRUMENT_OFF ? "is-muted" : "is-live"}">mini ${escapeHtml(miniInstrumentMode())}</span>`);
   midiStatusPillsEl.innerHTML = statusPills.join("");
   midiDevicesEl.innerHTML = Array.from(midiState.inputs.values()).map((input) =>
     `<span class="pill">${escapeHtml(input.name || input.manufacturer || input.id || "MIDI input")}</span>`).join("")
@@ -1525,17 +1977,11 @@ function renderMidiScene() {
     const currentChord = friendlyChordName(rawChordName(setValue));
     const keyboardNotes = displayNotes.length > 0 ? displayNotes : keyboardPreviewNotesForContext(context);
     const keyboardRange = keyboardRangeForNotes(keyboardNotes, 48, 84);
-    const lowestDisplayMidi = displayNotes.length > 0 ? Math.min(...displayNotes) : null;
-    const preferredBassPc = lowestDisplayMidi == null ? null : (lowestDisplayMidi % 12);
     const contextOverlap = wasm.lmt_pcs_cardinality(setValue & context.setValue);
     const outsideCount = wasm.lmt_pcs_cardinality(setValue) - contextOverlap;
-    const currentFretVoicing = displayNotes.length > 0
-      ? preferredFretVoicing(arena, setValue, { preferredBassPc })
-      : null;
-    const suggestions = contextSuggestions(arena, setValue, displayNotes, context).map((suggestion) => ({
-      ...suggestion,
-      fretPreview: preferredFretVoicing(arena, suggestion.expanded, { preferredBassPc }),
-    }));
+    const historyFrames = effectiveHistoryFrames(displayNotes);
+    const historyBundle = historyFrames.length > 0 ? buildCounterpointHistory(arena, historyFrames, context) : null;
+    const suggestions = historyBundle ? decodeRankedNextSteps(arena, historyBundle.historyPtr, profile, context) : [];
     const displayNotesLabel = displayNotes.length > 0
       ? displayNotes.map((midi) => midiName(midi, context.tonic, context.quality))
       : [];
@@ -1548,11 +1994,13 @@ function renderMidiScene() {
     midiSummaryEl.textContent = [
       `mode: ${viewingSnapshot ? "snapshot preview" : "live input"}`,
       `selected context: ${context.label}`,
+      `counterpoint profile: ${profileLabel}`,
       `active MIDI notes: ${displayNotes.length > 0 ? displayNotes.join(", ") : "none"}`,
       `set: ${setValue === 0 ? "0x000 []" : `0x${setValue.toString(16).padStart(3, "0")} ${JSON.stringify(setMembers(setValue))}`}`,
       `hearing: ${setValue === 0 ? "awaiting notes" : currentChord}`,
       `context orbit: ${orbitNames.join(" · ")}`,
       `context overlap: ${contextOverlap}/${wasm.lmt_pcs_cardinality(setValue)} inside, ${outsideCount} outside`,
+      `temporal memory frames: ${historyFrames.length}`,
       `next-step suggestions: ${suggestions.length}`,
       `last event: ${midiState.lastEventText}`,
     ].join("\n");
@@ -1562,6 +2010,15 @@ function renderMidiScene() {
     } else {
       midiNotesEl.innerHTML = `<span class="pill">Play a chord or melodic fragment. Sustain is tracked; middle pedal saves snapshots.</span>`;
     }
+
+    midiHistoryEl.innerHTML = historyFrames.length > 0
+      ? historyFrames.map((frame, index) => `
+        <div class="history-card${index === historyFrames.length - 1 ? " is-current" : ""}">
+          <strong>${index === historyFrames.length - 1 ? "Current" : `T-${historyFrames.length - index - 1}`}</strong>
+          <span>${escapeHtml(historyFrameDescription(frame, context))}</span>
+        </div>
+      `).join("")
+      : `<div class="output-block">Recent motion memory appears here after at least one voiced change.</div>`;
 
     renderPreviewSvgOrBitmap(midiClockEl, {
       svgMarkup: clockSvg,
@@ -1609,59 +2066,86 @@ function renderMidiScene() {
       midiStaffEl.innerHTML = `<div class="output-block">Play notes across the keyboard to paint treble, bass, or grand staff directly from the live MIDI state.</div>`;
     }
 
-    if (currentFretVoicing) {
-      renderFretVoicingPreview(
+    if (displayNotes.length > 0) {
+      renderMiniInstrumentPreview(
         arena,
         midiCurrentFretEl,
-        currentFretVoicing,
-        "Current selection fretboard bitmap preview",
-        { maxHeight: 360, squareWidth: 360, mediumWidth: 460, wideWidth: 520, ultraWideWidth: 560, padXRatio: 0.12, padYRatio: 0.18 },
+        {
+          midiNotes: displayNotes,
+          setValue,
+          tonic: context.tonic,
+          preferredBassPc: displayNotes.length > 0 ? Math.min(...displayNotes) % 12 : null,
+        },
+        "Current selection fret preview",
+        {
+          modeOverride: MINI_INSTRUMENT_FRET,
+          maxHeight: 280,
+          squareWidth: 260,
+          mediumWidth: 320,
+          wideWidth: 360,
+          ultraWideWidth: 400,
+          padXRatio: 0.08,
+          padYRatio: 0.14,
+        },
       );
     } else {
-      midiCurrentFretEl.innerHTML = `<div class="output-block">Current selection has no compact ${escapeHtml(STANDARD_GUITAR_LABEL)} voicing within ${MIDI_FRET_MAX_FRET} frets / span ${MIDI_FRET_MAX_SPAN}.</div>`;
+      midiCurrentFretEl.innerHTML = `<div class="output-block">Play notes to see the current voicing on frets and the suggested next fret shapes.</div>`;
     }
+    const currentMiniRendered = displayNotes.length > 0 && miniInstrumentMode() !== MINI_INSTRUMENT_OFF;
 
     if (suggestions.length === 0) {
-      midiSuggestionsEl.innerHTML = `<p class="snapshot-empty">Once at least one note is sounding, libmusictheory will rank pitch-class additions against ${escapeHtml(context.label)} here.</p>`;
+      midiSuggestionsEl.innerHTML = `<p class="snapshot-empty">Once at least one note is sounding, libmusictheory will rank voiced next moves against ${escapeHtml(context.label)} here.</p>`;
     } else {
       midiSuggestionsEl.innerHTML = suggestions.map((suggestion, index) => `
         <article class="suggestion-card">
-          <strong>${String.fromCharCode(65 + index)}. Add ${escapeHtml(suggestion.name)}</strong>
+          <strong>${String.fromCharCode(65 + index)}. ${escapeHtml(suggestion.noteNames.join(" · "))}</strong>
           <p>${escapeHtml(suggestion.chordLabel)}</p>
-          <p>${escapeHtml(suggestion.reason)}</p>
+          <p>score ${escapeHtml(String(suggestion.score))} · cadence ${escapeHtml(suggestion.cadenceLabel)} · tension ${escapeHtml(suggestion.tensionDelta >= 0 ? `+${suggestion.tensionDelta}` : String(suggestion.tensionDelta))}</p>
+          <div class="chip-row suggestion-reasons">${suggestion.reasonNames.map((reason) => `<span class="pill">${escapeHtml(reason)}</span>`).join("") || `<span class="pill">no dominant reason</span>`}</div>
+          <div class="chip-row suggestion-warnings">${suggestion.warningNames.map((warning) => `<span class="chip warning-chip">${escapeHtml(warning)}</span>`).join("") || `<span class="chip safe-chip">clean motion</span>`}</div>
           <div class="suggestion-art-grid">
             <div class="suggestion-art" data-suggestion-clock="${index}"></div>
-            <div class="suggestion-art suggestion-art-fret" data-suggestion-fret="${index}"></div>
+            <div class="suggestion-art suggestion-art-fret suggestion-mini" data-suggestion-mini="${index}"></div>
           </div>
-          <div class="suggestion-fret-meta">${escapeHtml(
-            suggestion.fretPreview
-              ? `${suggestion.fretPreview.tuningLabel} · ${suggestion.fretPreview.url}`
-              : `No compact ${STANDARD_GUITAR_LABEL} voicing within ${MIDI_FRET_MAX_FRET} frets / span ${MIDI_FRET_MAX_SPAN}.`,
-          )}</div>
+          <div class="suggestion-fret-meta">${escapeHtml(suggestion.noteNames.join(" · "))}</div>
         </article>
       `).join("");
       suggestions.forEach((suggestion, index) => {
         const clockHost = midiSuggestionsEl.querySelector(`[data-suggestion-clock="${index}"]`);
         if (clockHost) {
           renderPreviewSvgOrBitmap(clockHost, {
-            svgMarkup: svgString(arena, wasm.lmt_svg_clock_optc, suggestion.expanded),
+            svgMarkup: svgString(arena, wasm.lmt_svg_clock_optc, suggestion.setValue),
             bitmapRenderer: {
-              renderRgba: (width, height) => clockBitmapRgba(arena, suggestion.expanded, width, height),
+              renderRgba: (width, height) => clockBitmapRgba(arena, suggestion.setValue, width, height),
             },
-            alt: `${suggestion.name} clock bitmap preview`,
+            alt: `${suggestion.noteNames.join(" ")} clock bitmap preview`,
             options: { maxHeight: 160, squareWidth: 160, mediumWidth: 180, wideWidth: 180, ultraWideWidth: 180, padXRatio: 0.08, padYRatio: 0.12 },
           });
         }
-        const fretHost = midiSuggestionsEl.querySelector(`[data-suggestion-fret="${index}"]`);
-        if (fretHost) {
-          renderFretVoicingPreview(
+        const miniHost = midiSuggestionsEl.querySelector(`[data-suggestion-mini="${index}"]`);
+        if (miniHost) {
+          renderMiniInstrumentPreview(
             arena,
-            fretHost,
-            suggestion.fretPreview,
-            `${suggestion.name} fretboard bitmap preview`,
-            { maxHeight: 160, squareWidth: 160, mediumWidth: 180, wideWidth: 180, ultraWideWidth: 180, padXRatio: 0.12, padYRatio: 0.18 },
+            miniHost,
+            {
+              midiNotes: suggestion.notes,
+              setValue: suggestion.setValue,
+              tonic: context.tonic,
+              preferredBassPc: suggestion.notes.length > 0 ? Math.min(...suggestion.notes) % 12 : null,
+              fretVoicing: suggestion.fretPreview,
+            },
+            `${suggestion.noteNames.join(" ")} fret preview`,
+            {
+              modeOverride: MINI_INSTRUMENT_FRET,
+              maxHeight: 160,
+              squareWidth: 170,
+              mediumWidth: 180,
+              wideWidth: 190,
+              ultraWideWidth: 200,
+              padXRatio: 0.08,
+              padYRatio: 0.14,
+            },
           );
-          fretHost.dataset.suggestionFretHost = "1";
         }
       });
     }
@@ -1680,17 +2164,20 @@ function renderMidiScene() {
       snapshotCount: midiState.snapshots.length,
       viewingSnapshot,
       contextLabel: context.label,
+      counterpointProfile: profileLabel,
+      counterpointProfileId: profile,
       tonic: context.tonic,
       modeType: context.modeType,
+      historyFrameCount: historyFrames.length,
       insideCount: contextOverlap,
       outsideCount,
       chordName: setValue === 0 ? "" : currentChord,
       suggestionCount: suggestions.length,
-      suggestionNames: suggestions.map((one) => one.name),
-      currentFretRendered: currentFretVoicing != null,
-      currentFretUrl: currentFretVoicing?.url || "",
-      currentFretTuning: currentFretVoicing?.tuningLabel || "",
-      suggestionFretCount: suggestions.filter((one) => one.fretPreview != null).length,
+      suggestionNames: suggestions.map((one) => one.noteNames.join(" · ")),
+      topSuggestionSignature: suggestions[0]?.notes?.join(",") || "",
+      currentMiniMode: miniInstrumentMode(),
+      currentMiniRendered,
+      suggestionMiniCount: suggestions.length,
       midiOpticKFeatures,
       midiEvennessFeatures,
       midiStaffFeatures,
@@ -1747,6 +2234,7 @@ function handleMidiEvent(inputId, data) {
   }
 
   midiState.lastChangedAt = Date.now();
+  captureMidiHistoryFrame();
   scheduleMidiRender();
 }
 
@@ -1804,6 +2292,7 @@ function renderSetScene() {
     setClockEl.innerHTML = "";
     setOpticKEl.innerHTML = "";
     setEvennessEl.innerHTML = "";
+    setMiniEl.innerHTML = `<div class="output-block">Select at least one pitch class to mirror it on the chosen mini instrument.</div>`;
     updateSummaryScene("set", { selectedCount: 0, setHex: "0x000" });
     return;
   }
@@ -1859,6 +2348,14 @@ function renderSetScene() {
       alt: "Set evenness bitmap preview",
       options: { maxHeight: 560, squareWidth: 420, mediumWidth: 520, wideWidth: 620, ultraWideWidth: 680, preserveViewBox: true },
     });
+    const anchor = bestSetAnchor(setValue);
+    const miniRendered = renderMiniInstrumentPreview(
+      arena,
+      setMiniEl,
+      { setValue, tonic: anchor.tonic, quality: anchor.quality },
+      "Set mini instrument preview",
+      { maxHeight: 220, squareWidth: 240, mediumWidth: 260, wideWidth: 280, ultraWideWidth: 300 },
+    );
     const setOpticKFeatures = inspectOpticKMarkup(opticKSvg);
     const setEvennessFeatures = inspectEvennessMarkup(evennessSvg);
     updateSummaryScene("set", {
@@ -1866,6 +2363,8 @@ function renderSetScene() {
       setHex: `0x${setValue.toString(16).padStart(3, "0")}`,
       chordName,
       primeHex: `0x${prime.toString(16).padStart(3, "0")}`,
+      miniInstrumentMode: miniInstrumentMode(),
+      miniRendered,
       setOpticKFeatures,
       setEvennessFeatures,
     });
@@ -1918,6 +2417,13 @@ function renderKeyScene() {
       alt: "Key keyboard bitmap preview",
       options: { maxHeight: 260, squareWidth: 780, mediumWidth: 920, wideWidth: 1040, ultraWideWidth: 1160, padXRatio: 0.02, padYRatio: 0.08 },
     });
+    const miniRendered = renderMiniInstrumentPreview(
+      arena,
+      keyMiniEl,
+      { setValue: orbit.setValue, tonic: orbit.tonic, quality, midiNotes: keyKeyboardNotes },
+      "Key mini instrument preview",
+      { maxHeight: 220, squareWidth: 260, mediumWidth: 300, wideWidth: 320, ultraWideWidth: 340 },
+    );
     const keyStaffFeatures = inspectStaffMarkup(keyStaffSvg);
     const keyboardFeatures = inspectKeyboardNotes(keyKeyboardNotes, 36, 96);
 
@@ -1926,6 +2432,8 @@ function renderKeyScene() {
       quality: quality === 0 ? "major" : "minor",
       noteCount: orbit.ordered.length,
       degrees: degreeCards.length,
+      miniInstrumentMode: miniInstrumentMode(),
+      miniRendered,
       keyStaffFeatures,
       keyboardFeatures,
     });
@@ -1979,6 +2487,14 @@ function renderChordScene() {
       alt: "Chord staff bitmap preview",
       options: { maxHeight: 320, squareWidth: 620, mediumWidth: 780, wideWidth: 920, ultraWideWidth: 1040, padXRatio: 0.05, padYRatio: 0.12 },
     });
+    const chordMidiNotes = keyboardPreviewNotesForSet(chordSet, root);
+    const miniRendered = renderMiniInstrumentPreview(
+      arena,
+      chordMiniEl,
+      { setValue: chordSet, tonic: root, quality: keyQuality, midiNotes: chordMidiNotes, preferredBassPc: root },
+      "Chord mini instrument preview",
+      { maxHeight: 220, squareWidth: 240, mediumWidth: 280, wideWidth: 300, ultraWideWidth: 320 },
+    );
     const staffFeatures = inspectStaffMarkup(chordStaffSvg);
 
     updateSummaryScene("chord", {
@@ -1986,6 +2502,8 @@ function renderChordScene() {
       chordName,
       roman,
       inKey,
+      miniInstrumentMode: miniInstrumentMode(),
+      miniRendered,
       staffFeatures,
     });
   } finally {
@@ -2043,6 +2561,13 @@ function renderProgressionScene() {
       options: { maxHeight: 340, squareWidth: 320, mediumWidth: 460 },
     });
     progressionNotesEl.innerHTML = unionNotes.map((note) => `<span class="chip">${escapeHtml(note)}</span>`).join("");
+    const miniRendered = renderMiniInstrumentPreview(
+      arena,
+      progressionMiniEl,
+      { setValue: unionSet, tonic: preset.tonic, quality: preset.quality },
+      "Progression mini instrument preview",
+      { maxHeight: 220, squareWidth: 240, mediumWidth: 280, wideWidth: 300, ultraWideWidth: 320 },
+    );
     normalizeSvgPreview(progressionCardsEl, { maxHeight: 132, squareWidth: 124, mediumWidth: 132, wideWidth: 146, ultraWideWidth: 146, padXRatio: 0.14, padYRatio: 0.18 });
 
     updateSummaryScene("progression", {
@@ -2051,6 +2576,8 @@ function renderProgressionScene() {
       steps: preset.degrees.length,
       unionCardinality: wasm.lmt_pcs_cardinality(unionSet),
       strongestLink,
+      miniInstrumentMode: miniInstrumentMode(),
+      miniRendered,
     });
   } finally {
     arena.release();
@@ -2110,6 +2637,14 @@ function renderCompareScene() {
       ...rightNotes.filter((note) => !overlapNotes.includes(note)).map((note) => `<span class="chip right-chip">R · ${escapeHtml(note)}</span>`),
       `<span class="pill">Union: ${escapeHtml(unionNotes.join(" · "))}</span>`,
     ].join("");
+    const anchor = bestSetAnchor(unionSet);
+    const miniRendered = renderMiniInstrumentPreview(
+      arena,
+      compareMiniEl,
+      { setValue: unionSet, tonic: anchor.tonic, quality: anchor.quality },
+      "Compare mini instrument preview",
+      { maxHeight: 220, squareWidth: 240, mediumWidth: 280, wideWidth: 300, ultraWideWidth: 320 },
+    );
 
     updateSummaryScene("compare", {
       leftCardinality: wasm.lmt_pcs_cardinality(leftSet),
@@ -2117,6 +2652,8 @@ function renderCompareScene() {
       sharedCardinality: wasm.lmt_pcs_cardinality(overlapSet),
       transposeMatch: relation.transposeMatch,
       inversionMatch: relation.inversionMatch,
+      miniInstrumentMode: miniInstrumentMode(),
+      miniRendered,
     });
   } finally {
     arena.release();
@@ -2225,6 +2762,26 @@ function renderFretScene() {
       selected.map((one) => `s${one.string + 1}:f${one.fret} ${noteName(one.pc)} (${one.midi})`),
     );
     setChipRow(fretVoicingsEl, voicings.length > 0 ? voicings : ["no alternate voicings within constraints"], "pill");
+    const miniRendered = renderMiniInstrumentPreview(
+      arena,
+      fretMiniEl,
+      {
+        midiNotes: selected.map((one) => one.midi),
+        setValue: chordSet,
+        tonic: selected.length > 0 ? selected[0].pc : 0,
+        fretVoicing: {
+          frets: frets.slice(),
+          windowStart,
+          visibleFrets,
+          tuning: tuning.slice(),
+          tuningLabel: tuning.join(","),
+          isStandardTuning: isStandardTuning(tuning),
+          url: fretUrl,
+        },
+      },
+      "Fret scene mini instrument preview",
+      { maxHeight: 220, squareWidth: 240, mediumWidth: 280, wideWidth: 300, ultraWideWidth: 320 },
+    );
 
     fretSummaryEl.textContent = [
       `serialized: ${fretUrl}`,
@@ -2240,6 +2797,8 @@ function renderFretScene() {
       selectedCount: selected.length,
       voicingCount: rowCount,
       url: fretUrl,
+      miniInstrumentMode: miniInstrumentMode(),
+      miniRendered,
     });
   } finally {
     arena.release();
@@ -2288,6 +2847,10 @@ function wireSceneEvents() {
       setPreviewMode(nextMode);
     });
   });
+  miniInstrumentModeEl.addEventListener("change", () => {
+    setMiniInstrumentMode(miniInstrumentModeEl.value);
+    setStatus(`Mini instrument set to ${galleryUiState.miniInstrument}.`);
+  });
   connectMidiEl.addEventListener("click", async () => {
     await connectMidi();
     if (midiState.accessState === "connected") {
@@ -2318,6 +2881,10 @@ function wireSceneEvents() {
     renderMidiScene();
     setStatus(`${MIDI_SCENE_TITLE} context set to ${currentMidiContext().label}.`);
   }));
+  midiProfileEl.addEventListener("change", () => {
+    renderMidiScene();
+    setStatus(`${MIDI_SCENE_TITLE} counterpoint profile set to ${counterpointProfileNames[currentMidiProfile()] || "species"}.`);
+  });
   document.getElementById("render-set").addEventListener("click", () => {
     renderSetScene();
     setStatus("Set Observatory refreshed.");
@@ -2448,6 +3015,7 @@ async function instantiateWasm() {
 function initializeUi() {
   createNoteSelectors(midiTonicEl);
   populateModeSelect(midiModeEl);
+  populateCounterpointProfileSelect(midiProfileEl);
   createNoteSelectors(keyTonicEl);
   createNoteSelectors(chordRootEl);
   createNoteSelectors(chordKeyTonicEl);
@@ -2455,7 +3023,9 @@ function initializeUi() {
   hydrateMidiSnapshots();
   midiTonicEl.value = String(MIDI_DEFAULT_TONIC);
   midiModeEl.value = String(MIDI_DEFAULT_MODE);
+  midiProfileEl.value = String(MIDI_DEFAULT_PROFILE);
   setPreviewMode(loadPreviewModePreference(), { persist: false, rerender: false });
+  setMiniInstrumentMode(loadMiniInstrumentPreference(), { persist: false, rerender: false });
   midiCaptionEl.textContent = "Connect MIDI to listen to every browser MIDI input, sustain pedal, and middle-pedal snapshots.";
   populatePresetSelect(setPresetEl, manifestList("setPresets"));
   populatePresetSelect(keyPresetEl, manifestList("keyPresets"));
@@ -2482,6 +3052,9 @@ async function main() {
     verifyExports(instance.exports);
     wasm = instance.exports;
     memory = wasm.memory;
+    loadCounterpointMetadata();
+    populateCounterpointProfileSelect(midiProfileEl);
+    midiProfileEl.value = String(MIDI_DEFAULT_PROFILE);
     renderAll();
     connectMidi().catch((error) => {
       midiState.accessState = "error";

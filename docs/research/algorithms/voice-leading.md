@@ -208,6 +208,91 @@ This is intentionally a separate layer from pure PCS voice-leading distance:
 
 The implementation uses a deterministic assignment step with insertion/deletion costs so the same note sequence always yields the same voice ids. That state then becomes the input for later motion classification and next-step ranking.
 
+## Motion Classification And Rule Profiles
+
+With persistent voice ids in place, adjacent-state counterpoint can be classified deterministically instead of guessed in the gallery layer. The standalone library now derives a `MotionSummary` from two `VoicedState` values.
+
+Per retained voice it records:
+
+- `stationary` motion (`common tone`)
+- `step`
+- `leap`
+
+Across retained voice pairs it classifies:
+
+- `contrary`
+- `similar`
+- `parallel`
+- `oblique`
+- `crossing`
+- `overlap`
+
+It also exposes:
+
+- total motion magnitude
+- outer-voice interval trajectory
+- previous/current cadence states
+
+Those summaries are then evaluated under explicit `CounterpointRuleProfile` values instead of a hidden single rule set:
+
+- `species`
+- `tonal_chorale`
+- `modal_polyphony`
+- `jazz_close_leading`
+- `free_contemporary`
+
+The current profile layer is intentionally lightweight:
+
+- it prefers or penalizes motion classes differently
+- it penalizes excessive spacing and leaps differently
+- it can mark parallels/crossings as disallowed for stricter styles
+- it applies cadence-transition bonuses where cadence state is already available
+
+This gives the next-step ranker a deterministic, inspectable base that can be reused across CLI, C ABI, WASM, and gallery surfaces.
+
+## Ranked Next Steps And Reason Codes
+
+On top of `VoicedHistoryWindow`, `MotionSummary`, and `CounterpointRuleProfile`, the library now exposes a `NextStepSuggestion` ranker for short-range counterpoint exploration.
+
+The current ranker is intentionally bounded rather than combinatorial:
+
+- single-voice step candidates
+- outer-voice contrary-motion candidates
+- outer-voice parallel-motion candidates
+- simple cadential-resolution candidates when the current state reads as dominant
+
+Each `NextStepSuggestion` carries:
+
+- a total score
+- the resulting MIDI notes and pitch-class set
+- embedded motion/profile evaluation data
+- `reason_mask`
+- `warning_mask`
+- cadence effect and tension delta
+
+Current reason codes:
+
+- `NEXT_STEP_REASON_MINIMAL_MOTION`
+- `NEXT_STEP_REASON_CONTRARY_MOTION`
+- `NEXT_STEP_REASON_COMMON_TONE_RETENTION`
+- `NEXT_STEP_REASON_CADENCE_PULL`
+- `NEXT_STEP_REASON_PRESERVES_SPACING`
+- `NEXT_STEP_REASON_RELEASES_TENSION`
+- `NEXT_STEP_REASON_BUILDS_TENSION`
+- `NEXT_STEP_REASON_LEAP_COMPENSATION`
+
+Current warning codes:
+
+- `NEXT_STEP_WARNING_PARALLELS`
+- `NEXT_STEP_WARNING_CROSSING`
+- `NEXT_STEP_WARNING_OVERLAP`
+- `NEXT_STEP_WARNING_WIDE_SPACING`
+- `NEXT_STEP_WARNING_CONSECUTIVE_LEAP`
+- `NEXT_STEP_WARNING_OUTSIDE_CONTEXT`
+- `NEXT_STEP_WARNING_CLUSTER_PRESSURE`
+
+Temporal memory matters here: `temporalMemoryScore` looks back one state so consecutive leaps and leap compensation are scored differently from the same current chord viewed in isolation.
+
 ## Dependencies
 
 - [Pitch Class Set Operations](pitch-class-set-operations.md)

@@ -136,6 +136,15 @@ label span,
   align-items: flex-start;
 }
 
+.hero-select {
+  width: min(260px, 100%);
+}
+
+.hero-select span {
+  display: block;
+  margin-bottom: 8px;
+}
+
 .preview-toggle {
   display: inline-flex;
   gap: 8px;
@@ -273,7 +282,7 @@ label span,
 }
 
 .control-row-midi {
-  grid-template-columns: minmax(140px, 180px) minmax(220px, 320px);
+  grid-template-columns: minmax(140px, 180px) minmax(220px, 320px) minmax(220px, 280px);
   align-items: end;
 }
 
@@ -359,6 +368,10 @@ select {
   grid-column: 1 / -1;
 }
 
+.art-card-mini {
+  min-width: 0;
+}
+
 .art-card-double {
   grid-column: span 2;
 }
@@ -380,6 +393,15 @@ select {
   display: grid;
   place-items: center;
   padding: 24px;
+}
+
+.scene-mini {
+  min-height: 220px;
+}
+
+.scene-mini svg,
+.scene-mini img {
+  max-height: 180px;
 }
 
 .svg-frame svg {
@@ -688,6 +710,19 @@ select {
   color: var(--muted);
 }
 
+.suggestion-reasons,
+.suggestion-warnings {
+  margin-top: 0;
+}
+
+.warning-chip {
+  background: rgba(216, 92, 51, 0.12);
+}
+
+.safe-chip {
+  background: rgba(31, 125, 134, 0.12);
+}
+
 .snapshot-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
@@ -728,6 +763,32 @@ select {
 .snapshot-empty {
   color: var(--muted);
   margin: 6px 0 0;
+}
+
+.history-strip {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.history-card {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(24, 36, 47, 0.12);
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.history-card.is-current {
+  border-color: rgba(31, 125, 134, 0.28);
+  background: rgba(31, 125, 134, 0.08);
+}
+
+.history-card span {
+  color: var(--muted);
+  font-size: 0.94rem;
+  line-height: 1.45;
 }
 
 .midi-snapshot-band {

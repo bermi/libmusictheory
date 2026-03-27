@@ -29,6 +29,14 @@
             <button id="preview-mode-svg" class="ghost-button is-active" data-preview-mode="svg" type="button">SVG Preview</button>
             <button id="preview-mode-bitmap" class="ghost-button" data-preview-mode="bitmap" type="button">Bitmap Preview</button>
           </div>
+          <label class="hero-select">
+            <span>Mini Instrument</span>
+            <select id="mini-instrument-mode">
+              <option value="off">Off</option>
+              <option value="piano">Piano</option>
+              <option value="fret">Fret</option>
+            </select>
+          </label>
           <div class="hero-metrics" aria-label="Gallery metrics">
             <article class="hero-metric">
               <strong>7</strong>
@@ -70,6 +78,10 @@
               <span>Mode</span>
               <select id="midi-mode"></select>
             </label>
+            <label>
+              <span>Counterpoint Profile</span>
+              <select id="midi-profile"></select>
+            </label>
           </div>
           <div class="scene-meta-row">
             <div class="pill-list" id="midi-status-pills"></div>
@@ -81,6 +93,10 @@
               <pre id="midi-summary" class="mono output-block"></pre>
               <div id="midi-notes" class="chip-row"></div>
             </div>
+            <div class="note-card">
+              <h3>Recent Motion Memory</h3>
+              <div id="midi-history" class="history-strip"></div>
+            </div>
             <div class="art-card">
               <h3>Live Clock</h3>
               <div id="midi-clock" class="svg-frame midi-clock-frame"></div>
@@ -90,7 +106,7 @@
               <div id="midi-staff" class="svg-frame staff-frame midi-staff-frame"></div>
             </div>
             <div class="art-card">
-              <h3>Current Frets</h3>
+              <h3>Current Instrument View</h3>
               <div id="midi-current-fret" class="svg-frame fret-frame midi-current-fret-frame"></div>
             </div>
             <div class="art-card">
@@ -106,7 +122,7 @@
               <div id="midi-keyboard" class="svg-frame keyboard-frame midi-keyboard-frame"></div>
             </div>
             <div class="note-card">
-              <h3>Compatible Next Steps</h3>
+              <h3>Counterpoint Next Steps</h3>
               <div id="midi-suggestions" class="suggestion-grid"></div>
             </div>
           </div>
@@ -142,6 +158,10 @@
             <div class="art-card">
               <h3>Clock</h3>
               <div id="set-clock" class="svg-frame"></div>
+            </div>
+            <div class="art-card art-card-mini">
+              <h3>Mini Instrument</h3>
+              <div id="set-mini" class="svg-frame scene-mini"></div>
             </div>
             <div class="art-card">
               <h3>OPTIC/K Group</h3>
@@ -189,6 +209,10 @@
             <div class="art-card">
               <h3>Orbit</h3>
               <div id="key-clock" class="svg-frame"></div>
+            </div>
+            <div class="art-card art-card-mini">
+              <h3>Mini Instrument</h3>
+              <div id="key-mini" class="svg-frame scene-mini"></div>
             </div>
             <div class="art-card art-card-wide">
               <h3>Staff Walk</h3>
@@ -250,6 +274,10 @@
               <h3>Clock</h3>
               <div id="chord-clock" class="svg-frame"></div>
             </div>
+            <div class="art-card art-card-mini">
+              <h3>Mini Instrument</h3>
+              <div id="chord-mini" class="svg-frame scene-mini"></div>
+            </div>
             <div class="art-card art-card-wide">
               <h3>Staff</h3>
               <div id="chord-staff" class="svg-frame staff-frame"></div>
@@ -282,6 +310,10 @@
               <h3>Union Clock</h3>
               <div id="progression-clock" class="svg-frame"></div>
               <div id="progression-notes" class="chip-row"></div>
+            </div>
+            <div class="art-card art-card-mini">
+              <h3>Mini Instrument</h3>
+              <div id="progression-mini" class="svg-frame scene-mini"></div>
             </div>
           </div>
         </section>
@@ -323,6 +355,10 @@
             <div class="note-card">
               <h3>Pitch Material</h3>
               <div id="compare-chips" class="chip-row compare-chips"></div>
+            </div>
+            <div class="art-card art-card-mini">
+              <h3>Mini Instrument</h3>
+              <div id="compare-mini" class="svg-frame scene-mini"></div>
             </div>
           </div>
         </section>
@@ -376,6 +412,10 @@
               <pre id="fret-summary" class="mono output-block"></pre>
               <div id="fret-notes" class="chip-row"></div>
               <div id="fret-voicings" class="pill-list"></div>
+            </div>
+            <div class="art-card art-card-mini">
+              <h3>Mini Instrument</h3>
+              <div id="fret-mini" class="svg-frame scene-mini"></div>
             </div>
           </div>
         </section>

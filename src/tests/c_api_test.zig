@@ -2,6 +2,7 @@ const std = @import("std");
 const testing = std.testing;
 
 const pcs = @import("../pitch_class_set.zig");
+const counterpoint = @import("../counterpoint.zig");
 
 const c = @cImport({
     @cInclude("libmusictheory.h");
@@ -14,6 +15,9 @@ const LmtFretPos = api.LmtFretPos;
 const LmtGuideDot = api.LmtGuideDot;
 const LmtVoicedState = api.LmtVoicedState;
 const LmtVoicedHistory = api.LmtVoicedHistory;
+const LmtMotionSummary = api.LmtMotionSummary;
+const LmtMotionEvaluation = api.LmtMotionEvaluation;
+const LmtNextStepSuggestion = api.LmtNextStepSuggestion;
 
 const lmt_pcs_from_list = api.lmt_pcs_from_list;
 const lmt_pcs_to_list = api.lmt_pcs_to_list;
@@ -55,15 +59,31 @@ const lmt_svg_keyboard = api.lmt_svg_keyboard;
 const lmt_svg_piano_staff = api.lmt_svg_piano_staff;
 const lmt_raster_is_enabled = api.lmt_raster_is_enabled;
 const lmt_raster_demo_rgba = api.lmt_raster_demo_rgba;
+const lmt_counterpoint_max_voices = api.lmt_counterpoint_max_voices;
+const lmt_counterpoint_history_capacity = api.lmt_counterpoint_history_capacity;
+const lmt_counterpoint_rule_profile_count = api.lmt_counterpoint_rule_profile_count;
+const lmt_counterpoint_rule_profile_name = api.lmt_counterpoint_rule_profile_name;
+const lmt_sizeof_voiced_state = api.lmt_sizeof_voiced_state;
+const lmt_sizeof_voiced_history = api.lmt_sizeof_voiced_history;
+const lmt_sizeof_next_step_suggestion = api.lmt_sizeof_next_step_suggestion;
 const lmt_voiced_history_reset = api.lmt_voiced_history_reset;
 const lmt_build_voiced_state = api.lmt_build_voiced_state;
 const lmt_voiced_history_push = api.lmt_voiced_history_push;
+const lmt_classify_motion = api.lmt_classify_motion;
+const lmt_evaluate_motion_profile = api.lmt_evaluate_motion_profile;
+const lmt_rank_next_steps = api.lmt_rank_next_steps;
+const lmt_next_step_reason_count = api.lmt_next_step_reason_count;
+const lmt_next_step_reason_name = api.lmt_next_step_reason_name;
+const lmt_next_step_warning_count = api.lmt_next_step_warning_count;
+const lmt_next_step_warning_name = api.lmt_next_step_warning_name;
 const lmt_bitmap_clock_optc_rgba = api.lmt_bitmap_clock_optc_rgba;
 const lmt_bitmap_optic_k_group_rgba = api.lmt_bitmap_optic_k_group_rgba;
 const lmt_bitmap_evenness_chart_rgba = api.lmt_bitmap_evenness_chart_rgba;
 const lmt_bitmap_evenness_field_rgba = api.lmt_bitmap_evenness_field_rgba;
 const lmt_bitmap_fret_rgba = api.lmt_bitmap_fret_rgba;
 const lmt_bitmap_fret_n_rgba = api.lmt_bitmap_fret_n_rgba;
+const lmt_svg_fret_tuned_n = api.lmt_svg_fret_tuned_n;
+const lmt_bitmap_fret_tuned_n_rgba = api.lmt_bitmap_fret_tuned_n_rgba;
 const lmt_bitmap_chord_staff_rgba = api.lmt_bitmap_chord_staff_rgba;
 const lmt_bitmap_key_staff_rgba = api.lmt_bitmap_key_staff_rgba;
 const lmt_bitmap_keyboard_rgba = api.lmt_bitmap_keyboard_rgba;
@@ -84,6 +104,7 @@ test "c abi header layout and constants" {
     try testing.expectEqual(@as(usize, 12), @sizeOf(c.lmt_context_suggestion));
     try testing.expectEqual(@as(usize, 4), @sizeOf(c.lmt_metric_position));
     try testing.expectEqual(@as(usize, 8), @sizeOf(c.lmt_voice));
+    try testing.expectEqual(@as(usize, 8), @sizeOf(c.lmt_voice_motion));
     try testing.expectEqual(@as(usize, 0), @offsetOf(c.lmt_key_context, "tonic"));
     try testing.expectEqual(@as(usize, 1), @offsetOf(c.lmt_key_context, "quality"));
     try testing.expectEqual(@as(usize, 0), @offsetOf(c.lmt_guide_dot, "position"));
@@ -92,9 +113,15 @@ test "c abi header layout and constants" {
     try testing.expectEqual(@as(usize, 4), @offsetOf(c.lmt_context_suggestion, "expanded_set"));
     try testing.expectEqual(@as(usize, 6), @offsetOf(c.lmt_context_suggestion, "pitch_class"));
     try testing.expectEqual(@as(usize, 10), @offsetOf(c.lmt_voiced_state, "cadence_state"));
+    try testing.expectEqual(@as(usize, 17), @offsetOf(c.lmt_motion_summary, "voice_motions"));
     try testing.expectEqual(@as(c_int, 0), c.LMT_SCALE_DIATONIC);
     try testing.expectEqual(@as(c_int, 16), c.LMT_MODE_WHOLE_TONE);
     try testing.expectEqual(@as(c_int, 3), c.LMT_CHORD_AUGMENTED);
+    try testing.expectEqual(@as(u32, counterpoint.MAX_VOICES), lmt_counterpoint_max_voices());
+    try testing.expectEqual(@as(u32, counterpoint.HISTORY_CAPACITY), lmt_counterpoint_history_capacity());
+    try testing.expectEqual(@as(u32, @sizeOf(LmtVoicedState)), lmt_sizeof_voiced_state());
+    try testing.expectEqual(@as(u32, @sizeOf(LmtVoicedHistory)), lmt_sizeof_voiced_history());
+    try testing.expectEqual(@as(u32, @sizeOf(LmtNextStepSuggestion)), lmt_sizeof_next_step_suggestion());
 }
 
 test "c abi set operations" {
@@ -205,6 +232,129 @@ test "c abi voiced state and history" {
     try testing.expectEqual(@as(u8, 1), history.len);
     try testing.expectEqual(@as(u8, 4), pushed.voice_count);
     try testing.expectEqual(@as(u8, 1), pushed.voices[0].sustained);
+}
+
+test "c abi motion summary and profile evaluation" {
+    var previous: LmtVoicedState = undefined;
+    var current: LmtVoicedState = undefined;
+    var summary: LmtMotionSummary = undefined;
+    var evaluation: LmtMotionEvaluation = undefined;
+
+    const previous_notes = [_]u8{ 60, 67 };
+    const current_notes = [_]u8{ 62, 69 };
+
+    try testing.expectEqual(@as(u32, 2), lmt_build_voiced_state(
+        @ptrCast(&previous_notes),
+        previous_notes.len,
+        null,
+        0,
+        0,
+        c.LMT_MODE_IONIAN,
+        2,
+        4,
+        0,
+        c.LMT_CADENCE_DOMINANT,
+        null,
+        @ptrCast(&previous),
+    ));
+
+    try testing.expectEqual(@as(u32, 2), lmt_build_voiced_state(
+        @ptrCast(&current_notes),
+        current_notes.len,
+        null,
+        0,
+        0,
+        c.LMT_MODE_IONIAN,
+        3,
+        4,
+        0,
+        c.LMT_CADENCE_AUTHENTIC_ARRIVAL,
+        @ptrCast(&previous),
+        @ptrCast(&current),
+    ));
+
+    try testing.expectEqual(@as(u32, 1), lmt_classify_motion(@ptrCast(&previous), @ptrCast(&current), @ptrCast(&summary)));
+    try testing.expectEqual(@as(u8, 2), summary.voice_motion_count);
+    try testing.expectEqual(@as(u8, 1), summary.parallel_count);
+    try testing.expectEqual(@as(u8, c.LMT_PAIR_MOTION_PARALLEL), summary.outer_motion);
+
+    try testing.expectEqual(@as(u32, 1), lmt_evaluate_motion_profile(c.LMT_COUNTERPOINT_SPECIES, @ptrCast(&summary), @ptrCast(&evaluation)));
+    try testing.expect(evaluation.disallowed != 0);
+    try testing.expect(evaluation.disallowed_count > 0);
+
+    try testing.expectEqual(@as(u32, 1), lmt_evaluate_motion_profile(c.LMT_COUNTERPOINT_JAZZ_CLOSE_LEADING, @ptrCast(&summary), @ptrCast(&evaluation)));
+    try testing.expect(evaluation.disallowed == 0);
+}
+
+test "c abi next step ranker and reason tables" {
+    var history: LmtVoicedHistory = undefined;
+    var current: LmtVoicedState = undefined;
+    lmt_voiced_history_reset(@ptrCast(&history));
+
+    const previous_notes = [_]u8{ 60, 67 };
+    const current_notes = [_]u8{ 64, 69 };
+    _ = lmt_voiced_history_push(
+        @ptrCast(&history),
+        @ptrCast(&previous_notes),
+        previous_notes.len,
+        null,
+        0,
+        0,
+        c.LMT_MODE_IONIAN,
+        0,
+        4,
+        0,
+        c.LMT_CADENCE_STABLE,
+        null,
+    );
+    _ = lmt_voiced_history_push(
+        @ptrCast(&history),
+        @ptrCast(&current_notes),
+        current_notes.len,
+        null,
+        0,
+        0,
+        c.LMT_MODE_IONIAN,
+        1,
+        4,
+        0,
+        c.LMT_CADENCE_DOMINANT,
+        @ptrCast(&current),
+    );
+
+    var suggestions: [8]LmtNextStepSuggestion = undefined;
+    const total = lmt_rank_next_steps(@ptrCast(&history), c.LMT_COUNTERPOINT_SPECIES, @ptrCast(&suggestions), suggestions.len);
+    try testing.expect(total > 0);
+    try testing.expect(suggestions[0].score != 0);
+    try testing.expect(suggestions[0].note_count > 0);
+
+    const reason_count = lmt_next_step_reason_count();
+    try testing.expect(reason_count >= 4);
+    const reason_name = std.mem.sliceTo(@as([*:0]const u8, @ptrCast(lmt_next_step_reason_name(0))), 0);
+    try testing.expect(reason_name.len > 0);
+
+    const warning_count = lmt_next_step_warning_count();
+    try testing.expect(warning_count >= 4);
+    const warning_name = std.mem.sliceTo(@as([*:0]const u8, @ptrCast(lmt_next_step_warning_name(0))), 0);
+    try testing.expect(warning_name.len > 0);
+}
+
+test "c abi counterpoint helper metadata" {
+    const profile_count = lmt_counterpoint_rule_profile_count();
+    try testing.expectEqual(@as(u32, 5), profile_count);
+
+    const expected = [_][]const u8{
+        "species",
+        "tonal-chorale",
+        "modal-polyphony",
+        "jazz-close-leading",
+        "free-contemporary",
+    };
+    for (expected, 0..) |name, index| {
+        const actual = std.mem.sliceTo(@as([*:0]const u8, @ptrCast(lmt_counterpoint_rule_profile_name(@intCast(index)))), 0);
+        try testing.expectEqualStrings(name, actual);
+    }
+    try testing.expect(lmt_counterpoint_rule_profile_name(profile_count) == null);
 }
 
 test "c abi chords and roman numerals" {
@@ -328,6 +478,14 @@ test "c abi svg generators" {
     try testing.expect(len2n > 0);
     try testing.expect(std.mem.indexOf(u8, svg_buf[0..len2n], "cx=\"80.00\" cy=\"57.50\"") != null);
 
+    const tuned_frets = [_]i8{ 0, 2, 2, 1 };
+    const tuned = [_]u8{ 48, 55, 60, 64 };
+    const tuned_len = lmt_svg_fret_tuned_n(@ptrCast(&tuned_frets), tuned_frets.len, @ptrCast(&tuned), tuned.len, 0, 4, @ptrCast(&svg_buf), @intCast(svg_buf.len));
+    try testing.expect(tuned_len > 0);
+    try testing.expect(std.mem.indexOf(u8, svg_buf[0..tuned_len], "fill=\"#0bb\"") != null);
+    try testing.expect(std.mem.indexOf(u8, svg_buf[0..tuned_len], "fill=\"#f0f\"") != null);
+    try testing.expect(std.mem.indexOf(u8, svg_buf[0..tuned_len], "fill=\"#f91\"") != null);
+
     const chord_staff_cases = [_]struct {
         chord_kind: u8,
         root: u8,
@@ -404,6 +562,12 @@ test "c abi raster generators" {
     var fret_n_rgba: [320 * 320 * 4]u8 = [_]u8{0} ** (320 * 320 * 4);
     try testing.expectEqual(@as(u32, fret_n_rgba.len), lmt_bitmap_fret_n_rgba(@ptrCast(&four_string), four_string.len, 0, 4, 320, 320, @ptrCast(&fret_n_rgba), @intCast(fret_n_rgba.len)));
     try testing.expect(std.mem.indexOfNone(u8, &fret_n_rgba, &[_]u8{255}) != null);
+
+    const tuned_frets = [_]i8{ 0, 2, 2, 1 };
+    const tuned = [_]u8{ 48, 55, 60, 64 };
+    var fret_tuned_rgba: [320 * 320 * 4]u8 = [_]u8{0} ** (320 * 320 * 4);
+    try testing.expectEqual(@as(u32, fret_tuned_rgba.len), lmt_bitmap_fret_tuned_n_rgba(@ptrCast(&tuned_frets), tuned_frets.len, @ptrCast(&tuned), tuned.len, 0, 4, 320, 320, @ptrCast(&fret_tuned_rgba), @intCast(fret_tuned_rgba.len)));
+    try testing.expect(std.mem.indexOfNone(u8, &fret_tuned_rgba, &[_]u8{255}) != null);
 
     var staff_rgba: [640 * 240 * 4]u8 = [_]u8{0} ** (640 * 240 * 4);
     try testing.expectEqual(@as(u32, staff_rgba.len), lmt_bitmap_chord_staff_rgba(c.LMT_CHORD_MAJOR, 0, 640, 240, @ptrCast(&staff_rgba), @intCast(staff_rgba.len)));

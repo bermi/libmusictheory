@@ -169,6 +169,24 @@ if [ -f "$ROOT_DIR/docs/plans/in_progress/0091-voiced-state-and-temporal-memory.
     check_cmd "cd '$ROOT_DIR' && rg -n 'lmt_metric_position|lmt_voice|lmt_voiced_state|lmt_voiced_history|lmt_voiced_history_reset|lmt_build_voiced_state|lmt_voiced_history_push' include/libmusictheory.h src/c_api.zig build.zig scripts/check_wasm_exports.mjs src/tests/c_api_test.zig >/dev/null" "0091 counterpoint ABI guardrail (experimental state/history ABI is declared, exported, and tested)"
 fi
 
+if [ -f "$ROOT_DIR/docs/plans/in_progress/0092-motion-classifier-and-rule-profiles.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0092-motion-classifier-and-rule-profiles.md" ]; then
+    check_cmd "cd '$ROOT_DIR' && rg -n 'MotionSummary|VoiceMotionClass|PairMotionClass|CounterpointRuleProfile|evaluateMotionProfile|classifyMotion' src/counterpoint.zig src/tests/counterpoint_test.zig docs/research/algorithms/voice-leading.md >/dev/null" "0092 motion classifier guardrail (adjacent-state motion semantics and docs are present)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'species|tonal_chorale|modal_polyphony|jazz_close_leading|free_contemporary' src/counterpoint.zig src/tests/counterpoint_test.zig include/libmusictheory.h src/c_api.zig >/dev/null" "0092 rule profile guardrail (all declared profiles are implemented and covered consistently)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'lmt_pair_motion_class|lmt_counterpoint_rule_profile|lmt_motion_summary|lmt_motion_evaluation|lmt_classify_motion|lmt_evaluate_motion_profile' include/libmusictheory.h src/c_api.zig build.zig scripts/check_wasm_exports.mjs src/tests/c_api_test.zig >/dev/null" "0092 motion/profile ABI guardrail (classification and profile evaluation are exported and tested)"
+fi
+
+if [ -f "$ROOT_DIR/docs/plans/in_progress/0093-next-step-ranker-and-reason-codes.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0093-next-step-ranker-and-reason-codes.md" ]; then
+    check_cmd "cd '$ROOT_DIR' && rg -n 'NextStepSuggestion|rankNextSteps|NEXT_STEP_REASON_|NEXT_STEP_WARNING_|temporalMemory' src/counterpoint.zig src/tests/counterpoint_test.zig docs/research/algorithms/voice-leading.md >/dev/null" "0093 next-step ranker guardrail (ranker, reasons, and temporal scoring docs are present)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'lmt_next_step_suggestion|lmt_rank_next_steps|lmt_next_step_reason_count|lmt_next_step_reason_name|lmt_next_step_warning_count|lmt_next_step_warning_name' include/libmusictheory.h src/c_api.zig build.zig scripts/check_wasm_exports.mjs src/tests/c_api_test.zig >/dev/null" "0093 next-step ABI guardrail (suggestion structs and reason tables are exported and tested)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'temporal.*history|different profiles|reason_mask|warning_mask' src/tests/counterpoint_test.zig src/tests/c_api_test.zig >/dev/null" "0093 next-step verification guardrail (tests cover profile changes, reasons, warnings, and temporal-memory effects)"
+fi
+
+if [ -f "$ROOT_DIR/docs/plans/in_progress/0094-interactive-counterpoint-gallery-and-instrument-miniviews.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0094-interactive-counterpoint-gallery-and-instrument-miniviews.md" ]; then
+    check_cmd "cd '$ROOT_DIR' && rg -n 'mini-instrument|midi-profile|midi-history|scene-mini|suggestion-mini|counterpoint' examples/wasm-gallery/index.html examples/wasm-gallery/gallery.js examples/wasm-gallery/styles.css scripts/lib/wasm_gallery_playwright_common.mjs scripts/validate_wasm_gallery_playwright.mjs README.md >/dev/null" "0094 counterpoint gallery guardrail (interactive scene, profile control, miniviews, docs, and validation wiring are present)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'lmt_voiced_history_reset|lmt_voiced_history_push|lmt_rank_next_steps|lmt_next_step_reason_name|lmt_next_step_warning_name|lmt_counterpoint_rule_profile_count|lmt_counterpoint_rule_profile_name' include/libmusictheory.h src/c_api.zig build.zig scripts/check_wasm_exports.mjs examples/wasm-gallery/gallery.js src/tests/c_api_test.zig >/dev/null" "0094 counterpoint gallery guardrail (gallery consumes voiced-history, ranked next-step, reason, warning, and profile-name ABI helpers)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'pitch-class.*color|PC_.*COLOR|noteColor|fill=\\\"#|barre' src/svg/fret.zig src/tests/svg_fret_test.zig >/dev/null" "0094 fret miniview guardrail (library fret previews expose pitch-class coloring and stay covered by tests)"
+fi
+
 if [ -f "$ROOT_DIR/scripts/release_smoke.sh" ]; then
     check_cmd "cd '$ROOT_DIR' && test -x scripts/release_smoke.sh" "0078 release smoke guardrail (script is executable)"
     check_cmd "cd '$ROOT_DIR' && ! rg -n 'tmp/harmoniousapp\\.net|validate_harmonious_|wasm-demo|wasm-scaled-render-parity|wasm-native-rgba-proof|wasm-harmonious-spa' scripts/release_smoke.sh" "0078 release smoke guardrail (script stays on standalone surfaces and does not depend on local harmonious data)"

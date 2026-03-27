@@ -164,6 +164,85 @@ typedef struct {
     lmt_voiced_state states[4];
 } lmt_voiced_history;
 
+typedef enum {
+    LMT_VOICE_MOTION_STATIONARY = 0,
+    LMT_VOICE_MOTION_STEP = 1,
+    LMT_VOICE_MOTION_LEAP = 2,
+} lmt_voice_motion_class;
+
+typedef enum {
+    LMT_PAIR_MOTION_NONE = 0,
+    LMT_PAIR_MOTION_CONTRARY = 1,
+    LMT_PAIR_MOTION_SIMILAR = 2,
+    LMT_PAIR_MOTION_PARALLEL = 3,
+    LMT_PAIR_MOTION_OBLIQUE = 4,
+} lmt_pair_motion_class;
+
+typedef enum {
+    LMT_COUNTERPOINT_SPECIES = 0,
+    LMT_COUNTERPOINT_TONAL_CHORALE = 1,
+    LMT_COUNTERPOINT_MODAL_POLYPHONY = 2,
+    LMT_COUNTERPOINT_JAZZ_CLOSE_LEADING = 3,
+    LMT_COUNTERPOINT_FREE_CONTEMPORARY = 4,
+} lmt_counterpoint_rule_profile;
+
+typedef struct {
+    uint8_t voice_id;
+    uint8_t from_midi;
+    uint8_t to_midi;
+    int8_t delta;
+    uint8_t abs_delta;
+    uint8_t motion_class;
+    uint8_t retained;
+    uint8_t reserved;
+} lmt_voice_motion;
+
+typedef struct {
+    uint8_t voice_motion_count;
+    uint8_t common_tone_count;
+    uint8_t step_count;
+    uint8_t leap_count;
+    uint8_t contrary_count;
+    uint8_t similar_count;
+    uint8_t parallel_count;
+    uint8_t oblique_count;
+    uint8_t crossing_count;
+    uint8_t overlap_count;
+    uint16_t total_motion;
+    int8_t outer_interval_before;
+    int8_t outer_interval_after;
+    uint8_t outer_motion;
+    uint8_t previous_cadence_state;
+    uint8_t current_cadence_state;
+    lmt_voice_motion voice_motions[8];
+} lmt_motion_summary;
+
+typedef struct {
+    int32_t score;
+    int16_t preferred_score;
+    int16_t penalty_score;
+    int16_t cadence_score;
+    int16_t spacing_penalty;
+    int16_t leap_penalty;
+    uint8_t disallowed_count;
+    uint8_t disallowed;
+} lmt_motion_evaluation;
+
+typedef struct {
+    int32_t score;
+    uint32_t reason_mask;
+    uint32_t warning_mask;
+    uint8_t cadence_effect;
+    int8_t tension_delta;
+    uint8_t note_count;
+    uint8_t reserved0;
+    uint8_t reserved1;
+    lmt_pitch_class_set set_value;
+    lmt_midi_note notes[8];
+    lmt_motion_summary motion;
+    lmt_motion_evaluation evaluation;
+} lmt_next_step_suggestion;
+
 lmt_pitch_class_set lmt_pcs_from_list(const lmt_pitch_class *pcs, uint8_t count);
 uint8_t lmt_pcs_to_list(lmt_pitch_class_set set, lmt_pitch_class *out);
 uint8_t lmt_pcs_cardinality(lmt_pitch_class_set set);
@@ -202,6 +281,7 @@ uint32_t lmt_svg_evenness_chart(char *buf, uint32_t buf_size);
 uint32_t lmt_svg_evenness_field(lmt_pitch_class_set set, char *buf, uint32_t buf_size);
 uint32_t lmt_svg_fret(const int8_t *frets, char *buf, uint32_t buf_size);
 uint32_t lmt_svg_fret_n(const int8_t *frets, uint32_t string_count, uint32_t window_start, uint32_t visible_frets, char *buf, uint32_t buf_size);
+uint32_t lmt_svg_fret_tuned_n(const int8_t *frets, uint32_t string_count, const uint8_t *tuning, uint32_t tuning_count, uint32_t window_start, uint32_t visible_frets, char *buf, uint32_t buf_size);
 uint32_t lmt_svg_chord_staff(lmt_chord_type type, lmt_pitch_class root, char *buf, uint32_t buf_size);
 uint32_t lmt_svg_key_staff(lmt_pitch_class tonic, lmt_key_quality quality, char *buf, uint32_t buf_size);
 uint32_t lmt_svg_keyboard(const lmt_midi_note *notes, uint32_t note_count, lmt_midi_note range_low, lmt_midi_note range_high, char *buf, uint32_t buf_size);
@@ -210,9 +290,23 @@ uint32_t lmt_svg_piano_staff(const lmt_midi_note *notes, uint32_t note_count, lm
 /* Experimental APIs: useful for demos and renderer work, not yet stable ABI. */
 uint32_t lmt_raster_is_enabled(void);
 uint32_t lmt_raster_demo_rgba(uint32_t width, uint32_t height, uint8_t *out_rgba, uint32_t out_rgba_size);
+uint32_t lmt_counterpoint_max_voices(void);
+uint32_t lmt_counterpoint_history_capacity(void);
+uint32_t lmt_counterpoint_rule_profile_count(void);
+const char *lmt_counterpoint_rule_profile_name(uint32_t index);
+uint32_t lmt_sizeof_voiced_state(void);
+uint32_t lmt_sizeof_voiced_history(void);
+uint32_t lmt_sizeof_next_step_suggestion(void);
 void lmt_voiced_history_reset(lmt_voiced_history *history);
 uint32_t lmt_build_voiced_state(const lmt_midi_note *notes, uint32_t note_count, const lmt_midi_note *sustained_notes, uint32_t sustained_count, lmt_pitch_class tonic, lmt_mode_type mode_type, uint8_t beat_in_bar, uint8_t beats_per_bar, uint8_t subdivision, lmt_cadence_state cadence_hint, const lmt_voiced_state *previous, lmt_voiced_state *out);
 uint32_t lmt_voiced_history_push(lmt_voiced_history *history, const lmt_midi_note *notes, uint32_t note_count, const lmt_midi_note *sustained_notes, uint32_t sustained_count, lmt_pitch_class tonic, lmt_mode_type mode_type, uint8_t beat_in_bar, uint8_t beats_per_bar, uint8_t subdivision, lmt_cadence_state cadence_hint, lmt_voiced_state *out);
+uint32_t lmt_classify_motion(const lmt_voiced_state *previous, const lmt_voiced_state *current, lmt_motion_summary *out);
+uint32_t lmt_evaluate_motion_profile(lmt_counterpoint_rule_profile profile, const lmt_motion_summary *summary, lmt_motion_evaluation *out);
+uint32_t lmt_rank_next_steps(const lmt_voiced_history *history, lmt_counterpoint_rule_profile profile, lmt_next_step_suggestion *out, uint32_t out_cap);
+uint32_t lmt_next_step_reason_count(void);
+const char *lmt_next_step_reason_name(uint32_t index);
+uint32_t lmt_next_step_warning_count(void);
+const char *lmt_next_step_warning_name(uint32_t index);
 uint8_t lmt_mode_spelling_quality(lmt_pitch_class tonic, lmt_mode_type mode_type);
 uint32_t lmt_rank_context_suggestions(lmt_pitch_class_set set, const lmt_midi_note *midi_notes, uint32_t note_count, lmt_pitch_class tonic, lmt_mode_type mode_type, lmt_context_suggestion *out, uint32_t out_cap);
 /* preferred_bass_pc >= 12 means “no preferred bass pitch class” */
@@ -223,6 +317,7 @@ uint32_t lmt_bitmap_evenness_chart_rgba(uint32_t width, uint32_t height, uint8_t
 uint32_t lmt_bitmap_evenness_field_rgba(lmt_pitch_class_set set, uint32_t width, uint32_t height, uint8_t *out_rgba, uint32_t out_rgba_size);
 uint32_t lmt_bitmap_fret_rgba(const int8_t *frets, uint32_t width, uint32_t height, uint8_t *out_rgba, uint32_t out_rgba_size);
 uint32_t lmt_bitmap_fret_n_rgba(const int8_t *frets, uint32_t string_count, uint32_t window_start, uint32_t visible_frets, uint32_t width, uint32_t height, uint8_t *out_rgba, uint32_t out_rgba_size);
+uint32_t lmt_bitmap_fret_tuned_n_rgba(const int8_t *frets, uint32_t string_count, const uint8_t *tuning, uint32_t tuning_count, uint32_t window_start, uint32_t visible_frets, uint32_t width, uint32_t height, uint8_t *out_rgba, uint32_t out_rgba_size);
 uint32_t lmt_bitmap_chord_staff_rgba(lmt_chord_type type, lmt_pitch_class root, uint32_t width, uint32_t height, uint8_t *out_rgba, uint32_t out_rgba_size);
 uint32_t lmt_bitmap_key_staff_rgba(lmt_pitch_class tonic, lmt_key_quality quality, uint32_t width, uint32_t height, uint8_t *out_rgba, uint32_t out_rgba_size);
 uint32_t lmt_bitmap_keyboard_rgba(const lmt_midi_note *notes, uint32_t note_count, lmt_midi_note range_low, lmt_midi_note range_high, uint32_t width, uint32_t height, uint8_t *out_rgba, uint32_t out_rgba_size);

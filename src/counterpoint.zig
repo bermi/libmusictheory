@@ -4,6 +4,8 @@ const pcs = @import("pitch_class_set.zig");
 const mode = @import("mode.zig");
 const key = @import("key.zig");
 const keyboard = @import("keyboard.zig");
+const cluster = @import("cluster.zig");
+const evenness = @import("evenness.zig");
 
 pub const MAX_VOICES: usize = 8;
 pub const HISTORY_CAPACITY: usize = 4;
@@ -34,6 +36,144 @@ pub const CadenceState = enum(u8) {
     authentic_arrival,
     half_arrival,
     deceptive_pull,
+};
+
+pub const VoiceMotionClass = enum(u8) {
+    stationary,
+    step,
+    leap,
+};
+
+pub const PairMotionClass = enum(u8) {
+    none,
+    contrary,
+    similar,
+    parallel,
+    oblique,
+};
+
+pub const CounterpointRuleProfile = enum(u8) {
+    species,
+    tonal_chorale,
+    modal_polyphony,
+    jazz_close_leading,
+    free_contemporary,
+};
+
+pub const VoiceMotion = struct {
+    voice_id: u8,
+    from_midi: pitch.MidiNote,
+    to_midi: pitch.MidiNote,
+    delta: i8,
+    abs_delta: u8,
+    motion_class: VoiceMotionClass,
+    retained: bool,
+};
+
+pub const MotionSummary = struct {
+    voice_motion_count: u8,
+    common_tone_count: u8,
+    step_count: u8,
+    leap_count: u8,
+    contrary_count: u8,
+    similar_count: u8,
+    parallel_count: u8,
+    oblique_count: u8,
+    crossing_count: u8,
+    overlap_count: u8,
+    total_motion: u16,
+    outer_interval_before: i8,
+    outer_interval_after: i8,
+    outer_motion: PairMotionClass,
+    previous_cadence_state: CadenceState,
+    current_cadence_state: CadenceState,
+    voice_motions: [MAX_VOICES]VoiceMotion,
+
+    pub fn init() MotionSummary {
+        return .{
+            .voice_motion_count = 0,
+            .common_tone_count = 0,
+            .step_count = 0,
+            .leap_count = 0,
+            .contrary_count = 0,
+            .similar_count = 0,
+            .parallel_count = 0,
+            .oblique_count = 0,
+            .crossing_count = 0,
+            .overlap_count = 0,
+            .total_motion = 0,
+            .outer_interval_before = 0,
+            .outer_interval_after = 0,
+            .outer_motion = .none,
+            .previous_cadence_state = .none,
+            .current_cadence_state = .none,
+            .voice_motions = [_]VoiceMotion{emptyVoiceMotion()} ** MAX_VOICES,
+        };
+    }
+};
+
+pub const MotionEvaluation = struct {
+    score: i32,
+    preferred_score: i16,
+    penalty_score: i16,
+    cadence_score: i16,
+    spacing_penalty: i16,
+    leap_penalty: i16,
+    disallowed_count: u8,
+    disallowed: bool,
+};
+
+pub const MAX_NEXT_STEP_SUGGESTIONS: usize = 8;
+
+pub const NEXT_STEP_REASON_MINIMAL_MOTION: u32 = 1 << 0;
+pub const NEXT_STEP_REASON_CONTRARY_MOTION: u32 = 1 << 1;
+pub const NEXT_STEP_REASON_COMMON_TONE_RETENTION: u32 = 1 << 2;
+pub const NEXT_STEP_REASON_CADENCE_PULL: u32 = 1 << 3;
+pub const NEXT_STEP_REASON_PRESERVES_SPACING: u32 = 1 << 4;
+pub const NEXT_STEP_REASON_RELEASES_TENSION: u32 = 1 << 5;
+pub const NEXT_STEP_REASON_BUILDS_TENSION: u32 = 1 << 6;
+pub const NEXT_STEP_REASON_LEAP_COMPENSATION: u32 = 1 << 7;
+
+pub const NEXT_STEP_WARNING_PARALLELS: u32 = 1 << 0;
+pub const NEXT_STEP_WARNING_CROSSING: u32 = 1 << 1;
+pub const NEXT_STEP_WARNING_OVERLAP: u32 = 1 << 2;
+pub const NEXT_STEP_WARNING_WIDE_SPACING: u32 = 1 << 3;
+pub const NEXT_STEP_WARNING_CONSECUTIVE_LEAP: u32 = 1 << 4;
+pub const NEXT_STEP_WARNING_OUTSIDE_CONTEXT: u32 = 1 << 5;
+pub const NEXT_STEP_WARNING_CLUSTER_PRESSURE: u32 = 1 << 6;
+
+pub const NEXT_STEP_REASON_NAMES = [_][]const u8{
+    "minimal-motion",
+    "contrary-motion",
+    "common-tone-retention",
+    "cadence-pull",
+    "preserves-spacing",
+    "releases-tension",
+    "builds-tension",
+    "leap-compensation",
+};
+
+pub const NEXT_STEP_WARNING_NAMES = [_][]const u8{
+    "parallels",
+    "crossing",
+    "overlap",
+    "wide-spacing",
+    "consecutive-leap",
+    "outside-context",
+    "cluster-pressure",
+};
+
+pub const NextStepSuggestion = struct {
+    score: i32,
+    reason_mask: u32,
+    warning_mask: u32,
+    cadence_effect: CadenceState,
+    tension_delta: i8,
+    note_count: u8,
+    set_value: pcs.PitchClassSet,
+    notes: [MAX_VOICES]pitch.MidiNote,
+    motion: MotionSummary,
+    evaluation: MotionEvaluation,
 };
 
 pub const Voice = struct {
@@ -198,6 +338,163 @@ pub fn inferCadenceState(
     return .none;
 }
 
+pub fn classifyMotion(previous: *const VoicedState, current: *const VoicedState) MotionSummary {
+    var summary = MotionSummary.init();
+    summary.previous_cadence_state = previous.cadence_state;
+    summary.current_cadence_state = current.cadence_state;
+
+    var retained: [MAX_VOICES]VoiceMotion = [_]VoiceMotion{emptyVoiceMotion()} ** MAX_VOICES;
+    var retained_count: usize = 0;
+
+    for (current.slice()) |current_voice| {
+        if (findVoiceById(previous, current_voice.id)) |previous_voice| {
+            const delta_wide = @as(i16, current_voice.midi) - @as(i16, previous_voice.midi);
+            const abs_delta = @as(u8, @intCast(@abs(delta_wide)));
+            const motion_class = classifyVoiceMotion(abs_delta);
+            retained[retained_count] = .{
+                .voice_id = current_voice.id,
+                .from_midi = previous_voice.midi,
+                .to_midi = current_voice.midi,
+                .delta = std.math.cast(i8, delta_wide) orelse if (delta_wide < 0) std.math.minInt(i8) else std.math.maxInt(i8),
+                .abs_delta = abs_delta,
+                .motion_class = motion_class,
+                .retained = true,
+            };
+            summary.voice_motions[retained_count] = retained[retained_count];
+            summary.voice_motion_count += 1;
+            summary.total_motion += abs_delta;
+            switch (motion_class) {
+                .stationary => summary.common_tone_count += 1,
+                .step => summary.step_count += 1,
+                .leap => summary.leap_count += 1,
+            }
+            retained_count += 1;
+        }
+    }
+
+    if (retained_count >= 2) {
+        const lower = lowestPreviousMotion(retained[0..retained_count]);
+        const upper = highestPreviousMotion(retained[0..retained_count]);
+        summary.outer_interval_before = @as(i8, @intCast(@as(i16, upper.from_midi) - @as(i16, lower.from_midi)));
+        summary.outer_interval_after = @as(i8, @intCast(@as(i16, upper.to_midi) - @as(i16, lower.to_midi)));
+        summary.outer_motion = classifyPairMotion(lower, upper);
+    }
+
+    var i: usize = 0;
+    while (i < retained_count) : (i += 1) {
+        var j: usize = i + 1;
+        while (j < retained_count) : (j += 1) {
+            const lower, const upper = orderPair(retained[i], retained[j]);
+            switch (classifyPairMotion(lower, upper)) {
+                .contrary => summary.contrary_count += 1,
+                .similar => summary.similar_count += 1,
+                .parallel => summary.parallel_count += 1,
+                .oblique => summary.oblique_count += 1,
+                .none => {},
+            }
+            if (isCrossing(lower, upper)) summary.crossing_count += 1;
+            if (isOverlap(lower, upper)) summary.overlap_count += 1;
+        }
+    }
+
+    return summary;
+}
+
+pub fn evaluateMotionProfile(summary: MotionSummary, profile: CounterpointRuleProfile) MotionEvaluation {
+    const spec = profileSpec(profile);
+    var preferred_score: i16 = 0;
+    var penalty_score: i16 = 0;
+    var cadence_score: i16 = 0;
+    var spacing_penalty: i16 = 0;
+    var leap_penalty: i16 = 0;
+    var disallowed_count: u8 = 0;
+
+    preferred_score += @as(i16, summary.contrary_count) * spec.contrary_weight;
+    preferred_score += @as(i16, summary.oblique_count) * spec.oblique_weight;
+    preferred_score += @as(i16, summary.common_tone_count) * spec.common_tone_weight;
+    preferred_score += @as(i16, summary.similar_count) * spec.similar_weight;
+    preferred_score += @as(i16, summary.parallel_count) * spec.parallel_weight;
+
+    if (summary.parallel_count > 0 and spec.parallel_disallowed) {
+        disallowed_count +%= summary.parallel_count;
+    }
+    if (summary.crossing_count > 0 and spec.crossing_disallowed) {
+        disallowed_count +%= summary.crossing_count;
+    }
+
+    penalty_score += @as(i16, summary.crossing_count) * spec.crossing_penalty;
+    penalty_score += @as(i16, summary.overlap_count) * spec.overlap_penalty;
+
+    leap_penalty = @as(i16, summary.leap_count) * spec.leap_penalty;
+
+    if (summary.outer_interval_after > spec.max_outer_interval) {
+        spacing_penalty = (summary.outer_interval_after - spec.max_outer_interval) * spec.spacing_penalty;
+    }
+
+    cadence_score = cadenceTransitionBonus(spec, summary.previous_cadence_state, summary.current_cadence_state);
+
+    return .{
+        .score = preferred_score - penalty_score - spacing_penalty - leap_penalty + cadence_score,
+        .preferred_score = preferred_score,
+        .penalty_score = penalty_score,
+        .cadence_score = cadence_score,
+        .spacing_penalty = spacing_penalty,
+        .leap_penalty = leap_penalty,
+        .disallowed_count = disallowed_count,
+        .disallowed = disallowed_count != 0,
+    };
+}
+
+pub fn rankNextSteps(history: *const VoicedHistoryWindow, profile: CounterpointRuleProfile, out: []NextStepSuggestion) []NextStepSuggestion {
+    if (out.len == 0) return out[0..0];
+    const current = history.current() orelse return out[0..0];
+    if (current.voice_count == 0) return out[0..0];
+
+    var generated: [MAX_NEXT_STEP_SUGGESTIONS * 8]NextStepSuggestion = undefined;
+    var generated_count: usize = 0;
+    const context_set = keyboard.modeSet(current.tonic, current.mode_type);
+    const next_metric = advanceMetric(current.metric);
+
+    var note_buf: [MAX_VOICES]pitch.MidiNote = [_]pitch.MidiNote{0} ** MAX_VOICES;
+
+    for (0..current.voice_count) |index| {
+        for ([_]i8{ -2, -1, 1, 2 }) |delta| {
+            const candidate = makeSingleVoiceCandidate(current, index, delta, &note_buf) orelse continue;
+            appendRankedCandidate(history, profile, context_set, next_metric, candidate, &generated, &generated_count);
+        }
+    }
+
+    if (current.voice_count >= 2) {
+        const low_index: usize = 0;
+        const high_index: usize = current.voice_count - 1;
+        for ([_]i8{ 1, 2 }) |delta| {
+            if (makeDoubleVoiceCandidate(current, low_index, delta, high_index, -delta, &note_buf)) |candidate| {
+                appendRankedCandidate(history, profile, context_set, next_metric, candidate, &generated, &generated_count);
+            }
+            if (makeDoubleVoiceCandidate(current, low_index, -delta, high_index, delta, &note_buf)) |candidate| {
+                appendRankedCandidate(history, profile, context_set, next_metric, candidate, &generated, &generated_count);
+            }
+            if (makeDoubleVoiceCandidate(current, low_index, delta, high_index, delta, &note_buf)) |candidate| {
+                appendRankedCandidate(history, profile, context_set, next_metric, candidate, &generated, &generated_count);
+            }
+            if (makeDoubleVoiceCandidate(current, low_index, -delta, high_index, -delta, &note_buf)) |candidate| {
+                appendRankedCandidate(history, profile, context_set, next_metric, candidate, &generated, &generated_count);
+            }
+        }
+    }
+
+    if (current.cadence_state == .dominant or current.cadence_state == .cadential_six_four) {
+        if (makeCadentialResolutionCandidate(current, &note_buf)) |candidate| {
+            appendRankedCandidate(history, profile, context_set, next_metric, candidate, &generated, &generated_count);
+        }
+    }
+
+    std.sort.insertion(NextStepSuggestion, generated[0..generated_count], {}, nextStepLessThan);
+    const write_len = @min(generated_count, out.len);
+    @memcpy(out[0..write_len], generated[0..write_len]);
+    return out[0..write_len];
+}
+
 fn emptyVoice() Voice {
     return .{
         .id = 0,
@@ -205,6 +502,18 @@ fn emptyVoice() Voice {
         .pitch_class = 0,
         .octave = -1,
         .sustained = false,
+    };
+}
+
+fn emptyVoiceMotion() VoiceMotion {
+    return .{
+        .voice_id = 0,
+        .from_midi = 0,
+        .to_midi = 0,
+        .delta = 0,
+        .abs_delta = 0,
+        .motion_class = .stationary,
+        .retained = false,
     };
 }
 
@@ -367,4 +676,421 @@ fn containsMidi(notes: []const pitch.MidiNote, midi: pitch.MidiNote) bool {
 
 fn lessThanMidi(_: void, a: pitch.MidiNote, b: pitch.MidiNote) bool {
     return a < b;
+}
+
+fn findVoiceById(state: *const VoicedState, id: u8) ?Voice {
+    for (state.slice()) |voice| {
+        if (voice.id == id) return voice;
+    }
+    return null;
+}
+
+fn classifyVoiceMotion(abs_delta: u8) VoiceMotionClass {
+    if (abs_delta == 0) return .stationary;
+    if (abs_delta <= 2) return .step;
+    return .leap;
+}
+
+fn orderPair(a: VoiceMotion, b: VoiceMotion) struct { VoiceMotion, VoiceMotion } {
+    if (a.from_midi < b.from_midi) return .{ a, b };
+    if (a.from_midi > b.from_midi) return .{ b, a };
+    if (a.voice_id < b.voice_id) return .{ a, b };
+    return .{ b, a };
+}
+
+fn classifyPairMotion(lower: VoiceMotion, upper: VoiceMotion) PairMotionClass {
+    const lower_delta = lower.delta;
+    const upper_delta = upper.delta;
+    const lower_stationary = lower_delta == 0;
+    const upper_stationary = upper_delta == 0;
+
+    if (lower_stationary and upper_stationary) return .none;
+    if (lower_stationary != upper_stationary) return .oblique;
+    if (std.math.sign(lower_delta) != std.math.sign(upper_delta)) return .contrary;
+
+    const previous_interval = @abs(@as(i16, upper.from_midi) - @as(i16, lower.from_midi));
+    const current_interval = @abs(@as(i16, upper.to_midi) - @as(i16, lower.to_midi));
+    if (previous_interval == current_interval and lower_delta == upper_delta) return .parallel;
+    return .similar;
+}
+
+fn isCrossing(lower: VoiceMotion, upper: VoiceMotion) bool {
+    return lower.to_midi > upper.to_midi;
+}
+
+fn isOverlap(lower: VoiceMotion, upper: VoiceMotion) bool {
+    if (isCrossing(lower, upper)) return false;
+    return lower.to_midi > upper.from_midi or upper.to_midi < lower.from_midi;
+}
+
+fn lowestPreviousMotion(retained: []const VoiceMotion) VoiceMotion {
+    var best = retained[0];
+    for (retained[1..]) |motion| {
+        if (motion.from_midi < best.from_midi) best = motion;
+    }
+    return best;
+}
+
+fn highestPreviousMotion(retained: []const VoiceMotion) VoiceMotion {
+    var best = retained[0];
+    for (retained[1..]) |motion| {
+        if (motion.from_midi > best.from_midi) best = motion;
+    }
+    return best;
+}
+
+const ProfileSpec = struct {
+    contrary_weight: i16,
+    oblique_weight: i16,
+    similar_weight: i16,
+    parallel_weight: i16,
+    common_tone_weight: i16,
+    crossing_penalty: i16,
+    overlap_penalty: i16,
+    leap_penalty: i16,
+    spacing_penalty: i16,
+    max_outer_interval: i8,
+    arrival_bonus: i16,
+    dominant_bonus: i16,
+    parallel_disallowed: bool,
+    crossing_disallowed: bool,
+};
+
+fn profileSpec(profile: CounterpointRuleProfile) ProfileSpec {
+    return switch (profile) {
+        .species => .{
+            .contrary_weight = 6,
+            .oblique_weight = 4,
+            .similar_weight = 0,
+            .parallel_weight = -8,
+            .common_tone_weight = 2,
+            .crossing_penalty = 7,
+            .overlap_penalty = 5,
+            .leap_penalty = 3,
+            .spacing_penalty = 2,
+            .max_outer_interval = 24,
+            .arrival_bonus = 4,
+            .dominant_bonus = 2,
+            .parallel_disallowed = true,
+            .crossing_disallowed = true,
+        },
+        .tonal_chorale => .{
+            .contrary_weight = 5,
+            .oblique_weight = 3,
+            .similar_weight = 1,
+            .parallel_weight = -9,
+            .common_tone_weight = 2,
+            .crossing_penalty = 8,
+            .overlap_penalty = 6,
+            .leap_penalty = 2,
+            .spacing_penalty = 2,
+            .max_outer_interval = 24,
+            .arrival_bonus = 6,
+            .dominant_bonus = 3,
+            .parallel_disallowed = true,
+            .crossing_disallowed = true,
+        },
+        .modal_polyphony => .{
+            .contrary_weight = 5,
+            .oblique_weight = 4,
+            .similar_weight = 0,
+            .parallel_weight = -5,
+            .common_tone_weight = 3,
+            .crossing_penalty = 6,
+            .overlap_penalty = 4,
+            .leap_penalty = 2,
+            .spacing_penalty = 1,
+            .max_outer_interval = 26,
+            .arrival_bonus = 3,
+            .dominant_bonus = 1,
+            .parallel_disallowed = false,
+            .crossing_disallowed = true,
+        },
+        .jazz_close_leading => .{
+            .contrary_weight = 0,
+            .oblique_weight = 3,
+            .similar_weight = 5,
+            .parallel_weight = 2,
+            .common_tone_weight = 6,
+            .crossing_penalty = 2,
+            .overlap_penalty = 1,
+            .leap_penalty = 4,
+            .spacing_penalty = 3,
+            .max_outer_interval = 14,
+            .arrival_bonus = 2,
+            .dominant_bonus = 1,
+            .parallel_disallowed = false,
+            .crossing_disallowed = false,
+        },
+        .free_contemporary => .{
+            .contrary_weight = 1,
+            .oblique_weight = 1,
+            .similar_weight = 1,
+            .parallel_weight = 0,
+            .common_tone_weight = 1,
+            .crossing_penalty = 1,
+            .overlap_penalty = 1,
+            .leap_penalty = 1,
+            .spacing_penalty = 1,
+            .max_outer_interval = 36,
+            .arrival_bonus = 1,
+            .dominant_bonus = 1,
+            .parallel_disallowed = false,
+            .crossing_disallowed = false,
+        },
+    };
+}
+
+fn cadenceTransitionBonus(spec: ProfileSpec, previous_state: CadenceState, current_state: CadenceState) i16 {
+    var score: i16 = 0;
+    if (current_state == .authentic_arrival or current_state == .half_arrival) score += spec.arrival_bonus;
+    if (previous_state == .dominant and current_state == .authentic_arrival) score += spec.dominant_bonus;
+    if (previous_state == .pre_dominant and current_state == .dominant) score += spec.dominant_bonus;
+    return score;
+}
+
+fn advanceMetric(metric: MetricPosition) MetricPosition {
+    return MetricPosition.normalized(metric.beat_in_bar +% 1, metric.beats_per_bar, metric.subdivision);
+}
+
+fn makeSingleVoiceCandidate(current: *const VoicedState, index: usize, delta: i8, out: *[MAX_VOICES]pitch.MidiNote) ?[]const pitch.MidiNote {
+    const len = @as(usize, current.voice_count);
+    if (index >= len) return null;
+
+    for (current.slice(), 0..) |voice, i| out[i] = voice.midi;
+    out[index] = offsetMidi(out[index], delta) orelse return null;
+    if (!normalizeCandidateNotes(out, len)) return null;
+    if (sameMidiSlice(current.slice(), out[0..len])) return null;
+    return out[0..len];
+}
+
+fn makeDoubleVoiceCandidate(current: *const VoicedState, low_index: usize, low_delta: i8, high_index: usize, high_delta: i8, out: *[MAX_VOICES]pitch.MidiNote) ?[]const pitch.MidiNote {
+    const len = @as(usize, current.voice_count);
+    if (low_index >= len or high_index >= len or low_index == high_index) return null;
+
+    for (current.slice(), 0..) |voice, i| out[i] = voice.midi;
+    out[low_index] = offsetMidi(out[low_index], low_delta) orelse return null;
+    out[high_index] = offsetMidi(out[high_index], high_delta) orelse return null;
+    if (!normalizeCandidateNotes(out, len)) return null;
+    if (sameMidiSlice(current.slice(), out[0..len])) return null;
+    return out[0..len];
+}
+
+fn makeCadentialResolutionCandidate(current: *const VoicedState, out: *[MAX_VOICES]pitch.MidiNote) ?[]const pitch.MidiNote {
+    const len = @as(usize, current.voice_count);
+    for (current.slice(), 0..) |voice, i| out[i] = voice.midi;
+
+    const leading_pc = @as(pitch.PitchClass, @intCast((@as(u8, current.tonic) + 11) % 12));
+    const fourth_pc = @as(pitch.PitchClass, @intCast((@as(u8, current.tonic) + 5) % 12));
+    var changed = false;
+    for (out[0..len], 0..) |midi, index| {
+        const pc = pitch.midiToPC(midi);
+        if (pc == leading_pc) {
+            out[index] = offsetMidi(midi, 1) orelse midi;
+            changed = true;
+        } else if (pc == fourth_pc) {
+            out[index] = offsetMidi(midi, -1) orelse midi;
+            changed = true;
+        }
+    }
+
+    if (!changed) return null;
+    if (!normalizeCandidateNotes(out, len)) return null;
+    if (sameMidiSlice(current.slice(), out[0..len])) return null;
+    return out[0..len];
+}
+
+fn offsetMidi(midi: pitch.MidiNote, delta: i8) ?pitch.MidiNote {
+    const value = @as(i16, midi) + @as(i16, delta);
+    if (value < 0 or value > 127) return null;
+    return @as(pitch.MidiNote, @intCast(value));
+}
+
+fn normalizeCandidateNotes(notes: *[MAX_VOICES]pitch.MidiNote, len: usize) bool {
+    std.sort.heap(pitch.MidiNote, notes[0..len], {}, lessThanMidi);
+    var index: usize = 1;
+    while (index < len) : (index += 1) {
+        if (notes[index] == notes[index - 1]) return false;
+    }
+    return true;
+}
+
+fn sameMidiSlice(voices: []const Voice, notes: []const pitch.MidiNote) bool {
+    if (voices.len != notes.len) return false;
+    for (voices, notes) |voice, note| {
+        if (voice.midi != note) return false;
+    }
+    return true;
+}
+
+fn appendRankedCandidate(
+    history: *const VoicedHistoryWindow,
+    profile: CounterpointRuleProfile,
+    context_set: pcs.PitchClassSet,
+    next_metric: MetricPosition,
+    candidate_notes: []const pitch.MidiNote,
+    generated: *[MAX_NEXT_STEP_SUGGESTIONS * 8]NextStepSuggestion,
+    generated_count: *usize,
+) void {
+    if (generated_count.* >= generated.len) return;
+    const current = history.current().?;
+    if (containsCandidate(generated[0..generated_count.*], candidate_notes)) return;
+
+    const next = buildVoicedState(
+        candidate_notes,
+        &[_]pitch.MidiNote{},
+        current.tonic,
+        current.mode_type,
+        next_metric,
+        null,
+        current,
+        current.next_voice_id,
+    );
+
+    const motion = classifyMotion(current, &next);
+    const evaluation = evaluateMotionProfile(motion, profile);
+    const scored = scoreNextStep(history, context_set, next, motion, evaluation);
+    generated[generated_count.*] = scored;
+    generated_count.* += 1;
+}
+
+fn containsCandidate(existing: []const NextStepSuggestion, candidate_notes: []const pitch.MidiNote) bool {
+    for (existing) |suggestion| {
+        if (suggestion.note_count != candidate_notes.len) continue;
+        if (std.mem.eql(pitch.MidiNote, suggestion.notes[0..candidate_notes.len], candidate_notes)) return true;
+    }
+    return false;
+}
+
+fn scoreNextStep(
+    history: *const VoicedHistoryWindow,
+    context_set: pcs.PitchClassSet,
+    next: VoicedState,
+    motion: MotionSummary,
+    evaluation: MotionEvaluation,
+) NextStepSuggestion {
+    const current = history.current().?;
+    const current_tension = tensionScore(current.set_value, context_set);
+    const next_tension = tensionScore(next.set_value, context_set);
+    const tension_delta_wide = next_tension - current_tension;
+    const tension_delta: i8 = std.math.cast(i8, tension_delta_wide) orelse blk: {
+        break :blk if (tension_delta_wide < 0) std.math.minInt(i8) else std.math.maxInt(i8);
+    };
+    const outside_count = pcs.cardinality(next.set_value) - pcs.cardinality(next.set_value & context_set);
+
+    var score = evaluation.score;
+    var reason_mask: u32 = 0;
+    var warning_mask: u32 = 0;
+
+    score -= @as(i32, motion.total_motion) * 6;
+    if (motion.total_motion <= 3) {
+        score += 80;
+        reason_mask |= NEXT_STEP_REASON_MINIMAL_MOTION;
+    }
+    if (motion.contrary_count > 0) {
+        score += 60;
+        reason_mask |= NEXT_STEP_REASON_CONTRARY_MOTION;
+    }
+    if (motion.common_tone_count > 0) {
+        score += 45;
+        reason_mask |= NEXT_STEP_REASON_COMMON_TONE_RETENTION;
+    }
+    if (evaluation.cadence_score > 0) {
+        score += 50;
+        reason_mask |= NEXT_STEP_REASON_CADENCE_PULL;
+    }
+    if (evaluation.spacing_penalty == 0) {
+        score += 30;
+        reason_mask |= NEXT_STEP_REASON_PRESERVES_SPACING;
+    }
+    if (tension_delta < 0) {
+        score += 30;
+        reason_mask |= NEXT_STEP_REASON_RELEASES_TENSION;
+    } else if (tension_delta > 0) {
+        reason_mask |= NEXT_STEP_REASON_BUILDS_TENSION;
+    }
+
+    if (motion.parallel_count > 0) warning_mask |= NEXT_STEP_WARNING_PARALLELS;
+    if (motion.crossing_count > 0) warning_mask |= NEXT_STEP_WARNING_CROSSING;
+    if (motion.overlap_count > 0) warning_mask |= NEXT_STEP_WARNING_OVERLAP;
+    if (evaluation.spacing_penalty > 0) warning_mask |= NEXT_STEP_WARNING_WIDE_SPACING;
+    if (outside_count > 0) {
+        warning_mask |= NEXT_STEP_WARNING_OUTSIDE_CONTEXT;
+        score -= @as(i32, outside_count) * 20;
+    }
+    if (cluster.hasCluster(next.set_value)) {
+        warning_mask |= NEXT_STEP_WARNING_CLUSTER_PRESSURE;
+        score -= 40;
+    }
+
+    const temporal = temporalMemoryScore(history, motion);
+    score += temporal.score_delta;
+    reason_mask |= temporal.reason_mask;
+    warning_mask |= temporal.warning_mask;
+
+    var suggestion = NextStepSuggestion{
+        .score = score,
+        .reason_mask = reason_mask,
+        .warning_mask = warning_mask,
+        .cadence_effect = next.cadence_state,
+        .tension_delta = tension_delta,
+        .note_count = next.voice_count,
+        .set_value = next.set_value,
+        .notes = [_]pitch.MidiNote{0} ** MAX_VOICES,
+        .motion = motion,
+        .evaluation = evaluation,
+    };
+    for (next.slice(), 0..) |voice, index| suggestion.notes[index] = voice.midi;
+    return suggestion;
+}
+
+const TemporalScore = struct {
+    score_delta: i32,
+    reason_mask: u32,
+    warning_mask: u32,
+};
+
+fn temporalMemoryScore(history: *const VoicedHistoryWindow, motion: MotionSummary) TemporalScore {
+    const previous_state = history.previous() orelse return .{ .score_delta = 0, .reason_mask = 0, .warning_mask = 0 };
+    const current_state = history.current().?;
+    const previous_motion = classifyMotion(previous_state, current_state);
+
+    var score_delta: i32 = 0;
+    var reason_mask: u32 = 0;
+    var warning_mask: u32 = 0;
+
+    for (motion.voice_motions[0..motion.voice_motion_count]) |next_motion| {
+        const prior_motion = findVoiceMotionById(previous_motion, next_motion.voice_id) orelse continue;
+        if (prior_motion.motion_class == .leap and next_motion.motion_class == .step and std.math.sign(prior_motion.delta) != std.math.sign(next_motion.delta)) {
+            score_delta += 120;
+            reason_mask |= NEXT_STEP_REASON_LEAP_COMPENSATION;
+        }
+        if (prior_motion.motion_class == .leap and next_motion.motion_class == .leap and std.math.sign(prior_motion.delta) == std.math.sign(next_motion.delta)) {
+            score_delta -= 140;
+            warning_mask |= NEXT_STEP_WARNING_CONSECUTIVE_LEAP;
+        }
+    }
+
+    return .{ .score_delta = score_delta, .reason_mask = reason_mask, .warning_mask = warning_mask };
+}
+
+fn findVoiceMotionById(summary: MotionSummary, voice_id: u8) ?VoiceMotion {
+    for (summary.voice_motions[0..summary.voice_motion_count]) |motion| {
+        if (motion.voice_id == voice_id) return motion;
+    }
+    return null;
+}
+
+fn tensionScore(set_value: pcs.PitchClassSet, context_set: pcs.PitchClassSet) i16 {
+    const overlap = pcs.cardinality(set_value & context_set);
+    const outside = pcs.cardinality(set_value) - overlap;
+    const cluster_penalty: i16 = if (cluster.hasCluster(set_value)) 6 else 0;
+    const evenness_penalty: i16 = @as(i16, @intFromFloat(@round(evenness.evennessDistance(set_value) * 10.0)));
+    return @as(i16, outside) * 3 + cluster_penalty + evenness_penalty;
+}
+
+fn nextStepLessThan(_: void, a: NextStepSuggestion, b: NextStepSuggestion) bool {
+    if (a.score != b.score) return a.score > b.score;
+    if (a.warning_mask != b.warning_mask) return a.warning_mask < b.warning_mask;
+    return a.set_value < b.set_value;
 }

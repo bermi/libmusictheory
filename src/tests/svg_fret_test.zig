@@ -22,13 +22,23 @@ test "dot positions and open muted markers" {
     var buf: [8192]u8 = undefined;
     const svg = fret.renderFretDiagram(voicing, &buf);
 
-    const dot = "<circle class=\"dot\" cx=\"32.00\" cy=\"57.50\" r=\"4.35\" fill=\"#111\" />";
+    const dot = "<circle class=\"dot\" cx=\"32.00\" cy=\"57.50\" r=\"4.35\" fill=\"#00C\" stroke=\"#101010\" stroke-width=\"1.1\" />";
     try testing.expect(std.mem.indexOf(u8, svg, dot) != null);
 
     try testing.expect(std.mem.indexOf(u8, svg, "class=\"marker-open\"") != null);
     try testing.expect(std.mem.indexOf(u8, svg, "class=\"marker-muted\"") != null);
     try testing.expect(std.mem.indexOf(u8, svg, ">X</text>") == null);
     try testing.expect(std.mem.indexOf(u8, svg, ">O</text>") == null);
+}
+
+test "standard fret diagram colors selected notes by pitch class" {
+    const voicing = guitar.GuitarVoicing{ .frets = .{ 3, 2, 0, 0, 0, 3 }, .tuning = guitar.tunings.STANDARD };
+
+    var buf: [8192]u8 = undefined;
+    const svg = fret.renderFretDiagram(voicing, &buf);
+
+    try testing.expect(std.mem.indexOf(u8, svg, "fill=\"#28f\"") != null);
+    try testing.expect(std.mem.indexOf(u8, svg, "fill=\"#1e0\"") != null);
 }
 
 test "barre detection" {

@@ -146,8 +146,13 @@ async function main() {
       const midiActiveStaffFeatures = midiActive.summary?.midiStaffFeatures ?? midiActive.midiStaffFeatures;
       const midiActiveOpticKFeatures = midiActive.summary?.midiOpticKFeatures ?? midiActive.midiOpticKFeatures;
       const midiActiveEvennessFeatures = midiActive.summary?.midiEvennessFeatures ?? midiActive.midiEvennessFeatures;
-      if (midiActive.summary?.currentFretRendered !== true || (midiActive.summary?.suggestionFretCount || 0) < 1) {
-        throw new Error(`live midi scene did not render current and suggestion fretboards: ${JSON.stringify(midiActive.summary)}`);
+      if (
+        midiActive.summary?.currentMiniMode !== "off"
+        || midiActive.summary?.currentMiniRendered !== false
+        || (midiActive.summary?.suggestionMiniCount || 0) < 1
+        || (midiActive.summary?.historyFrameCount || 0) < 1
+      ) {
+        throw new Error(`live midi scene did not expose counterpoint miniview metadata correctly: ${JSON.stringify(midiActive.summary)}`);
       }
       traceStep("preview-compare");
       const previewModeDrift = (() => {
@@ -254,6 +259,54 @@ async function main() {
         const nextFirstSuggestion = Array.isArray(midi.suggestionNames) ? (midi.suggestionNames[0] || "") : "";
         return midi.contextLabel !== beforeLabel && nextFirstSuggestion !== beforeFirstSuggestion && midi.displayCount >= 3;
       }, { beforeLabel: defaultContext.label, beforeFirstSuggestion: defaultContext.suggestionNames[0] || "" }, { timeout: 30000 }).then((handle) => handle.jsonValue());
+      traceStep("profile-change");
+      await page.selectOption("#midi-profile", "3");
+      const profileChanged = await page.waitForFunction(() => {
+        const midi = window.__lmtGallerySummary?.scenes?.midi;
+        return midi?.counterpointProfileId === 3 && midi?.counterpointProfile === "jazz-close-leading" && midi?.suggestionCount >= 1;
+      }, { timeout: 30000 }).then((handle) => handle.jsonValue());
+      traceStep("mini-piano");
+      await page.selectOption("#mini-instrument-mode", "piano");
+      const pianoMiniState = await page.waitForFunction(() => {
+        const summary = window.__lmtGallerySummary;
+        const midi = summary?.scenes?.midi;
+        return summary?.ready === true
+          && midi?.currentMiniMode === "piano"
+          && midi?.currentMiniRendered === true
+          && midi?.suggestionMiniCount >= 1
+          && summary?.scenes?.set?.miniInstrumentMode === "piano"
+          && summary?.scenes?.set?.miniRendered === true
+          && summary?.scenes?.key?.miniRendered === true
+          && summary?.scenes?.chord?.miniRendered === true
+          && summary?.scenes?.progression?.miniRendered === true
+          && summary?.scenes?.compare?.miniRendered === true
+          && summary?.scenes?.fret?.miniRendered === true;
+      }, { timeout: 30000 }).then((handle) => handle.jsonValue());
+      const pianoMiniHosts = await page.evaluate(() => {
+        const hostIds = ["midi-current-fret", "set-mini", "key-mini", "chord-mini", "progression-mini", "compare-mini", "fret-mini"];
+        return Object.fromEntries(hostIds.map((id) => [id, !!document.querySelector(`#${id} :is(svg,img)`)]));
+      });
+      traceStep("mini-fret");
+      await page.selectOption("#mini-instrument-mode", "fret");
+      const fretMiniState = await page.waitForFunction(() => {
+        const summary = window.__lmtGallerySummary;
+        const midi = summary?.scenes?.midi;
+        return summary?.ready === true
+          && midi?.currentMiniMode === "fret"
+          && midi?.currentMiniRendered === true
+          && midi?.suggestionMiniCount >= 1
+          && summary?.scenes?.set?.miniInstrumentMode === "fret"
+          && summary?.scenes?.set?.miniRendered === true
+          && summary?.scenes?.key?.miniRendered === true
+          && summary?.scenes?.chord?.miniRendered === true
+          && summary?.scenes?.progression?.miniRendered === true
+          && summary?.scenes?.compare?.miniRendered === true
+          && summary?.scenes?.fret?.miniRendered === true;
+      }, { timeout: 30000 }).then((handle) => handle.jsonValue());
+      const fretMiniHosts = await page.evaluate(() => {
+        const hostIds = ["midi-current-fret", "set-mini", "key-mini", "chord-mini", "progression-mini", "compare-mini", "fret-mini"];
+        return Object.fromEntries(hostIds.map((id) => [id, !!document.querySelector(`#${id} :is(svg,img)`)]));
+      });
       traceStep("release-sustain");
       await releaseFakeMidiSustain(page);
       await page.waitForFunction(() => {
@@ -374,8 +427,11 @@ async function main() {
         const midi = window.__lmtGallerySummary?.scenes?.midi;
         return midi?.viewingSnapshot === true
           && midi?.contextLabel === "C Ionian"
+          && midi?.counterpointProfileId === 0
+          && midi?.historyFrameCount >= 1
           && document.querySelector("#midi-tonic")?.value === "0"
-          && document.querySelector("#midi-mode")?.value === "0";
+          && document.querySelector("#midi-mode")?.value === "0"
+          && document.querySelector("#midi-profile")?.value === "0";
       }, { timeout: 30000 }).then((handle) => handle.jsonValue());
       const snapshotView = await page.waitForFunction(() => {
         const midi = window.__lmtGallerySummary?.scenes?.midi;
@@ -446,6 +502,11 @@ async function main() {
             midiActive,
             contextChanged,
             keyboardSeamCheck,
+            profileChanged,
+            pianoMiniState,
+            pianoMiniHosts,
+            fretMiniState,
+            fretMiniHosts,
             snapshotContextRestored,
             snapshotView,
             backToLive,
