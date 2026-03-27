@@ -187,6 +187,11 @@ if [ -f "$ROOT_DIR/docs/plans/in_progress/0094-interactive-counterpoint-gallery-
     check_cmd "cd '$ROOT_DIR' && rg -n 'pitch-class.*color|PC_.*COLOR|noteColor|fill=\\\"#|barre' src/svg/fret.zig src/tests/svg_fret_test.zig >/dev/null" "0094 fret miniview guardrail (library fret previews expose pitch-class coloring and stay covered by tests)"
 fi
 
+if [ -f "$ROOT_DIR/docs/plans/in_progress/0095-voice-leading-horizon-and-braid-gallery.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0095-voice-leading-horizon-and-braid-gallery.md" ]; then
+    check_cmd "cd '$ROOT_DIR' && rg -n 'midi-horizon|midi-braid|voice-leading horizon|voice braid|renderVoiceLeadingHorizon|renderVoiceBraid' examples/wasm-gallery/index.html examples/wasm-gallery/gallery.js examples/wasm-gallery/styles.css scripts/validate_wasm_gallery_playwright.mjs >/dev/null" "0095 horizon/braid guardrail (gallery hosts, runtime, styles, and validation wiring are present)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'midiHorizonFeatures|midiBraidFeatures|candidateNodeCount|historyColumnCount|candidateColumnCount' examples/wasm-gallery/gallery.js scripts/validate_wasm_gallery_playwright.mjs >/dev/null" "0095 horizon/braid guardrail (gallery summary and validation assert structural feature counts)"
+fi
+
 if [ -f "$ROOT_DIR/scripts/release_smoke.sh" ]; then
     check_cmd "cd '$ROOT_DIR' && test -x scripts/release_smoke.sh" "0078 release smoke guardrail (script is executable)"
     check_cmd "cd '$ROOT_DIR' && ! rg -n 'tmp/harmoniousapp\\.net|validate_harmonious_|wasm-demo|wasm-scaled-render-parity|wasm-native-rgba-proof|wasm-harmonious-spa' scripts/release_smoke.sh" "0078 release smoke guardrail (script stays on standalone surfaces and does not depend on local harmonious data)"

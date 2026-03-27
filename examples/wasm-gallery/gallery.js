@@ -24,6 +24,30 @@ const STANDARD_GUITAR_LABEL = "EADGBE";
 const MIDI_FRET_MAX_FRET = 12;
 const MIDI_FRET_MAX_SPAN = 4;
 const MIDI_FRET_ROW_CAP = 48;
+const PC_COLORS = Object.freeze([
+  "#0000cc",
+  "#aa44ff",
+  "#ff00ff",
+  "#a11666",
+  "#ee0022",
+  "#ff9911",
+  "#ffee00",
+  "#11ee00",
+  "#009944",
+  "#00bbbb",
+  "#1166bb",
+  "#2288ff",
+]);
+const VOICE_COLORS = Object.freeze([
+  "#db6a38",
+  "#1f7d86",
+  "#7d526c",
+  "#2b4fa2",
+  "#9a3c56",
+  "#2b8454",
+  "#87561f",
+  "#475569",
+]);
 const DEFAULT_COUNTERPOINT_PROFILE_NAMES = Object.freeze([
   "species",
   "tonal-chorale",
@@ -151,6 +175,8 @@ const midiEvennessEl = document.getElementById("midi-evenness");
 const midiStaffEl = document.getElementById("midi-staff");
 const midiKeyboardEl = document.getElementById("midi-keyboard");
 const midiCurrentFretEl = document.getElementById("midi-current-fret");
+const midiHorizonEl = document.getElementById("midi-horizon");
+const midiBraidEl = document.getElementById("midi-braid");
 const midiSuggestionsEl = document.getElementById("midi-suggestions");
 const midiSnapshotsEl = document.getElementById("midi-snapshots");
 const connectMidiEl = document.getElementById("connect-midi");
@@ -1262,6 +1288,27 @@ function escapeHtml(value) {
     .replaceAll("'", "&#39;");
 }
 
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function pitchClassColor(pc) {
+  return PC_COLORS[((pc % 12) + 12) % 12];
+}
+
+function voiceColor(voiceId) {
+  return VOICE_COLORS[voiceId % VOICE_COLORS.length];
+}
+
+function shortReasonLabel(reason) {
+  if (!reason) return "neutral";
+  return String(reason)
+    .replaceAll("-", " ")
+    .split(/\s+/)
+    .slice(0, 2)
+    .join(" ");
+}
+
 function friendlyChordName(name) {
   return !name || name === "Unknown" ? "set-class color" : name;
 }
@@ -1277,6 +1324,80 @@ function midiOctave(midi) {
 
 function midiName(midi, tonic = midi % 12, quality = 0) {
   return `${spellNote(midi % 12, tonic, quality)}${midiOctave(midi)}`;
+}
+
+function decodeVoicedStateFromPointer(ptr) {
+  if (!ptr || !counterpointStructSizes.voicedState) return null;
+  const view = new DataView(memory.buffer, ptr, counterpointStructSizes.voicedState);
+  const voiceCount = view.getUint8(2);
+  const voices = [];
+  for (let index = 0; index < Math.min(voiceCount, counterpointStructSizes.maxVoices || 8); index += 1) {
+    const base = 14 + index * 8;
+    voices.push({
+      id: view.getUint8(base + 0),
+      midi: view.getUint8(base + 1),
+      octave: view.getInt8(base + 2),
+      pitchClass: view.getUint8(base + 3),
+      sustained: view.getUint8(base + 4) !== 0,
+    });
+  }
+  return {
+    setValue: view.getUint16(0, true),
+    voiceCount,
+    tonic: view.getUint8(3),
+    modeType: view.getUint8(4),
+    keyQuality: view.getUint8(5),
+    metric: {
+      beatInBar: view.getUint8(6),
+      beatsPerBar: view.getUint8(7),
+      subdivision: view.getUint8(8),
+    },
+    cadenceState: view.getUint8(10),
+    stateIndex: view.getUint8(11),
+    nextVoiceId: view.getUint8(12),
+    voices,
+  };
+}
+
+function decodeVoicedHistoryFromPointer(ptr) {
+  if (!ptr || !counterpointStructSizes.voicedHistory || !counterpointStructSizes.voicedState) {
+    return { len: 0, states: [] };
+  }
+  const view = new DataView(memory.buffer, ptr, counterpointStructSizes.voicedHistory);
+  const len = Math.min(view.getUint8(0), counterpointStructSizes.historyCapacity || 4);
+  const states = [];
+  for (let index = 0; index < len; index += 1) {
+    const statePtr = ptr + 4 + index * counterpointStructSizes.voicedState;
+    const state = decodeVoicedStateFromPointer(statePtr);
+    if (state) states.push(state);
+  }
+  return {
+    len,
+    nextVoiceId: view.getUint8(1),
+    states,
+  };
+}
+
+function buildCandidateVoicedState(arena, notes, context, previousPtr, stepIndex) {
+  if (!Array.isArray(notes) || notes.length === 0) return null;
+  const outPtr = arena.alloc(counterpointStructSizes.voicedState || 96, 4);
+  const notesPtr = writeU8Array(arena, notes);
+  const beatInBar = ((stepIndex ?? 0) % 4 + 4) % 4;
+  const written = wasm.lmt_build_voiced_state(
+    notesPtr,
+    notes.length,
+    null,
+    0,
+    context.tonic,
+    context.modeType,
+    beatInBar,
+    4,
+    0,
+    255,
+    previousPtr || null,
+    outPtr,
+  );
+  return written > 0 ? decodeVoicedStateFromPointer(outPtr) : null;
 }
 
 function sortedAscendingNumbers(values) {
@@ -1634,6 +1755,194 @@ function historyFrameDescription(frame, context) {
   return `${notes.join(" · ")}${sustained}`;
 }
 
+function renderVoiceLeadingHorizon(host, currentState, suggestions, context) {
+  if (!host) return { currentNodeCount: 0, candidateNodeCount: 0, connectorCount: 0, warningCandidateCount: 0, reasonTagCount: 0 };
+  if (!currentState || currentState.voices.length === 0) {
+    host.innerHTML = `<div class="output-block">Play or recall a voiced state to map the local motion field.</div>`;
+    return { currentNodeCount: 0, candidateNodeCount: 0, connectorCount: 0, warningCandidateCount: 0, reasonTagCount: 0 };
+  }
+
+  const visibleSuggestions = suggestions.slice(0, 4);
+  const width = 720;
+  const height = 340;
+  const centerX = 188;
+  const centerY = 170;
+  const candidateX = 518;
+  const candidateYs = visibleSuggestions.length <= 1
+    ? [centerY]
+    : visibleSuggestions.map((_unused, index) => 68 + ((height - 136) * index) / (visibleSuggestions.length - 1));
+  const currentLabel = currentState.voices.map((voice) => midiName(voice.midi, context.tonic, context.quality)).join(" · ");
+  const maxScore = visibleSuggestions.reduce((max, suggestion) => Math.max(max, suggestion.score), visibleSuggestions[0]?.score || 1);
+  const minScore = visibleSuggestions.reduce((min, suggestion) => Math.min(min, suggestion.score), visibleSuggestions[0]?.score || 0);
+
+  const horizonSvg = `
+    <svg class="counterpoint-figure horizon-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Voice-leading horizon">
+      <defs>
+        <linearGradient id="horizon-bg" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="rgba(255,255,255,0.92)" />
+          <stop offset="100%" stop-color="rgba(242,233,220,0.92)" />
+        </linearGradient>
+      </defs>
+      <rect x="0" y="0" width="${width}" height="${height}" rx="28" fill="url(#horizon-bg)" stroke="rgba(24,36,47,0.10)" />
+      <circle cx="${centerX}" cy="${centerY}" r="108" fill="rgba(31,125,134,0.05)" />
+      <circle cx="${centerX}" cy="${centerY}" r="76" fill="rgba(31,125,134,0.08)" />
+      <circle cx="${centerX}" cy="${centerY}" r="44" fill="rgba(31,125,134,0.12)" />
+      <text x="42" y="52" class="counterpoint-label eyebrow">Voice-Leading Horizon</text>
+      <text x="${centerX}" y="${centerY - 56}" text-anchor="middle" class="counterpoint-current-label">Current</text>
+      <circle class="horizon-current-node" cx="${centerX}" cy="${centerY}" r="42" />
+      ${currentState.voices.map((voice, index) => {
+        const angle = (-90 + (index * 360) / Math.max(1, currentState.voices.length)) * (Math.PI / 180);
+        const x = centerX + Math.cos(angle) * 28;
+        const y = centerY + Math.sin(angle) * 28;
+        return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="8.5" fill="${pitchClassColor(voice.pitchClass)}" stroke="white" stroke-width="2" />`;
+      }).join("")}
+      <text x="${centerX}" y="${centerY + 5}" text-anchor="middle" class="counterpoint-node-title">${escapeHtml(friendlyChordName(rawChordName(currentState.setValue)) || "Voiced state")}</text>
+      <text x="${centerX}" y="${centerY + 24}" text-anchor="middle" class="counterpoint-node-notes">${escapeHtml(currentLabel)}</text>
+      ${visibleSuggestions.map((suggestion, index) => {
+        const y = candidateYs[index];
+        const normalized = maxScore === minScore ? 1 : (suggestion.score - minScore) / Math.max(1, maxScore - minScore);
+        const nodeRadius = 22 + normalized * 8;
+        const stroke = suggestion.warningNames.length > 0 ? "rgba(161,22,102,0.82)" : "rgba(31,125,134,0.86)";
+        const fill = suggestion.warningNames.length > 0 ? "rgba(161,22,102,0.10)" : "rgba(31,125,134,0.12)";
+        const scoreText = `score ${suggestion.score}`;
+        const notePreview = escapeHtml(suggestion.noteNames.join(" · "));
+        const reason = escapeHtml(shortReasonLabel(suggestion.reasonNames[0] || ""));
+        return `
+          <path class="horizon-connector" d="M ${centerX + 44} ${centerY} C ${centerX + 132} ${centerY}, ${candidateX - 96} ${y}, ${candidateX - nodeRadius - 20} ${y}" stroke="${stroke}" stroke-width="${(2.4 + normalized * 2.4).toFixed(2)}" opacity="${(0.52 + normalized * 0.38).toFixed(2)}" />
+          <circle class="horizon-candidate-node" cx="${candidateX}" cy="${y}" r="${nodeRadius.toFixed(1)}" fill="${fill}" stroke="${stroke}" />
+          ${suggestion.warningNames.length > 0 ? `<circle class="horizon-warning-ring" cx="${candidateX}" cy="${y}" r="${(nodeRadius + 8).toFixed(1)}" />` : ""}
+          ${suggestion.notes.map((midi, noteIndex) => {
+            const angle = (-90 + (noteIndex * 360) / Math.max(1, suggestion.notes.length)) * (Math.PI / 180);
+            const dotX = candidateX + Math.cos(angle) * Math.max(12, nodeRadius - 8);
+            const dotY = y + Math.sin(angle) * Math.max(12, nodeRadius - 8);
+            return `<circle cx="${dotX.toFixed(1)}" cy="${dotY.toFixed(1)}" r="5.6" fill="${pitchClassColor(midi % 12)}" stroke="white" stroke-width="1.5" />`;
+          }).join("")}
+          ${suggestion.reasonNames.slice(0, 2).map((reasonName, reasonIndex) => {
+            const short = shortReasonLabel(reasonName);
+            const tagX = candidateX - nodeRadius - 42;
+            const tagY = y + 18 + reasonIndex * 18;
+            const tagWidth = clamp(short.length * 6.4 + 18, 54, 112);
+            return `
+              <rect class="horizon-reason-tag" x="${(tagX - tagWidth / 2).toFixed(1)}" y="${(tagY - 10).toFixed(1)}" width="${tagWidth.toFixed(1)}" height="16" rx="8" />
+              <text x="${tagX.toFixed(1)}" y="${(tagY + 1).toFixed(1)}" text-anchor="middle" class="counterpoint-reason-tag-label">${escapeHtml(short)}</text>
+            `;
+          }).join("")}
+          <text x="${candidateX + 42}" y="${y - 12}" class="counterpoint-node-title">${escapeHtml(String.fromCharCode(65 + index))}. ${escapeHtml(suggestion.chordLabel)}</text>
+          <text x="${candidateX + 42}" y="${y + 6}" class="counterpoint-node-notes">${notePreview}</text>
+          <text x="${candidateX + 42}" y="${y + 24}" class="counterpoint-node-meta">${escapeHtml(scoreText)} · ${escapeHtml(suggestion.cadenceLabel)} · ${reason}</text>
+        `;
+      }).join("")}
+    </svg>`;
+
+  host.innerHTML = horizonSvg;
+  return {
+    currentNodeCount: 1,
+    candidateNodeCount: visibleSuggestions.length,
+    connectorCount: visibleSuggestions.length,
+    warningCandidateCount: visibleSuggestions.filter((suggestion) => suggestion.warningNames.length > 0).length,
+    reasonTagCount: visibleSuggestions.filter((suggestion) => suggestion.reasonNames.length > 0).length,
+  };
+}
+
+function renderVoiceBraid(host, historyStates, candidateStates, context) {
+  if (!host) return { historyColumnCount: 0, candidateColumnCount: 0, strandCount: 0, currentVoiceCount: 0, ghostNodeCount: 0 };
+  if (!Array.isArray(historyStates) || historyStates.length === 0) {
+    host.innerHTML = `<div class="output-block">The braid appears once we have a voiced history to compare against the current state.</div>`;
+    return { historyColumnCount: 0, candidateColumnCount: 0, strandCount: 0, currentVoiceCount: 0, ghostNodeCount: 0 };
+  }
+
+  const visibleCandidates = candidateStates.filter(Boolean).slice(0, 3);
+  const allStates = [...historyStates, ...visibleCandidates];
+  const allMidis = allStates.flatMap((state) => state.voices.map((voice) => voice.midi));
+  const minMidi = Math.min(...allMidis) - 2;
+  const maxMidi = Math.max(...allMidis) + 2;
+  const width = 720;
+  const height = 320;
+  const left = 72;
+  const right = 46;
+  const top = 42;
+  const bottom = 40;
+  const usableHeight = height - top - bottom;
+  const historyStep = historyStates.length <= 1 ? 1 : (width - left - right - 220) / Math.max(1, historyStates.length - 1);
+  const historyXs = historyStates.map((_state, index) => left + index * historyStep);
+  const candidateBaseX = left + Math.max(1, historyStates.length - 1) * historyStep + 96;
+  const candidateXs = visibleCandidates.map((_state, index) => candidateBaseX + index * 88);
+  const currentState = historyStates[historyStates.length - 1];
+  const voiceIds = [...new Set(allStates.flatMap((state) => state.voices.map((voice) => voice.id)))].sort((a, b) => a - b);
+  const yForMidi = (midi) => top + (maxMidi - midi) * (usableHeight / Math.max(1, maxMidi - minMidi));
+  const historyLabels = historyStates.map((_state, index) => index === historyStates.length - 1 ? "Current" : `T-${historyStates.length - index - 1}`);
+
+  const gridLines = [];
+  const guideCount = 5;
+  for (let index = 0; index < guideCount; index += 1) {
+    const midi = Math.round(maxMidi - (index * (maxMidi - minMidi)) / Math.max(1, guideCount - 1));
+    const y = yForMidi(midi);
+    gridLines.push(`
+      <line x1="${left - 8}" y1="${y.toFixed(1)}" x2="${width - right}" y2="${y.toFixed(1)}" class="braid-guide" />
+      <text x="12" y="${(y + 4).toFixed(1)}" class="braid-guide-label">${escapeHtml(midiName(midi, context.tonic, context.quality))}</text>
+    `);
+  }
+
+  const solidStrands = voiceIds.map((voiceId) => {
+    const points = historyStates
+      .map((state, index) => {
+        const voice = state.voices.find((one) => one.id === voiceId);
+        return voice ? `${historyXs[index].toFixed(1)},${yForMidi(voice.midi).toFixed(1)}` : null;
+      })
+      .filter(Boolean);
+    if (points.length < 2) return "";
+    return `<polyline class="braid-strand" points="${points.join(" ")}" stroke="${voiceColor(voiceId)}" />`;
+  }).join("");
+
+  const ghostStrands = visibleCandidates.map((state, candidateIndex) => {
+    return state.voices.map((voice) => {
+      const currentVoice = currentState.voices.find((one) => one.id === voice.id);
+      if (!currentVoice) return "";
+      return `<line class="braid-ghost-strand" x1="${historyXs[historyXs.length - 1].toFixed(1)}" y1="${yForMidi(currentVoice.midi).toFixed(1)}" x2="${candidateXs[candidateIndex].toFixed(1)}" y2="${yForMidi(voice.midi).toFixed(1)}" stroke="${voiceColor(voice.id)}" />`;
+    }).join("");
+  }).join("");
+
+  const historyColumns = historyXs.map((x, index) => `
+      <line class="braid-column braid-history-column" x1="${x.toFixed(1)}" y1="${(top - 10).toFixed(1)}" x2="${x.toFixed(1)}" y2="${(height - bottom + 4).toFixed(1)}" />
+      <text x="${x.toFixed(1)}" y="${height - 12}" text-anchor="middle" class="braid-column-label">${historyLabels[index]}</text>
+    `).join("");
+
+  const candidateColumns = candidateXs.map((x, index) => `
+      <line class="braid-column braid-candidate-column" x1="${x.toFixed(1)}" y1="${(top - 10).toFixed(1)}" x2="${x.toFixed(1)}" y2="${(height - bottom + 4).toFixed(1)}" stroke-dasharray="5 7" />
+      <text x="${x.toFixed(1)}" y="${height - 12}" text-anchor="middle" class="braid-column-label braid-column-label-ghost">${escapeHtml(String.fromCharCode(65 + index))}</text>
+    `).join("");
+
+  const voiceNodes = historyStates.map((state, index) => state.voices.map((voice) => `
+      <circle class="braid-node ${index === historyStates.length - 1 ? "braid-current-node" : "braid-history-node"}" cx="${historyXs[index].toFixed(1)}" cy="${yForMidi(voice.midi).toFixed(1)}" r="${index === historyStates.length - 1 ? "8.5" : "6.8"}" fill="${pitchClassColor(voice.pitchClass)}" stroke="${voiceColor(voice.id)}" />
+    `).join("")).join("");
+
+  const ghostNodes = visibleCandidates.map((state, candidateIndex) => state.voices.map((voice) => `
+      <circle class="braid-node braid-ghost-node" cx="${candidateXs[candidateIndex].toFixed(1)}" cy="${yForMidi(voice.midi).toFixed(1)}" r="6.5" fill="${pitchClassColor(voice.pitchClass)}" stroke="${voiceColor(voice.id)}" />
+    `).join("")).join("");
+
+  const braidSvg = `
+    <svg class="counterpoint-figure braid-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Voice braid">
+      <rect x="0" y="0" width="${width}" height="${height}" rx="28" fill="rgba(255,255,255,0.92)" stroke="rgba(24,36,47,0.10)" />
+      <text x="${left}" y="26" class="counterpoint-label eyebrow">Voice Braid</text>
+      ${gridLines.join("")}
+      ${historyColumns}
+      ${candidateColumns}
+      ${solidStrands}
+      ${ghostStrands}
+      ${voiceNodes}
+      ${ghostNodes}
+    </svg>`;
+
+  host.innerHTML = braidSvg;
+  return {
+    historyColumnCount: historyStates.length,
+    candidateColumnCount: visibleCandidates.length,
+    strandCount: voiceIds.length,
+    currentVoiceCount: currentState.voices.length,
+    ghostNodeCount: visibleCandidates.reduce((sum, state) => sum + state.voices.length, 0),
+  };
+}
+
 function persistMidiSnapshots() {
   try {
     window.localStorage?.setItem(MIDI_SNAPSHOT_STORAGE_KEY, JSON.stringify(midiState.snapshots));
@@ -1982,6 +2291,18 @@ function renderMidiScene() {
     const historyFrames = effectiveHistoryFrames(displayNotes);
     const historyBundle = historyFrames.length > 0 ? buildCounterpointHistory(arena, historyFrames, context) : null;
     const suggestions = historyBundle ? decodeRankedNextSteps(arena, historyBundle.historyPtr, profile, context) : [];
+    const voicedHistory = historyBundle ? decodeVoicedHistoryFromPointer(historyBundle.historyPtr) : { len: 0, states: [] };
+    const currentVoicedState = voicedHistory.states[voicedHistory.states.length - 1] || null;
+    const candidateStates = currentVoicedState
+      ? suggestions.map((suggestion, index) =>
+        buildCandidateVoicedState(
+          arena,
+          suggestion.notes,
+          context,
+          historyBundle?.statePtr || null,
+          (currentVoicedState.stateIndex || historyFrames.length || 0) + index + 1,
+        ))
+      : [];
     const displayNotesLabel = displayNotes.length > 0
       ? displayNotes.map((midi) => midiName(midi, context.tonic, context.quality))
       : [];
@@ -2019,6 +2340,9 @@ function renderMidiScene() {
         </div>
       `).join("")
       : `<div class="output-block">Recent motion memory appears here after at least one voiced change.</div>`;
+
+    const midiHorizonFeatures = renderVoiceLeadingHorizon(midiHorizonEl, currentVoicedState, suggestions, context);
+    const midiBraidFeatures = renderVoiceBraid(midiBraidEl, voicedHistory.states, candidateStates, context);
 
     renderPreviewSvgOrBitmap(midiClockEl, {
       svgMarkup: clockSvg,
@@ -2181,6 +2505,8 @@ function renderMidiScene() {
       midiOpticKFeatures,
       midiEvennessFeatures,
       midiStaffFeatures,
+      midiHorizonFeatures,
+      midiBraidFeatures,
       keyboardFeatures,
       rendered: true,
     });

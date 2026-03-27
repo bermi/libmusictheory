@@ -146,6 +146,8 @@ async function main() {
       const midiActiveStaffFeatures = midiActive.summary?.midiStaffFeatures ?? midiActive.midiStaffFeatures;
       const midiActiveOpticKFeatures = midiActive.summary?.midiOpticKFeatures ?? midiActive.midiOpticKFeatures;
       const midiActiveEvennessFeatures = midiActive.summary?.midiEvennessFeatures ?? midiActive.midiEvennessFeatures;
+      const midiActiveHorizonFeatures = midiActive.summary?.midiHorizonFeatures ?? midiActive.midiHorizonFeatures;
+      const midiActiveBraidFeatures = midiActive.summary?.midiBraidFeatures ?? midiActive.midiBraidFeatures;
       if (
         midiActive.summary?.currentMiniMode !== "off"
         || midiActive.summary?.currentMiniRendered !== false
@@ -246,6 +248,15 @@ async function main() {
       if ((midiActiveOpticKFeatures?.clockCount || 0) < 2 || (midiActiveEvennessFeatures?.highlightCount || 0) < 1) {
         throw new Error(`live midi scene did not render OPTIC/K and evenness focus correctly: ${JSON.stringify({ optic: midiActiveOpticKFeatures, evenness: midiActiveEvennessFeatures })}`);
       }
+      if (
+        (midiActiveHorizonFeatures?.candidateNodeCount || 0) < 1
+        || (midiActiveHorizonFeatures?.connectorCount || 0) < 1
+        || (midiActiveBraidFeatures?.historyColumnCount || 0) < 1
+        || (midiActiveBraidFeatures?.candidateColumnCount || 0) < 1
+        || (midiActiveBraidFeatures?.strandCount || 0) < 1
+      ) {
+        throw new Error(`live midi scene did not render voice-leading horizon and braid correctly: ${JSON.stringify({ horizon: midiActiveHorizonFeatures, braid: midiActiveBraidFeatures })}`);
+      }
       traceStep("context-change");
       const defaultContext = await page.evaluate(() => ({
         label: window.__lmtGallerySummary?.scenes?.midi?.contextLabel || "",
@@ -257,13 +268,21 @@ async function main() {
         const midi = window.__lmtGallerySummary?.scenes?.midi;
         if (!midi?.rendered) return false;
         const nextFirstSuggestion = Array.isArray(midi.suggestionNames) ? (midi.suggestionNames[0] || "") : "";
-        return midi.contextLabel !== beforeLabel && nextFirstSuggestion !== beforeFirstSuggestion && midi.displayCount >= 3;
+        return midi.contextLabel !== beforeLabel
+          && nextFirstSuggestion !== beforeFirstSuggestion
+          && midi.displayCount >= 3
+          && (midi.midiHorizonFeatures?.candidateNodeCount || 0) >= 1
+          && (midi.midiBraidFeatures?.candidateColumnCount || 0) >= 1;
       }, { beforeLabel: defaultContext.label, beforeFirstSuggestion: defaultContext.suggestionNames[0] || "" }, { timeout: 30000 }).then((handle) => handle.jsonValue());
       traceStep("profile-change");
       await page.selectOption("#midi-profile", "3");
       const profileChanged = await page.waitForFunction(() => {
         const midi = window.__lmtGallerySummary?.scenes?.midi;
-        return midi?.counterpointProfileId === 3 && midi?.counterpointProfile === "jazz-close-leading" && midi?.suggestionCount >= 1;
+        return midi?.counterpointProfileId === 3
+          && midi?.counterpointProfile === "jazz-close-leading"
+          && midi?.suggestionCount >= 1
+          && (midi?.midiHorizonFeatures?.candidateNodeCount || 0) >= 1
+          && (midi?.midiBraidFeatures?.candidateColumnCount || 0) >= 1;
       }, { timeout: 30000 }).then((handle) => handle.jsonValue());
       traceStep("mini-piano");
       await page.selectOption("#mini-instrument-mode", "piano");
@@ -500,6 +519,8 @@ async function main() {
             maxPreviewDrift,
             midiActiveSvg,
             midiActive,
+            midiActiveHorizonFeatures,
+            midiActiveBraidFeatures,
             contextChanged,
             keyboardSeamCheck,
             profileChanged,

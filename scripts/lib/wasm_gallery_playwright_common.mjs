@@ -291,6 +291,44 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
           barlineCount: svg.querySelectorAll(".staff-barline").length,
         };
       })(),
+      midiHorizonFeatures: (() => {
+        const svg = document.querySelector("#midi-horizon svg");
+        if (!svg) {
+          return {
+            currentNodeCount: 0,
+            candidateNodeCount: 0,
+            connectorCount: 0,
+            warningCandidateCount: 0,
+            reasonTagCount: 0,
+          };
+        }
+        return {
+          currentNodeCount: svg.querySelectorAll(".horizon-current-node").length,
+          candidateNodeCount: svg.querySelectorAll(".horizon-candidate-node").length,
+          connectorCount: svg.querySelectorAll(".horizon-connector").length,
+          warningCandidateCount: svg.querySelectorAll(".horizon-warning-ring").length,
+          reasonTagCount: svg.querySelectorAll(".horizon-reason-tag").length,
+        };
+      })(),
+      midiBraidFeatures: (() => {
+        const svg = document.querySelector("#midi-braid svg");
+        if (!svg) {
+          return {
+            historyColumnCount: 0,
+            candidateColumnCount: 0,
+            strandCount: 0,
+            currentVoiceCount: 0,
+            ghostNodeCount: 0,
+          };
+        }
+        return {
+          historyColumnCount: svg.querySelectorAll(".braid-history-column").length,
+          candidateColumnCount: svg.querySelectorAll(".braid-candidate-column").length,
+          strandCount: svg.querySelectorAll(".braid-strand").length,
+          currentVoiceCount: svg.querySelectorAll(".braid-current-node").length,
+          ghostNodeCount: svg.querySelectorAll(".braid-ghost-node").length,
+        };
+      })(),
       previewKinds: (() => {
         const hostIds = ["midi-clock", "midi-optic-k", "midi-evenness", "midi-keyboard", "midi-staff", "midi-current-fret"];
         return Object.fromEntries(hostIds.map((id) => {
@@ -322,6 +360,8 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
     const midiOpticKFeatures = snapshot.summary?.midiOpticKFeatures ?? snapshot.midiOpticKFeatures;
     const midiEvennessFeatures = snapshot.summary?.midiEvennessFeatures ?? snapshot.midiEvennessFeatures;
     const midiStaffFeatures = snapshot.summary?.midiStaffFeatures ?? snapshot.midiStaffFeatures;
+    const midiHorizonFeatures = snapshot.summary?.midiHorizonFeatures ?? snapshot.midiHorizonFeatures;
+    const midiBraidFeatures = snapshot.summary?.midiBraidFeatures ?? snapshot.midiBraidFeatures;
     const keyboardFeatures = snapshot.summary?.keyboardFeatures ?? snapshot.keyboardFeaturesFallback;
     if (
       snapshot.summary?.rendered === true
@@ -357,6 +397,14 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
       && midiStaffFeatures.clefCount >= 2
       && midiStaffFeatures.noteheadCount >= 4
       && midiStaffFeatures.barlineCount >= 2
+      && midiHorizonFeatures.currentNodeCount >= 1
+      && midiHorizonFeatures.candidateNodeCount >= 1
+      && midiHorizonFeatures.connectorCount >= 1
+      && midiBraidFeatures.historyColumnCount >= 1
+      && midiBraidFeatures.candidateColumnCount >= 1
+      && midiBraidFeatures.strandCount >= 1
+      && midiBraidFeatures.currentVoiceCount >= 1
+      && midiBraidFeatures.ghostNodeCount >= 1
     ) {
       return snapshot;
     }

@@ -458,6 +458,139 @@ select {
   max-height: 300px;
 }
 
+.counterpoint-frame {
+  min-height: 360px;
+  padding: 18px;
+}
+
+.horizon-frame,
+.braid-frame {
+  min-height: 380px;
+}
+
+.counterpoint-figure {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.counterpoint-figure text {
+  fill: var(--ink);
+  font-family: "Avenir Next", "Futura", "Trebuchet MS", sans-serif;
+}
+
+.counterpoint-figure .eyebrow {
+  fill: var(--teal);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.counterpoint-node-title {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.counterpoint-node-notes {
+  font-size: 12px;
+  fill: var(--muted);
+}
+
+.counterpoint-node-meta {
+  font-size: 11px;
+  fill: var(--muted);
+}
+
+.counterpoint-reason-tag-label {
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.horizon-connector {
+  stroke: rgba(24, 36, 47, 0.22);
+  stroke-width: 2.8;
+  fill: none;
+  stroke-linecap: round;
+}
+
+.horizon-current-node {
+  fill: rgba(31, 125, 134, 0.12);
+  stroke: rgba(31, 125, 134, 0.62);
+  stroke-width: 3;
+}
+
+.horizon-candidate-node {
+  fill: rgba(255, 255, 255, 0.92);
+  stroke: rgba(24, 36, 47, 0.18);
+  stroke-width: 2.4;
+}
+
+.horizon-warning-ring {
+  fill: none;
+  stroke: rgba(176, 54, 32, 0.65);
+  stroke-width: 2.2;
+  stroke-dasharray: 4 4;
+}
+
+.horizon-reason-tag {
+  fill: rgba(255, 255, 255, 0.92);
+  stroke: rgba(24, 36, 47, 0.12);
+  stroke-width: 1;
+}
+
+.braid-guide {
+  stroke: rgba(24, 36, 47, 0.12);
+  stroke-width: 1;
+  stroke-dasharray: 4 6;
+}
+
+.braid-guide-label {
+  font-size: 11px;
+  fill: var(--muted);
+}
+
+.braid-column {
+  stroke: rgba(24, 36, 47, 0.1);
+  stroke-width: 2;
+}
+
+.braid-column-label {
+  font-size: 11px;
+  fill: var(--muted);
+}
+
+.braid-column-label-ghost {
+  fill: var(--berry);
+}
+
+.braid-strand {
+  fill: none;
+  stroke-width: 3.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.92;
+}
+
+.braid-ghost-strand {
+  stroke-width: 2.2;
+  stroke-dasharray: 7 5;
+  stroke-linecap: round;
+  opacity: 0.52;
+}
+
+.braid-node {
+  stroke-width: 2.2;
+}
+
+.braid-current-node {
+  stroke-width: 2.6;
+}
+
+.braid-ghost-node {
+  stroke-width: 2;
+  opacity: 0.86;
+}
+
 .optic-k-frame {
   min-height: 320px;
 }
