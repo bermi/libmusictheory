@@ -177,6 +177,8 @@ const midiKeyboardEl = document.getElementById("midi-keyboard");
 const midiCurrentFretEl = document.getElementById("midi-current-fret");
 const midiHorizonEl = document.getElementById("midi-horizon");
 const midiBraidEl = document.getElementById("midi-braid");
+const midiWeatherEl = document.getElementById("midi-weather");
+const midiRiskRadarEl = document.getElementById("midi-risk-radar");
 const midiSuggestionsEl = document.getElementById("midi-suggestions");
 const midiSnapshotsEl = document.getElementById("midi-snapshots");
 const connectMidiEl = document.getElementById("connect-midi");
@@ -294,6 +296,7 @@ const midiState = {
   historyFrames: [],
   snapshots: [],
   activeSnapshotId: null,
+  hoveredSuggestionIndex: null,
   renderQueued: false,
   lastError: "",
   lastEventText: "Awaiting MIDI note input.",
@@ -546,6 +549,52 @@ function currentMidiProfile() {
 
 function cadenceLabel(value) {
   return CADENCE_LABELS[value] || "none";
+}
+
+function decodeMotionSummaryFromView(view, base = 0) {
+  return {
+    voiceMotionCount: view.getUint8(base + 0),
+    commonToneCount: view.getUint8(base + 1),
+    stepCount: view.getUint8(base + 2),
+    leapCount: view.getUint8(base + 3),
+    contraryCount: view.getUint8(base + 4),
+    similarCount: view.getUint8(base + 5),
+    parallelCount: view.getUint8(base + 6),
+    obliqueCount: view.getUint8(base + 7),
+    crossingCount: view.getUint8(base + 8),
+    overlapCount: view.getUint8(base + 9),
+    totalMotion: view.getUint16(base + 10, true),
+    outerIntervalBefore: view.getInt8(base + 12),
+    outerIntervalAfter: view.getInt8(base + 13),
+    outerMotion: view.getUint8(base + 14),
+    previousCadenceState: view.getUint8(base + 15),
+    currentCadenceState: view.getUint8(base + 16),
+  };
+}
+
+function decodeMotionSummaryFromPointer(ptr) {
+  if (!ptr) return null;
+  const view = new DataView(memory.buffer, ptr, 96);
+  return decodeMotionSummaryFromView(view, 0);
+}
+
+function decodeMotionEvaluationFromView(view, base = 0) {
+  return {
+    score: view.getInt32(base + 0, true),
+    preferredScore: view.getInt16(base + 4, true),
+    penaltyScore: view.getInt16(base + 6, true),
+    cadenceScore: view.getInt16(base + 8, true),
+    spacingPenalty: view.getInt16(base + 10, true),
+    leapPenalty: view.getInt16(base + 12, true),
+    disallowedCount: view.getUint8(base + 14),
+    disallowed: view.getUint8(base + 15) !== 0,
+  };
+}
+
+function decodeMotionEvaluationFromPointer(ptr) {
+  if (!ptr) return null;
+  const view = new DataView(memory.buffer, ptr, 32);
+  return decodeMotionEvaluationFromView(view, 0);
 }
 
 function namesFromMask(mask, names) {
@@ -1400,6 +1449,345 @@ function buildCandidateVoicedState(arena, notes, context, previousPtr, stepIndex
   return written > 0 ? decodeVoicedStateFromPointer(outPtr) : null;
 }
 
+function buildCurrentMotionAnalysis(arena, historyBundle, voicedHistory, profile) {
+  if (!historyBundle || !voicedHistory || voicedHistory.states.length < 2) return null;
+  const stateSize = counterpointStructSizes.voicedState || 96;
+  const previousPtr = historyBundle.historyPtr + 4 + (voicedHistory.states.length - 2) * stateSize;
+  const currentPtr = historyBundle.historyPtr + 4 + (voicedHistory.states.length - 1) * stateSize;
+  const summaryPtr = arena.alloc(96, 4);
+  const evaluationPtr = arena.alloc(32, 4);
+  if (!wasm.lmt_classify_motion(previousPtr, currentPtr, summaryPtr)) return null;
+  const motion = decodeMotionSummaryFromPointer(summaryPtr);
+  if (!motion) return null;
+  const evaluation = wasm.lmt_evaluate_motion_profile(profile, summaryPtr, evaluationPtr)
+    ? decodeMotionEvaluationFromPointer(evaluationPtr)
+    : null;
+  const currentState = voicedHistory.states[voicedHistory.states.length - 1] || null;
+  return {
+    motion,
+    evaluation,
+    noteCount: currentState?.voiceCount || 0,
+    cadenceEffect: currentState?.cadenceState || 0,
+    reasonNames: deriveMotionReasonNames(motion, evaluation, currentState?.voiceCount || 0),
+    warningNames: deriveMotionWarningNames(motion, evaluation),
+  };
+}
+
+function deriveMotionReasonNames(motion, evaluation, voiceCount) {
+  if (!motion) return [];
+  const reasons = [];
+  if (motion.totalMotion <= Math.max(2, voiceCount * 2)) reasons.push("minimal-motion");
+  if (motion.contraryCount > 0) reasons.push("contrary-motion");
+  if (motion.commonToneCount > 0) reasons.push("common-tone-retention");
+  if ((evaluation?.cadenceScore || 0) > 0 || cadenceStrength(motion.currentCadenceState) > cadenceStrength(motion.previousCadenceState)) {
+    reasons.push("cadence-pull");
+  }
+  if ((evaluation?.spacingPenalty || 0) === 0) reasons.push("preserves-spacing");
+  if ((evaluation?.score || 0) >= 0) reasons.push("releases-tension");
+  return reasons;
+}
+
+function deriveMotionWarningNames(motion, evaluation) {
+  if (!motion) return [];
+  const warnings = [];
+  if (motion.parallelCount > 0) warnings.push("parallels");
+  if (motion.crossingCount > 0) warnings.push("crossing");
+  if (motion.overlapCount > 0) warnings.push("overlap");
+  if ((evaluation?.spacingPenalty || 0) > 0) warnings.push("wide-spacing");
+  if ((evaluation?.leapPenalty || 0) > 0 || motion.leapCount >= 2) warnings.push("consecutive-leap");
+  return warnings;
+}
+
+function isPerfectOuterInterval(interval) {
+  const normalized = Math.abs(interval) % 12;
+  return normalized === 0 || normalized === 7;
+}
+
+function hiddenPerfectRisk(motion) {
+  if (!motion) return 0;
+  return motion.outerMotion === 2 && isPerfectOuterInterval(motion.outerIntervalAfter) ? 1 : 0;
+}
+
+function cadenceStrength(cadenceState) {
+  switch (cadenceState) {
+    case 7:
+      return 0.65;
+    case 6:
+      return 0.72;
+    case 5:
+      return 1;
+    case 4:
+      return 0.92;
+    case 3:
+      return 0.78;
+    case 2:
+      return 0.44;
+    case 1:
+      return 0.18;
+    default:
+      return 0;
+  }
+}
+
+function shortWarningLabel(warning) {
+  if (!warning) return "clean";
+  return String(warning)
+    .replaceAll("-", " ")
+    .split(/\s+/)
+    .slice(0, 2)
+    .join(" ");
+}
+
+function buildRiskAxes(target) {
+  const motion = target?.motion || null;
+  const evaluation = target?.evaluation || null;
+  const noteCount = Math.max(1, target?.noteCount || 1);
+  const warningNames = target?.warningNames || [];
+  const hasWarning = (name) => warningNames.includes(name);
+  const cadenceValue = target?.cadenceEffect ?? motion?.currentCadenceState ?? 0;
+  const outerSpan = Math.abs(motion?.outerIntervalAfter || 0);
+  const rangeStrain = clamp(Math.max(0, outerSpan - 12) / 18, 0, 1);
+  const hiddenPerfectPressure = clamp(
+    hiddenPerfectRisk(motion)
+      + ((motion?.outerMotion || 0) === 2 ? 0.18 : 0)
+      + ((motion?.outerMotion || 0) > 0 ? 0.04 : 0),
+    0,
+    1,
+  );
+  const axes = [
+    {
+      key: "parallels",
+      label: "Parallels",
+      tone: "warning",
+      value: clamp((motion?.parallelCount || 0) * 0.65 + (hasWarning("parallels") ? 0.35 : 0), 0, 1),
+    },
+    {
+      key: "hidden-perfects",
+      label: "Hidden perfects",
+      tone: "warning",
+      value: hiddenPerfectPressure,
+    },
+    {
+      key: "crossing",
+      label: "Crossing",
+      tone: "warning",
+      value: clamp((motion?.crossingCount || 0) * 0.7 + (hasWarning("crossing") ? 0.3 : 0), 0, 1),
+    },
+    {
+      key: "overlap",
+      label: "Overlap",
+      tone: "warning",
+      value: clamp((motion?.overlapCount || 0) * 0.7 + (hasWarning("overlap") ? 0.3 : 0), 0, 1),
+    },
+    {
+      key: "spacing",
+      label: "Spacing",
+      tone: "warning",
+      value: clamp(((evaluation?.spacingPenalty || 0) / 12) + rangeStrain * 0.7 + (hasWarning("wide-spacing") ? 0.35 : 0), 0, 1),
+    },
+    {
+      key: "leap-strain",
+      label: "Leap strain",
+      tone: "warning",
+      value: clamp(((motion?.leapCount || 0) / noteCount) + ((evaluation?.leapPenalty || 0) / 12) + (hasWarning("consecutive-leap") ? 0.25 : 0), 0, 1),
+    },
+    {
+      key: "retention",
+      label: "Retention",
+      tone: "positive",
+      value: clamp(((motion?.commonToneCount || 0) + ((target?.reasonNames || []).includes("common-tone-retention") ? 1 : 0)) / noteCount, 0, 1),
+    },
+    {
+      key: "cadence-pull",
+      label: "Cadence pull",
+      tone: "positive",
+      value: clamp(cadenceStrength(cadenceValue) + Math.max(0, evaluation?.cadenceScore || 0) / 12, 0, 1),
+    },
+  ];
+  return axes;
+}
+
+function renderCounterpointWeatherMap(host, currentState, suggestions, focusedIndex, context) {
+  if (!host) {
+    return { currentAnchorCount: 0, cellCount: 0, warningCellCount: 0, positivePressureCount: 0, negativePressureCount: 0, hoveredCandidateIndex: -1 };
+  }
+  if (!currentState || currentState.voices.length === 0 || suggestions.length === 0) {
+    host.innerHTML = `<div class="output-block">Play or recall a voiced state to see the local pressure field around the strongest next moves.</div>`;
+    return { currentAnchorCount: 0, cellCount: 0, warningCellCount: 0, positivePressureCount: 0, negativePressureCount: 0, hoveredCandidateIndex: -1 };
+  }
+
+  const cells = suggestions.slice(0, 6);
+  const width = 720;
+  const height = 360;
+  const centerX = 220;
+  const centerY = 194;
+  const maxAbsTension = Math.max(1, ...cells.map((suggestion) => Math.abs(suggestion.tensionDelta)));
+  const maxScore = Math.max(...cells.map((suggestion) => suggestion.score));
+  const minScore = Math.min(...cells.map((suggestion) => suggestion.score));
+  const maxMotion = Math.max(1, ...cells.map((suggestion) => (suggestion.motion?.totalMotion || 0) + (suggestion.evaluation?.leapPenalty || 0)));
+  const chosenIndex = clamp(focusedIndex ?? 0, 0, Math.max(0, cells.length - 1));
+  const field = cells.map((suggestion, index) => {
+    const normalizedScore = maxScore === minScore ? 1 : (suggestion.score - minScore) / Math.max(1, maxScore - minScore);
+    const motionPressure = ((suggestion.motion?.totalMotion || 0) + (suggestion.evaluation?.leapPenalty || 0) + (suggestion.evaluation?.spacingPenalty || 0)) / maxMotion;
+    const cadencePull = cadenceStrength(suggestion.cadenceEffect) + Math.max(0, suggestion.evaluation?.cadenceScore || 0) / 12;
+    const retention = (suggestion.motion?.commonToneCount || 0) / Math.max(1, suggestion.noteCount || 1);
+    const tensionVector = suggestion.tensionDelta / maxAbsTension;
+    const stability = clamp((normalizedScore * 0.55) + (retention * 0.25) + (cadencePull * 0.2) - motionPressure * 0.22 - suggestion.warningNames.length * 0.08, -1, 1);
+    return {
+      ...suggestion,
+      index,
+      normalizedScore,
+      motionPressure,
+      cadencePull,
+      retention,
+      tensionVector,
+      stability,
+      x: centerX + tensionVector * 170,
+      y: centerY + (motionPressure - 0.45) * 118 - cadencePull * 34,
+      radius: 18 + normalizedScore * 10,
+      isFocused: index === chosenIndex,
+    };
+  });
+
+  const weatherSvg = `
+    <svg class="counterpoint-figure weather-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Counterpoint weather map">
+      <defs>
+        <radialGradient id="weather-glow" cx="42%" cy="48%" r="68%">
+          <stop offset="0%" stop-color="rgba(31,125,134,0.16)" />
+          <stop offset="100%" stop-color="rgba(255,255,255,0)" />
+        </radialGradient>
+        <linearGradient id="weather-band" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="rgba(42,132,84,0.08)" />
+          <stop offset="50%" stop-color="rgba(255,255,255,0)" />
+          <stop offset="100%" stop-color="rgba(176,54,32,0.10)" />
+        </linearGradient>
+      </defs>
+      <rect x="0" y="0" width="${width}" height="${height}" rx="28" fill="rgba(255,255,255,0.92)" stroke="rgba(24,36,47,0.10)" />
+      <rect x="40" y="${centerY - 88}" width="360" height="176" rx="88" fill="url(#weather-band)" />
+      <circle cx="${centerX}" cy="${centerY}" r="148" fill="url(#weather-glow)" />
+      <line x1="52" y1="${centerY}" x2="392" y2="${centerY}" class="weather-axis" />
+      <line x1="${centerX}" y1="52" x2="${centerX}" y2="${height - 44}" class="weather-axis" />
+      <circle cx="${centerX}" cy="${centerY}" r="46" class="weather-guide-ring" />
+      <circle cx="${centerX}" cy="${centerY}" r="90" class="weather-guide-ring is-mid" />
+      <text x="42" y="50" class="counterpoint-label eyebrow">Counterpoint Weather Map</text>
+      <text x="${centerX}" y="${height - 16}" text-anchor="middle" class="weather-axis-label">release tension ← local motion field → build tension</text>
+      <text x="82" y="${centerY - 98}" class="weather-axis-label">cadential pull</text>
+      <text x="92" y="${centerY + 126}" class="weather-axis-label">mobile / strained</text>
+      <circle class="weather-current-anchor" cx="${centerX}" cy="${centerY}" r="30" />
+      <text x="${centerX}" y="${centerY - 2}" text-anchor="middle" class="counterpoint-node-title">${escapeHtml(friendlyChordName(rawChordName(currentState.setValue)) || "Current")}</text>
+      <text x="${centerX}" y="${centerY + 18}" text-anchor="middle" class="counterpoint-node-notes">${escapeHtml(currentState.voices.map((voice) => midiName(voice.midi, context.tonic, context.quality)).join(" · "))}</text>
+      ${field.map((cell) => {
+        const toneClass = cell.stability >= 0 ? "weather-positive-cell" : "weather-negative-cell";
+        const warningClass = cell.warningNames.length > 0 ? "weather-warning-cell" : "";
+        const focusedClass = cell.isFocused ? "weather-focused-cell" : "";
+        const scoreLabel = cell.stability >= 0 ? "attract" : "unstable";
+        return `
+          <line x1="${centerX}" y1="${centerY}" x2="${cell.x.toFixed(1)}" y2="${cell.y.toFixed(1)}" class="weather-trace ${cell.isFocused ? "is-focused" : ""}" />
+          <circle class="weather-cell ${toneClass} ${warningClass} ${focusedClass}" cx="${cell.x.toFixed(1)}" cy="${cell.y.toFixed(1)}" r="${cell.radius.toFixed(1)}" />
+          ${cell.cadencePull > 0.72 ? `<circle class="weather-cadence-ring" cx="${cell.x.toFixed(1)}" cy="${cell.y.toFixed(1)}" r="${(cell.radius + 8).toFixed(1)}" />` : ""}
+          <text x="${cell.x.toFixed(1)}" y="${(cell.y - 4).toFixed(1)}" text-anchor="middle" class="weather-cell-label">${escapeHtml(String.fromCharCode(65 + cell.index))}</text>
+          <text x="${cell.x.toFixed(1)}" y="${(cell.y + 14).toFixed(1)}" text-anchor="middle" class="weather-cell-meta">${escapeHtml(scoreLabel)}</text>
+        `;
+      }).join("")}
+      <g transform="translate(430 58)">
+        <text x="0" y="0" class="counterpoint-node-title">Focused candidate</text>
+        <text x="0" y="22" class="counterpoint-node-notes">${escapeHtml(String.fromCharCode(65 + chosenIndex))}. ${escapeHtml(field[chosenIndex]?.noteNames?.join(" · ") || "")}</text>
+        <text x="0" y="44" class="counterpoint-node-meta">score ${escapeHtml(String(field[chosenIndex]?.score ?? 0))} · cadence ${escapeHtml(field[chosenIndex]?.cadenceLabel || "none")}</text>
+        <text x="0" y="66" class="counterpoint-node-meta">${escapeHtml(shortReasonLabel(field[chosenIndex]?.reasonNames?.[0] || ""))} · ${escapeHtml(shortWarningLabel(field[chosenIndex]?.warningNames?.[0] || "clean"))}</text>
+      </g>
+    </svg>`;
+
+  host.innerHTML = weatherSvg;
+  return {
+    currentAnchorCount: 1,
+    cellCount: field.length,
+    warningCellCount: field.filter((cell) => cell.warningNames.length > 0).length,
+    positivePressureCount: field.filter((cell) => cell.stability >= 0).length,
+    negativePressureCount: field.filter((cell) => cell.stability < 0).length,
+    hoveredCandidateIndex: chosenIndex,
+  };
+}
+
+function renderParallelRiskRadar(host, currentAnalysis, suggestions, focusedIndex) {
+  if (!host) {
+    return { axisCount: 0, populatedAxisCount: 0, currentPolygonCount: 0, candidatePolygonCount: 0, warningAxisCount: 0, hoveredCandidateIndex: -1 };
+  }
+  if (!currentAnalysis || !currentAnalysis.motion || suggestions.length === 0) {
+    host.innerHTML = `<div class="output-block">Risk axes appear once there is enough voice motion to compare the current slice against likely next moves.</div>`;
+    return { axisCount: 0, populatedAxisCount: 0, currentPolygonCount: 0, candidatePolygonCount: 0, warningAxisCount: 0, hoveredCandidateIndex: -1 };
+  }
+
+  const chosenIndex = clamp(focusedIndex ?? 0, 0, Math.max(0, suggestions.length - 1));
+  const candidate = suggestions[chosenIndex] || null;
+  const currentAxes = buildRiskAxes(currentAnalysis);
+  const candidateAxes = buildRiskAxes(candidate);
+  const axisCount = Math.max(currentAxes.length, candidateAxes.length);
+  const width = 720;
+  const height = 360;
+  const centerX = 250;
+  const centerY = 188;
+  const outerRadius = 120;
+  const ringFractions = [0.25, 0.5, 0.75, 1];
+  const axes = currentAxes.map((axis, index) => ({
+    ...axis,
+    candidateValue: candidateAxes[index]?.value || 0,
+    angle: (-Math.PI / 2) + (index * Math.PI * 2) / axisCount,
+  }));
+
+  const pointForAxis = (axis, value) => ({
+    x: centerX + Math.cos(axis.angle) * outerRadius * value,
+    y: centerY + Math.sin(axis.angle) * outerRadius * value,
+  });
+  const currentPoints = axes.map((axis) => pointForAxis(axis, axis.value));
+  const candidatePoints = axes.map((axis) => pointForAxis(axis, axis.candidateValue));
+  const currentPolygon = currentPoints.map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(" ");
+  const candidatePolygon = candidatePoints.map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(" ");
+  const populatedAxisCount = axes.filter((axis) => axis.value > 0.02 || axis.candidateValue > 0.02).length;
+  const warningAxisCount = axes.filter((axis) => axis.tone === "warning" && Math.max(axis.value, axis.candidateValue) >= 0.62).length;
+
+  const radarSvg = `
+    <svg class="counterpoint-figure risk-radar-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Parallel-risk radar">
+      <rect x="0" y="0" width="${width}" height="${height}" rx="28" fill="rgba(255,255,255,0.92)" stroke="rgba(24,36,47,0.10)" />
+      <text x="42" y="50" class="counterpoint-label eyebrow">Parallel-Risk Radar</text>
+      ${ringFractions.map((fraction, index) => `<circle cx="${centerX}" cy="${centerY}" r="${(outerRadius * fraction).toFixed(1)}" class="risk-ring ${index === ringFractions.length - 1 ? "is-outer" : ""}" />`).join("")}
+      ${axes.map((axis) => {
+        const outerPoint = pointForAxis(axis, 1);
+        const labelPoint = pointForAxis(axis, 1.18);
+        const maxValue = Math.max(axis.value, axis.candidateValue);
+        const axisClasses = ["risk-axis"];
+        if (maxValue > 0.02) axisClasses.push("is-populated");
+        if (axis.tone === "warning" && maxValue >= 0.62) axisClasses.push("is-warning");
+        return `
+          <line x1="${centerX}" y1="${centerY}" x2="${outerPoint.x.toFixed(1)}" y2="${outerPoint.y.toFixed(1)}" class="${axisClasses.join(" ")}" />
+          <text x="${labelPoint.x.toFixed(1)}" y="${(labelPoint.y + 4).toFixed(1)}" text-anchor="middle" class="risk-axis-label">${escapeHtml(axis.label)}</text>
+        `;
+      }).join("")}
+      <polygon class="risk-current-polygon" points="${currentPolygon}" />
+      <polygon class="risk-candidate-polygon" points="${candidatePolygon}" />
+      ${currentPoints.map((point) => `<circle class="risk-point risk-current-point" cx="${point.x.toFixed(1)}" cy="${point.y.toFixed(1)}" r="4.5" />`).join("")}
+      ${candidatePoints.map((point) => `<circle class="risk-point risk-candidate-point" cx="${point.x.toFixed(1)}" cy="${point.y.toFixed(1)}" r="4.5" />`).join("")}
+      <g transform="translate(468 74)">
+        <text x="0" y="0" class="counterpoint-node-title">Current vs candidate</text>
+        <rect x="0" y="18" width="16" height="16" rx="8" class="risk-legend risk-legend-current" />
+        <text x="26" y="31" class="counterpoint-node-notes">current slice</text>
+        <rect x="0" y="46" width="16" height="16" rx="8" class="risk-legend risk-legend-candidate" />
+        <text x="26" y="59" class="counterpoint-node-notes">${escapeHtml(String.fromCharCode(65 + chosenIndex))}. ${escapeHtml(candidate?.chordLabel || "candidate")}</text>
+        <text x="0" y="90" class="counterpoint-node-meta">${escapeHtml(shortWarningLabel(candidate?.warningNames?.[0] || "clean"))} · ${escapeHtml(shortReasonLabel(candidate?.reasonNames?.[0] || ""))}</text>
+        <text x="0" y="112" class="counterpoint-node-meta">cadence ${escapeHtml(candidate?.cadenceLabel || "none")} · tension ${escapeHtml(candidate?.tensionDelta >= 0 ? `+${candidate.tensionDelta}` : String(candidate?.tensionDelta || 0))}</text>
+      </g>
+    </svg>`;
+
+  host.innerHTML = radarSvg;
+  return {
+    axisCount,
+    populatedAxisCount,
+    currentPolygonCount: 1,
+    candidatePolygonCount: candidate ? 1 : 0,
+    warningAxisCount,
+    hoveredCandidateIndex: chosenIndex,
+  };
+}
+
 function sortedAscendingNumbers(values) {
   return Array.from(values).sort((a, b) => a - b);
 }
@@ -1725,6 +2113,8 @@ function decodeRankedNextSteps(arena, historyPtr, profile, context) {
     for (let voiceIndex = 0; voiceIndex < Math.min(noteCount, maxVoices); voiceIndex += 1) {
       notes.push(view.getUint8(base + 20 + voiceIndex));
     }
+    const motion = decodeMotionSummaryFromView(view, base + 28);
+    const evaluation = decodeMotionEvaluationFromView(view, base + 84);
     const reasonNames = namesFromMask(reasonMask, counterpointReasonNames);
     const warningNames = namesFromMask(warningMask, counterpointWarningNames);
     suggestions.push({
@@ -1741,6 +2131,8 @@ function decodeRankedNextSteps(arena, historyPtr, profile, context) {
       chordLabel: friendlyChordName(rawChordName(setValue)),
       reasonNames,
       warningNames,
+      motion,
+      evaluation,
       fretPreview: preferredFretVoicing(arena, setValue, {
         preferredBassPc: notes.length > 0 ? Math.min(...notes) % 12 : null,
       }),
@@ -2293,6 +2685,15 @@ function renderMidiScene() {
     const suggestions = historyBundle ? decodeRankedNextSteps(arena, historyBundle.historyPtr, profile, context) : [];
     const voicedHistory = historyBundle ? decodeVoicedHistoryFromPointer(historyBundle.historyPtr) : { len: 0, states: [] };
     const currentVoicedState = voicedHistory.states[voicedHistory.states.length - 1] || null;
+    const currentMotionAnalysis = buildCurrentMotionAnalysis(arena, historyBundle, voicedHistory, profile);
+    if (suggestions.length === 0) {
+      midiState.hoveredSuggestionIndex = null;
+    } else if (midiState.hoveredSuggestionIndex == null || midiState.hoveredSuggestionIndex >= suggestions.length) {
+      midiState.hoveredSuggestionIndex = 0;
+    }
+    const hoveredSuggestionIndex = suggestions.length > 0
+      ? clamp(midiState.hoveredSuggestionIndex ?? 0, 0, suggestions.length - 1)
+      : null;
     const candidateStates = currentVoicedState
       ? suggestions.map((suggestion, index) =>
         buildCandidateVoicedState(
@@ -2343,6 +2744,8 @@ function renderMidiScene() {
 
     const midiHorizonFeatures = renderVoiceLeadingHorizon(midiHorizonEl, currentVoicedState, suggestions, context);
     const midiBraidFeatures = renderVoiceBraid(midiBraidEl, voicedHistory.states, candidateStates, context);
+    const midiWeatherFeatures = renderCounterpointWeatherMap(midiWeatherEl, currentVoicedState, suggestions, hoveredSuggestionIndex, context);
+    const midiRiskRadarFeatures = renderParallelRiskRadar(midiRiskRadarEl, currentMotionAnalysis, suggestions, hoveredSuggestionIndex);
 
     renderPreviewSvgOrBitmap(midiClockEl, {
       svgMarkup: clockSvg,
@@ -2421,7 +2824,7 @@ function renderMidiScene() {
       midiSuggestionsEl.innerHTML = `<p class="snapshot-empty">Once at least one note is sounding, libmusictheory will rank voiced next moves against ${escapeHtml(context.label)} here.</p>`;
     } else {
       midiSuggestionsEl.innerHTML = suggestions.map((suggestion, index) => `
-        <article class="suggestion-card">
+        <article class="suggestion-card${hoveredSuggestionIndex === index ? " is-focused" : ""}" data-suggestion-index="${index}" tabindex="0">
           <strong>${String.fromCharCode(65 + index)}. ${escapeHtml(suggestion.noteNames.join(" · "))}</strong>
           <p>${escapeHtml(suggestion.chordLabel)}</p>
           <p>score ${escapeHtml(String(suggestion.score))} · cadence ${escapeHtml(suggestion.cadenceLabel)} · tension ${escapeHtml(suggestion.tensionDelta >= 0 ? `+${suggestion.tensionDelta}` : String(suggestion.tensionDelta))}</p>
@@ -2499,6 +2902,7 @@ function renderMidiScene() {
       suggestionCount: suggestions.length,
       suggestionNames: suggestions.map((one) => one.noteNames.join(" · ")),
       topSuggestionSignature: suggestions[0]?.notes?.join(",") || "",
+      hoveredCandidateIndex: hoveredSuggestionIndex == null ? -1 : hoveredSuggestionIndex,
       currentMiniMode: miniInstrumentMode(),
       currentMiniRendered,
       suggestionMiniCount: suggestions.length,
@@ -2507,6 +2911,8 @@ function renderMidiScene() {
       midiStaffFeatures,
       midiHorizonFeatures,
       midiBraidFeatures,
+      midiWeatherFeatures,
+      midiRiskRadarFeatures,
       keyboardFeatures,
       rendered: true,
     });
@@ -3202,6 +3608,22 @@ function wireSceneEvents() {
     setMidiSnapshotPreview(button.getAttribute("data-midi-snapshot"));
     const snapshot = midiState.snapshots.find((one) => one.id === button.getAttribute("data-midi-snapshot"));
     setStatus(`${MIDI_SCENE_TITLE} snapshot recalled${snapshot?.contextLabel ? ` in ${snapshot.contextLabel}` : ""}.`);
+  });
+  const focusSuggestionIndex = (event) => {
+    const card = event.target.closest("[data-suggestion-index]");
+    if (!card) return;
+    const nextIndex = Number.parseInt(card.getAttribute("data-suggestion-index") || "-1", 10);
+    if (!Number.isInteger(nextIndex) || nextIndex < 0 || midiState.hoveredSuggestionIndex === nextIndex) return;
+    midiState.hoveredSuggestionIndex = nextIndex;
+    renderMidiScene();
+  };
+  midiSuggestionsEl.addEventListener("mouseover", focusSuggestionIndex);
+  midiSuggestionsEl.addEventListener("focusin", focusSuggestionIndex);
+  midiSuggestionsEl.addEventListener("mouseleave", () => {
+    if (midiState.hoveredSuggestionIndex !== 0 && midiState.hoveredSuggestionIndex != null) {
+      midiState.hoveredSuggestionIndex = 0;
+      renderMidiScene();
+    }
   });
   [midiTonicEl, midiModeEl].forEach((node) => node.addEventListener("change", () => {
     renderMidiScene();

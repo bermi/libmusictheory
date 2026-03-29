@@ -464,7 +464,9 @@ select {
 }
 
 .horizon-frame,
-.braid-frame {
+.braid-frame,
+.weather-frame,
+.risk-radar-frame {
   min-height: 380px;
 }
 
@@ -589,6 +591,149 @@ select {
 .braid-ghost-node {
   stroke-width: 2;
   opacity: 0.86;
+}
+
+.weather-axis,
+.weather-trace {
+  fill: none;
+  stroke-linecap: round;
+}
+
+.weather-axis {
+  stroke: rgba(24, 36, 47, 0.14);
+  stroke-width: 2;
+}
+
+.weather-guide-ring {
+  fill: none;
+  stroke: rgba(31, 125, 134, 0.12);
+  stroke-width: 1.5;
+}
+
+.weather-guide-ring.is-mid {
+  stroke-dasharray: 6 6;
+}
+
+.weather-axis-label {
+  font-size: 11px;
+  fill: var(--muted);
+}
+
+.weather-current-anchor {
+  fill: rgba(31, 125, 134, 0.14);
+  stroke: rgba(31, 125, 134, 0.72);
+  stroke-width: 2.8;
+}
+
+.weather-trace {
+  stroke: rgba(24, 36, 47, 0.14);
+  stroke-width: 2;
+}
+
+.weather-trace.is-focused {
+  stroke: rgba(161, 22, 102, 0.42);
+  stroke-width: 2.6;
+}
+
+.weather-cell {
+  stroke-width: 2.4;
+}
+
+.weather-positive-cell {
+  fill: rgba(42, 132, 84, 0.16);
+  stroke: rgba(42, 132, 84, 0.68);
+}
+
+.weather-negative-cell {
+  fill: rgba(176, 54, 32, 0.12);
+  stroke: rgba(176, 54, 32, 0.64);
+}
+
+.weather-warning-cell {
+  stroke-dasharray: 4 4;
+}
+
+.weather-focused-cell {
+  stroke-width: 3.4;
+}
+
+.weather-cadence-ring {
+  fill: none;
+  stroke: rgba(226, 137, 26, 0.8);
+  stroke-width: 2;
+  stroke-dasharray: 5 4;
+}
+
+.weather-cell-label {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.weather-cell-meta {
+  font-size: 10px;
+  fill: var(--muted);
+}
+
+.risk-ring {
+  fill: none;
+  stroke: rgba(24, 36, 47, 0.08);
+  stroke-width: 1.2;
+}
+
+.risk-ring.is-outer {
+  stroke-width: 1.8;
+  stroke: rgba(24, 36, 47, 0.14);
+}
+
+.risk-axis {
+  stroke: rgba(24, 36, 47, 0.12);
+  stroke-width: 1.6;
+}
+
+.risk-axis.is-populated {
+  stroke: rgba(31, 125, 134, 0.28);
+}
+
+.risk-axis.is-warning {
+  stroke: rgba(176, 54, 32, 0.44);
+}
+
+.risk-axis-label {
+  font-size: 11px;
+  fill: var(--muted);
+}
+
+.risk-current-polygon {
+  fill: rgba(31, 125, 134, 0.18);
+  stroke: rgba(31, 125, 134, 0.74);
+  stroke-width: 2.6;
+}
+
+.risk-candidate-polygon {
+  fill: rgba(161, 22, 102, 0.12);
+  stroke: rgba(161, 22, 102, 0.72);
+  stroke-width: 2.4;
+}
+
+.risk-point {
+  stroke: white;
+  stroke-width: 1.4;
+}
+
+.risk-current-point {
+  fill: rgba(31, 125, 134, 0.88);
+}
+
+.risk-candidate-point {
+  fill: rgba(161, 22, 102, 0.9);
+}
+
+.risk-legend-current {
+  fill: rgba(31, 125, 134, 0.8);
+}
+
+.risk-legend-candidate {
+  fill: rgba(161, 22, 102, 0.78);
 }
 
 .optic-k-frame {
@@ -799,6 +944,16 @@ select {
   padding: 14px;
   display: grid;
   gap: 10px;
+  transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+
+.suggestion-card.is-focused,
+.suggestion-card:hover,
+.suggestion-card:focus-visible {
+  border-color: rgba(161, 22, 102, 0.34);
+  box-shadow: 0 12px 30px rgba(161, 22, 102, 0.12);
+  transform: translateY(-1px);
+  outline: none;
 }
 
 .suggestion-card strong {

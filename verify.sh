@@ -192,6 +192,11 @@ if [ -f "$ROOT_DIR/docs/plans/in_progress/0095-voice-leading-horizon-and-braid-g
     check_cmd "cd '$ROOT_DIR' && rg -n 'midiHorizonFeatures|midiBraidFeatures|candidateNodeCount|historyColumnCount|candidateColumnCount' examples/wasm-gallery/gallery.js scripts/validate_wasm_gallery_playwright.mjs >/dev/null" "0095 horizon/braid guardrail (gallery summary and validation assert structural feature counts)"
 fi
 
+if [ -f "$ROOT_DIR/docs/plans/in_progress/0096-counterpoint-weather-map-and-risk-radar.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0096-counterpoint-weather-map-and-risk-radar.md" ]; then
+    check_cmd "cd '$ROOT_DIR' && rg -n 'midi-weather|midi-risk-radar|renderCounterpointWeatherMap|renderParallelRiskRadar|counterpoint weather map|parallel-risk radar' examples/wasm-gallery/index.html examples/wasm-gallery/gallery.js examples/wasm-gallery/styles.css scripts/validate_wasm_gallery_playwright.mjs >/dev/null" "0096 weather/radar guardrail (gallery hosts, runtime, styles, and validation wiring are present)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'midiWeatherFeatures|midiRiskRadarFeatures|cellCount|populatedAxisCount|currentAnchorCount|hoveredCandidateIndex' examples/wasm-gallery/gallery.js scripts/lib/wasm_gallery_playwright_common.mjs scripts/validate_wasm_gallery_playwright.mjs >/dev/null" "0096 weather/radar guardrail (gallery summary and validation assert structural feature counts)"
+fi
+
 if [ -f "$ROOT_DIR/scripts/release_smoke.sh" ]; then
     check_cmd "cd '$ROOT_DIR' && test -x scripts/release_smoke.sh" "0078 release smoke guardrail (script is executable)"
     check_cmd "cd '$ROOT_DIR' && ! rg -n 'tmp/harmoniousapp\\.net|validate_harmonious_|wasm-demo|wasm-scaled-render-parity|wasm-native-rgba-proof|wasm-harmonious-spa' scripts/release_smoke.sh" "0078 release smoke guardrail (script stays on standalone surfaces and does not depend on local harmonious data)"

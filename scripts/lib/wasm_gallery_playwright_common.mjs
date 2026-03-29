@@ -329,6 +329,44 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
           ghostNodeCount: svg.querySelectorAll(".braid-ghost-node").length,
         };
       })(),
+      midiWeatherFeatures: (() => {
+        const svg = document.querySelector("#midi-weather svg");
+        if (!svg) {
+          return {
+            currentAnchorCount: 0,
+            cellCount: 0,
+            warningCellCount: 0,
+            positivePressureCount: 0,
+            negativePressureCount: 0,
+          };
+        }
+        return {
+          currentAnchorCount: svg.querySelectorAll(".weather-current-anchor").length,
+          cellCount: svg.querySelectorAll(".weather-cell").length,
+          warningCellCount: svg.querySelectorAll(".weather-warning-cell").length,
+          positivePressureCount: svg.querySelectorAll(".weather-positive-cell").length,
+          negativePressureCount: svg.querySelectorAll(".weather-negative-cell").length,
+        };
+      })(),
+      midiRiskRadarFeatures: (() => {
+        const svg = document.querySelector("#midi-risk-radar svg");
+        if (!svg) {
+          return {
+            axisCount: 0,
+            populatedAxisCount: 0,
+            currentPolygonCount: 0,
+            candidatePolygonCount: 0,
+            warningAxisCount: 0,
+          };
+        }
+        return {
+          axisCount: svg.querySelectorAll(".risk-axis").length,
+          populatedAxisCount: svg.querySelectorAll(".risk-axis.is-populated").length,
+          currentPolygonCount: svg.querySelectorAll(".risk-current-polygon").length,
+          candidatePolygonCount: svg.querySelectorAll(".risk-candidate-polygon").length,
+          warningAxisCount: svg.querySelectorAll(".risk-axis.is-warning").length,
+        };
+      })(),
       previewKinds: (() => {
         const hostIds = ["midi-clock", "midi-optic-k", "midi-evenness", "midi-keyboard", "midi-staff", "midi-current-fret"];
         return Object.fromEntries(hostIds.map((id) => {
@@ -362,6 +400,8 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
     const midiStaffFeatures = snapshot.summary?.midiStaffFeatures ?? snapshot.midiStaffFeatures;
     const midiHorizonFeatures = snapshot.summary?.midiHorizonFeatures ?? snapshot.midiHorizonFeatures;
     const midiBraidFeatures = snapshot.summary?.midiBraidFeatures ?? snapshot.midiBraidFeatures;
+    const midiWeatherFeatures = snapshot.summary?.midiWeatherFeatures ?? snapshot.midiWeatherFeatures;
+    const midiRiskRadarFeatures = snapshot.summary?.midiRiskRadarFeatures ?? snapshot.midiRiskRadarFeatures;
     const keyboardFeatures = snapshot.summary?.keyboardFeatures ?? snapshot.keyboardFeaturesFallback;
     if (
       snapshot.summary?.rendered === true
@@ -405,6 +445,12 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
       && midiBraidFeatures.strandCount >= 1
       && midiBraidFeatures.currentVoiceCount >= 1
       && midiBraidFeatures.ghostNodeCount >= 1
+      && midiWeatherFeatures.currentAnchorCount >= 1
+      && midiWeatherFeatures.cellCount >= 1
+      && midiRiskRadarFeatures.axisCount >= 6
+      && midiRiskRadarFeatures.populatedAxisCount >= 4
+      && midiRiskRadarFeatures.currentPolygonCount >= 1
+      && midiRiskRadarFeatures.candidatePolygonCount >= 1
     ) {
       return snapshot;
     }

@@ -148,6 +148,8 @@ async function main() {
       const midiActiveEvennessFeatures = midiActive.summary?.midiEvennessFeatures ?? midiActive.midiEvennessFeatures;
       const midiActiveHorizonFeatures = midiActive.summary?.midiHorizonFeatures ?? midiActive.midiHorizonFeatures;
       const midiActiveBraidFeatures = midiActive.summary?.midiBraidFeatures ?? midiActive.midiBraidFeatures;
+      const midiActiveWeatherFeatures = midiActive.summary?.midiWeatherFeatures ?? midiActive.midiWeatherFeatures;
+      const midiActiveRiskRadarFeatures = midiActive.summary?.midiRiskRadarFeatures ?? midiActive.midiRiskRadarFeatures;
       if (
         midiActive.summary?.currentMiniMode !== "off"
         || midiActive.summary?.currentMiniRendered !== false
@@ -257,6 +259,34 @@ async function main() {
       ) {
         throw new Error(`live midi scene did not render voice-leading horizon and braid correctly: ${JSON.stringify({ horizon: midiActiveHorizonFeatures, braid: midiActiveBraidFeatures })}`);
       }
+      if (
+        (midiActive.summary?.suggestionCount || 0) < 2
+        || (midiActiveWeatherFeatures?.currentAnchorCount || 0) < 1
+        || (midiActiveWeatherFeatures?.cellCount || 0) < 2
+        || (midiActiveRiskRadarFeatures?.axisCount || 0) < 6
+        || (midiActiveRiskRadarFeatures?.populatedAxisCount || 0) < 4
+        || (midiActiveRiskRadarFeatures?.currentPolygonCount || 0) < 1
+        || (midiActiveRiskRadarFeatures?.candidatePolygonCount || 0) < 1
+      ) {
+        throw new Error(`live midi scene did not render weather/radar diagnostics correctly: ${JSON.stringify({ weather: midiActiveWeatherFeatures, radar: midiActiveRiskRadarFeatures, summary: midiActive.summary })}`);
+      }
+      traceStep("hover-candidate");
+      const hoverCandidateIndex = Math.min(1, Math.max(0, (midiActive.summary?.suggestionCount || 1) - 1));
+      await page.locator(`#midi-suggestions [data-suggestion-index="${hoverCandidateIndex}"]`).hover();
+      const hoveredCandidate = await page.waitForFunction((targetIndex) => {
+        const midi = window.__lmtGallerySummary?.scenes?.midi;
+        return midi?.hoveredCandidateIndex === targetIndex
+          && (midi?.midiWeatherFeatures?.hoveredCandidateIndex ?? -1) === targetIndex
+          && (midi?.midiWeatherFeatures?.cellCount || 0) >= 2
+          && (midi?.midiRiskRadarFeatures?.candidatePolygonCount || 0) >= 1
+          && (midi?.midiRiskRadarFeatures?.populatedAxisCount || 0) >= 4;
+      }, hoverCandidateIndex, { timeout: 30000 }).then((handle) => handle.jsonValue());
+      await page.mouse.move(8, 8);
+      const hoverReset = await page.waitForFunction(() => {
+        const midi = window.__lmtGallerySummary?.scenes?.midi;
+        return midi?.hoveredCandidateIndex === 0
+          && (midi?.midiWeatherFeatures?.hoveredCandidateIndex ?? -1) === 0;
+      }, { timeout: 30000 }).then((handle) => handle.jsonValue());
       traceStep("context-change");
       const defaultContext = await page.evaluate(() => ({
         label: window.__lmtGallerySummary?.scenes?.midi?.contextLabel || "",
@@ -272,7 +302,9 @@ async function main() {
           && nextFirstSuggestion !== beforeFirstSuggestion
           && midi.displayCount >= 3
           && (midi.midiHorizonFeatures?.candidateNodeCount || 0) >= 1
-          && (midi.midiBraidFeatures?.candidateColumnCount || 0) >= 1;
+          && (midi.midiBraidFeatures?.candidateColumnCount || 0) >= 1
+          && (midi.midiWeatherFeatures?.cellCount || 0) >= 2
+          && (midi.midiRiskRadarFeatures?.populatedAxisCount || 0) >= 4;
       }, { beforeLabel: defaultContext.label, beforeFirstSuggestion: defaultContext.suggestionNames[0] || "" }, { timeout: 30000 }).then((handle) => handle.jsonValue());
       traceStep("profile-change");
       await page.selectOption("#midi-profile", "3");
@@ -282,7 +314,9 @@ async function main() {
           && midi?.counterpointProfile === "jazz-close-leading"
           && midi?.suggestionCount >= 1
           && (midi?.midiHorizonFeatures?.candidateNodeCount || 0) >= 1
-          && (midi?.midiBraidFeatures?.candidateColumnCount || 0) >= 1;
+          && (midi?.midiBraidFeatures?.candidateColumnCount || 0) >= 1
+          && (midi?.midiWeatherFeatures?.cellCount || 0) >= 2
+          && (midi?.midiRiskRadarFeatures?.populatedAxisCount || 0) >= 4;
       }, { timeout: 30000 }).then((handle) => handle.jsonValue());
       traceStep("mini-piano");
       await page.selectOption("#mini-instrument-mode", "piano");
@@ -521,6 +555,10 @@ async function main() {
             midiActive,
             midiActiveHorizonFeatures,
             midiActiveBraidFeatures,
+            midiActiveWeatherFeatures,
+            midiActiveRiskRadarFeatures,
+            hoveredCandidate,
+            hoverReset,
             contextChanged,
             keyboardSeamCheck,
             profileChanged,
