@@ -3,7 +3,7 @@
 > Dependencies: 0095
 > Follow-up: none
 
-Status: In Progress
+Status: Completed
 
 ## Summary
 
@@ -87,3 +87,21 @@ Before implementation:
 - both are driven by library-owned counterpoint state/profile data
 - gallery validation proves they respond coherently to live MIDI and profile changes
 - `./verify.sh` passes
+
+## Verification Commands
+
+- `./verify.sh`
+- `./zigw build wasm-gallery`
+- `node /Users/bermi/code/libmusictheory/scripts/validate_wasm_gallery_playwright.mjs`
+
+## Implementation History (Point-in-Time)
+
+- `1082630` — 2026-03-29
+- Shipped behavior:
+  - added `Counterpoint Weather Map` and `Parallel-Risk Radar` cards to the live MIDI gallery scene in `/Users/bermi/code/libmusictheory/examples/wasm-gallery/index.html` and `/Users/bermi/code/libmusictheory/examples/wasm-gallery/styles.css`
+  - rendered local pressure cells, current-state anchors, candidate traces, radar polygons, populated axes, and hover-linked diagnostics from library-owned counterpoint state in `/Users/bermi/code/libmusictheory/examples/wasm-gallery/gallery.js`
+  - tightened gallery validation and repo guardrails so weather/radar structure, hover sync, and context/profile coherence are enforced in `/Users/bermi/code/libmusictheory/scripts/lib/wasm_gallery_playwright_common.mjs`, `/Users/bermi/code/libmusictheory/scripts/validate_wasm_gallery_playwright.mjs`, and `/Users/bermi/code/libmusictheory/verify.sh`
+- Completion gates used:
+  - `./verify.sh`
+  - `./zigw build wasm-gallery`
+  - `node /Users/bermi/code/libmusictheory/scripts/validate_wasm_gallery_playwright.mjs`
