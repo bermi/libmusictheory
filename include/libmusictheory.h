@@ -15,6 +15,8 @@ extern "C" {
  * - Stable public C ABI: declarations in this header, except those marked as
  *   experimental.
  * - Experimental APIs: lmt_raster_is_enabled, lmt_raster_demo_rgba,
+ *   lmt_counterpoint_max_voices, lmt_build_voiced_state,
+ *   lmt_classify_motion, lmt_rank_next_steps,
  *   lmt_mode_spelling_quality, lmt_rank_context_suggestions,
  *   lmt_preferred_voicing_n, and the method-specific RGBA bitmap renderers
  *   below.

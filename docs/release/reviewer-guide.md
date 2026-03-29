@@ -14,6 +14,7 @@ Review only the standalone surfaces:
 - the standalone gallery bundle from `./zigw build wasm-gallery`
 
 Do not use internal Harmonious validation/proof bundles for release-candidate signoff.
+The gallery bundle exercises experimental counterpoint and direct bitmap-preview helpers; review those for bundle quality, but they are not part of stable release signoff.
 
 ## Quick Smoke Path
 
@@ -100,5 +101,6 @@ Check:
 
 - `/Users/bermi/code/libmusictheory/zig-out/include/libmusictheory.h` is installed
 - `/Users/bermi/code/libmusictheory/zig-out/lib/` contains native library artifacts
-- `/Users/bermi/code/libmusictheory/examples/wasm-gallery/` uses only public APIs
+- `/Users/bermi/code/libmusictheory/examples/wasm-gallery/` uses only public APIs, but not only stable ones
+- experimental APIs remain clearly documented as experimental in `/Users/bermi/code/libmusictheory/include/libmusictheory.h` and `/Users/bermi/code/libmusictheory/README.md`
 - release docs do not require local Harmonious reference data
