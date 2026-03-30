@@ -148,6 +148,34 @@ pub const LmtNextStepSuggestion = extern struct {
     evaluation: LmtMotionEvaluation,
 };
 
+pub const LmtCadenceDestinationScore = extern struct {
+    score: i32,
+    destination: u8,
+    candidate_count: u8,
+    warning_count: u8,
+    current_match: u8,
+    tension_bias: i8,
+    reserved0: u8,
+    reserved1: u8,
+};
+
+pub const LmtSuspensionMachineSummary = extern struct {
+    state: u8,
+    tracked_voice_id: u8,
+    held_midi: u8,
+    expected_resolution_midi: u8,
+    resolution_direction: i8,
+    obligation_count: u8,
+    warning_count: u8,
+    retained_count: u8,
+    current_tension: i16,
+    previous_tension: i16,
+    candidate_resolution_count: u8,
+    reserved0: u8,
+    reserved1: u8,
+    reserved2: u8,
+};
+
 const SCALE_DIATONIC: u8 = 0;
 const SCALE_ACOUSTIC: u8 = 1;
 const SCALE_DIMINISHED: u8 = 2;
@@ -579,6 +607,38 @@ fn writeNextStepSuggestion(out: *LmtNextStepSuggestion, suggestion: counterpoint
     writeMotionEvaluation(&out.evaluation, suggestion.evaluation);
 }
 
+fn writeCadenceDestinationScore(out: *LmtCadenceDestinationScore, score: counterpoint.CadenceDestinationScore) void {
+    out.* = .{
+        .score = score.score,
+        .destination = @intFromEnum(score.destination),
+        .candidate_count = score.candidate_count,
+        .warning_count = score.warning_count,
+        .current_match = if (score.current_match) 1 else 0,
+        .tension_bias = score.tension_bias,
+        .reserved0 = 0,
+        .reserved1 = 0,
+    };
+}
+
+fn writeSuspensionMachineSummary(out: *LmtSuspensionMachineSummary, summary: counterpoint.SuspensionMachineSummary) void {
+    out.* = .{
+        .state = @intFromEnum(summary.state),
+        .tracked_voice_id = summary.tracked_voice_id,
+        .held_midi = summary.held_midi,
+        .expected_resolution_midi = summary.expected_resolution_midi,
+        .resolution_direction = summary.resolution_direction,
+        .obligation_count = summary.obligation_count,
+        .warning_count = summary.warning_count,
+        .retained_count = summary.retained_count,
+        .current_tension = summary.current_tension,
+        .previous_tension = summary.previous_tension,
+        .candidate_resolution_count = summary.candidate_resolution_count,
+        .reserved0 = 0,
+        .reserved1 = 0,
+        .reserved2 = 0,
+    };
+}
+
 fn isSelectedGuidePosition(selected_ptr: [*c]const LmtFretPos, selected_count: usize, string: usize, fret: u8) bool {
     if (selected_ptr == null) return false;
 
@@ -775,6 +835,34 @@ pub export fn lmt_sizeof_next_step_suggestion() callconv(.c) u32 {
     return @as(u32, @intCast(@sizeOf(LmtNextStepSuggestion)));
 }
 
+pub export fn lmt_cadence_destination_count() callconv(.c) u32 {
+    return @as(u32, @intCast(counterpoint.CADENCE_DESTINATION_NAMES.len));
+}
+
+pub export fn lmt_cadence_destination_name(index: u32) callconv(.c) [*c]const u8 {
+    const idx = @as(usize, @intCast(index));
+    if (idx >= counterpoint.CADENCE_DESTINATION_NAMES.len) return null;
+    return writeCString(counterpoint.CADENCE_DESTINATION_NAMES[idx]);
+}
+
+pub export fn lmt_suspension_state_count() callconv(.c) u32 {
+    return @as(u32, @intCast(counterpoint.SUSPENSION_STATE_NAMES.len));
+}
+
+pub export fn lmt_suspension_state_name(index: u32) callconv(.c) [*c]const u8 {
+    const idx = @as(usize, @intCast(index));
+    if (idx >= counterpoint.SUSPENSION_STATE_NAMES.len) return null;
+    return writeCString(counterpoint.SUSPENSION_STATE_NAMES[idx]);
+}
+
+pub export fn lmt_sizeof_cadence_destination_score() callconv(.c) u32 {
+    return @as(u32, @intCast(@sizeOf(LmtCadenceDestinationScore)));
+}
+
+pub export fn lmt_sizeof_suspension_machine_summary() callconv(.c) u32 {
+    return @as(u32, @intCast(@sizeOf(LmtSuspensionMachineSummary)));
+}
+
 pub export fn lmt_voiced_history_reset(history: [*c]LmtVoicedHistory) callconv(.c) void {
     if (history == null) return;
     const out_history: *LmtVoicedHistory = @ptrCast(history);
@@ -903,6 +991,45 @@ pub export fn lmt_rank_next_steps(history: [*c]const LmtVoicedHistory, profile: 
         writeNextStepSuggestion(out_suggestion, suggestion);
     }
     return @as(u32, @intCast(ranked.len));
+}
+
+pub export fn lmt_rank_cadence_destinations(
+    history: [*c]const LmtVoicedHistory,
+    profile: u8,
+    out: [*c]LmtCadenceDestinationScore,
+    out_cap: u32,
+) callconv(.c) u32 {
+    if (history == null or out == null or out_cap == 0) return 0;
+
+    const profile_value = decodeCounterpointRuleProfile(profile) orelse return 0;
+    const raw_history: *const LmtVoicedHistory = @ptrCast(history);
+    const decoded_history = decodeVoicedHistory(raw_history.*);
+    const write_cap = @min(@as(usize, @intCast(out_cap)), counterpoint.MAX_CADENCE_DESTINATIONS);
+
+    var destination_buf: [counterpoint.MAX_CADENCE_DESTINATIONS]counterpoint.CadenceDestinationScore = undefined;
+    const ranked = counterpoint.rankCadenceDestinations(&decoded_history, profile_value, destination_buf[0..write_cap]);
+
+    for (ranked, 0..) |destination, index| {
+        const out_destination: *LmtCadenceDestinationScore = @ptrCast(&out[index]);
+        writeCadenceDestinationScore(out_destination, destination);
+    }
+    return @as(u32, @intCast(ranked.len));
+}
+
+pub export fn lmt_analyze_suspension_machine(
+    history: [*c]const LmtVoicedHistory,
+    profile: u8,
+    out: [*c]LmtSuspensionMachineSummary,
+) callconv(.c) u32 {
+    if (history == null or out == null) return 0;
+
+    const profile_value = decodeCounterpointRuleProfile(profile) orelse return 0;
+    const raw_history: *const LmtVoicedHistory = @ptrCast(history);
+    const decoded_history = decodeVoicedHistory(raw_history.*);
+    const summary = counterpoint.analyzeSuspensionMachine(&decoded_history, profile_value);
+    const out_summary: *LmtSuspensionMachineSummary = @ptrCast(out);
+    writeSuspensionMachineSummary(out_summary, summary);
+    return 1;
 }
 
 pub export fn lmt_next_step_reason_count() callconv(.c) u32 {

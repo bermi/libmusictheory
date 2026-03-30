@@ -55,6 +55,21 @@ const DEFAULT_COUNTERPOINT_PROFILE_NAMES = Object.freeze([
   "jazz-close-leading",
   "free-contemporary",
 ]);
+const DEFAULT_CADENCE_DESTINATION_NAMES = Object.freeze([
+  "stable-continuation",
+  "pre-dominant-arrival",
+  "dominant-arrival",
+  "authentic-arrival",
+  "half-arrival",
+  "deceptive-pull",
+]);
+const DEFAULT_SUSPENSION_STATE_NAMES = Object.freeze([
+  "none",
+  "preparation",
+  "suspension",
+  "resolution",
+  "unresolved",
+]);
 const CADENCE_LABELS = Object.freeze([
   "none",
   "stable",
@@ -110,12 +125,20 @@ const REQUIRED_EXPORTS = [
   "lmt_sizeof_voiced_state",
   "lmt_sizeof_voiced_history",
   "lmt_sizeof_next_step_suggestion",
+  "lmt_cadence_destination_count",
+  "lmt_cadence_destination_name",
+  "lmt_suspension_state_count",
+  "lmt_suspension_state_name",
+  "lmt_sizeof_cadence_destination_score",
+  "lmt_sizeof_suspension_machine_summary",
   "lmt_voiced_history_reset",
   "lmt_build_voiced_state",
   "lmt_voiced_history_push",
   "lmt_classify_motion",
   "lmt_evaluate_motion_profile",
   "lmt_rank_next_steps",
+  "lmt_rank_cadence_destinations",
+  "lmt_analyze_suspension_machine",
   "lmt_next_step_reason_count",
   "lmt_next_step_reason_name",
   "lmt_next_step_warning_count",
@@ -179,6 +202,8 @@ const midiHorizonEl = document.getElementById("midi-horizon");
 const midiBraidEl = document.getElementById("midi-braid");
 const midiWeatherEl = document.getElementById("midi-weather");
 const midiRiskRadarEl = document.getElementById("midi-risk-radar");
+const midiCadenceFunnelEl = document.getElementById("midi-cadence-funnel");
+const midiSuspensionMachineEl = document.getElementById("midi-suspension-machine");
 const midiSuggestionsEl = document.getElementById("midi-suggestions");
 const midiSnapshotsEl = document.getElementById("midi-snapshots");
 const connectMidiEl = document.getElementById("connect-midi");
@@ -263,7 +288,17 @@ let jsScratchLimit = 0;
 let counterpointReasonNames = [];
 let counterpointWarningNames = [];
 let counterpointProfileNames = DEFAULT_COUNTERPOINT_PROFILE_NAMES.slice();
-let counterpointStructSizes = { voicedState: 0, voicedHistory: 0, nextStepSuggestion: 0, maxVoices: 8, historyCapacity: 4 };
+let counterpointCadenceDestinationNames = DEFAULT_CADENCE_DESTINATION_NAMES.slice();
+let counterpointSuspensionStateNames = DEFAULT_SUSPENSION_STATE_NAMES.slice();
+let counterpointStructSizes = {
+  voicedState: 0,
+  voicedHistory: 0,
+  nextStepSuggestion: 0,
+  cadenceDestinationScore: 0,
+  suspensionMachineSummary: 0,
+  maxVoices: 8,
+  historyCapacity: 4,
+};
 const galleryUiState = {
   previewMode: PREVIEW_MODE_SVG,
   miniInstrument: MINI_INSTRUMENT_OFF,
@@ -519,6 +554,20 @@ function loadCounterpointMetadata() {
     counterpointProfileNames = DEFAULT_COUNTERPOINT_PROFILE_NAMES.slice();
   }
 
+  const cadenceDestinationCount = wasm.lmt_cadence_destination_count();
+  counterpointCadenceDestinationNames = Array.from({ length: cadenceDestinationCount }, (_unused, index) =>
+    readCStringPtr(wasm.lmt_cadence_destination_name(index))) || DEFAULT_CADENCE_DESTINATION_NAMES.slice();
+  if (counterpointCadenceDestinationNames.length === 0) {
+    counterpointCadenceDestinationNames = DEFAULT_CADENCE_DESTINATION_NAMES.slice();
+  }
+
+  const suspensionStateCount = wasm.lmt_suspension_state_count();
+  counterpointSuspensionStateNames = Array.from({ length: suspensionStateCount }, (_unused, index) =>
+    readCStringPtr(wasm.lmt_suspension_state_name(index))) || DEFAULT_SUSPENSION_STATE_NAMES.slice();
+  if (counterpointSuspensionStateNames.length === 0) {
+    counterpointSuspensionStateNames = DEFAULT_SUSPENSION_STATE_NAMES.slice();
+  }
+
   const reasonCount = wasm.lmt_next_step_reason_count();
   counterpointReasonNames = Array.from({ length: reasonCount }, (_unused, index) =>
     readCStringPtr(wasm.lmt_next_step_reason_name(index)));
@@ -532,6 +581,8 @@ function loadCounterpointMetadata() {
     voicedState: wasm.lmt_sizeof_voiced_state(),
     voicedHistory: wasm.lmt_sizeof_voiced_history(),
     nextStepSuggestion: wasm.lmt_sizeof_next_step_suggestion(),
+    cadenceDestinationScore: wasm.lmt_sizeof_cadence_destination_score(),
+    suspensionMachineSummary: wasm.lmt_sizeof_suspension_machine_summary(),
   };
 }
 
@@ -549,6 +600,32 @@ function currentMidiProfile() {
 
 function cadenceLabel(value) {
   return CADENCE_LABELS[value] || "none";
+}
+
+function cadenceDestinationLabel(value) {
+  return counterpointCadenceDestinationNames[value] || DEFAULT_CADENCE_DESTINATION_NAMES[value] || "stable-continuation";
+}
+
+function suspensionStateLabel(value) {
+  return counterpointSuspensionStateNames[value] || DEFAULT_SUSPENSION_STATE_NAMES[value] || "none";
+}
+
+function cadenceDestinationFromCadenceEffect(cadenceEffect) {
+  switch (cadenceEffect) {
+    case 2:
+      return 1;
+    case 3:
+    case 4:
+      return 2;
+    case 5:
+      return 3;
+    case 6:
+      return 4;
+    case 7:
+      return 5;
+    default:
+      return 0;
+  }
 }
 
 function decodeMotionSummaryFromView(view, base = 0) {
@@ -1788,6 +1865,126 @@ function renderParallelRiskRadar(host, currentAnalysis, suggestions, focusedInde
   };
 }
 
+function humanizeCounterpointLabel(label) {
+  return String(label || "")
+    .replaceAll("-", " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function renderCadenceFunnel(host, currentState, destinations, suggestions, context) {
+  if (!host) {
+    return { anchorCount: 0, branchCount: 0, activeBranchCount: 0, warningBranchCount: 0 };
+  }
+  if (!currentState || currentState.voices.length === 0 || !Array.isArray(destinations) || destinations.length === 0) {
+    host.innerHTML = `<div class="output-block">Cadential direction appears once a voiced state has enough temporal memory to imply near-term arrivals.</div>`;
+    return { anchorCount: 0, branchCount: 0, activeBranchCount: 0, warningBranchCount: 0 };
+  }
+
+  const visible = destinations.slice(0, 5);
+  const width = 720;
+  const height = 360;
+  const anchorX = 176;
+  const anchorY = 182;
+  const branchX = 508;
+  const branchYs = visible.length <= 1
+    ? [anchorY]
+    : visible.map((_unused, index) => 70 + ((height - 140) * index) / (visible.length - 1));
+  const maxScore = Math.max(...visible.map((destination) => destination.score), 1);
+  const anchorLabel = currentState.voices.map((voice) => midiName(voice.midi, context.tonic, context.quality)).join(" · ");
+
+  const svg = `
+    <svg class="counterpoint-figure cadence-funnel-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Cadence funnel">
+      <rect x="0" y="0" width="${width}" height="${height}" rx="28" fill="rgba(255,255,255,0.92)" stroke="rgba(24,36,47,0.10)" />
+      <path d="M ${anchorX + 24} ${anchorY - 132} C ${anchorX + 112} ${anchorY - 120}, ${branchX - 62} 72, ${branchX - 12} 72" class="cadence-funnel-axis" />
+      <path d="M ${anchorX + 24} ${anchorY + 132} C ${anchorX + 112} ${anchorY + 120}, ${branchX - 62} ${height - 72}, ${branchX - 12} ${height - 72}" class="cadence-funnel-axis" />
+      <text x="42" y="52" class="counterpoint-label eyebrow">Cadence Funnel</text>
+      <circle cx="${anchorX}" cy="${anchorY}" r="34" class="cadence-funnel-anchor" />
+      <text x="${anchorX}" y="${anchorY - 2}" text-anchor="middle" class="counterpoint-node-title">${escapeHtml(friendlyChordName(rawChordName(currentState.setValue)) || "Current")}</text>
+      <text x="${anchorX}" y="${anchorY + 18}" text-anchor="middle" class="counterpoint-node-notes">${escapeHtml(anchorLabel)}</text>
+      ${visible.map((destination, index) => {
+        const y = branchYs[index];
+        const branchWidth = 90 + Math.max(0, destination.score / Math.max(1, maxScore)) * 96;
+        const x = branchX - branchWidth / 2;
+        const matchingSuggestion = suggestions.find((suggestion) => cadenceDestinationFromCadenceEffect(suggestion.cadenceEffect) === destination.destination)
+          || suggestions[index]
+          || null;
+        const warningClass = destination.warningCount > 0 ? " is-warning" : "";
+        const activeClass = destination.currentMatch ? " is-active" : "";
+        return `
+          <path d="M ${anchorX + 34} ${anchorY} C ${anchorX + 126} ${anchorY}, ${x - 24} ${y}, ${x} ${y}" class="cadence-funnel-link${activeClass}${warningClass}" />
+          <rect x="${x.toFixed(1)}" y="${(y - 24).toFixed(1)}" width="${branchWidth.toFixed(1)}" height="48" rx="24" class="cadence-funnel-branch${activeClass}${warningClass}" />
+          <text x="${branchX}" y="${(y - 5).toFixed(1)}" text-anchor="middle" class="cadence-funnel-label">${escapeHtml(humanizeCounterpointLabel(destination.label))}</text>
+          <text x="${branchX}" y="${(y + 13).toFixed(1)}" text-anchor="middle" class="counterpoint-node-meta">score ${escapeHtml(String(destination.score))} · ${escapeHtml(destination.candidateCount)} paths · ${escapeHtml(destination.tensionBias >= 0 ? `+${destination.tensionBias}` : String(destination.tensionBias))}</text>
+          ${matchingSuggestion ? `<text x="${branchX}" y="${(y + 31).toFixed(1)}" text-anchor="middle" class="counterpoint-node-meta">${escapeHtml(shortReasonLabel(matchingSuggestion.reasonNames[0] || ""))}</text>` : ""}
+        `;
+      }).join("")}
+    </svg>`;
+
+  host.innerHTML = svg;
+  return {
+    anchorCount: 1,
+    branchCount: visible.length,
+    activeBranchCount: visible.filter((destination) => destination.currentMatch).length,
+    warningBranchCount: visible.filter((destination) => destination.warningCount > 0).length,
+  };
+}
+
+function renderSuspensionMachine(host, summary) {
+  if (!host) {
+    return { stateLabel: "", obligationCount: 0, warningCount: 0, trackedVoiceCount: 0 };
+  }
+  if (!summary) {
+    host.innerHTML = `<div class="output-block">Suspension state appears once at least two voiced frames let us tell preparation from held dissonance and resolution.</div>`;
+    return { stateLabel: "", obligationCount: 0, warningCount: 0, trackedVoiceCount: 0 };
+  }
+
+  const states = counterpointSuspensionStateNames.slice();
+  const width = 720;
+  const height = 260;
+  const startX = 90;
+  const endX = width - 90;
+  const step = states.length <= 1 ? 0 : (endX - startX) / (states.length - 1);
+  const activeIndex = clamp(summary.state ?? 0, 0, Math.max(0, states.length - 1));
+  const trackedVoice = summary.trackedVoiceId != null && summary.trackedVoiceId < 255;
+  const trackedLabel = trackedVoice ? `voice ${summary.trackedVoiceId}` : "no tracked voice";
+  const obligationText = summary.obligationCount > 0 && summary.expectedResolutionLabel
+    ? `resolve ${summary.heldNoteLabel || "held tone"} ${summary.resolutionDirection < 0 ? "down" : summary.resolutionDirection > 0 ? "up" : "by step"} to ${summary.expectedResolutionLabel}`
+    : "no active resolution obligation";
+
+  const svg = `
+    <svg class="counterpoint-figure suspension-machine-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Suspension machine">
+      <rect x="0" y="0" width="${width}" height="${height}" rx="28" fill="rgba(255,255,255,0.92)" stroke="rgba(24,36,47,0.10)" />
+      <text x="42" y="52" class="counterpoint-label eyebrow">Suspension Machine</text>
+      <line x1="${startX}" y1="126" x2="${endX}" y2="126" class="suspension-track" />
+      ${states.map((stateLabel, index) => {
+        const x = startX + step * index;
+        const classes = ["suspension-node"];
+        if (index === activeIndex) classes.push("is-active");
+        if (summary.warningCount > 0 && (index === activeIndex || stateLabel === "unresolved")) classes.push("is-warning");
+        return `
+          ${index < states.length - 1 ? `<line x1="${x}" y1="126" x2="${(x + step).toFixed(1)}" y2="126" class="suspension-link" />` : ""}
+          <circle cx="${x.toFixed(1)}" cy="126" r="18" class="${classes.join(" ")}" />
+          <text x="${x.toFixed(1)}" y="96" text-anchor="middle" class="suspension-label">${escapeHtml(humanizeCounterpointLabel(stateLabel))}</text>
+        `;
+      }).join("")}
+      <g transform="translate(74 172)">
+        <text x="0" y="0" class="counterpoint-node-title">${escapeHtml(humanizeCounterpointLabel(summary.stateLabel || "none"))}</text>
+        <text x="0" y="22" class="counterpoint-node-notes">${escapeHtml(trackedLabel)} · retained ${escapeHtml(String(summary.retainedCount || 0))} · candidates ${escapeHtml(String(summary.candidateResolutionCount || 0))}</text>
+        <text x="0" y="44" class="suspension-obligation">${escapeHtml(obligationText)}</text>
+        <text x="0" y="66" class="counterpoint-node-meta">tension ${escapeHtml(String(summary.previousTension || 0))} → ${escapeHtml(String(summary.currentTension || 0))}</text>
+        ${summary.warningCount > 0 ? `<text x="0" y="88" class="suspension-warning">${escapeHtml(`${summary.warningCount} warning${summary.warningCount === 1 ? "" : "s"}`)}</text>` : ""}
+      </g>
+    </svg>`;
+
+  host.innerHTML = svg;
+  return {
+    stateLabel: summary.stateLabel || "",
+    obligationCount: summary.obligationCount || 0,
+    warningCount: summary.warningCount || 0,
+    trackedVoiceCount: trackedVoice ? 1 : 0,
+  };
+}
+
 function sortedAscendingNumbers(values) {
   return Array.from(values).sort((a, b) => a - b);
 }
@@ -2139,6 +2336,57 @@ function decodeRankedNextSteps(arena, historyPtr, profile, context) {
     });
   }
   return suggestions;
+}
+
+function decodeCadenceDestinations(arena, historyPtr, profile) {
+  const cap = 6;
+  const rowBytes = counterpointStructSizes.cadenceDestinationScore || 12;
+  const outPtr = arena.alloc(rowBytes * cap, 4);
+  const total = wasm.lmt_rank_cadence_destinations(historyPtr, profile, outPtr, cap);
+  const count = Math.min(total, cap);
+  const view = new DataView(memory.buffer, outPtr, count * rowBytes);
+  const destinations = [];
+  for (let index = 0; index < count; index += 1) {
+    const base = index * rowBytes;
+    const destination = view.getUint8(base + 4);
+    destinations.push({
+      score: view.getInt32(base + 0, true),
+      destination,
+      label: cadenceDestinationLabel(destination),
+      candidateCount: view.getUint8(base + 5),
+      warningCount: view.getUint8(base + 6),
+      currentMatch: view.getUint8(base + 7) !== 0,
+      tensionBias: view.getInt8(base + 8),
+    });
+  }
+  return destinations;
+}
+
+function decodeSuspensionMachine(arena, historyPtr, profile, context) {
+  const rowBytes = counterpointStructSizes.suspensionMachineSummary || 16;
+  const outPtr = arena.alloc(rowBytes, 4);
+  const written = wasm.lmt_analyze_suspension_machine(historyPtr, profile, outPtr);
+  if (!written) return null;
+  const view = new DataView(memory.buffer, outPtr, rowBytes);
+  const state = view.getUint8(0);
+  const heldMidi = view.getUint8(2);
+  const expectedResolutionMidi = view.getUint8(3);
+  return {
+    state,
+    stateLabel: suspensionStateLabel(state),
+    trackedVoiceId: view.getUint8(1),
+    heldMidi,
+    heldNoteLabel: heldMidi <= 127 ? midiName(heldMidi, context.tonic, context.quality) : "",
+    expectedResolutionMidi,
+    expectedResolutionLabel: expectedResolutionMidi <= 127 ? midiName(expectedResolutionMidi, context.tonic, context.quality) : "",
+    resolutionDirection: view.getInt8(4),
+    obligationCount: view.getUint8(5),
+    warningCount: view.getUint8(6),
+    retainedCount: view.getUint8(7),
+    currentTension: view.getInt16(8, true),
+    previousTension: view.getInt16(10, true),
+    candidateResolutionCount: view.getUint8(12),
+  };
 }
 
 function historyFrameDescription(frame, context) {
@@ -2686,6 +2934,8 @@ function renderMidiScene() {
     const voicedHistory = historyBundle ? decodeVoicedHistoryFromPointer(historyBundle.historyPtr) : { len: 0, states: [] };
     const currentVoicedState = voicedHistory.states[voicedHistory.states.length - 1] || null;
     const currentMotionAnalysis = buildCurrentMotionAnalysis(arena, historyBundle, voicedHistory, profile);
+    const cadenceDestinations = historyBundle ? decodeCadenceDestinations(arena, historyBundle.historyPtr, profile) : [];
+    const suspensionMachine = historyBundle ? decodeSuspensionMachine(arena, historyBundle.historyPtr, profile, context) : null;
     if (suggestions.length === 0) {
       midiState.hoveredSuggestionIndex = null;
     } else if (midiState.hoveredSuggestionIndex == null || midiState.hoveredSuggestionIndex >= suggestions.length) {
@@ -2746,6 +2996,8 @@ function renderMidiScene() {
     const midiBraidFeatures = renderVoiceBraid(midiBraidEl, voicedHistory.states, candidateStates, context);
     const midiWeatherFeatures = renderCounterpointWeatherMap(midiWeatherEl, currentVoicedState, suggestions, hoveredSuggestionIndex, context);
     const midiRiskRadarFeatures = renderParallelRiskRadar(midiRiskRadarEl, currentMotionAnalysis, suggestions, hoveredSuggestionIndex);
+    const midiCadenceFunnelFeatures = renderCadenceFunnel(midiCadenceFunnelEl, currentVoicedState, cadenceDestinations, suggestions, context);
+    const midiSuspensionMachineFeatures = renderSuspensionMachine(midiSuspensionMachineEl, suspensionMachine);
 
     renderPreviewSvgOrBitmap(midiClockEl, {
       svgMarkup: clockSvg,
@@ -2913,6 +3165,8 @@ function renderMidiScene() {
       midiBraidFeatures,
       midiWeatherFeatures,
       midiRiskRadarFeatures,
+      midiCadenceFunnelFeatures,
+      midiSuspensionMachineFeatures,
       keyboardFeatures,
       rendered: true,
     });

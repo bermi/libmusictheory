@@ -150,6 +150,8 @@ async function main() {
       const midiActiveBraidFeatures = midiActive.summary?.midiBraidFeatures ?? midiActive.midiBraidFeatures;
       const midiActiveWeatherFeatures = midiActive.summary?.midiWeatherFeatures ?? midiActive.midiWeatherFeatures;
       const midiActiveRiskRadarFeatures = midiActive.summary?.midiRiskRadarFeatures ?? midiActive.midiRiskRadarFeatures;
+      const midiActiveCadenceFunnelFeatures = midiActive.summary?.midiCadenceFunnelFeatures ?? midiActive.midiCadenceFunnelFeatures;
+      const midiActiveSuspensionMachineFeatures = midiActive.summary?.midiSuspensionMachineFeatures ?? midiActive.midiSuspensionMachineFeatures;
       if (
         midiActive.summary?.currentMiniMode !== "off"
         || midiActive.summary?.currentMiniRendered !== false
@@ -270,6 +272,13 @@ async function main() {
       ) {
         throw new Error(`live midi scene did not render weather/radar diagnostics correctly: ${JSON.stringify({ weather: midiActiveWeatherFeatures, radar: midiActiveRiskRadarFeatures, summary: midiActive.summary })}`);
       }
+      if (
+        (midiActiveCadenceFunnelFeatures?.anchorCount || 0) < 1
+        || (midiActiveCadenceFunnelFeatures?.branchCount || 0) < 2
+        || !midiActiveSuspensionMachineFeatures?.stateLabel
+      ) {
+        throw new Error(`live midi scene did not render cadence/suspension diagnostics correctly: ${JSON.stringify({ cadence: midiActiveCadenceFunnelFeatures, suspension: midiActiveSuspensionMachineFeatures, summary: midiActive.summary })}`);
+      }
       traceStep("hover-candidate");
       const hoverCandidateIndex = Math.min(1, Math.max(0, (midiActive.summary?.suggestionCount || 1) - 1));
       await page.locator(`#midi-suggestions [data-suggestion-index="${hoverCandidateIndex}"]`).hover();
@@ -304,7 +313,9 @@ async function main() {
           && (midi.midiHorizonFeatures?.candidateNodeCount || 0) >= 1
           && (midi.midiBraidFeatures?.candidateColumnCount || 0) >= 1
           && (midi.midiWeatherFeatures?.cellCount || 0) >= 2
-          && (midi.midiRiskRadarFeatures?.populatedAxisCount || 0) >= 4;
+          && (midi.midiRiskRadarFeatures?.populatedAxisCount || 0) >= 4
+          && (midi.midiCadenceFunnelFeatures?.branchCount || 0) >= 2
+          && !!midi.midiSuspensionMachineFeatures?.stateLabel;
       }, { beforeLabel: defaultContext.label, beforeFirstSuggestion: defaultContext.suggestionNames[0] || "" }, { timeout: 30000 }).then((handle) => handle.jsonValue());
       traceStep("profile-change");
       await page.selectOption("#midi-profile", "3");
@@ -316,7 +327,9 @@ async function main() {
           && (midi?.midiHorizonFeatures?.candidateNodeCount || 0) >= 1
           && (midi?.midiBraidFeatures?.candidateColumnCount || 0) >= 1
           && (midi?.midiWeatherFeatures?.cellCount || 0) >= 2
-          && (midi?.midiRiskRadarFeatures?.populatedAxisCount || 0) >= 4;
+          && (midi?.midiRiskRadarFeatures?.populatedAxisCount || 0) >= 4
+          && (midi?.midiCadenceFunnelFeatures?.branchCount || 0) >= 2
+          && !!midi?.midiSuspensionMachineFeatures?.stateLabel;
       }, { timeout: 30000 }).then((handle) => handle.jsonValue());
       traceStep("mini-piano");
       await page.selectOption("#mini-instrument-mode", "piano");
@@ -482,13 +495,19 @@ async function main() {
           && midi?.contextLabel === "C Ionian"
           && midi?.counterpointProfileId === 0
           && midi?.historyFrameCount >= 1
+          && (midi?.midiCadenceFunnelFeatures?.branchCount || 0) >= 2
+          && !!midi?.midiSuspensionMachineFeatures?.stateLabel
           && document.querySelector("#midi-tonic")?.value === "0"
           && document.querySelector("#midi-mode")?.value === "0"
           && document.querySelector("#midi-profile")?.value === "0";
       }, { timeout: 30000 }).then((handle) => handle.jsonValue());
       const snapshotView = await page.waitForFunction(() => {
         const midi = window.__lmtGallerySummary?.scenes?.midi;
-        return midi?.viewingSnapshot === true && midi?.displayCount >= 3 && midi?.snapshotCount >= 1;
+        return midi?.viewingSnapshot === true
+          && midi?.displayCount >= 3
+          && midi?.snapshotCount >= 1
+          && (midi?.midiCadenceFunnelFeatures?.branchCount || 0) >= 2
+          && !!midi?.midiSuspensionMachineFeatures?.stateLabel;
       }, { timeout: 30000 }).then((handle) => handle.jsonValue());
       await page.click("#midi-return-live");
       const backToLive = await page.waitForFunction(() => {

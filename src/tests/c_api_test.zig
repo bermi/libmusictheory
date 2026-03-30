@@ -18,6 +18,8 @@ const LmtVoicedHistory = api.LmtVoicedHistory;
 const LmtMotionSummary = api.LmtMotionSummary;
 const LmtMotionEvaluation = api.LmtMotionEvaluation;
 const LmtNextStepSuggestion = api.LmtNextStepSuggestion;
+const LmtCadenceDestinationScore = api.LmtCadenceDestinationScore;
+const LmtSuspensionMachineSummary = api.LmtSuspensionMachineSummary;
 
 const lmt_pcs_from_list = api.lmt_pcs_from_list;
 const lmt_pcs_to_list = api.lmt_pcs_to_list;
@@ -66,12 +68,20 @@ const lmt_counterpoint_rule_profile_name = api.lmt_counterpoint_rule_profile_nam
 const lmt_sizeof_voiced_state = api.lmt_sizeof_voiced_state;
 const lmt_sizeof_voiced_history = api.lmt_sizeof_voiced_history;
 const lmt_sizeof_next_step_suggestion = api.lmt_sizeof_next_step_suggestion;
+const lmt_cadence_destination_count = api.lmt_cadence_destination_count;
+const lmt_cadence_destination_name = api.lmt_cadence_destination_name;
+const lmt_suspension_state_count = api.lmt_suspension_state_count;
+const lmt_suspension_state_name = api.lmt_suspension_state_name;
+const lmt_sizeof_cadence_destination_score = api.lmt_sizeof_cadence_destination_score;
+const lmt_sizeof_suspension_machine_summary = api.lmt_sizeof_suspension_machine_summary;
 const lmt_voiced_history_reset = api.lmt_voiced_history_reset;
 const lmt_build_voiced_state = api.lmt_build_voiced_state;
 const lmt_voiced_history_push = api.lmt_voiced_history_push;
 const lmt_classify_motion = api.lmt_classify_motion;
 const lmt_evaluate_motion_profile = api.lmt_evaluate_motion_profile;
 const lmt_rank_next_steps = api.lmt_rank_next_steps;
+const lmt_rank_cadence_destinations = api.lmt_rank_cadence_destinations;
+const lmt_analyze_suspension_machine = api.lmt_analyze_suspension_machine;
 const lmt_next_step_reason_count = api.lmt_next_step_reason_count;
 const lmt_next_step_reason_name = api.lmt_next_step_reason_name;
 const lmt_next_step_warning_count = api.lmt_next_step_warning_count;
@@ -105,6 +115,8 @@ test "c abi header layout and constants" {
     try testing.expectEqual(@as(usize, 4), @sizeOf(c.lmt_metric_position));
     try testing.expectEqual(@as(usize, 8), @sizeOf(c.lmt_voice));
     try testing.expectEqual(@as(usize, 8), @sizeOf(c.lmt_voice_motion));
+    try testing.expectEqual(@sizeOf(c.lmt_cadence_destination_score), @sizeOf(LmtCadenceDestinationScore));
+    try testing.expectEqual(@sizeOf(c.lmt_suspension_machine_summary), @sizeOf(LmtSuspensionMachineSummary));
     try testing.expectEqual(@as(usize, 0), @offsetOf(c.lmt_key_context, "tonic"));
     try testing.expectEqual(@as(usize, 1), @offsetOf(c.lmt_key_context, "quality"));
     try testing.expectEqual(@as(usize, 0), @offsetOf(c.lmt_guide_dot, "position"));
@@ -122,6 +134,8 @@ test "c abi header layout and constants" {
     try testing.expectEqual(@as(u32, @sizeOf(LmtVoicedState)), lmt_sizeof_voiced_state());
     try testing.expectEqual(@as(u32, @sizeOf(LmtVoicedHistory)), lmt_sizeof_voiced_history());
     try testing.expectEqual(@as(u32, @sizeOf(LmtNextStepSuggestion)), lmt_sizeof_next_step_suggestion());
+    try testing.expectEqual(@as(u32, @sizeOf(LmtCadenceDestinationScore)), lmt_sizeof_cadence_destination_score());
+    try testing.expectEqual(@as(u32, @sizeOf(LmtSuspensionMachineSummary)), lmt_sizeof_suspension_machine_summary());
 }
 
 test "c abi set operations" {
@@ -355,6 +369,90 @@ test "c abi counterpoint helper metadata" {
         try testing.expectEqualStrings(name, actual);
     }
     try testing.expect(lmt_counterpoint_rule_profile_name(profile_count) == null);
+
+    const cadence_destination_count = lmt_cadence_destination_count();
+    try testing.expectEqual(@as(u32, counterpoint.CADENCE_DESTINATION_NAMES.len), cadence_destination_count);
+    const first_destination = std.mem.sliceTo(@as([*:0]const u8, @ptrCast(lmt_cadence_destination_name(0))), 0);
+    try testing.expectEqualStrings("stable-continuation", first_destination);
+    try testing.expect(lmt_cadence_destination_name(cadence_destination_count) == null);
+
+    const suspension_state_count = lmt_suspension_state_count();
+    try testing.expectEqual(@as(u32, counterpoint.SUSPENSION_STATE_NAMES.len), suspension_state_count);
+    const suspension_name = std.mem.sliceTo(@as([*:0]const u8, @ptrCast(lmt_suspension_state_name(2))), 0);
+    try testing.expectEqualStrings("suspension", suspension_name);
+    try testing.expect(lmt_suspension_state_name(suspension_state_count) == null);
+}
+
+test "c abi cadence destination and suspension helpers" {
+    var history: LmtVoicedHistory = undefined;
+    var out_state: LmtVoicedState = undefined;
+    lmt_voiced_history_reset(@ptrCast(&history));
+
+    const first_notes = [_]u8{ 60, 64, 67 };
+    const second_notes = [_]u8{ 60, 65, 67 };
+    const third_notes = [_]u8{ 59, 65, 67 };
+
+    _ = lmt_voiced_history_push(
+        @ptrCast(&history),
+        @ptrCast(&first_notes),
+        first_notes.len,
+        null,
+        0,
+        0,
+        c.LMT_MODE_IONIAN,
+        0,
+        4,
+        0,
+        c.LMT_CADENCE_STABLE,
+        @ptrCast(&out_state),
+    );
+    _ = lmt_voiced_history_push(
+        @ptrCast(&history),
+        @ptrCast(&second_notes),
+        second_notes.len,
+        null,
+        0,
+        0,
+        c.LMT_MODE_IONIAN,
+        1,
+        4,
+        0,
+        c.LMT_CADENCE_DOMINANT,
+        @ptrCast(&out_state),
+    );
+
+    var destinations: [counterpoint.MAX_CADENCE_DESTINATIONS]LmtCadenceDestinationScore = undefined;
+    const destination_count = lmt_rank_cadence_destinations(@ptrCast(&history), c.LMT_COUNTERPOINT_SPECIES, @ptrCast(&destinations), destinations.len);
+    try testing.expect(destination_count > 0);
+    try testing.expectEqual(@as(u8, c.LMT_CADENCE_DESTINATION_DOMINANT_ARRIVAL), destinations[0].destination);
+    try testing.expectEqual(@as(u8, 1), destinations[0].current_match);
+
+    var held_summary: LmtSuspensionMachineSummary = undefined;
+    try testing.expectEqual(@as(u32, 1), lmt_analyze_suspension_machine(@ptrCast(&history), c.LMT_COUNTERPOINT_SPECIES, @ptrCast(&held_summary)));
+    try testing.expect(held_summary.state != c.LMT_SUSPENSION_NONE);
+    try testing.expect(held_summary.candidate_resolution_count > 0);
+
+    _ = lmt_voiced_history_push(
+        @ptrCast(&history),
+        @ptrCast(&third_notes),
+        third_notes.len,
+        null,
+        0,
+        0,
+        c.LMT_MODE_IONIAN,
+        2,
+        4,
+        0,
+        c.LMT_CADENCE_STABLE,
+        @ptrCast(&out_state),
+    );
+
+    var resolved_summary: LmtSuspensionMachineSummary = undefined;
+    try testing.expectEqual(@as(u32, 1), lmt_analyze_suspension_machine(@ptrCast(&history), c.LMT_COUNTERPOINT_SPECIES, @ptrCast(&resolved_summary)));
+    try testing.expectEqual(@as(u8, c.LMT_SUSPENSION_RESOLUTION), resolved_summary.state);
+    try testing.expectEqual(@as(u8, 0), resolved_summary.tracked_voice_id);
+    try testing.expectEqual(@as(u8, 60), resolved_summary.held_midi);
+    try testing.expectEqual(@as(u8, 59), resolved_summary.expected_resolution_midi);
 }
 
 test "c abi chords and roman numerals" {

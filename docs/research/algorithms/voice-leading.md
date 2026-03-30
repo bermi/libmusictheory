@@ -293,6 +293,47 @@ Current warning codes:
 
 Temporal memory matters here: `temporalMemoryScore` looks back one state so consecutive leaps and leap compensation are scored differently from the same current chord viewed in isolation.
 
+## Cadence Funnel And Suspension Machine
+
+The live counterpoint layer now also exposes two phrase-aware summaries on top of the ranked next-step data.
+
+### Cadence Funnel
+
+`rankCadenceDestinations` collapses the current state plus short-range next-step candidates into a small set of destination classes:
+
+- `stable-continuation`
+- `pre-dominant-arrival`
+- `dominant-arrival`
+- `authentic-arrival`
+- `half-arrival`
+- `deceptive-pull`
+
+This is intentionally not a full formal cadence parser. It is a near-term destination-pressure summary for interactive composing:
+
+- current cadence state contributes an immediate anchor bias
+- ranked next-step candidates reinforce or weaken destination classes
+- warning-heavy candidates reduce destination confidence
+- accumulated tension deltas show whether that destination tends to build or release pressure
+
+### Suspension Machine
+
+`analyzeSuspensionMachine` uses the recent `VoicedHistoryWindow` rather than a single chord snapshot. It reports:
+
+- `none`
+- `preparation`
+- `suspension`
+- `resolution`
+- `unresolved`
+
+The current implementation is deliberately lightweight and deterministic:
+
+- it looks for retained voices between adjacent states
+- it checks whether tension rose into the current slice
+- it scans the next-step ranker for stepwise resolution candidates of the held voice
+- it marks unresolved states when a held dissonant-looking tone has no immediate stepwise release path
+
+This keeps the cadence and suspension views reusable across the C ABI, WASM gallery, and future host applications without embedding gallery-only heuristics.
+
 ## Dependencies
 
 - [Pitch Class Set Operations](pitch-class-set-operations.md)

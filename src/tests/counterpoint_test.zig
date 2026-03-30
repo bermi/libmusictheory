@@ -165,6 +165,42 @@ test "next step ranker uses temporal memory for leap compensation" {
     try testing.expect(with_memory.score > without_memory.score);
 }
 
+test "cadence destination ranking keeps current cadence pressure visible" {
+    var history = counterpoint.VoicedHistoryWindow.init();
+    _ = history.push(&[_]pitch.MidiNote{ 60, 64, 67 }, &[_]pitch.MidiNote{}, 0, .ionian, counterpoint.MetricPosition.normalized(0, 4, 0), .stable);
+    _ = history.push(&[_]pitch.MidiNote{ 55, 59, 62, 65 }, &[_]pitch.MidiNote{}, 0, .ionian, counterpoint.MetricPosition.normalized(2, 4, 0), .dominant);
+
+    var buf: [counterpoint.MAX_CADENCE_DESTINATIONS]counterpoint.CadenceDestinationScore = undefined;
+    const ranked = counterpoint.rankCadenceDestinations(&history, .species, buf[0..]);
+
+    try testing.expect(ranked.len > 0);
+    try testing.expectEqual(counterpoint.CadenceDestination.dominant_arrival, ranked[0].destination);
+    try testing.expect(ranked[0].current_match);
+    try testing.expect(ranked[0].score >= ranked[1].score);
+}
+
+test "suspension machine detects held and resolving voices across history" {
+    var held_history = counterpoint.VoicedHistoryWindow.init();
+    _ = held_history.push(&[_]pitch.MidiNote{ 60, 64, 67 }, &[_]pitch.MidiNote{}, 0, .ionian, counterpoint.MetricPosition.normalized(0, 4, 0), .stable);
+    _ = held_history.push(&[_]pitch.MidiNote{ 60, 65, 67 }, &[_]pitch.MidiNote{}, 0, .ionian, counterpoint.MetricPosition.normalized(1, 4, 0), .dominant);
+
+    const held = counterpoint.analyzeSuspensionMachine(&held_history, .species);
+    try testing.expect(held.state != .none);
+    try testing.expect(held.tracked_voice_id != 255);
+    try testing.expect(held.candidate_resolution_count > 0);
+
+    var resolving_history = counterpoint.VoicedHistoryWindow.init();
+    _ = resolving_history.push(&[_]pitch.MidiNote{ 60, 64, 67 }, &[_]pitch.MidiNote{}, 0, .ionian, counterpoint.MetricPosition.normalized(0, 4, 0), .stable);
+    _ = resolving_history.push(&[_]pitch.MidiNote{ 60, 65, 67 }, &[_]pitch.MidiNote{}, 0, .ionian, counterpoint.MetricPosition.normalized(1, 4, 0), .dominant);
+    _ = resolving_history.push(&[_]pitch.MidiNote{ 59, 65, 67 }, &[_]pitch.MidiNote{}, 0, .ionian, counterpoint.MetricPosition.normalized(2, 4, 0), .stable);
+
+    const resolved = counterpoint.analyzeSuspensionMachine(&resolving_history, .species);
+    try testing.expectEqual(counterpoint.SuspensionState.resolution, resolved.state);
+    try testing.expectEqual(@as(u8, 0), resolved.tracked_voice_id);
+    try testing.expectEqual(@as(u8, 60), resolved.held_midi);
+    try testing.expectEqual(@as(u8, 59), resolved.expected_resolution_midi);
+}
+
 const ManualVoice = struct {
     id: u8,
     midi: pitch.MidiNote,

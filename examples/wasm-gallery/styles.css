@@ -466,7 +466,9 @@ select {
 .horizon-frame,
 .braid-frame,
 .weather-frame,
-.risk-radar-frame {
+.risk-radar-frame,
+.cadence-funnel-frame,
+.suspension-machine-frame {
   min-height: 380px;
 }
 
@@ -734,6 +736,108 @@ select {
 
 .risk-legend-candidate {
   fill: rgba(161, 22, 102, 0.78);
+}
+
+.cadence-funnel-axis,
+.cadence-funnel-link,
+.cadence-funnel-branch {
+  fill: none;
+  stroke-linecap: round;
+}
+
+.cadence-funnel-axis {
+  stroke: rgba(24, 36, 47, 0.1);
+  stroke-width: 18;
+  opacity: 0.45;
+}
+
+.cadence-funnel-link {
+  stroke: rgba(24, 36, 47, 0.16);
+  stroke-width: 2.6;
+}
+
+.cadence-funnel-link.is-active {
+  stroke: rgba(31, 125, 134, 0.68);
+}
+
+.cadence-funnel-link.is-warning {
+  stroke: rgba(176, 54, 32, 0.72);
+  stroke-dasharray: 5 5;
+}
+
+.cadence-funnel-anchor {
+  fill: rgba(31, 125, 134, 0.14);
+  stroke: rgba(31, 125, 134, 0.72);
+  stroke-width: 2.8;
+}
+
+.cadence-funnel-branch {
+  fill: rgba(255, 255, 255, 0.92);
+  stroke: rgba(24, 36, 47, 0.18);
+  stroke-width: 2.4;
+}
+
+.cadence-funnel-branch.is-active {
+  fill: rgba(31, 125, 134, 0.14);
+  stroke: rgba(31, 125, 134, 0.82);
+}
+
+.cadence-funnel-branch.is-warning {
+  stroke: rgba(176, 54, 32, 0.74);
+  stroke-dasharray: 5 5;
+}
+
+.cadence-funnel-label {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.suspension-track,
+.suspension-link {
+  fill: none;
+  stroke-linecap: round;
+}
+
+.suspension-track {
+  stroke: rgba(24, 36, 47, 0.12);
+  stroke-width: 10;
+}
+
+.suspension-link {
+  stroke: rgba(24, 36, 47, 0.18);
+  stroke-width: 3;
+}
+
+.suspension-node {
+  fill: rgba(255, 255, 255, 0.92);
+  stroke: rgba(24, 36, 47, 0.18);
+  stroke-width: 2.4;
+}
+
+.suspension-node.is-active {
+  fill: rgba(31, 125, 134, 0.16);
+  stroke: rgba(31, 125, 134, 0.82);
+}
+
+.suspension-node.is-warning {
+  stroke: rgba(176, 54, 32, 0.76);
+  stroke-dasharray: 4 4;
+}
+
+.suspension-label {
+  font-size: 11px;
+  fill: var(--muted);
+}
+
+.suspension-obligation {
+  font-size: 12px;
+  fill: rgba(31, 125, 134, 0.92);
+}
+
+.suspension-warning {
+  font-size: 11px;
+  fill: rgba(176, 54, 32, 0.9);
+  font-weight: 700;
 }
 
 .optic-k-frame {

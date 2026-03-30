@@ -367,6 +367,40 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
           warningAxisCount: svg.querySelectorAll(".risk-axis.is-warning").length,
         };
       })(),
+      midiCadenceFunnelFeatures: (() => {
+        const svg = document.querySelector("#midi-cadence-funnel svg");
+        if (!svg) {
+          return {
+            anchorCount: 0,
+            branchCount: 0,
+            activeBranchCount: 0,
+            warningBranchCount: 0,
+          };
+        }
+        return {
+          anchorCount: svg.querySelectorAll(".cadence-funnel-anchor").length,
+          branchCount: svg.querySelectorAll(".cadence-funnel-branch").length,
+          activeBranchCount: svg.querySelectorAll(".cadence-funnel-branch.is-active").length,
+          warningBranchCount: svg.querySelectorAll(".cadence-funnel-branch.is-warning").length,
+        };
+      })(),
+      midiSuspensionMachineFeatures: (() => {
+        const svg = document.querySelector("#midi-suspension-machine svg");
+        if (!svg) {
+          return {
+            stateLabel: "",
+            obligationCount: 0,
+            warningCount: 0,
+            trackedVoiceCount: 0,
+          };
+        }
+        return {
+          stateLabel: svg.querySelector(".counterpoint-node-title")?.textContent?.trim() || "",
+          obligationCount: svg.querySelectorAll(".suspension-obligation").length,
+          warningCount: svg.querySelectorAll(".suspension-warning").length,
+          trackedVoiceCount: /\bvoice\s+\d+\b/i.test(svg.textContent || "") ? 1 : 0,
+        };
+      })(),
       previewKinds: (() => {
         const hostIds = ["midi-clock", "midi-optic-k", "midi-evenness", "midi-keyboard", "midi-staff", "midi-current-fret"];
         return Object.fromEntries(hostIds.map((id) => {
@@ -402,6 +436,8 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
     const midiBraidFeatures = snapshot.summary?.midiBraidFeatures ?? snapshot.midiBraidFeatures;
     const midiWeatherFeatures = snapshot.summary?.midiWeatherFeatures ?? snapshot.midiWeatherFeatures;
     const midiRiskRadarFeatures = snapshot.summary?.midiRiskRadarFeatures ?? snapshot.midiRiskRadarFeatures;
+    const midiCadenceFunnelFeatures = snapshot.summary?.midiCadenceFunnelFeatures ?? snapshot.midiCadenceFunnelFeatures;
+    const midiSuspensionMachineFeatures = snapshot.summary?.midiSuspensionMachineFeatures ?? snapshot.midiSuspensionMachineFeatures;
     const keyboardFeatures = snapshot.summary?.keyboardFeatures ?? snapshot.keyboardFeaturesFallback;
     if (
       snapshot.summary?.rendered === true
@@ -451,6 +487,9 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
       && midiRiskRadarFeatures.populatedAxisCount >= 4
       && midiRiskRadarFeatures.currentPolygonCount >= 1
       && midiRiskRadarFeatures.candidatePolygonCount >= 1
+      && midiCadenceFunnelFeatures.anchorCount >= 1
+      && midiCadenceFunnelFeatures.branchCount >= 2
+      && midiSuspensionMachineFeatures.stateLabel.length > 0
     ) {
       return snapshot;
     }

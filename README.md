@@ -64,12 +64,20 @@ This repository now has an explicit stable public surface.
   - `lmt_sizeof_voiced_state`
   - `lmt_sizeof_voiced_history`
   - `lmt_sizeof_next_step_suggestion`
+  - `lmt_cadence_destination_count`
+  - `lmt_cadence_destination_name`
+  - `lmt_suspension_state_count`
+  - `lmt_suspension_state_name`
+  - `lmt_sizeof_cadence_destination_score`
+  - `lmt_sizeof_suspension_machine_summary`
   - `lmt_voiced_history_reset`
   - `lmt_build_voiced_state`
   - `lmt_voiced_history_push`
   - `lmt_classify_motion`
   - `lmt_evaluate_motion_profile`
   - `lmt_rank_next_steps`
+  - `lmt_rank_cadence_destinations`
+  - `lmt_analyze_suspension_machine`
   - `lmt_next_step_reason_count`
   - `lmt_next_step_reason_name`
   - `lmt_next_step_warning_count`
@@ -210,7 +218,7 @@ Open [http://localhost:8002/index.html](http://localhost:8002/index.html).
 
 The standalone gallery is intentionally curated around concrete musical-discovery workflows:
 
-- `Live MIDI Compass`: listen to all browser MIDI inputs, honor sustain, choose the tonic/mode lens explicitly, save snapshots with the middle pedal, and see compatible next-note suggestions over colored pitch-class diagrams, live `OPTIC/K` grouping, live evenness field focus, keyboard highlights, and treble/bass/grand staff rendering in real time
+- `Live MIDI Compass`: listen to all browser MIDI inputs, honor sustain, choose the tonic/mode lens explicitly, save snapshots with the middle pedal, and see compatible next-note suggestions over colored pitch-class diagrams, live `OPTIC/K` grouping, live evenness field focus, keyboard highlights, treble/bass/grand staff rendering, voice-leading horizon/braid, counterpoint weather/risk, cadence funnel, and suspension-state guidance in real time
 - `Set Observatory`: inspect a pitch-class set as a constellation with prime-form, complement, inversion, `OPTIC/K` complement-pair context, and a focused evenness field
 - `Key Bloom`: watch one tonic generate a full diatonic orbit and its triadic degree field
 - `Chord Atelier`: read one sonority simultaneously as set, chord label, roman numeral, clock, and staff image

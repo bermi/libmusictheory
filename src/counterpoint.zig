@@ -38,6 +38,23 @@ pub const CadenceState = enum(u8) {
     deceptive_pull,
 };
 
+pub const CadenceDestination = enum(u8) {
+    stable_continuation,
+    pre_dominant_arrival,
+    dominant_arrival,
+    authentic_arrival,
+    half_arrival,
+    deceptive_pull,
+};
+
+pub const SuspensionState = enum(u8) {
+    none,
+    preparation,
+    suspension,
+    resolution,
+    unresolved,
+};
+
 pub const VoiceMotionClass = enum(u8) {
     stationary,
     step,
@@ -121,6 +138,64 @@ pub const MotionEvaluation = struct {
     leap_penalty: i16,
     disallowed_count: u8,
     disallowed: bool,
+};
+
+pub const MAX_CADENCE_DESTINATIONS: usize = 6;
+
+pub const CADENCE_DESTINATION_NAMES = [_][]const u8{
+    "stable-continuation",
+    "pre-dominant-arrival",
+    "dominant-arrival",
+    "authentic-arrival",
+    "half-arrival",
+    "deceptive-pull",
+};
+
+pub const CadenceDestinationScore = struct {
+    destination: CadenceDestination,
+    score: i32,
+    candidate_count: u8,
+    warning_count: u8,
+    current_match: bool,
+    tension_bias: i8,
+};
+
+pub const SUSPENSION_STATE_NAMES = [_][]const u8{
+    "none",
+    "preparation",
+    "suspension",
+    "resolution",
+    "unresolved",
+};
+
+pub const SuspensionMachineSummary = struct {
+    state: SuspensionState,
+    tracked_voice_id: u8,
+    held_midi: u8,
+    expected_resolution_midi: u8,
+    resolution_direction: i8,
+    obligation_count: u8,
+    warning_count: u8,
+    retained_count: u8,
+    current_tension: i16,
+    previous_tension: i16,
+    candidate_resolution_count: u8,
+
+    pub fn init() SuspensionMachineSummary {
+        return .{
+            .state = .none,
+            .tracked_voice_id = 255,
+            .held_midi = 255,
+            .expected_resolution_midi = 255,
+            .resolution_direction = 0,
+            .obligation_count = 0,
+            .warning_count = 0,
+            .retained_count = 0,
+            .current_tension = 0,
+            .previous_tension = 0,
+            .candidate_resolution_count = 0,
+        };
+    }
 };
 
 pub const MAX_NEXT_STEP_SUGGESTIONS: usize = 8;
@@ -493,6 +568,129 @@ pub fn rankNextSteps(history: *const VoicedHistoryWindow, profile: CounterpointR
     const write_len = @min(generated_count, out.len);
     @memcpy(out[0..write_len], generated[0..write_len]);
     return out[0..write_len];
+}
+
+pub fn rankCadenceDestinations(
+    history: *const VoicedHistoryWindow,
+    profile: CounterpointRuleProfile,
+    out: []CadenceDestinationScore,
+) []CadenceDestinationScore {
+    if (out.len == 0) return out[0..0];
+    const current = history.current() orelse return out[0..0];
+
+    var tallies = [_]CadenceDestinationScore{
+        .{ .destination = .stable_continuation, .score = 0, .candidate_count = 0, .warning_count = 0, .current_match = false, .tension_bias = 0 },
+        .{ .destination = .pre_dominant_arrival, .score = 0, .candidate_count = 0, .warning_count = 0, .current_match = false, .tension_bias = 0 },
+        .{ .destination = .dominant_arrival, .score = 0, .candidate_count = 0, .warning_count = 0, .current_match = false, .tension_bias = 0 },
+        .{ .destination = .authentic_arrival, .score = 0, .candidate_count = 0, .warning_count = 0, .current_match = false, .tension_bias = 0 },
+        .{ .destination = .half_arrival, .score = 0, .candidate_count = 0, .warning_count = 0, .current_match = false, .tension_bias = 0 },
+        .{ .destination = .deceptive_pull, .score = 0, .candidate_count = 0, .warning_count = 0, .current_match = false, .tension_bias = 0 },
+    };
+
+    const current_destination = cadenceDestinationForCurrentState(current.cadence_state);
+    if (current_destination) |destination| {
+        const index = @intFromEnum(destination);
+        tallies[index].current_match = true;
+        tallies[index].score += 120;
+    } else {
+        tallies[@intFromEnum(CadenceDestination.stable_continuation)].current_match = true;
+        tallies[@intFromEnum(CadenceDestination.stable_continuation)].score += 60;
+    }
+
+    var suggestion_buf: [MAX_NEXT_STEP_SUGGESTIONS]NextStepSuggestion = undefined;
+    const ranked = rankNextSteps(history, profile, suggestion_buf[0..]);
+
+    for (ranked, 0..) |suggestion, rank_index| {
+        const destination = cadenceDestinationForSuggestion(suggestion);
+        const index = @intFromEnum(destination);
+        const placement_bonus = @as(i32, @intCast(@max(0, @as(isize, @intCast(6)) - @as(isize, @intCast(rank_index))))) * 14;
+        tallies[index].candidate_count +%= 1;
+        tallies[index].warning_count +%= if (suggestion.warning_mask != 0) 1 else 0;
+        tallies[index].score += @divTrunc(suggestion.score, 3) + placement_bonus;
+        tallies[index].tension_bias = accumulateTensionBias(tallies[index].tension_bias, suggestion.tension_delta);
+        if (suggestion.evaluation.cadence_score > 0) {
+            tallies[index].score += @as(i32, suggestion.evaluation.cadence_score) * 2;
+        }
+        if (suggestion.warning_mask != 0) {
+            tallies[index].score -= 12;
+        }
+    }
+
+    std.sort.insertion(CadenceDestinationScore, tallies[0..], {}, cadenceDestinationLessThan);
+
+    const mutating_count = @min(tallies.len, out.len);
+    @memcpy(out[0..mutating_count], tallies[0..mutating_count]);
+    return out[0..mutating_count];
+}
+
+pub fn analyzeSuspensionMachine(
+    history: *const VoicedHistoryWindow,
+    profile: CounterpointRuleProfile,
+) SuspensionMachineSummary {
+    const current = history.current() orelse return SuspensionMachineSummary.init();
+    const previous = history.previous() orelse return SuspensionMachineSummary.init();
+
+    const context_set = keyboard.modeSet(current.tonic, current.mode_type);
+    const previous_tension = tensionScore(previous.set_value, context_set);
+    const current_tension = tensionScore(current.set_value, context_set);
+    const current_motion = classifyMotion(previous, current);
+
+    var summary = SuspensionMachineSummary.init();
+    summary.retained_count = current_motion.common_tone_count;
+    summary.current_tension = current_tension;
+    summary.previous_tension = previous_tension;
+
+    if (history.len >= 3) {
+        const older = &history.states[history.len - 3];
+        const older_motion = classifyMotion(older, previous);
+        if (findResolutionVoice(older_motion, current_motion)) |resolution| {
+            summary.state = .resolution;
+            summary.tracked_voice_id = resolution.voice_id;
+            summary.held_midi = resolution.from_midi;
+            summary.expected_resolution_midi = resolution.to_midi;
+            summary.resolution_direction = if (resolution.delta < 0) -1 else if (resolution.delta > 0) 1 else 0;
+            return summary;
+        }
+    }
+
+    if (findHeldSuspensionVoice(current_motion, previous, current)) |held| {
+        summary.tracked_voice_id = held.voice_id;
+        summary.held_midi = held.to_midi;
+
+        var suggestion_buf: [MAX_NEXT_STEP_SUGGESTIONS]NextStepSuggestion = undefined;
+        const ranked = rankNextSteps(history, profile, suggestion_buf[0..]);
+        var resolution_candidates: u8 = 0;
+        for (ranked) |suggestion| {
+            if (findVoiceMotionById(suggestion.motion, held.voice_id)) |voice_motion| {
+                if (voice_motion.motion_class == .step and voice_motion.delta != 0) {
+                    resolution_candidates +%= 1;
+                    if (summary.expected_resolution_midi == 255) {
+                        summary.expected_resolution_midi = voice_motion.to_midi;
+                        summary.resolution_direction = if (voice_motion.delta < 0) -1 else 1;
+                    }
+                }
+            }
+        }
+
+        summary.candidate_resolution_count = resolution_candidates;
+        summary.obligation_count = if (resolution_candidates > 0) 1 else 0;
+
+        const suspension_like = current_tension > previous_tension or switch (current.cadence_state) {
+            .pre_dominant, .dominant, .cadential_six_four => true,
+            else => false,
+        };
+
+        if (resolution_candidates == 0) {
+            summary.state = .unresolved;
+            summary.warning_count = 1;
+        } else if (suspension_like) {
+            summary.state = .suspension;
+        } else {
+            summary.state = .preparation;
+        }
+    }
+
+    return summary;
 }
 
 fn emptyVoice() Voice {
@@ -1087,6 +1285,79 @@ fn tensionScore(set_value: pcs.PitchClassSet, context_set: pcs.PitchClassSet) i1
     const cluster_penalty: i16 = if (cluster.hasCluster(set_value)) 6 else 0;
     const evenness_penalty: i16 = @as(i16, @intFromFloat(@round(evenness.evennessDistance(set_value) * 10.0)));
     return @as(i16, outside) * 3 + cluster_penalty + evenness_penalty;
+}
+
+fn cadenceDestinationForCurrentState(state: CadenceState) ?CadenceDestination {
+    return switch (state) {
+        .none => null,
+        .stable => .stable_continuation,
+        .pre_dominant => .pre_dominant_arrival,
+        .dominant, .cadential_six_four => .dominant_arrival,
+        .authentic_arrival => .authentic_arrival,
+        .half_arrival => .half_arrival,
+        .deceptive_pull => .deceptive_pull,
+    };
+}
+
+fn cadenceDestinationForSuggestion(suggestion: NextStepSuggestion) CadenceDestination {
+    if (cadenceDestinationForCurrentState(suggestion.cadence_effect)) |destination| return destination;
+    if (suggestion.tension_delta > 0) {
+        return .dominant_arrival;
+    }
+    if ((suggestion.reason_mask & NEXT_STEP_REASON_CADENCE_PULL) != 0 and suggestion.tension_delta < 0) {
+        return .authentic_arrival;
+    }
+    return .stable_continuation;
+}
+
+fn accumulateTensionBias(current: i8, delta: i8) i8 {
+    const wide = @as(i16, current) + @as(i16, delta);
+    return std.math.cast(i8, wide) orelse if (wide < 0) std.math.minInt(i8) else std.math.maxInt(i8);
+}
+
+fn cadenceDestinationLessThan(_: void, a: CadenceDestinationScore, b: CadenceDestinationScore) bool {
+    if (a.current_match != b.current_match) return a.current_match;
+    if (a.score != b.score) return a.score > b.score;
+    if (a.warning_count != b.warning_count) return a.warning_count < b.warning_count;
+    if (a.candidate_count != b.candidate_count) return a.candidate_count > b.candidate_count;
+    return @intFromEnum(a.destination) < @intFromEnum(b.destination);
+}
+
+fn findHeldSuspensionVoice(
+    summary: MotionSummary,
+    previous: *const VoicedState,
+    current: *const VoicedState,
+) ?VoiceMotion {
+    if (previous.set_value == current.set_value) return null;
+
+    var best: ?VoiceMotion = null;
+    for (summary.voice_motions[0..summary.voice_motion_count]) |motion| {
+        if (motion.motion_class != .stationary) continue;
+        if (!motion.retained) continue;
+
+        if (best == null) {
+            best = motion;
+            continue;
+        }
+
+        const incumbent = best.?;
+        if (motion.to_midi > incumbent.to_midi) {
+            best = motion;
+        } else if (motion.to_midi == incumbent.to_midi and motion.voice_id < incumbent.voice_id) {
+            best = motion;
+        }
+    }
+    return best;
+}
+
+fn findResolutionVoice(previous_motion: MotionSummary, current_motion: MotionSummary) ?VoiceMotion {
+    for (current_motion.voice_motions[0..current_motion.voice_motion_count]) |motion| {
+        const prior_motion = findVoiceMotionById(previous_motion, motion.voice_id) orelse continue;
+        if (prior_motion.motion_class != .stationary) continue;
+        if (motion.motion_class != .step or motion.delta == 0) continue;
+        return motion;
+    }
+    return null;
 }
 
 fn nextStepLessThan(_: void, a: NextStepSuggestion, b: NextStepSuggestion) bool {

@@ -17,6 +17,7 @@ extern "C" {
  * - Experimental APIs: lmt_raster_is_enabled, lmt_raster_demo_rgba,
  *   lmt_counterpoint_max_voices, lmt_build_voiced_state,
  *   lmt_classify_motion, lmt_rank_next_steps,
+ *   lmt_rank_cadence_destinations, lmt_analyze_suspension_machine,
  *   lmt_mode_spelling_quality, lmt_rank_context_suggestions,
  *   lmt_preferred_voicing_n, and the method-specific RGBA bitmap renderers
  *   below.
@@ -124,6 +125,25 @@ enum {
     LMT_CADENCE_AUTHENTIC_ARRIVAL = 5,
     LMT_CADENCE_HALF_ARRIVAL = 6,
     LMT_CADENCE_DECEPTIVE_PULL = 7,
+};
+
+typedef uint8_t lmt_cadence_destination;
+enum {
+    LMT_CADENCE_DESTINATION_STABLE_CONTINUATION = 0,
+    LMT_CADENCE_DESTINATION_PRE_DOMINANT_ARRIVAL = 1,
+    LMT_CADENCE_DESTINATION_DOMINANT_ARRIVAL = 2,
+    LMT_CADENCE_DESTINATION_AUTHENTIC_ARRIVAL = 3,
+    LMT_CADENCE_DESTINATION_HALF_ARRIVAL = 4,
+    LMT_CADENCE_DESTINATION_DECEPTIVE_PULL = 5,
+};
+
+typedef uint8_t lmt_suspension_state;
+enum {
+    LMT_SUSPENSION_NONE = 0,
+    LMT_SUSPENSION_PREPARATION = 1,
+    LMT_SUSPENSION_SUSPENSION = 2,
+    LMT_SUSPENSION_RESOLUTION = 3,
+    LMT_SUSPENSION_UNRESOLVED = 4,
 };
 
 typedef struct {
@@ -245,6 +265,34 @@ typedef struct {
     lmt_motion_evaluation evaluation;
 } lmt_next_step_suggestion;
 
+typedef struct {
+    int32_t score;
+    uint8_t destination;
+    uint8_t candidate_count;
+    uint8_t warning_count;
+    uint8_t current_match;
+    int8_t tension_bias;
+    uint8_t reserved0;
+    uint8_t reserved1;
+} lmt_cadence_destination_score;
+
+typedef struct {
+    uint8_t state;
+    uint8_t tracked_voice_id;
+    uint8_t held_midi;
+    uint8_t expected_resolution_midi;
+    int8_t resolution_direction;
+    uint8_t obligation_count;
+    uint8_t warning_count;
+    uint8_t retained_count;
+    int16_t current_tension;
+    int16_t previous_tension;
+    uint8_t candidate_resolution_count;
+    uint8_t reserved0;
+    uint8_t reserved1;
+    uint8_t reserved2;
+} lmt_suspension_machine_summary;
+
 lmt_pitch_class_set lmt_pcs_from_list(const lmt_pitch_class *pcs, uint8_t count);
 uint8_t lmt_pcs_to_list(lmt_pitch_class_set set, lmt_pitch_class *out);
 uint8_t lmt_pcs_cardinality(lmt_pitch_class_set set);
@@ -299,12 +347,20 @@ const char *lmt_counterpoint_rule_profile_name(uint32_t index);
 uint32_t lmt_sizeof_voiced_state(void);
 uint32_t lmt_sizeof_voiced_history(void);
 uint32_t lmt_sizeof_next_step_suggestion(void);
+uint32_t lmt_cadence_destination_count(void);
+const char *lmt_cadence_destination_name(uint32_t index);
+uint32_t lmt_suspension_state_count(void);
+const char *lmt_suspension_state_name(uint32_t index);
+uint32_t lmt_sizeof_cadence_destination_score(void);
+uint32_t lmt_sizeof_suspension_machine_summary(void);
 void lmt_voiced_history_reset(lmt_voiced_history *history);
 uint32_t lmt_build_voiced_state(const lmt_midi_note *notes, uint32_t note_count, const lmt_midi_note *sustained_notes, uint32_t sustained_count, lmt_pitch_class tonic, lmt_mode_type mode_type, uint8_t beat_in_bar, uint8_t beats_per_bar, uint8_t subdivision, lmt_cadence_state cadence_hint, const lmt_voiced_state *previous, lmt_voiced_state *out);
 uint32_t lmt_voiced_history_push(lmt_voiced_history *history, const lmt_midi_note *notes, uint32_t note_count, const lmt_midi_note *sustained_notes, uint32_t sustained_count, lmt_pitch_class tonic, lmt_mode_type mode_type, uint8_t beat_in_bar, uint8_t beats_per_bar, uint8_t subdivision, lmt_cadence_state cadence_hint, lmt_voiced_state *out);
 uint32_t lmt_classify_motion(const lmt_voiced_state *previous, const lmt_voiced_state *current, lmt_motion_summary *out);
 uint32_t lmt_evaluate_motion_profile(lmt_counterpoint_rule_profile profile, const lmt_motion_summary *summary, lmt_motion_evaluation *out);
 uint32_t lmt_rank_next_steps(const lmt_voiced_history *history, lmt_counterpoint_rule_profile profile, lmt_next_step_suggestion *out, uint32_t out_cap);
+uint32_t lmt_rank_cadence_destinations(const lmt_voiced_history *history, lmt_counterpoint_rule_profile profile, lmt_cadence_destination_score *out, uint32_t out_cap);
+uint32_t lmt_analyze_suspension_machine(const lmt_voiced_history *history, lmt_counterpoint_rule_profile profile, lmt_suspension_machine_summary *out);
 uint32_t lmt_next_step_reason_count(void);
 const char *lmt_next_step_reason_name(uint32_t index);
 uint32_t lmt_next_step_warning_count(void);
