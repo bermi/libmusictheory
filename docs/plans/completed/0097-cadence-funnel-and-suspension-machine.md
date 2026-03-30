@@ -3,7 +3,7 @@
 > Dependencies: 0096
 > Follow-up: none
 
-Status: In progress
+Status: Completed
 
 ## Summary
 
@@ -85,3 +85,22 @@ Before implementation:
 - both are driven by library-owned counterpoint state and temporal memory, not JS-only heuristics
 - gallery validation proves they respond coherently to live MIDI, profile changes, and snapshot recall
 - `./verify.sh` passes
+
+## Verification Commands
+
+- `./verify.sh`
+- `./zigw build wasm-gallery`
+- `node /Users/bermi/code/libmusictheory/scripts/validate_wasm_gallery_playwright.mjs`
+
+## Implementation History (Point-in-Time)
+
+- `c1df15b` — 2026-03-30
+- Shipped behavior:
+  - added cadence-destination scoring and suspension-state analysis to the library-owned counterpoint engine in `/Users/bermi/code/libmusictheory/src/counterpoint.zig`, exported through `/Users/bermi/code/libmusictheory/src/c_api.zig`, and declared as experimental ABI in `/Users/bermi/code/libmusictheory/include/libmusictheory.h`
+  - rendered `Cadence Funnel` and `Suspension Machine` cards in the live MIDI gallery scene in `/Users/bermi/code/libmusictheory/examples/wasm-gallery/index.html`, `/Users/bermi/code/libmusictheory/examples/wasm-gallery/styles.css`, and `/Users/bermi/code/libmusictheory/examples/wasm-gallery/gallery.js`
+  - tightened the repo and gallery guardrails so cadence and suspension structure, snapshot/profile coherence, and runtime export coverage are enforced in `/Users/bermi/code/libmusictheory/verify.sh`, `/Users/bermi/code/libmusictheory/scripts/check_wasm_exports.mjs`, `/Users/bermi/code/libmusictheory/scripts/lib/wasm_gallery_playwright_common.mjs`, and `/Users/bermi/code/libmusictheory/scripts/validate_wasm_gallery_playwright.mjs`
+  - added focused Zig and C ABI regression coverage for cadence ranking and suspension-state detection in `/Users/bermi/code/libmusictheory/src/tests/counterpoint_test.zig` and `/Users/bermi/code/libmusictheory/src/tests/c_api_test.zig`
+- Completion gates used:
+  - `./verify.sh`
+  - `./zigw build wasm-gallery`
+  - `node /Users/bermi/code/libmusictheory/scripts/validate_wasm_gallery_playwright.mjs`
