@@ -3,7 +3,7 @@
 > Dependencies: 0099
 > Follow-up: none
 
-Status: In Progress
+Status: Completed
 
 ## Summary
 
@@ -66,3 +66,12 @@ When the global mini instrument mode is enabled:
 
 - `node /Users/bermi/code/libmusictheory/scripts/validate_wasm_gallery_playwright.mjs`
 - `./verify.sh`
+
+## Implementation History (Point-in-Time)
+
+- `af05bb47224ffa4e9bf4a654beae6ad3e8c558a3` — 2026-03-31
+  - shipped a live `Continuation Ladder` card in the MIDI counterpoint scene that ranks the best second-step continuations from the currently focused or pinned next move
+  - reused the existing library-owned voiced-history builder and `lmt_rank_next_steps` flow recursively instead of adding a new JavaScript-only counterpoint policy
+  - rendered compact clock previews and mini piano/fret previews for the continuation cards, honoring the global mini instrument mode
+  - tightened Playwright and `./verify.sh` guardrails so hover, pin, clear-pin, context changes, profile changes, and mini instrument changes all keep the continuation view in sync
+  - verification gates: `node /Users/bermi/code/libmusictheory/scripts/validate_wasm_gallery_playwright.mjs`, `./verify.sh`
