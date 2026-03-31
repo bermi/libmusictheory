@@ -3,7 +3,7 @@
 > Dependencies: 0097
 > Follow-up: none
 
-Status: In progress
+Status: Completed
 
 ## Summary
 
@@ -78,3 +78,18 @@ Before implementation:
 - both are driven by library-owned counterpoint/voice-leading data, not JS-only geometry hacks
 - gallery validation proves they respond coherently to live MIDI, hover, profile changes, and snapshot recall
 - `./verify.sh` passes
+
+## Verification Commands
+
+- `./verify.sh`
+- `./zigw build test`
+- `./zigw build wasm-gallery`
+- `node /Users/bermi/code/libmusictheory/scripts/validate_wasm_gallery_playwright.mjs`
+
+## Implementation History (Point-in-Time)
+
+- `f6db5c6d12607e614bc859878a44861ad6dc023a` — `2026-03-31T03:49:55+02:00`
+  - shipped the experimental orbifold triad metadata ABI and gallery runtime needed for live orbifold anchors and common-tone constellation rendering
+  - added live MIDI `Orbifold Ribbon` and `Common-Tone Constellation` cards, synchronized with ranked next-step hover, snapshot recall, and preview-mode toggles
+  - hardened `./verify.sh` and gallery Playwright so the new visuals must expose anchors, edges, retained stars, and moving vectors under active live-state flows
+  - verification gates: `./verify.sh`, `./zigw build test`, `./zigw build wasm-gallery`, `node /Users/bermi/code/libmusictheory/scripts/validate_wasm_gallery_playwright.mjs`
