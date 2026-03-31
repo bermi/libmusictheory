@@ -33,7 +33,14 @@ const criticalPreviewHosts = new Set([
 async function captureHostScreenshots(page, hostIds) {
   const out = {};
   for (const hostId of hostIds) {
-    const preview = page.locator(`#${hostId} :is(svg,img)`).first();
+    if (trace) console.log(`trace:capture-host:${hostId}`);
+    const selector = `#${hostId} :is(svg,img)`;
+    const count = await page.locator(selector).count();
+    if (count === 0) {
+      out[hostId] = null;
+      continue;
+    }
+    const preview = page.locator(selector).first();
     out[hostId] = (await preview.screenshot({ type: "png" })).toString("base64");
   }
   return out;
@@ -42,20 +49,8 @@ async function captureHostScreenshots(page, hostIds) {
 async function waitForPreviewAssets(page) {
   await page.evaluate(async () => {
     await (document.fonts?.ready ?? Promise.resolve());
-    const images = Array.from(document.querySelectorAll(
-      "#midi-clock img, #midi-optic-k img, #midi-evenness img, #midi-keyboard img, #midi-staff img, #set-clock img, #set-optic-k img, #set-evenness img, #key-clock img, #key-staff img, #key-keyboard img, #chord-clock img, #chord-staff img, #progression-clock img, #compare-left-clock img, #compare-overlap-clock img, #compare-right-clock img, #fret-svg img",
-    ));
-    await Promise.all(images.map(async (image) => {
-      try {
-        if (typeof image.decode === "function") {
-          await image.decode();
-        }
-      } catch (_error) {
-        // Ignore decode races for rapidly replaced preview images.
-      }
-    }));
   });
-  await delay(120);
+  await delay(220);
 }
 
 function traceStep(step) {
@@ -111,7 +106,6 @@ async function main() {
         "midi-evenness",
         "midi-keyboard",
         "midi-staff",
-        "midi-current-fret",
         "set-clock",
         "set-optic-k",
         "set-evenness",
@@ -154,17 +148,22 @@ async function main() {
       const midiActiveSuspensionMachineFeatures = midiActive.summary?.midiSuspensionMachineFeatures ?? midiActive.midiSuspensionMachineFeatures;
       const midiActiveOrbifoldRibbonFeatures = midiActive.summary?.midiOrbifoldRibbonFeatures ?? midiActive.midiOrbifoldRibbonFeatures;
       const midiActiveCommonToneConstellationFeatures = midiActive.summary?.midiCommonToneConstellationFeatures ?? midiActive.midiCommonToneConstellationFeatures;
+      const midiActiveInspectorFeatures = midiActive.summary?.midiInspectorFeatures ?? midiActive.midiInspectorFeatures;
       if (
         midiActive.summary?.currentMiniMode !== "off"
         || midiActive.summary?.currentMiniRendered !== false
-        || (midiActive.summary?.suggestionMiniCount || 0) < 1
+        || midiActive.summary?.focusedMiniRendered !== false
+        || (midiActive.summary?.suggestionMiniCount || 0) !== 0
         || (midiActive.summary?.historyFrameCount || 0) < 1
+        || (midiActive.summary?.focusedCandidateIndex ?? -1) < 0
+        || (midiActive.summary?.pinnedCandidateIndex ?? -1) !== -1
+        || (midiActiveInspectorFeatures?.narrativeReady !== true)
       ) {
         throw new Error(`live midi scene did not expose counterpoint miniview metadata correctly: ${JSON.stringify(midiActive.summary)}`);
       }
       traceStep("preview-compare");
       const previewModeDrift = (() => {
-        const hosts = ["midi-clock", "midi-optic-k", "midi-evenness", "midi-keyboard", "midi-staff", "midi-current-fret", "set-clock", "set-optic-k", "set-evenness"];
+        const hosts = ["midi-clock", "midi-optic-k", "midi-evenness", "midi-keyboard", "midi-staff", "set-clock", "set-optic-k", "set-evenness"];
         const byHost = (snapshot, host) => snapshot.previewMetrics.find((one) => one.host === host) || null;
         return hosts.map((host) => {
           const svgSnapshot = host.startsWith("midi-") ? midiActiveSvg : svgReady;
@@ -297,18 +296,42 @@ async function main() {
       const hoveredCandidate = await page.waitForFunction((targetIndex) => {
         const midi = window.__lmtGallerySummary?.scenes?.midi;
         return midi?.hoveredCandidateIndex === targetIndex
+          && midi?.focusedCandidateIndex === targetIndex
+          && midi?.pinnedCandidateIndex === -1
           && (midi?.midiWeatherFeatures?.hoveredCandidateIndex ?? -1) === targetIndex
+          && (midi?.midiWeatherFeatures?.focusedCandidateIndex ?? -1) === targetIndex
+          && (midi?.midiRiskRadarFeatures?.focusedCandidateIndex ?? -1) === targetIndex
           && (midi?.midiOrbifoldRibbonFeatures?.highlightedCandidateCount || 0) >= 1
           && (midi?.midiCommonToneConstellationFeatures?.focusedCandidateIndex ?? -1) === targetIndex
+          && (midi?.midiInspectorFeatures?.candidateNoteCount || 0) >= 1
           && (midi?.midiWeatherFeatures?.cellCount || 0) >= 2
           && (midi?.midiRiskRadarFeatures?.candidatePolygonCount || 0) >= 1
           && (midi?.midiRiskRadarFeatures?.populatedAxisCount || 0) >= 4;
       }, hoverCandidateIndex, { timeout: 30000 }).then((handle) => handle.jsonValue());
+      traceStep("pin-candidate");
+      await page.click(`#midi-suggestions [data-suggestion-index="${hoverCandidateIndex}"]`);
+      const pinnedCandidate = await page.waitForFunction((targetIndex) => {
+        const midi = window.__lmtGallerySummary?.scenes?.midi;
+        return midi?.pinnedCandidateIndex === targetIndex
+          && midi?.focusedCandidateIndex === targetIndex
+          && midi?.hoveredCandidateIndex === targetIndex
+          && midi?.midiInspectorFeatures?.pinned === true
+          && (midi?.midiInspectorFeatures?.reasonCount || 0) >= 1;
+      }, hoverCandidateIndex, { timeout: 30000 }).then((handle) => handle.jsonValue());
       await page.mouse.move(8, 8);
+      const pinPersistsAfterMouseleave = await page.waitForFunction((targetIndex) => {
+        const midi = window.__lmtGallerySummary?.scenes?.midi;
+        return midi?.pinnedCandidateIndex === targetIndex
+          && midi?.focusedCandidateIndex === targetIndex
+          && (midi?.midiCommonToneConstellationFeatures?.focusedCandidateIndex ?? -1) === targetIndex;
+      }, hoverCandidateIndex, { timeout: 30000 }).then((handle) => handle.jsonValue());
+      traceStep("clear-pin");
+      await page.click("#midi-clear-pin");
       const hoverReset = await page.waitForFunction(() => {
         const midi = window.__lmtGallerySummary?.scenes?.midi;
-        return midi?.hoveredCandidateIndex === 0
-          && (midi?.midiWeatherFeatures?.hoveredCandidateIndex ?? -1) === 0
+        return midi?.pinnedCandidateIndex === -1
+          && midi?.focusedCandidateIndex === 0
+          && (midi?.midiWeatherFeatures?.focusedCandidateIndex ?? -1) === 0
           && (midi?.midiCommonToneConstellationFeatures?.focusedCandidateIndex ?? -1) === 0;
       }, { timeout: 30000 }).then((handle) => handle.jsonValue());
       traceStep("context-change");
@@ -358,6 +381,7 @@ async function main() {
         return summary?.ready === true
           && midi?.currentMiniMode === "piano"
           && midi?.currentMiniRendered === true
+          && midi?.focusedMiniRendered === true
           && midi?.suggestionMiniCount >= 1
           && summary?.scenes?.set?.miniInstrumentMode === "piano"
           && summary?.scenes?.set?.miniRendered === true
@@ -368,7 +392,7 @@ async function main() {
           && summary?.scenes?.fret?.miniRendered === true;
       }, { timeout: 30000 }).then((handle) => handle.jsonValue());
       const pianoMiniHosts = await page.evaluate(() => {
-        const hostIds = ["midi-current-fret", "set-mini", "key-mini", "chord-mini", "progression-mini", "compare-mini", "fret-mini"];
+        const hostIds = ["midi-current-fret", "midi-focused-mini", "set-mini", "key-mini", "chord-mini", "progression-mini", "compare-mini", "fret-mini"];
         return Object.fromEntries(hostIds.map((id) => [id, !!document.querySelector(`#${id} :is(svg,img)`)]));
       });
       traceStep("mini-fret");
@@ -379,6 +403,7 @@ async function main() {
         return summary?.ready === true
           && midi?.currentMiniMode === "fret"
           && midi?.currentMiniRendered === true
+          && midi?.focusedMiniRendered === true
           && midi?.suggestionMiniCount >= 1
           && summary?.scenes?.set?.miniInstrumentMode === "fret"
           && summary?.scenes?.set?.miniRendered === true
@@ -389,7 +414,7 @@ async function main() {
           && summary?.scenes?.fret?.miniRendered === true;
       }, { timeout: 30000 }).then((handle) => handle.jsonValue());
       const fretMiniHosts = await page.evaluate(() => {
-        const hostIds = ["midi-current-fret", "set-mini", "key-mini", "chord-mini", "progression-mini", "compare-mini", "fret-mini"];
+        const hostIds = ["midi-current-fret", "midi-focused-mini", "set-mini", "key-mini", "chord-mini", "progression-mini", "compare-mini", "fret-mini"];
         return Object.fromEntries(hostIds.map((id) => [id, !!document.querySelector(`#${id} :is(svg,img)`)]));
       });
       traceStep("release-sustain");
@@ -601,7 +626,10 @@ async function main() {
             midiActiveRiskRadarFeatures,
             midiActiveOrbifoldRibbonFeatures,
             midiActiveCommonToneConstellationFeatures,
+            midiActiveInspectorFeatures,
             hoveredCandidate,
+            pinnedCandidate,
+            pinPersistsAfterMouseleave,
             hoverReset,
             contextChanged,
             keyboardSeamCheck,

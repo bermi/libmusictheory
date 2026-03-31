@@ -206,12 +206,15 @@ const midiDevicesEl = document.getElementById("midi-devices");
 const midiSummaryEl = document.getElementById("midi-summary");
 const midiNotesEl = document.getElementById("midi-notes");
 const midiHistoryEl = document.getElementById("midi-history");
+const midiInspectorEl = document.getElementById("midi-inspector");
+const midiClearPinEl = document.getElementById("midi-clear-pin");
 const midiClockEl = document.getElementById("midi-clock");
 const midiOpticKEl = document.getElementById("midi-optic-k");
 const midiEvennessEl = document.getElementById("midi-evenness");
 const midiStaffEl = document.getElementById("midi-staff");
 const midiKeyboardEl = document.getElementById("midi-keyboard");
 const midiCurrentFretEl = document.getElementById("midi-current-fret");
+const midiFocusedMiniEl = document.getElementById("midi-focused-mini");
 const midiHorizonEl = document.getElementById("midi-horizon");
 const midiBraidEl = document.getElementById("midi-braid");
 const midiWeatherEl = document.getElementById("midi-weather");
@@ -352,6 +355,8 @@ const midiState = {
   snapshots: [],
   activeSnapshotId: null,
   hoveredSuggestionIndex: null,
+  pinnedSuggestionIndex: null,
+  pinnedSuggestionSignature: "",
   renderQueued: false,
   lastError: "",
   lastEventText: "Awaiting MIDI note input.",
@@ -1804,11 +1809,11 @@ function buildRiskAxes(target) {
 
 function renderCounterpointWeatherMap(host, currentState, suggestions, focusedIndex, context) {
   if (!host) {
-    return { currentAnchorCount: 0, cellCount: 0, warningCellCount: 0, positivePressureCount: 0, negativePressureCount: 0, hoveredCandidateIndex: -1 };
+    return { currentAnchorCount: 0, cellCount: 0, warningCellCount: 0, positivePressureCount: 0, negativePressureCount: 0, hoveredCandidateIndex: -1, focusedCandidateIndex: -1 };
   }
   if (!currentState || currentState.voices.length === 0 || suggestions.length === 0) {
     host.innerHTML = `<div class="output-block">Play or recall a voiced state to see the local pressure field around the strongest next moves.</div>`;
-    return { currentAnchorCount: 0, cellCount: 0, warningCellCount: 0, positivePressureCount: 0, negativePressureCount: 0, hoveredCandidateIndex: -1 };
+    return { currentAnchorCount: 0, cellCount: 0, warningCellCount: 0, positivePressureCount: 0, negativePressureCount: 0, hoveredCandidateIndex: -1, focusedCandidateIndex: -1 };
   }
 
   const cells = suggestions.slice(0, 6);
@@ -1900,16 +1905,17 @@ function renderCounterpointWeatherMap(host, currentState, suggestions, focusedIn
     positivePressureCount: field.filter((cell) => cell.stability >= 0).length,
     negativePressureCount: field.filter((cell) => cell.stability < 0).length,
     hoveredCandidateIndex: chosenIndex,
+    focusedCandidateIndex: chosenIndex,
   };
 }
 
 function renderParallelRiskRadar(host, currentAnalysis, suggestions, focusedIndex) {
   if (!host) {
-    return { axisCount: 0, populatedAxisCount: 0, currentPolygonCount: 0, candidatePolygonCount: 0, warningAxisCount: 0, hoveredCandidateIndex: -1 };
+    return { axisCount: 0, populatedAxisCount: 0, currentPolygonCount: 0, candidatePolygonCount: 0, warningAxisCount: 0, hoveredCandidateIndex: -1, focusedCandidateIndex: -1 };
   }
   if (!currentAnalysis || !currentAnalysis.motion || suggestions.length === 0) {
     host.innerHTML = `<div class="output-block">Risk axes appear once there is enough voice motion to compare the current slice against likely next moves.</div>`;
-    return { axisCount: 0, populatedAxisCount: 0, currentPolygonCount: 0, candidatePolygonCount: 0, warningAxisCount: 0, hoveredCandidateIndex: -1 };
+    return { axisCount: 0, populatedAxisCount: 0, currentPolygonCount: 0, candidatePolygonCount: 0, warningAxisCount: 0, hoveredCandidateIndex: -1, focusedCandidateIndex: -1 };
   }
 
   const chosenIndex = clamp(focusedIndex ?? 0, 0, Math.max(0, suggestions.length - 1));
@@ -1980,6 +1986,7 @@ function renderParallelRiskRadar(host, currentAnalysis, suggestions, focusedInde
     candidatePolygonCount: candidate ? 1 : 0,
     warningAxisCount,
     hoveredCandidateIndex: chosenIndex,
+    focusedCandidateIndex: chosenIndex,
   };
 }
 
@@ -2115,11 +2122,11 @@ function starPolygonPoints(cx, cy, outerRadius, innerRadius, pointCount = 5) {
 
 function renderOrbifoldRibbon(host, currentState, suggestions, focusedIndex, context) {
   if (!host) {
-    return { currentAnchorCount: 0, candidateAnchorCount: 0, highlightedCandidateCount: 0, supportedCandidateCount: 0, edgeCount: 0 };
+    return { currentAnchorCount: 0, candidateAnchorCount: 0, highlightedCandidateCount: 0, supportedCandidateCount: 0, edgeCount: 0, focusedCandidateIndex: -1 };
   }
   if (!currentState || !Array.isArray(suggestions) || suggestions.length === 0 || orbifoldTriadNodes.length === 0) {
     host.innerHTML = `<div class="output-block">Orbifold ribbon appears once the live sonority and at least one next-step candidate map to triadic harmonic anchors.</div>`;
-    return { currentAnchorCount: 0, candidateAnchorCount: 0, highlightedCandidateCount: 0, supportedCandidateCount: 0, edgeCount: 0 };
+    return { currentAnchorCount: 0, candidateAnchorCount: 0, highlightedCandidateCount: 0, supportedCandidateCount: 0, edgeCount: 0, focusedCandidateIndex: -1 };
   }
 
   const currentNode = orbifoldTriadNodeForIndex(orbifoldTriadNodeIndexForSet(currentState.setValue));
@@ -2134,7 +2141,7 @@ function renderOrbifoldRibbon(host, currentState, suggestions, focusedIndex, con
 
   if (!currentNode || supportedCandidates.length === 0) {
     host.innerHTML = `<div class="output-block">This phrase is currently outside the triadic orbifold slice. Try a clearer triad or hover a simpler continuation.</div>`;
-    return { currentAnchorCount: 0, candidateAnchorCount: 0, highlightedCandidateCount: 0, supportedCandidateCount: 0, edgeCount: orbifoldTriadEdges.length };
+    return { currentAnchorCount: 0, candidateAnchorCount: 0, highlightedCandidateCount: 0, supportedCandidateCount: 0, edgeCount: orbifoldTriadEdges.length, focusedCandidateIndex: -1 };
   }
 
   const chosen = supportedCandidates.find((candidate) => candidate.index === focusedIndex) || supportedCandidates[0];
@@ -2194,6 +2201,7 @@ function renderOrbifoldRibbon(host, currentState, suggestions, focusedIndex, con
     highlightedCandidateCount: 1,
     supportedCandidateCount: supportedCandidates.length,
     edgeCount: orbifoldTriadEdges.length,
+    focusedCandidateIndex: chosen.index,
   };
 }
 
@@ -2537,6 +2545,155 @@ function mergePreviewOptions(base, extra = {}) {
   return { ...base, ...extra };
 }
 
+function suggestionSignature(suggestion) {
+  if (!suggestion) return "";
+  const notes = Array.isArray(suggestion.notes) ? suggestion.notes.join(",") : "";
+  return `${suggestion.setValue || 0}|${notes}|${suggestion.cadenceEffect || 0}|${suggestion.score || 0}`;
+}
+
+function clearPinnedMidiSuggestion() {
+  midiState.pinnedSuggestionIndex = null;
+  midiState.pinnedSuggestionSignature = "";
+}
+
+function resolveFocusedMidiSuggestionIndex(suggestions) {
+  if (!Array.isArray(suggestions) || suggestions.length === 0) {
+    midiState.hoveredSuggestionIndex = null;
+    clearPinnedMidiSuggestion();
+    return { hoveredSuggestionIndex: null, pinnedSuggestionIndex: null, focusedSuggestionIndex: null };
+  }
+
+  if (midiState.hoveredSuggestionIndex == null || midiState.hoveredSuggestionIndex < 0 || midiState.hoveredSuggestionIndex >= suggestions.length) {
+    midiState.hoveredSuggestionIndex = 0;
+  }
+
+  let pinnedSuggestionIndex = null;
+  if (midiState.pinnedSuggestionIndex != null) {
+    const pinnedCandidate = suggestions[midiState.pinnedSuggestionIndex] || null;
+    if (pinnedCandidate && suggestionSignature(pinnedCandidate) === midiState.pinnedSuggestionSignature) {
+      pinnedSuggestionIndex = midiState.pinnedSuggestionIndex;
+    } else {
+      clearPinnedMidiSuggestion();
+    }
+  }
+
+  const hoveredSuggestionIndex = clamp(midiState.hoveredSuggestionIndex ?? 0, 0, suggestions.length - 1);
+  const focusedSuggestionIndex = pinnedSuggestionIndex ?? hoveredSuggestionIndex;
+  return { hoveredSuggestionIndex, pinnedSuggestionIndex, focusedSuggestionIndex };
+}
+
+function describeCounterpointSuggestion(suggestion, profileLabel) {
+  if (!suggestion) return "Select or pin a ranked next move to see why it fits the current counterpoint state.";
+  const motion = suggestion.motion || {};
+  const reasons = suggestion.reasonNames || [];
+  const warnings = suggestion.warningNames || [];
+  const parts = [];
+
+  if (reasons.includes("minimal-motion")) parts.push("keeps the texture close to the current voicing");
+  if (reasons.includes("contrary-motion")) parts.push("uses contrary motion to open space between voices");
+  if (reasons.includes("common-tone-retention") || (motion.commonToneCount || 0) > 0) {
+    parts.push(`retains ${motion.commonToneCount || 0} common tone${(motion.commonToneCount || 0) === 1 ? "" : "s"}`);
+  }
+  if (reasons.includes("cadence-pull")) parts.push(`strengthens a ${suggestion.cadenceLabel} reading`);
+  if (reasons.includes("preserves-spacing")) parts.push("keeps the spacing compact");
+  if (reasons.includes("releases-tension")) parts.push("releases local pressure");
+  if (reasons.includes("builds-tension")) parts.push("builds local pressure");
+  if (reasons.includes("leap-compensation")) parts.push("balances a prior leap with a steadier response");
+
+  let warningText = "";
+  if (warnings.length > 0) {
+    warningText = ` Watch for ${warnings.map(shortWarningLabel).join(", ")} under ${humanizeCounterpointLabel(profileLabel)}.`;
+  } else {
+    warningText = ` This reads cleanly under ${humanizeCounterpointLabel(profileLabel)}.`;
+  }
+
+  const base = parts.length > 0
+    ? `${humanizeCounterpointLabel(profileLabel)} favors this move because it ${parts.join(", ")}.`
+    : `${humanizeCounterpointLabel(profileLabel)} treats this as a neutral continuation.`;
+  return `${base}${warningText}`;
+}
+
+function renderMidiCounterpointInspector(host, suggestion, context, profileLabel, options = {}) {
+  if (!host) {
+    return {
+      reasonCount: 0,
+      warningCount: 0,
+      motionBadgeCount: 0,
+      candidateNoteCount: 0,
+      pinned: false,
+      narrativeReady: false,
+    };
+  }
+
+  if (!suggestion) {
+    host.innerHTML = `<div class="output-block">Play or recall a voiced state to inspect the strongest next move here.</div>`;
+    return {
+      reasonCount: 0,
+      warningCount: 0,
+      motionBadgeCount: 0,
+      candidateNoteCount: 0,
+      pinned: false,
+      narrativeReady: false,
+    };
+  }
+
+  const motion = suggestion.motion || {};
+  const badges = [
+    `${suggestion.noteCount || 0} voices`,
+    `${motion.commonToneCount || 0} common tones`,
+    `${motion.stepCount || 0} steps`,
+    `${motion.leapCount || 0} leaps`,
+  ];
+  if ((motion.contraryCount || 0) > 0) badges.push(`${motion.contraryCount} contrary`);
+  if ((motion.parallelCount || 0) > 0) badges.push(`${motion.parallelCount} parallel`);
+  if ((motion.obliqueCount || 0) > 0) badges.push(`${motion.obliqueCount} oblique`);
+  if ((motion.crossingCount || 0) > 0) badges.push(`${motion.crossingCount} crossing`);
+
+  const narrative = describeCounterpointSuggestion(suggestion, profileLabel);
+  const titlePrefix = options.focusedIndex != null ? `${String.fromCharCode(65 + options.focusedIndex)}.` : "Focused";
+  const pinLabel = options.pinned ? "Pinned" : "Hover preview";
+
+  host.innerHTML = `
+    <div class="inspector-shell">
+      <div class="inspector-head">
+        <div>
+          <p class="eyebrow">${escapeHtml(pinLabel)}</p>
+          <h4>${escapeHtml(titlePrefix)} ${escapeHtml(suggestion.noteNames.join(" · "))}</h4>
+        </div>
+        <div class="pill-list">
+          <span class="status-pill ${options.pinned ? "is-snapshot" : "is-live"}">${escapeHtml(pinLabel)}</span>
+          <span class="status-pill is-live">${escapeHtml(suggestion.cadenceLabel)}</span>
+        </div>
+      </div>
+      <p class="inspector-narrative">${escapeHtml(narrative)}</p>
+      <div class="chip-row inspector-chip-row">
+        ${suggestion.reasonNames.map((reason) => `<span class="pill">${escapeHtml(reason)}</span>`).join("") || `<span class="pill">no dominant reason</span>`}
+      </div>
+      <div class="chip-row inspector-chip-row">
+        ${suggestion.warningNames.map((warning) => `<span class="chip warning-chip">${escapeHtml(warning)}</span>`).join("") || `<span class="chip safe-chip">clean motion</span>`}
+      </div>
+      <div class="inspector-metric-grid">
+        <article class="inspector-metric"><strong>${escapeHtml(String(suggestion.score))}</strong><span>score</span></article>
+        <article class="inspector-metric"><strong>${escapeHtml(suggestion.tensionDelta >= 0 ? `+${suggestion.tensionDelta}` : String(suggestion.tensionDelta))}</strong><span>tension</span></article>
+        <article class="inspector-metric"><strong>${escapeHtml(String(motion.totalMotion || 0))}</strong><span>total motion</span></article>
+        <article class="inspector-metric"><strong>${escapeHtml(String(motion.commonToneCount || 0))}</strong><span>retained</span></article>
+      </div>
+      <div class="chip-row inspector-chip-row">
+        ${badges.map((badge) => `<span class="pill">${escapeHtml(badge)}</span>`).join("")}
+      </div>
+    </div>
+  `;
+
+  return {
+    reasonCount: suggestion.reasonNames.length,
+    warningCount: suggestion.warningNames.length,
+    motionBadgeCount: badges.length,
+    candidateNoteCount: suggestion.noteCount || suggestion.notes.length,
+    pinned: !!options.pinned,
+    narrativeReady: narrative.length > 0,
+  };
+}
+
 function renderMiniInstrumentPreview(arena, host, spec, alt, options = {}) {
   if (!host) return false;
   const mode = options.modeOverride || miniInstrumentMode();
@@ -2715,7 +2872,7 @@ function historyFrameDescription(frame, context) {
   return `${notes.join(" · ")}${sustained}`;
 }
 
-function renderVoiceLeadingHorizon(host, currentState, suggestions, context) {
+function renderVoiceLeadingHorizon(host, currentState, suggestions, focusedIndex, context) {
   if (!host) return { currentNodeCount: 0, candidateNodeCount: 0, connectorCount: 0, warningCandidateCount: 0, reasonTagCount: 0 };
   if (!currentState || currentState.voices.length === 0) {
     host.innerHTML = `<div class="output-block">Play or recall a voiced state to map the local motion field.</div>`;
@@ -2731,6 +2888,7 @@ function renderVoiceLeadingHorizon(host, currentState, suggestions, context) {
   const candidateYs = visibleSuggestions.length <= 1
     ? [centerY]
     : visibleSuggestions.map((_unused, index) => 68 + ((height - 136) * index) / (visibleSuggestions.length - 1));
+  const chosenIndex = visibleSuggestions.length === 0 ? -1 : clamp(focusedIndex ?? 0, 0, visibleSuggestions.length - 1);
   const currentLabel = currentState.voices.map((voice) => midiName(voice.midi, context.tonic, context.quality)).join(" · ");
   const maxScore = visibleSuggestions.reduce((max, suggestion) => Math.max(max, suggestion.score), visibleSuggestions[0]?.score || 1);
   const minScore = visibleSuggestions.reduce((min, suggestion) => Math.min(min, suggestion.score), visibleSuggestions[0]?.score || 0);
@@ -2767,9 +2925,10 @@ function renderVoiceLeadingHorizon(host, currentState, suggestions, context) {
         const scoreText = `score ${suggestion.score}`;
         const notePreview = escapeHtml(suggestion.noteNames.join(" · "));
         const reason = escapeHtml(shortReasonLabel(suggestion.reasonNames[0] || ""));
+        const focusedClass = index === chosenIndex ? " is-focused" : "";
         return `
           <path class="horizon-connector" d="M ${centerX + 44} ${centerY} C ${centerX + 132} ${centerY}, ${candidateX - 96} ${y}, ${candidateX - nodeRadius - 20} ${y}" stroke="${stroke}" stroke-width="${(2.4 + normalized * 2.4).toFixed(2)}" opacity="${(0.52 + normalized * 0.38).toFixed(2)}" />
-          <circle class="horizon-candidate-node" cx="${candidateX}" cy="${y}" r="${nodeRadius.toFixed(1)}" fill="${fill}" stroke="${stroke}" />
+          <circle class="horizon-candidate-node${focusedClass}" cx="${candidateX}" cy="${y}" r="${nodeRadius.toFixed(1)}" fill="${fill}" stroke="${stroke}" />
           ${suggestion.warningNames.length > 0 ? `<circle class="horizon-warning-ring" cx="${candidateX}" cy="${y}" r="${(nodeRadius + 8).toFixed(1)}" />` : ""}
           ${suggestion.notes.map((midi, noteIndex) => {
             const angle = (-90 + (noteIndex * 360) / Math.max(1, suggestion.notes.length)) * (Math.PI / 180);
@@ -2783,7 +2942,7 @@ function renderVoiceLeadingHorizon(host, currentState, suggestions, context) {
             const tagY = y + 18 + reasonIndex * 18;
             const tagWidth = clamp(short.length * 6.4 + 18, 54, 112);
             return `
-              <rect class="horizon-reason-tag" x="${(tagX - tagWidth / 2).toFixed(1)}" y="${(tagY - 10).toFixed(1)}" width="${tagWidth.toFixed(1)}" height="16" rx="8" />
+              <rect class="horizon-reason-tag${focusedClass}" x="${(tagX - tagWidth / 2).toFixed(1)}" y="${(tagY - 10).toFixed(1)}" width="${tagWidth.toFixed(1)}" height="16" rx="8" />
               <text x="${tagX.toFixed(1)}" y="${(tagY + 1).toFixed(1)}" text-anchor="middle" class="counterpoint-reason-tag-label">${escapeHtml(short)}</text>
             `;
           }).join("")}
@@ -2804,7 +2963,7 @@ function renderVoiceLeadingHorizon(host, currentState, suggestions, context) {
   };
 }
 
-function renderVoiceBraid(host, historyStates, candidateStates, context) {
+function renderVoiceBraid(host, historyStates, candidateStates, focusedIndex, context) {
   if (!host) return { historyColumnCount: 0, candidateColumnCount: 0, strandCount: 0, currentVoiceCount: 0, ghostNodeCount: 0 };
   if (!Array.isArray(historyStates) || historyStates.length === 0) {
     host.innerHTML = `<div class="output-block">The braid appears once we have a voiced history to compare against the current state.</div>`;
@@ -2827,6 +2986,7 @@ function renderVoiceBraid(host, historyStates, candidateStates, context) {
   const historyXs = historyStates.map((_state, index) => left + index * historyStep);
   const candidateBaseX = left + Math.max(1, historyStates.length - 1) * historyStep + 96;
   const candidateXs = visibleCandidates.map((_state, index) => candidateBaseX + index * 88);
+  const chosenIndex = visibleCandidates.length === 0 ? -1 : clamp(focusedIndex ?? 0, 0, visibleCandidates.length - 1);
   const currentState = historyStates[historyStates.length - 1];
   const voiceIds = [...new Set(allStates.flatMap((state) => state.voices.map((voice) => voice.id)))].sort((a, b) => a - b);
   const yForMidi = (midi) => top + (maxMidi - midi) * (usableHeight / Math.max(1, maxMidi - minMidi));
@@ -2858,7 +3018,7 @@ function renderVoiceBraid(host, historyStates, candidateStates, context) {
     return state.voices.map((voice) => {
       const currentVoice = currentState.voices.find((one) => one.id === voice.id);
       if (!currentVoice) return "";
-      return `<line class="braid-ghost-strand" x1="${historyXs[historyXs.length - 1].toFixed(1)}" y1="${yForMidi(currentVoice.midi).toFixed(1)}" x2="${candidateXs[candidateIndex].toFixed(1)}" y2="${yForMidi(voice.midi).toFixed(1)}" stroke="${voiceColor(voice.id)}" />`;
+      return `<line class="braid-ghost-strand${candidateIndex === chosenIndex ? " is-focused" : ""}" x1="${historyXs[historyXs.length - 1].toFixed(1)}" y1="${yForMidi(currentVoice.midi).toFixed(1)}" x2="${candidateXs[candidateIndex].toFixed(1)}" y2="${yForMidi(voice.midi).toFixed(1)}" stroke="${voiceColor(voice.id)}" />`;
     }).join("");
   }).join("");
 
@@ -2868,7 +3028,7 @@ function renderVoiceBraid(host, historyStates, candidateStates, context) {
     `).join("");
 
   const candidateColumns = candidateXs.map((x, index) => `
-      <line class="braid-column braid-candidate-column" x1="${x.toFixed(1)}" y1="${(top - 10).toFixed(1)}" x2="${x.toFixed(1)}" y2="${(height - bottom + 4).toFixed(1)}" stroke-dasharray="5 7" />
+      <line class="braid-column braid-candidate-column${index === chosenIndex ? " is-focused" : ""}" x1="${x.toFixed(1)}" y1="${(top - 10).toFixed(1)}" x2="${x.toFixed(1)}" y2="${(height - bottom + 4).toFixed(1)}" stroke-dasharray="5 7" />
       <text x="${x.toFixed(1)}" y="${height - 12}" text-anchor="middle" class="braid-column-label braid-column-label-ghost">${escapeHtml(String.fromCharCode(65 + index))}</text>
     `).join("");
 
@@ -2877,7 +3037,7 @@ function renderVoiceBraid(host, historyStates, candidateStates, context) {
     `).join("")).join("");
 
   const ghostNodes = visibleCandidates.map((state, candidateIndex) => state.voices.map((voice) => `
-      <circle class="braid-node braid-ghost-node" cx="${candidateXs[candidateIndex].toFixed(1)}" cy="${yForMidi(voice.midi).toFixed(1)}" r="6.5" fill="${pitchClassColor(voice.pitchClass)}" stroke="${voiceColor(voice.id)}" />
+      <circle class="braid-node braid-ghost-node${candidateIndex === chosenIndex ? " is-focused" : ""}" cx="${candidateXs[candidateIndex].toFixed(1)}" cy="${yForMidi(voice.midi).toFixed(1)}" r="6.5" fill="${pitchClassColor(voice.pitchClass)}" stroke="${voiceColor(voice.id)}" />
     `).join("")).join("");
 
   const braidSvg = `
@@ -3256,14 +3416,7 @@ function renderMidiScene() {
     const currentMotionAnalysis = buildCurrentMotionAnalysis(arena, historyBundle, voicedHistory, profile);
     const cadenceDestinations = historyBundle ? decodeCadenceDestinations(arena, historyBundle.historyPtr, profile) : [];
     const suspensionMachine = historyBundle ? decodeSuspensionMachine(arena, historyBundle.historyPtr, profile, context) : null;
-    if (suggestions.length === 0) {
-      midiState.hoveredSuggestionIndex = null;
-    } else if (midiState.hoveredSuggestionIndex == null || midiState.hoveredSuggestionIndex >= suggestions.length) {
-      midiState.hoveredSuggestionIndex = 0;
-    }
-    const hoveredSuggestionIndex = suggestions.length > 0
-      ? clamp(midiState.hoveredSuggestionIndex ?? 0, 0, suggestions.length - 1)
-      : null;
+    const { hoveredSuggestionIndex, pinnedSuggestionIndex, focusedSuggestionIndex } = resolveFocusedMidiSuggestionIndex(suggestions);
     const candidateStates = currentVoicedState
       ? suggestions.map((suggestion, index) =>
         buildCandidateVoicedState(
@@ -3274,6 +3427,7 @@ function renderMidiScene() {
           (currentVoicedState.stateIndex || historyFrames.length || 0) + index + 1,
         ))
       : [];
+    const focusedSuggestion = focusedSuggestionIndex == null ? null : suggestions[focusedSuggestionIndex] || null;
     const displayNotesLabel = displayNotes.length > 0
       ? displayNotes.map((midi) => midiName(midi, context.tonic, context.quality))
       : [];
@@ -3294,6 +3448,7 @@ function renderMidiScene() {
       `context overlap: ${contextOverlap}/${wasm.lmt_pcs_cardinality(setValue)} inside, ${outsideCount} outside`,
       `temporal memory frames: ${historyFrames.length}`,
       `next-step suggestions: ${suggestions.length}`,
+      `focused next move: ${focusedSuggestion ? focusedSuggestion.noteNames.join(" · ") : "none"}`,
       `last event: ${midiState.lastEventText}`,
     ].join("\n");
 
@@ -3312,19 +3467,25 @@ function renderMidiScene() {
       `).join("")
       : `<div class="output-block">Recent motion memory appears here after at least one voiced change.</div>`;
 
-    const midiHorizonFeatures = renderVoiceLeadingHorizon(midiHorizonEl, currentVoicedState, suggestions, context);
-    const midiBraidFeatures = renderVoiceBraid(midiBraidEl, voicedHistory.states, candidateStates, context);
-    const midiWeatherFeatures = renderCounterpointWeatherMap(midiWeatherEl, currentVoicedState, suggestions, hoveredSuggestionIndex, context);
-    const midiRiskRadarFeatures = renderParallelRiskRadar(midiRiskRadarEl, currentMotionAnalysis, suggestions, hoveredSuggestionIndex);
+    midiClearPinEl.disabled = pinnedSuggestionIndex == null;
+    const midiInspectorFeatures = renderMidiCounterpointInspector(midiInspectorEl, focusedSuggestion, context, profileLabel, {
+      pinned: pinnedSuggestionIndex != null,
+      focusedIndex: focusedSuggestionIndex,
+    });
+
+    const midiHorizonFeatures = renderVoiceLeadingHorizon(midiHorizonEl, currentVoicedState, suggestions, focusedSuggestionIndex, context);
+    const midiBraidFeatures = renderVoiceBraid(midiBraidEl, voicedHistory.states, candidateStates, focusedSuggestionIndex, context);
+    const midiWeatherFeatures = renderCounterpointWeatherMap(midiWeatherEl, currentVoicedState, suggestions, focusedSuggestionIndex, context);
+    const midiRiskRadarFeatures = renderParallelRiskRadar(midiRiskRadarEl, currentMotionAnalysis, suggestions, focusedSuggestionIndex);
     const midiCadenceFunnelFeatures = renderCadenceFunnel(midiCadenceFunnelEl, currentVoicedState, cadenceDestinations, suggestions, context);
     const midiSuspensionMachineFeatures = renderSuspensionMachine(midiSuspensionMachineEl, suspensionMachine);
-    const midiOrbifoldRibbonFeatures = renderOrbifoldRibbon(midiOrbifoldRibbonEl, currentVoicedState, suggestions, hoveredSuggestionIndex, context);
+    const midiOrbifoldRibbonFeatures = renderOrbifoldRibbon(midiOrbifoldRibbonEl, currentVoicedState, suggestions, focusedSuggestionIndex, context);
     const midiCommonToneConstellationFeatures = renderCommonToneConstellation(
       midiCommonToneConstellationEl,
       currentVoicedState,
       candidateStates,
       suggestions,
-      hoveredSuggestionIndex,
+      focusedSuggestionIndex,
       voicedHistory.states,
       context,
     );
@@ -3375,8 +3536,8 @@ function renderMidiScene() {
       midiStaffEl.innerHTML = `<div class="output-block">Play notes across the keyboard to paint treble, bass, or grand staff directly from the live MIDI state.</div>`;
     }
 
-    if (displayNotes.length > 0) {
-      renderMiniInstrumentPreview(
+    const currentMiniRendered = displayNotes.length > 0
+      ? renderMiniInstrumentPreview(
         arena,
         midiCurrentFretEl,
         {
@@ -3385,9 +3546,8 @@ function renderMidiScene() {
           tonic: context.tonic,
           preferredBassPc: displayNotes.length > 0 ? Math.min(...displayNotes) % 12 : null,
         },
-        "Current selection fret preview",
+        "Current selection mini preview",
         {
-          modeOverride: MINI_INSTRUMENT_FRET,
           maxHeight: 280,
           squareWidth: 260,
           mediumWidth: 320,
@@ -3396,20 +3556,48 @@ function renderMidiScene() {
           padXRatio: 0.08,
           padYRatio: 0.14,
         },
-      );
-    } else {
-      midiCurrentFretEl.innerHTML = `<div class="output-block">Play notes to see the current voicing on frets and the suggested next fret shapes.</div>`;
+      )
+      : false;
+    if (displayNotes.length === 0) {
+      midiCurrentFretEl.innerHTML = `<div class="output-block">Play notes to mirror the current selection on the chosen mini instrument.</div>`;
     }
-    const currentMiniRendered = displayNotes.length > 0 && miniInstrumentMode() !== MINI_INSTRUMENT_OFF;
+
+    const focusedMiniRendered = focusedSuggestion
+      ? renderMiniInstrumentPreview(
+        arena,
+        midiFocusedMiniEl,
+        {
+          midiNotes: focusedSuggestion.notes,
+          setValue: focusedSuggestion.setValue,
+          tonic: context.tonic,
+          preferredBassPc: focusedSuggestion.notes.length > 0 ? Math.min(...focusedSuggestion.notes) % 12 : null,
+          fretVoicing: focusedSuggestion.fretPreview,
+        },
+        "Focused next move mini preview",
+        {
+          maxHeight: 280,
+          squareWidth: 260,
+          mediumWidth: 320,
+          wideWidth: 360,
+          ultraWideWidth: 400,
+          padXRatio: 0.08,
+          padYRatio: 0.14,
+        },
+      )
+      : false;
+    if (!focusedSuggestion) {
+      midiFocusedMiniEl.innerHTML = `<div class="output-block">Focus or pin a ranked move to compare the next voicing on the chosen mini instrument.</div>`;
+    }
 
     if (suggestions.length === 0) {
       midiSuggestionsEl.innerHTML = `<p class="snapshot-empty">Once at least one note is sounding, libmusictheory will rank voiced next moves against ${escapeHtml(context.label)} here.</p>`;
     } else {
       midiSuggestionsEl.innerHTML = suggestions.map((suggestion, index) => `
-        <article class="suggestion-card${hoveredSuggestionIndex === index ? " is-focused" : ""}" data-suggestion-index="${index}" tabindex="0">
+        <article class="suggestion-card${focusedSuggestionIndex === index ? " is-focused" : ""}${pinnedSuggestionIndex === index ? " is-pinned" : ""}" data-suggestion-index="${index}" tabindex="0" aria-pressed="${pinnedSuggestionIndex === index ? "true" : "false"}">
           <strong>${String.fromCharCode(65 + index)}. ${escapeHtml(suggestion.noteNames.join(" · "))}</strong>
           <p>${escapeHtml(suggestion.chordLabel)}</p>
           <p>score ${escapeHtml(String(suggestion.score))} · cadence ${escapeHtml(suggestion.cadenceLabel)} · tension ${escapeHtml(suggestion.tensionDelta >= 0 ? `+${suggestion.tensionDelta}` : String(suggestion.tensionDelta))}</p>
+          <div class="chip-row suggestion-pin-row">${pinnedSuggestionIndex === index ? `<span class="status-pill is-snapshot">Pinned</span>` : `<span class="status-pill is-muted">Click to pin</span>`}</div>
           <div class="chip-row suggestion-reasons">${suggestion.reasonNames.map((reason) => `<span class="pill">${escapeHtml(reason)}</span>`).join("") || `<span class="pill">no dominant reason</span>`}</div>
           <div class="chip-row suggestion-warnings">${suggestion.warningNames.map((warning) => `<span class="chip warning-chip">${escapeHtml(warning)}</span>`).join("") || `<span class="chip safe-chip">clean motion</span>`}</div>
           <div class="suggestion-art-grid">
@@ -3443,9 +3631,8 @@ function renderMidiScene() {
               preferredBassPc: suggestion.notes.length > 0 ? Math.min(...suggestion.notes) % 12 : null,
               fretVoicing: suggestion.fretPreview,
             },
-            `${suggestion.noteNames.join(" ")} fret preview`,
+            `${suggestion.noteNames.join(" ")} mini preview`,
             {
-              modeOverride: MINI_INSTRUMENT_FRET,
               maxHeight: 160,
               squareWidth: 170,
               mediumWidth: 180,
@@ -3485,9 +3672,14 @@ function renderMidiScene() {
       suggestionNames: suggestions.map((one) => one.noteNames.join(" · ")),
       topSuggestionSignature: suggestions[0]?.notes?.join(",") || "",
       hoveredCandidateIndex: hoveredSuggestionIndex == null ? -1 : hoveredSuggestionIndex,
+      focusedCandidateIndex: focusedSuggestionIndex == null ? -1 : focusedSuggestionIndex,
+      pinnedCandidateIndex: pinnedSuggestionIndex == null ? -1 : pinnedSuggestionIndex,
       currentMiniMode: miniInstrumentMode(),
       currentMiniRendered,
-      suggestionMiniCount: suggestions.length,
+      focusedMiniRendered,
+      suggestionMiniCount: miniInstrumentMode() === MINI_INSTRUMENT_OFF ? 0 : suggestions.length,
+      focusedSuggestionName: focusedSuggestion?.noteNames?.join(" · ") || "",
+      midiInspectorFeatures,
       midiOpticKFeatures,
       midiEvennessFeatures,
       midiStaffFeatures,
@@ -4184,6 +4376,12 @@ function wireSceneEvents() {
     renderMidiScene();
     setStatus(saved ? `${MIDI_SCENE_TITLE} snapshot saved for ${currentMidiContext().label}.` : `${MIDI_SCENE_TITLE} snapshot ignored because nothing changed.`);
   });
+  midiClearPinEl.addEventListener("click", () => {
+    clearPinnedMidiSuggestion();
+    midiState.hoveredSuggestionIndex = 0;
+    renderMidiScene();
+    setStatus(`${MIDI_SCENE_TITLE} returned to hover-driven focus.`);
+  });
   midiReturnLiveEl.addEventListener("click", () => {
     returnMidiSceneToLive();
     setStatus(`${MIDI_SCENE_TITLE} returned to live input.`);
@@ -4205,7 +4403,43 @@ function wireSceneEvents() {
   };
   midiSuggestionsEl.addEventListener("mouseover", focusSuggestionIndex);
   midiSuggestionsEl.addEventListener("focusin", focusSuggestionIndex);
+  midiSuggestionsEl.addEventListener("click", (event) => {
+    const card = event.target.closest("[data-suggestion-index]");
+    if (!card) return;
+    const nextIndex = Number.parseInt(card.getAttribute("data-suggestion-index") || "-1", 10);
+    if (!Number.isInteger(nextIndex) || nextIndex < 0) return;
+    if (midiState.pinnedSuggestionIndex === nextIndex) {
+      clearPinnedMidiSuggestion();
+      renderMidiScene();
+      setStatus(`${MIDI_SCENE_TITLE} unpinned candidate ${String.fromCharCode(65 + nextIndex)}.`);
+      return;
+    }
+    midiState.hoveredSuggestionIndex = nextIndex;
+    const arena = new ScratchArena();
+    try {
+      const historyFrames = effectiveHistoryFrames(currentDisplayMidiNotes());
+      const context = currentDisplayMidiContext();
+      const historyBundle = historyFrames.length > 0 ? buildCounterpointHistory(arena, historyFrames, context) : null;
+      const suggestions = historyBundle ? decodeRankedNextSteps(arena, historyBundle.historyPtr, currentMidiProfile(), context) : [];
+      const suggestion = suggestions[nextIndex] || null;
+      if (!suggestion) return;
+      midiState.pinnedSuggestionIndex = nextIndex;
+      midiState.pinnedSuggestionSignature = suggestionSignature(suggestion);
+    } finally {
+      arena.release();
+    }
+    renderMidiScene();
+    setStatus(`${MIDI_SCENE_TITLE} pinned candidate ${String.fromCharCode(65 + nextIndex)}.`);
+  });
+  midiSuggestionsEl.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    const card = event.target.closest("[data-suggestion-index]");
+    if (!card) return;
+    event.preventDefault();
+    card.click();
+  });
   midiSuggestionsEl.addEventListener("mouseleave", () => {
+    if (midiState.pinnedSuggestionIndex != null) return;
     if (midiState.hoveredSuggestionIndex !== 0 && midiState.hoveredSuggestionIndex != null) {
       midiState.hoveredSuggestionIndex = 0;
       renderMidiScene();

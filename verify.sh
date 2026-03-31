@@ -210,6 +210,12 @@ if [ -f "$ROOT_DIR/docs/plans/in_progress/0098-orbifold-ribbon-and-common-tone-c
     check_cmd "cd '$ROOT_DIR' && rg -n 'midiOrbifoldRibbonFeatures|midiCommonToneConstellationFeatures|candidateAnchorCount|retainedStarCount|movingVectorCount' examples/wasm-gallery/gallery.js scripts/lib/wasm_gallery_playwright_common.mjs scripts/validate_wasm_gallery_playwright.mjs >/dev/null" "0098 orbifold/constellation guardrail (gallery summary and validation assert structural feature counts)"
 fi
 
+if [ -f "$ROOT_DIR/docs/plans/in_progress/0099-counterpoint-inspector-and-candidate-pinning.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0099-counterpoint-inspector-and-candidate-pinning.md" ]; then
+    check_cmd "cd '$ROOT_DIR' && rg -n 'midi-inspector|midi-clear-pin|midi-focused-mini|Counterpoint Inspector|Focused Next Instrument|pinnedSuggestionIndex|pinnedSuggestionSignature|resolveFocusedMidiSuggestionIndex|renderMidiCounterpointInspector' examples/wasm-gallery/index.html examples/wasm-gallery/gallery.js examples/wasm-gallery/styles.css scripts/validate_wasm_gallery_playwright.mjs >/dev/null" "0099 counterpoint inspector guardrail (gallery hosts, focus model, styles, and validation wiring are present)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'focusedCandidateIndex|pinnedCandidateIndex|focusedMiniRendered|midiInspectorFeatures|pin-candidate|clear-pin|pinPersistsAfterMouseleave' examples/wasm-gallery/gallery.js scripts/lib/wasm_gallery_playwright_common.mjs scripts/validate_wasm_gallery_playwright.mjs >/dev/null" "0099 counterpoint inspector guardrail (summary and playwright prove pin/focus state and inspector metadata)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'midi-focused-mini|midi-current-fret|Mini instrument set to|currentMiniMode === \"piano\"|currentMiniMode === \"fret\"|focusedMiniRendered === true' scripts/validate_wasm_gallery_playwright.mjs scripts/lib/wasm_gallery_playwright_common.mjs examples/wasm-gallery/gallery.js >/dev/null" "0099 counterpoint inspector guardrail (current and focused instrument previews are validated under piano and fret modes)"
+fi
+
 if [ -f "$ROOT_DIR/scripts/release_smoke.sh" ]; then
     check_cmd "cd '$ROOT_DIR' && test -x scripts/release_smoke.sh" "0078 release smoke guardrail (script is executable)"
     check_cmd "cd '$ROOT_DIR' && ! rg -n 'tmp/harmoniousapp\\.net|validate_harmonious_|wasm-demo|wasm-scaled-render-parity|wasm-native-rgba-proof|wasm-harmonious-spa' scripts/release_smoke.sh" "0078 release smoke guardrail (script stays on standalone surfaces and does not depend on local harmonious data)"

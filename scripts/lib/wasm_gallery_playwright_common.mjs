@@ -437,8 +437,29 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
           focusedCandidateIndex: -1,
         };
       })(),
+      midiInspectorFeatures: (() => {
+        const host = document.querySelector("#midi-inspector");
+        if (!host) {
+          return {
+            reasonCount: 0,
+            warningCount: 0,
+            motionBadgeCount: 0,
+            candidateNoteCount: 0,
+            pinned: false,
+            narrativeReady: false,
+          };
+        }
+        return {
+          reasonCount: host.querySelectorAll(".pill").length,
+          warningCount: host.querySelectorAll(".warning-chip").length,
+          motionBadgeCount: host.querySelectorAll(".inspector-chip-row .pill").length,
+          candidateNoteCount: (host.textContent || "").split("·").length,
+          pinned: /Pinned/i.test(host.textContent || ""),
+          narrativeReady: (host.querySelector(".inspector-narrative")?.textContent || "").trim().length > 0,
+        };
+      })(),
       previewKinds: (() => {
-        const hostIds = ["midi-clock", "midi-optic-k", "midi-evenness", "midi-keyboard", "midi-staff", "midi-current-fret"];
+        const hostIds = ["midi-clock", "midi-optic-k", "midi-evenness", "midi-keyboard", "midi-staff", "midi-current-fret", "midi-focused-mini"];
         return Object.fromEntries(hostIds.map((id) => {
           const host = document.getElementById(id);
           const image = host?.querySelector("img");
@@ -449,7 +470,7 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
         }));
       })(),
       previewMetrics: Array.from(
-        document.querySelectorAll("#midi-clock :is(svg,img), #midi-optic-k :is(svg,img), #midi-evenness :is(svg,img), #midi-keyboard :is(svg,img), #midi-staff :is(svg,img), #midi-current-fret :is(svg,img)"),
+        document.querySelectorAll("#midi-clock :is(svg,img), #midi-optic-k :is(svg,img), #midi-evenness :is(svg,img), #midi-keyboard :is(svg,img), #midi-staff :is(svg,img), #midi-current-fret :is(svg,img), #midi-focused-mini :is(svg,img)"),
         (node) => {
           const rect = node.getBoundingClientRect();
           return {
@@ -464,7 +485,13 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
     const previewModeOk = expectedPreviewMode == null
       ? ["svg", "bitmap"].includes(snapshot.galleryPreviewMode)
       : snapshot.galleryPreviewMode === expectedPreviewMode
-        && Object.values(snapshot.previewKinds).every((kind) => kind === expectedPreviewMode);
+        && Object.entries(snapshot.previewKinds).every(([hostId, kind]) =>
+          kind === expectedPreviewMode
+          || (
+            (hostId === "midi-current-fret" || hostId === "midi-focused-mini")
+            && snapshot.summary?.currentMiniMode === "off"
+            && kind === "none"
+          ));
     const midiOpticKFeatures = snapshot.summary?.midiOpticKFeatures ?? snapshot.midiOpticKFeatures;
     const midiEvennessFeatures = snapshot.summary?.midiEvennessFeatures ?? snapshot.midiEvennessFeatures;
     const midiStaffFeatures = snapshot.summary?.midiStaffFeatures ?? snapshot.midiStaffFeatures;
@@ -476,6 +503,7 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
     const midiSuspensionMachineFeatures = snapshot.summary?.midiSuspensionMachineFeatures ?? snapshot.midiSuspensionMachineFeatures;
     const midiOrbifoldRibbonFeatures = snapshot.summary?.midiOrbifoldRibbonFeatures ?? snapshot.midiOrbifoldRibbonFeatures;
     const midiCommonToneConstellationFeatures = snapshot.summary?.midiCommonToneConstellationFeatures ?? snapshot.midiCommonToneConstellationFeatures;
+    const midiInspectorFeatures = snapshot.summary?.midiInspectorFeatures ?? snapshot.midiInspectorFeatures;
     const keyboardFeatures = snapshot.summary?.keyboardFeatures ?? snapshot.keyboardFeaturesFallback;
     if (
       snapshot.summary?.rendered === true
@@ -492,13 +520,15 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
       && snapshot.suggestionCards >= 1
       && (snapshot.summary?.currentMiniMode || "off") !== ""
       && (snapshot.summary?.currentMiniRendered === true || snapshot.summary?.currentMiniMode === "off")
-      && (snapshot.summary?.suggestionMiniCount || 0) >= 1
+      && ((snapshot.summary?.suggestionMiniCount || 0) >= 1 || snapshot.summary?.currentMiniMode === "off")
       && snapshot.previewKinds["midi-clock"] !== "none"
       && snapshot.previewKinds["midi-optic-k"] !== "none"
       && snapshot.previewKinds["midi-evenness"] !== "none"
       && snapshot.previewKinds["midi-keyboard"] !== "none"
       && snapshot.previewKinds["midi-staff"] !== "none"
-      && snapshot.previewKinds["midi-current-fret"] !== "none"
+      && ((snapshot.previewKinds["midi-current-fret"] ?? "none") !== "none" || snapshot.summary?.currentMiniMode === "off")
+      && ((snapshot.previewKinds["midi-focused-mini"] ?? "none") !== "none" || snapshot.summary?.currentMiniMode === "off")
+      && midiInspectorFeatures.narrativeReady === true
       && midiOpticKFeatures.clockCount >= 2
       && midiOpticKFeatures.linkCount >= 1
       && midiOpticKFeatures.labelCount >= 5

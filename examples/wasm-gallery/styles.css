@@ -382,6 +382,19 @@ select {
   font-size: 1.02rem;
 }
 
+.note-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.note-card-head > h3 {
+  margin: 0;
+  font-size: 1.02rem;
+}
+
 .svg-frame {
   min-height: 340px;
   border-radius: 18px;
@@ -531,6 +544,11 @@ select {
   stroke-width: 2.4;
 }
 
+.horizon-candidate-node.is-focused {
+  stroke: rgba(161, 22, 102, 0.66);
+  stroke-width: 3.4;
+}
+
 .horizon-warning-ring {
   fill: none;
   stroke: rgba(176, 54, 32, 0.65);
@@ -542,6 +560,11 @@ select {
   fill: rgba(255, 255, 255, 0.92);
   stroke: rgba(24, 36, 47, 0.12);
   stroke-width: 1;
+}
+
+.horizon-reason-tag.is-focused {
+  stroke: rgba(161, 22, 102, 0.28);
+  fill: rgba(255, 240, 248, 0.98);
 }
 
 .braid-guide {
@@ -584,6 +607,11 @@ select {
   opacity: 0.52;
 }
 
+.braid-ghost-strand.is-focused {
+  stroke-width: 3;
+  opacity: 0.94;
+}
+
 .braid-node {
   stroke-width: 2.2;
 }
@@ -595,6 +623,16 @@ select {
 .braid-ghost-node {
   stroke-width: 2;
   opacity: 0.86;
+}
+
+.braid-ghost-node.is-focused,
+.braid-candidate-column.is-focused {
+  opacity: 1;
+}
+
+.braid-candidate-column.is-focused {
+  stroke: rgba(161, 22, 102, 0.42);
+  stroke-width: 3;
 }
 
 .weather-axis,
@@ -1154,6 +1192,11 @@ select {
   outline: none;
 }
 
+.suggestion-card.is-pinned {
+  border-color: rgba(31, 125, 134, 0.34);
+  box-shadow: 0 12px 30px rgba(31, 125, 134, 0.14);
+}
+
 .suggestion-card strong {
   font-size: 1.02rem;
 }
@@ -1162,6 +1205,10 @@ select {
   margin: 0;
   color: var(--muted);
   line-height: 1.45;
+}
+
+.suggestion-pin-row {
+  margin-top: -2px;
 }
 
 .suggestion-art-grid {
@@ -1277,6 +1324,63 @@ select {
   line-height: 1.45;
 }
 
+.inspector-panel {
+  display: grid;
+  gap: 12px;
+  min-height: 220px;
+}
+
+.inspector-shell {
+  display: grid;
+  gap: 12px;
+}
+
+.inspector-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.inspector-head h4 {
+  margin: 4px 0 0;
+  font-size: 1.04rem;
+}
+
+.inspector-narrative {
+  margin: 0;
+  color: var(--ink);
+  line-height: 1.55;
+}
+
+.inspector-chip-row {
+  margin-top: -2px;
+}
+
+.inspector-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.inspector-metric {
+  border-radius: 14px;
+  border: 1px solid rgba(24, 36, 47, 0.1);
+  background: rgba(255, 255, 255, 0.92);
+  padding: 10px 12px;
+  display: grid;
+  gap: 2px;
+}
+
+.inspector-metric strong {
+  font-size: 1.04rem;
+}
+
+.inspector-metric span {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
 .midi-snapshot-band {
   margin-top: 16px;
 }
@@ -1318,6 +1422,10 @@ select {
   .art-card-double {
     grid-column: span 1;
   }
+
+  .inspector-metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 720px) {
@@ -1345,6 +1453,14 @@ select {
   }
 
   .suggestion-art-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .inspector-head {
+    flex-direction: column;
+  }
+
+  .inspector-metric-grid {
     grid-template-columns: 1fr;
   }
 
