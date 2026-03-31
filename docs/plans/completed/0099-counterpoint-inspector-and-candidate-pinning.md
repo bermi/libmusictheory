@@ -3,7 +3,7 @@
 > Dependencies: 0098
 > Follow-up: none
 
-Status: In progress
+Status: Completed
 
 ## Summary
 
@@ -71,3 +71,17 @@ Before implementation:
 - current and next instrument previews honor the global mini instrument setting
 - gallery validation proves pin/focus/preview behavior
 - `./verify.sh` passes
+
+## Verification Commands
+
+- `node /Users/bermi/code/libmusictheory/scripts/validate_wasm_gallery_playwright.mjs`
+- `./verify.sh`
+
+## Implementation History (Point-in-Time)
+
+- `19e4379b2259fe64379919a02d90475a80865bd8` — 2026-03-31
+  - shipped a dedicated live MIDI counterpoint inspector with pinned-candidate UX
+  - made hover, pin, clear-pin, and linked visual focus state coherent across horizon, braid, weather, radar, orbifold, and constellation views
+  - added a focused next mini-instrument preview and made current/next mini previews honor the global `off` / `piano` / `fret` setting
+  - tightened gallery Playwright and `./verify.sh` guardrails around inspector metadata, focus state, and mini preview coverage
+  - verification gates: `node /Users/bermi/code/libmusictheory/scripts/validate_wasm_gallery_playwright.mjs`, `./verify.sh`
