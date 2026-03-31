@@ -19,6 +19,7 @@ const svg_clock = @import("svg/clock.zig");
 const svg_evenness_chart = @import("svg/evenness_chart.zig");
 const svg_fret = @import("svg/fret.zig");
 const svg_keyboard = @import("svg/keyboard_svg.zig");
+const svg_orbifold = @import("svg/orbifold.zig");
 const svg_staff = @import("svg/staff.zig");
 const svg_compat = @import("harmonious_svg_compat.zig");
 const raster = @import("render/raster.zig");
@@ -174,6 +175,21 @@ pub const LmtSuspensionMachineSummary = extern struct {
     reserved0: u8,
     reserved1: u8,
     reserved2: u8,
+};
+
+pub const LmtOrbifoldTriadNode = extern struct {
+    set_value: u16,
+    root: u8,
+    quality: u8,
+    x: f32,
+    y: f32,
+};
+
+pub const LmtOrbifoldTriadEdge = extern struct {
+    from_index: u8,
+    to_index: u8,
+    reserved0: u8,
+    reserved1: u8,
 };
 
 const SCALE_DIATONIC: u8 = 0;
@@ -639,6 +655,30 @@ fn writeSuspensionMachineSummary(out: *LmtSuspensionMachineSummary, summary: cou
     };
 }
 
+fn writeOrbifoldTriadNode(out: *LmtOrbifoldTriadNode, node: svg_orbifold.Node) void {
+    out.* = .{
+        .set_value = toCSet(node.set),
+        .root = node.root,
+        .quality = switch (node.quality) {
+            .major => CHORD_MAJOR,
+            .minor => CHORD_MINOR,
+            .diminished => CHORD_DIMINISHED,
+            .augmented => CHORD_AUGMENTED,
+        },
+        .x = node.x,
+        .y = node.y,
+    };
+}
+
+fn writeOrbifoldTriadEdge(out: *LmtOrbifoldTriadEdge, edge: svg_orbifold.Edge) void {
+    out.* = .{
+        .from_index = edge.from_idx,
+        .to_index = edge.to_idx,
+        .reserved0 = 0,
+        .reserved1 = 0,
+    };
+}
+
 fn isSelectedGuidePosition(selected_ptr: [*c]const LmtFretPos, selected_count: usize, string: usize, fret: u8) bool {
     if (selected_ptr == null) return false;
 
@@ -861,6 +901,82 @@ pub export fn lmt_sizeof_cadence_destination_score() callconv(.c) u32 {
 
 pub export fn lmt_sizeof_suspension_machine_summary() callconv(.c) u32 {
     return @as(u32, @intCast(@sizeOf(LmtSuspensionMachineSummary)));
+}
+
+pub export fn lmt_orbifold_triad_node_count() callconv(.c) u32 {
+    return @as(u32, @intCast(svg_orbifold.NODE_COUNT));
+}
+
+pub export fn lmt_sizeof_orbifold_triad_node() callconv(.c) u32 {
+    return @as(u32, @intCast(@sizeOf(LmtOrbifoldTriadNode)));
+}
+
+pub export fn lmt_orbifold_triad_node_at(index: u32, out: [*c]LmtOrbifoldTriadNode) callconv(.c) u32 {
+    if (out == null or index >= svg_orbifold.NODE_COUNT) return 0;
+
+    var nodes_buf: [svg_orbifold.NODE_COUNT]svg_orbifold.Node = undefined;
+    const nodes = svg_orbifold.enumerateTriadNodes(&nodes_buf);
+    const out_node: *LmtOrbifoldTriadNode = @ptrCast(out);
+    writeOrbifoldTriadNode(out_node, nodes[index]);
+    return 1;
+}
+
+pub export fn lmt_find_orbifold_triad_node(set: u16) callconv(.c) u32 {
+    const safe_set = maskPitchClassSet(set);
+    var nodes_buf: [svg_orbifold.NODE_COUNT]svg_orbifold.Node = undefined;
+    const nodes = svg_orbifold.enumerateTriadNodes(&nodes_buf);
+    if (safe_set == 0) return @as(u32, @intCast(svg_orbifold.NODE_COUNT));
+    for (nodes, 0..) |node, index| {
+        if (node.set == safe_set) return @as(u32, @intCast(index));
+    }
+
+    var best_index: usize = svg_orbifold.NODE_COUNT;
+    var best_score: i32 = std.math.minInt(i32);
+    for (nodes, 0..) |node, index| {
+        const overlap = pcs.cardinality(node.set & safe_set);
+        if (overlap < 2) continue;
+
+        const outside = pcs.cardinality(safe_set & ~node.set);
+        var score: i32 = @as(i32, overlap) * 32 - @as(i32, outside) * 10;
+        if (pcs.isSubsetOf(node.set, safe_set)) score += 24;
+        if ((safe_set & (@as(u16, 1) << @as(u4, @intCast(node.root)))) != 0) score += 4;
+        score += switch (node.quality) {
+            .major, .minor => 2,
+            .diminished, .augmented => 1,
+        };
+        if (score > best_score) {
+            best_score = score;
+            best_index = index;
+        }
+    }
+
+    return @as(u32, @intCast(best_index));
+}
+
+pub export fn lmt_orbifold_triad_edge_count() callconv(.c) u32 {
+    var nodes_buf: [svg_orbifold.NODE_COUNT]svg_orbifold.Node = undefined;
+    const nodes = svg_orbifold.enumerateTriadNodes(&nodes_buf);
+    var edges_buf: [svg_orbifold.MAX_EDGES]svg_orbifold.Edge = undefined;
+    const edges = svg_orbifold.buildTriadEdges(nodes, &edges_buf);
+    return @as(u32, @intCast(edges.len));
+}
+
+pub export fn lmt_sizeof_orbifold_triad_edge() callconv(.c) u32 {
+    return @as(u32, @intCast(@sizeOf(LmtOrbifoldTriadEdge)));
+}
+
+pub export fn lmt_orbifold_triad_edge_at(index: u32, out: [*c]LmtOrbifoldTriadEdge) callconv(.c) u32 {
+    if (out == null) return 0;
+
+    var nodes_buf: [svg_orbifold.NODE_COUNT]svg_orbifold.Node = undefined;
+    const nodes = svg_orbifold.enumerateTriadNodes(&nodes_buf);
+    var edges_buf: [svg_orbifold.MAX_EDGES]svg_orbifold.Edge = undefined;
+    const edges = svg_orbifold.buildTriadEdges(nodes, &edges_buf);
+    if (index >= edges.len) return 0;
+
+    const out_edge: *LmtOrbifoldTriadEdge = @ptrCast(out);
+    writeOrbifoldTriadEdge(out_edge, edges[index]);
+    return 1;
 }
 
 pub export fn lmt_voiced_history_reset(history: [*c]LmtVoicedHistory) callconv(.c) void {

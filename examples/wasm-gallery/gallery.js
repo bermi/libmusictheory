@@ -70,6 +70,12 @@ const DEFAULT_SUSPENSION_STATE_NAMES = Object.freeze([
   "resolution",
   "unresolved",
 ]);
+const ORBIFOLD_QUALITY_NAMES = Object.freeze([
+  "major",
+  "minor",
+  "diminished",
+  "augmented",
+]);
 const CADENCE_LABELS = Object.freeze([
   "none",
   "stable",
@@ -131,6 +137,13 @@ const REQUIRED_EXPORTS = [
   "lmt_suspension_state_name",
   "lmt_sizeof_cadence_destination_score",
   "lmt_sizeof_suspension_machine_summary",
+  "lmt_orbifold_triad_node_count",
+  "lmt_sizeof_orbifold_triad_node",
+  "lmt_orbifold_triad_node_at",
+  "lmt_find_orbifold_triad_node",
+  "lmt_orbifold_triad_edge_count",
+  "lmt_sizeof_orbifold_triad_edge",
+  "lmt_orbifold_triad_edge_at",
   "lmt_voiced_history_reset",
   "lmt_build_voiced_state",
   "lmt_voiced_history_push",
@@ -154,6 +167,7 @@ const REQUIRED_EXPORTS = [
   "lmt_midi_to_fret_positions_n",
   "lmt_generate_voicings_n",
   "lmt_rank_context_suggestions",
+  "lmt_preferred_voicing_n",
   "lmt_pitch_class_guide_n",
   "lmt_frets_to_url_n",
   "lmt_url_to_frets_n",
@@ -204,6 +218,8 @@ const midiWeatherEl = document.getElementById("midi-weather");
 const midiRiskRadarEl = document.getElementById("midi-risk-radar");
 const midiCadenceFunnelEl = document.getElementById("midi-cadence-funnel");
 const midiSuspensionMachineEl = document.getElementById("midi-suspension-machine");
+const midiOrbifoldRibbonEl = document.getElementById("midi-orbifold-ribbon");
+const midiCommonToneConstellationEl = document.getElementById("midi-common-tone-constellation");
 const midiSuggestionsEl = document.getElementById("midi-suggestions");
 const midiSnapshotsEl = document.getElementById("midi-snapshots");
 const connectMidiEl = document.getElementById("connect-midi");
@@ -296,9 +312,13 @@ let counterpointStructSizes = {
   nextStepSuggestion: 0,
   cadenceDestinationScore: 0,
   suspensionMachineSummary: 0,
+  orbifoldTriadNode: 0,
+  orbifoldTriadEdge: 0,
   maxVoices: 8,
   historyCapacity: 4,
 };
+let orbifoldTriadNodes = [];
+let orbifoldTriadEdges = [];
 const galleryUiState = {
   previewMode: PREVIEW_MODE_SVG,
   miniInstrument: MINI_INSTRUMENT_OFF,
@@ -583,7 +603,42 @@ function loadCounterpointMetadata() {
     nextStepSuggestion: wasm.lmt_sizeof_next_step_suggestion(),
     cadenceDestinationScore: wasm.lmt_sizeof_cadence_destination_score(),
     suspensionMachineSummary: wasm.lmt_sizeof_suspension_machine_summary(),
+    orbifoldTriadNode: wasm.lmt_sizeof_orbifold_triad_node(),
+    orbifoldTriadEdge: wasm.lmt_sizeof_orbifold_triad_edge(),
   };
+
+  const arena = new ScratchArena();
+  try {
+    const nodeCount = wasm.lmt_orbifold_triad_node_count();
+    orbifoldTriadNodes = Array.from({ length: nodeCount }, (_unused, index) => {
+      const ptr = arena.alloc(counterpointStructSizes.orbifoldTriadNode || 16, 4);
+      const written = wasm.lmt_orbifold_triad_node_at(index, ptr);
+      if (!written) return null;
+      const view = new DataView(memory.buffer, ptr, counterpointStructSizes.orbifoldTriadNode || 16);
+      return {
+        index,
+        setValue: view.getUint16(0, true),
+        root: view.getUint8(2),
+        quality: view.getUint8(3),
+        x: view.getFloat32(4, true),
+        y: view.getFloat32(8, true),
+      };
+    }).filter(Boolean);
+
+    const edgeCount = wasm.lmt_orbifold_triad_edge_count();
+    orbifoldTriadEdges = Array.from({ length: edgeCount }, (_unused, index) => {
+      const ptr = arena.alloc(counterpointStructSizes.orbifoldTriadEdge || 4, 4);
+      const written = wasm.lmt_orbifold_triad_edge_at(index, ptr);
+      if (!written) return null;
+      const view = new DataView(memory.buffer, ptr, counterpointStructSizes.orbifoldTriadEdge || 4);
+      return {
+        fromIndex: view.getUint8(0),
+        toIndex: view.getUint8(1),
+      };
+    }).filter(Boolean);
+  } finally {
+    arena.release();
+  }
 }
 
 function modeSet(tonic, modeType) {
@@ -610,6 +665,54 @@ function suspensionStateLabel(value) {
   return counterpointSuspensionStateNames[value] || DEFAULT_SUSPENSION_STATE_NAMES[value] || "none";
 }
 
+function orbifoldTriadNodeForIndex(index) {
+  return Number.isInteger(index) && index >= 0 && index < orbifoldTriadNodes.length ? orbifoldTriadNodes[index] : null;
+}
+
+function orbifoldTriadNodeIndexForSet(setValue) {
+  if (!setValue || typeof wasm?.lmt_find_orbifold_triad_node !== "function") return -1;
+  const index = wasm.lmt_find_orbifold_triad_node(setValue);
+  return index >= 0 && index < orbifoldTriadNodes.length ? index : -1;
+}
+
+function orbifoldTriadQualityName(value) {
+  return ORBIFOLD_QUALITY_NAMES[value] || "major";
+}
+
+function orbifoldTriadQualityFill(value) {
+  switch (value) {
+    case 1:
+      return "#0b007e";
+    case 2:
+      return "#004700";
+    case 3:
+      return "#a11666";
+    default:
+      return "#02fe02";
+  }
+}
+
+function orbifoldTriadQualityStroke(value) {
+  return value === 0 ? "#000000" : "#ffffff";
+}
+
+function orbifoldTriadLabel(node) {
+  if (!node) return "";
+  const suffix = (() => {
+    switch (node.quality) {
+      case 1:
+        return "m";
+      case 2:
+        return "o";
+      case 3:
+        return "+";
+      default:
+        return "";
+    }
+  })();
+  return `${noteName(node.root)}${suffix}`;
+}
+
 function cadenceDestinationFromCadenceEffect(cadenceEffect) {
   switch (cadenceEffect) {
     case 2:
@@ -629,8 +732,22 @@ function cadenceDestinationFromCadenceEffect(cadenceEffect) {
 }
 
 function decodeMotionSummaryFromView(view, base = 0) {
+  const voiceMotionCount = view.getUint8(base + 0);
+  const voiceMotions = [];
+  for (let index = 0; index < Math.min(voiceMotionCount, counterpointStructSizes.maxVoices || 8); index += 1) {
+    const offset = base + 17 + index * 8;
+    voiceMotions.push({
+      voiceId: view.getUint8(offset + 0),
+      fromMidi: view.getUint8(offset + 1),
+      toMidi: view.getUint8(offset + 2),
+      delta: view.getInt8(offset + 3),
+      absDelta: view.getUint8(offset + 4),
+      motionClass: view.getUint8(offset + 5),
+      retained: view.getUint8(offset + 6) !== 0,
+    });
+  }
   return {
-    voiceMotionCount: view.getUint8(base + 0),
+    voiceMotionCount,
     commonToneCount: view.getUint8(base + 1),
     stepCount: view.getUint8(base + 2),
     leapCount: view.getUint8(base + 3),
@@ -646,6 +763,7 @@ function decodeMotionSummaryFromView(view, base = 0) {
     outerMotion: view.getUint8(base + 14),
     previousCadenceState: view.getUint8(base + 15),
     currentCadenceState: view.getUint8(base + 16),
+    voiceMotions,
   };
 }
 
@@ -1985,6 +2103,208 @@ function renderSuspensionMachine(host, summary) {
   };
 }
 
+function starPolygonPoints(cx, cy, outerRadius, innerRadius, pointCount = 5) {
+  const points = [];
+  for (let index = 0; index < pointCount * 2; index += 1) {
+    const radius = index % 2 === 0 ? outerRadius : innerRadius;
+    const angle = -Math.PI / 2 + (index * Math.PI) / pointCount;
+    points.push(`${(cx + Math.cos(angle) * radius).toFixed(1)},${(cy + Math.sin(angle) * radius).toFixed(1)}`);
+  }
+  return points.join(" ");
+}
+
+function renderOrbifoldRibbon(host, currentState, suggestions, focusedIndex, context) {
+  if (!host) {
+    return { currentAnchorCount: 0, candidateAnchorCount: 0, highlightedCandidateCount: 0, supportedCandidateCount: 0, edgeCount: 0 };
+  }
+  if (!currentState || !Array.isArray(suggestions) || suggestions.length === 0 || orbifoldTriadNodes.length === 0) {
+    host.innerHTML = `<div class="output-block">Orbifold ribbon appears once the live sonority and at least one next-step candidate map to triadic harmonic anchors.</div>`;
+    return { currentAnchorCount: 0, candidateAnchorCount: 0, highlightedCandidateCount: 0, supportedCandidateCount: 0, edgeCount: 0 };
+  }
+
+  const currentNode = orbifoldTriadNodeForIndex(orbifoldTriadNodeIndexForSet(currentState.setValue));
+  const supportedCandidates = suggestions
+    .map((suggestion, index) => {
+      const nodeIndex = orbifoldTriadNodeIndexForSet(suggestion.setValue);
+      const node = orbifoldTriadNodeForIndex(nodeIndex);
+      return node ? { ...suggestion, index, node, nodeIndex } : null;
+    })
+    .filter(Boolean)
+    .slice(0, 4);
+
+  if (!currentNode || supportedCandidates.length === 0) {
+    host.innerHTML = `<div class="output-block">This phrase is currently outside the triadic orbifold slice. Try a clearer triad or hover a simpler continuation.</div>`;
+    return { currentAnchorCount: 0, candidateAnchorCount: 0, highlightedCandidateCount: 0, supportedCandidateCount: 0, edgeCount: orbifoldTriadEdges.length };
+  }
+
+  const chosen = supportedCandidates.find((candidate) => candidate.index === focusedIndex) || supportedCandidates[0];
+  const width = 760;
+  const height = 360;
+  const mapX = (x) => 34 + x * 0.56;
+  const mapY = (y) => 26 + y * 0.56;
+  const currentX = mapX(currentNode.x);
+  const currentY = mapY(currentNode.y);
+
+  const svg = `
+    <svg class="counterpoint-figure orbifold-ribbon-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Orbifold ribbon">
+      <rect x="0" y="0" width="${width}" height="${height}" rx="28" fill="rgba(255,255,255,0.92)" stroke="rgba(24,36,47,0.10)" />
+      <ellipse cx="${mapX(270).toFixed(1)}" cy="${mapY(270).toFixed(1)}" rx="${(156.25 * 0.56).toFixed(1)}" ry="${(247.5 * 0.56).toFixed(1)}" class="orbifold-ribbon-shell" />
+      ${orbifoldTriadEdges.map((edge) => {
+        const from = orbifoldTriadNodeForIndex(edge.fromIndex);
+        const to = orbifoldTriadNodeForIndex(edge.toIndex);
+        if (!from || !to) return "";
+        return `<line class="orbifold-ribbon-edge" x1="${mapX(from.x).toFixed(1)}" y1="${mapY(from.y).toFixed(1)}" x2="${mapX(to.x).toFixed(1)}" y2="${mapY(to.y).toFixed(1)}" />`;
+      }).join("")}
+      ${orbifoldTriadNodes.map((node) => `
+        <circle class="orbifold-ribbon-node" cx="${mapX(node.x).toFixed(1)}" cy="${mapY(node.y).toFixed(1)}" r="5.5" fill="${orbifoldTriadQualityFill(node.quality)}" stroke="${orbifoldTriadQualityStroke(node.quality)}" />
+      `).join("")}
+      <text x="36" y="46" class="counterpoint-label eyebrow">Orbifold Ribbon</text>
+      ${supportedCandidates.map((candidate) => {
+        const x = mapX(candidate.node.x);
+        const y = mapY(candidate.node.y);
+        const focusedClass = candidate.index === chosen.index ? " is-focused" : "";
+        return `
+          <path class="orbifold-ribbon-ribbon${focusedClass}" d="M ${currentX.toFixed(1)} ${currentY.toFixed(1)} C ${(currentX + 54).toFixed(1)} ${(currentY - 8).toFixed(1)}, ${(x - 54).toFixed(1)} ${(y + 8).toFixed(1)}, ${x.toFixed(1)} ${y.toFixed(1)}" />
+          <circle class="orbifold-ribbon-candidate-anchor${focusedClass}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="11.5" />
+          ${candidate.index === chosen.index ? `<circle class="orbifold-ribbon-highlight-ring" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="18" />` : ""}
+        `;
+      }).join("")}
+      <circle class="orbifold-ribbon-current-anchor" cx="${currentX.toFixed(1)}" cy="${currentY.toFixed(1)}" r="14" />
+      ${[currentNode, ...supportedCandidates.map((candidate) => candidate.node)].map((node) => `
+        <text x="${mapX(node.x).toFixed(1)}" y="${(mapY(node.y) + 2).toFixed(1)}" text-anchor="middle" class="orbifold-ribbon-node-label">${escapeHtml(orbifoldTriadLabel(node))}</text>
+      `).join("")}
+      <g transform="translate(420 78)">
+        <text x="0" y="0" class="counterpoint-node-title">${escapeHtml(orbifoldTriadLabel(currentNode))}</text>
+        <text x="0" y="22" class="counterpoint-node-notes">${escapeHtml(currentState.voices.map((voice) => midiName(voice.midi, context.tonic, context.quality)).join(" · "))}</text>
+        <text x="0" y="44" class="counterpoint-node-meta">current triadic anchor · ${escapeHtml(orbifoldTriadQualityName(currentNode.quality))}</text>
+        ${supportedCandidates.map((candidate, index) => `
+          <g transform="translate(0 ${76 + index * 54})">
+            <circle cx="10" cy="-8" r="8" fill="${orbifoldTriadQualityFill(candidate.node.quality)}" stroke="${orbifoldTriadQualityStroke(candidate.node.quality)}" />
+            <text x="28" y="-4" class="counterpoint-node-title">${escapeHtml(String.fromCharCode(65 + candidate.index))}. ${escapeHtml(orbifoldTriadLabel(candidate.node))}</text>
+            <text x="28" y="14" class="counterpoint-node-meta">score ${escapeHtml(String(candidate.score))} · ${escapeHtml(shortReasonLabel(candidate.reasonNames[0] || ""))} · common tones ${escapeHtml(String(candidate.motion?.commonToneCount || 0))}</text>
+          </g>
+        `).join("")}
+      </g>
+    </svg>`;
+
+  host.innerHTML = svg;
+  return {
+    currentAnchorCount: 1,
+    candidateAnchorCount: supportedCandidates.length,
+    highlightedCandidateCount: 1,
+    supportedCandidateCount: supportedCandidates.length,
+    edgeCount: orbifoldTriadEdges.length,
+  };
+}
+
+function renderCommonToneConstellation(host, currentState, candidateStates, suggestions, focusedIndex, historyStates, context) {
+  if (!host) {
+    return { retainedStarCount: 0, movingVectorCount: 0, historyAnchorCount: 0, focusedCandidateIndex: -1 };
+  }
+  if (!currentState || !Array.isArray(candidateStates) || !Array.isArray(suggestions) || suggestions.length === 0) {
+    host.innerHTML = `<div class="output-block">Common-tone constellations appear once there is a current voiced state and at least one candidate continuation.</div>`;
+    return { retainedStarCount: 0, movingVectorCount: 0, historyAnchorCount: 0, focusedCandidateIndex: -1 };
+  }
+
+  const chosenIndex = clamp(focusedIndex ?? 0, 0, Math.max(0, suggestions.length - 1));
+  const candidate = suggestions[chosenIndex] || suggestions[0] || null;
+  const chosenState = candidateStates[chosenIndex] || candidateStates[0] || null;
+  const currentMidis = currentState.voices.map((voice) => voice.midi).sort((a, b) => a - b);
+  const targetMidis = (chosenState?.voices?.map((voice) => voice.midi) || candidate?.notes || []).slice().sort((a, b) => a - b);
+  const motionCount = Math.min(currentMidis.length, targetMidis.length);
+  const motions = Array.from({ length: motionCount }, (_unused, index) => {
+    const fromMidi = currentMidis[index];
+    const toMidi = targetMidis[index];
+    const delta = toMidi - fromMidi;
+    return {
+      voiceId: index,
+      fromMidi,
+      toMidi,
+      delta,
+      absDelta: Math.abs(delta),
+    };
+  });
+  if (!candidate || motionCount === 0) {
+    host.innerHTML = `<div class="output-block">Common-tone constellations need voice-motion assignments from the ranked next-step engine.</div>`;
+    return { retainedStarCount: 0, movingVectorCount: 0, historyAnchorCount: 0, focusedCandidateIndex: -1 };
+  }
+
+  const previousState = Array.isArray(historyStates) && historyStates.length >= 2 ? historyStates[historyStates.length - 2] : null;
+  const retained = motions.filter((motion) => motion.fromMidi === motion.toMidi);
+  const moving = motions.filter((motion) => motion.fromMidi !== motion.toMidi);
+  const stepCount = moving.filter((motion) => motion.absDelta <= 2).length;
+  const leapCount = moving.filter((motion) => motion.absDelta > 2).length;
+  const allMidis = [
+    ...currentState.voices.map((voice) => voice.midi),
+    ...motions.flatMap((motion) => [motion.fromMidi, motion.toMidi]),
+    ...(previousState ? previousState.voices.map((voice) => voice.midi) : []),
+  ];
+  const minMidi = Math.min(...allMidis) - 2;
+  const maxMidi = Math.max(...allMidis) + 2;
+  const width = 720;
+  const height = 320;
+  const previousX = 120;
+  const currentX = 320;
+  const candidateX = 548;
+  const top = 48;
+  const bottom = 38;
+  const usableHeight = height - top - bottom;
+  const yForMidi = (midi) => top + (maxMidi - midi) * (usableHeight / Math.max(1, maxMidi - minMidi));
+
+  const svg = `
+    <svg class="counterpoint-figure common-tone-constellation-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Common-tone constellation">
+      <defs>
+        <marker id="constellation-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(31,125,134,0.86)" />
+        </marker>
+      </defs>
+      <rect x="0" y="0" width="${width}" height="${height}" rx="28" fill="rgba(255,255,255,0.92)" stroke="rgba(24,36,47,0.10)" />
+      <text x="36" y="46" class="counterpoint-label eyebrow">Common-Tone Constellation</text>
+      <line x1="${previousX}" y1="${top - 10}" x2="${previousX}" y2="${height - bottom}" class="common-tone-constellation-axis" />
+      <line x1="${currentX}" y1="${top - 10}" x2="${currentX}" y2="${height - bottom}" class="common-tone-constellation-axis" />
+      <line x1="${candidateX}" y1="${top - 10}" x2="${candidateX}" y2="${height - bottom}" class="common-tone-constellation-axis" />
+      <text x="${previousX}" y="${height - 10}" text-anchor="middle" class="counterpoint-node-meta">memory</text>
+      <text x="${currentX}" y="${height - 10}" text-anchor="middle" class="counterpoint-node-meta">current</text>
+      <text x="${candidateX}" y="${height - 10}" text-anchor="middle" class="counterpoint-node-meta">${escapeHtml(String.fromCharCode(65 + chosenIndex))}</text>
+      ${previousState ? previousState.voices.map((voice) => `
+        <circle class="common-tone-constellation-history-anchor" cx="${previousX}" cy="${yForMidi(voice.midi).toFixed(1)}" r="5.5" fill="${pitchClassColor(voice.pitchClass)}" />
+      `).join("") : ""}
+      ${motions.map((motion) => {
+        const currentY = yForMidi(motion.fromMidi);
+        const targetY = yForMidi(motion.toMidi);
+        const color = pitchClassColor(motion.toMidi % 12);
+        if (motion.fromMidi === motion.toMidi) {
+          const points = starPolygonPoints(currentX, currentY, 10, 4.8);
+          const targetPoints = starPolygonPoints(candidateX, targetY, 10, 4.8);
+          return `
+            <line x1="${currentX}" y1="${currentY.toFixed(1)}" x2="${candidateX}" y2="${targetY.toFixed(1)}" class="common-tone-constellation-retained-link" />
+            <polygon class="common-tone-constellation-retained-star" points="${points}" fill="${color}" />
+            <polygon class="common-tone-constellation-retained-star" points="${targetPoints}" fill="${color}" />
+          `;
+        }
+        return `
+          <line x1="${currentX}" y1="${currentY.toFixed(1)}" x2="${candidateX}" y2="${targetY.toFixed(1)}" class="common-tone-constellation-moving-vector" stroke="${color}" marker-end="url(#constellation-arrow)" />
+          <circle class="common-tone-constellation-current-node" cx="${currentX}" cy="${currentY.toFixed(1)}" r="7" fill="${pitchClassColor(motion.fromMidi % 12)}" />
+          <circle class="common-tone-constellation-candidate-node" cx="${candidateX}" cy="${targetY.toFixed(1)}" r="7" fill="${color}" />
+        `;
+      }).join("")}
+      <g transform="translate(388 54)">
+        <text x="0" y="0" class="counterpoint-node-title">${escapeHtml(candidate.chordLabel)}</text>
+        <text x="0" y="22" class="counterpoint-node-notes">${escapeHtml(candidate.noteNames.join(" · "))}</text>
+        <text x="0" y="44" class="counterpoint-node-meta">retained ${escapeHtml(String(retained.length))} · steps ${escapeHtml(String(stepCount))} · leaps ${escapeHtml(String(leapCount))}</text>
+        <text x="0" y="66" class="counterpoint-node-meta">${escapeHtml(shortReasonLabel(candidate.reasonNames[0] || "common-tone-retention"))} · ${escapeHtml(candidate.cadenceLabel)}</text>
+      </g>
+    </svg>`;
+
+  host.innerHTML = svg;
+  return {
+    retainedStarCount: retained.length * 2,
+    movingVectorCount: moving.length,
+    historyAnchorCount: previousState ? previousState.voices.length : 0,
+    focusedCandidateIndex: chosenIndex,
+  };
+}
+
 function sortedAscendingNumbers(values) {
   return Array.from(values).sort((a, b) => a - b);
 }
@@ -2311,7 +2631,7 @@ function decodeRankedNextSteps(arena, historyPtr, profile, context) {
       notes.push(view.getUint8(base + 20 + voiceIndex));
     }
     const motion = decodeMotionSummaryFromView(view, base + 28);
-    const evaluation = decodeMotionEvaluationFromView(view, base + 84);
+    const evaluation = decodeMotionEvaluationFromView(view, base + 112);
     const reasonNames = namesFromMask(reasonMask, counterpointReasonNames);
     const warningNames = namesFromMask(warningMask, counterpointWarningNames);
     suggestions.push({
@@ -2998,6 +3318,16 @@ function renderMidiScene() {
     const midiRiskRadarFeatures = renderParallelRiskRadar(midiRiskRadarEl, currentMotionAnalysis, suggestions, hoveredSuggestionIndex);
     const midiCadenceFunnelFeatures = renderCadenceFunnel(midiCadenceFunnelEl, currentVoicedState, cadenceDestinations, suggestions, context);
     const midiSuspensionMachineFeatures = renderSuspensionMachine(midiSuspensionMachineEl, suspensionMachine);
+    const midiOrbifoldRibbonFeatures = renderOrbifoldRibbon(midiOrbifoldRibbonEl, currentVoicedState, suggestions, hoveredSuggestionIndex, context);
+    const midiCommonToneConstellationFeatures = renderCommonToneConstellation(
+      midiCommonToneConstellationEl,
+      currentVoicedState,
+      candidateStates,
+      suggestions,
+      hoveredSuggestionIndex,
+      voicedHistory.states,
+      context,
+    );
 
     renderPreviewSvgOrBitmap(midiClockEl, {
       svgMarkup: clockSvg,
@@ -3167,6 +3497,8 @@ function renderMidiScene() {
       midiRiskRadarFeatures,
       midiCadenceFunnelFeatures,
       midiSuspensionMachineFeatures,
+      midiOrbifoldRibbonFeatures,
+      midiCommonToneConstellationFeatures,
       keyboardFeatures,
       rendered: true,
     });

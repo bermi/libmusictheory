@@ -152,6 +152,8 @@ async function main() {
       const midiActiveRiskRadarFeatures = midiActive.summary?.midiRiskRadarFeatures ?? midiActive.midiRiskRadarFeatures;
       const midiActiveCadenceFunnelFeatures = midiActive.summary?.midiCadenceFunnelFeatures ?? midiActive.midiCadenceFunnelFeatures;
       const midiActiveSuspensionMachineFeatures = midiActive.summary?.midiSuspensionMachineFeatures ?? midiActive.midiSuspensionMachineFeatures;
+      const midiActiveOrbifoldRibbonFeatures = midiActive.summary?.midiOrbifoldRibbonFeatures ?? midiActive.midiOrbifoldRibbonFeatures;
+      const midiActiveCommonToneConstellationFeatures = midiActive.summary?.midiCommonToneConstellationFeatures ?? midiActive.midiCommonToneConstellationFeatures;
       if (
         midiActive.summary?.currentMiniMode !== "off"
         || midiActive.summary?.currentMiniRendered !== false
@@ -279,6 +281,16 @@ async function main() {
       ) {
         throw new Error(`live midi scene did not render cadence/suspension diagnostics correctly: ${JSON.stringify({ cadence: midiActiveCadenceFunnelFeatures, suspension: midiActiveSuspensionMachineFeatures, summary: midiActive.summary })}`);
       }
+      if (
+        (midiActiveOrbifoldRibbonFeatures?.currentAnchorCount || 0) < 1
+        || (midiActiveOrbifoldRibbonFeatures?.candidateAnchorCount || 0) < 1
+        || (midiActiveOrbifoldRibbonFeatures?.highlightedCandidateCount || 0) < 1
+        || (midiActiveOrbifoldRibbonFeatures?.edgeCount || 0) < 1
+        || (midiActiveCommonToneConstellationFeatures?.retainedStarCount || 0) < 1
+        || (midiActiveCommonToneConstellationFeatures?.movingVectorCount || 0) < 1
+      ) {
+        throw new Error(`live midi scene did not render orbifold/constellation diagnostics correctly: ${JSON.stringify({ orbifold: midiActiveOrbifoldRibbonFeatures, constellation: midiActiveCommonToneConstellationFeatures, summary: midiActive.summary })}`);
+      }
       traceStep("hover-candidate");
       const hoverCandidateIndex = Math.min(1, Math.max(0, (midiActive.summary?.suggestionCount || 1) - 1));
       await page.locator(`#midi-suggestions [data-suggestion-index="${hoverCandidateIndex}"]`).hover();
@@ -286,6 +298,8 @@ async function main() {
         const midi = window.__lmtGallerySummary?.scenes?.midi;
         return midi?.hoveredCandidateIndex === targetIndex
           && (midi?.midiWeatherFeatures?.hoveredCandidateIndex ?? -1) === targetIndex
+          && (midi?.midiOrbifoldRibbonFeatures?.highlightedCandidateCount || 0) >= 1
+          && (midi?.midiCommonToneConstellationFeatures?.focusedCandidateIndex ?? -1) === targetIndex
           && (midi?.midiWeatherFeatures?.cellCount || 0) >= 2
           && (midi?.midiRiskRadarFeatures?.candidatePolygonCount || 0) >= 1
           && (midi?.midiRiskRadarFeatures?.populatedAxisCount || 0) >= 4;
@@ -294,7 +308,8 @@ async function main() {
       const hoverReset = await page.waitForFunction(() => {
         const midi = window.__lmtGallerySummary?.scenes?.midi;
         return midi?.hoveredCandidateIndex === 0
-          && (midi?.midiWeatherFeatures?.hoveredCandidateIndex ?? -1) === 0;
+          && (midi?.midiWeatherFeatures?.hoveredCandidateIndex ?? -1) === 0
+          && (midi?.midiCommonToneConstellationFeatures?.focusedCandidateIndex ?? -1) === 0;
       }, { timeout: 30000 }).then((handle) => handle.jsonValue());
       traceStep("context-change");
       const defaultContext = await page.evaluate(() => ({
@@ -315,7 +330,9 @@ async function main() {
           && (midi.midiWeatherFeatures?.cellCount || 0) >= 2
           && (midi.midiRiskRadarFeatures?.populatedAxisCount || 0) >= 4
           && (midi.midiCadenceFunnelFeatures?.branchCount || 0) >= 2
-          && !!midi.midiSuspensionMachineFeatures?.stateLabel;
+          && !!midi.midiSuspensionMachineFeatures?.stateLabel
+          && (midi.midiOrbifoldRibbonFeatures?.candidateAnchorCount || 0) >= 1
+          && (midi.midiCommonToneConstellationFeatures?.retainedStarCount || 0) >= 1;
       }, { beforeLabel: defaultContext.label, beforeFirstSuggestion: defaultContext.suggestionNames[0] || "" }, { timeout: 30000 }).then((handle) => handle.jsonValue());
       traceStep("profile-change");
       await page.selectOption("#midi-profile", "3");
@@ -329,7 +346,9 @@ async function main() {
           && (midi?.midiWeatherFeatures?.cellCount || 0) >= 2
           && (midi?.midiRiskRadarFeatures?.populatedAxisCount || 0) >= 4
           && (midi?.midiCadenceFunnelFeatures?.branchCount || 0) >= 2
-          && !!midi?.midiSuspensionMachineFeatures?.stateLabel;
+          && !!midi?.midiSuspensionMachineFeatures?.stateLabel
+          && (midi?.midiOrbifoldRibbonFeatures?.candidateAnchorCount || 0) >= 1
+          && (midi?.midiCommonToneConstellationFeatures?.retainedStarCount || 0) >= 1;
       }, { timeout: 30000 }).then((handle) => handle.jsonValue());
       traceStep("mini-piano");
       await page.selectOption("#mini-instrument-mode", "piano");
@@ -497,6 +516,8 @@ async function main() {
           && midi?.historyFrameCount >= 1
           && (midi?.midiCadenceFunnelFeatures?.branchCount || 0) >= 2
           && !!midi?.midiSuspensionMachineFeatures?.stateLabel
+          && (midi?.midiOrbifoldRibbonFeatures?.candidateAnchorCount || 0) >= 1
+          && (midi?.midiCommonToneConstellationFeatures?.retainedStarCount || 0) >= 1
           && document.querySelector("#midi-tonic")?.value === "0"
           && document.querySelector("#midi-mode")?.value === "0"
           && document.querySelector("#midi-profile")?.value === "0";
@@ -507,7 +528,9 @@ async function main() {
           && midi?.displayCount >= 3
           && midi?.snapshotCount >= 1
           && (midi?.midiCadenceFunnelFeatures?.branchCount || 0) >= 2
-          && !!midi?.midiSuspensionMachineFeatures?.stateLabel;
+          && !!midi?.midiSuspensionMachineFeatures?.stateLabel
+          && (midi?.midiOrbifoldRibbonFeatures?.candidateAnchorCount || 0) >= 1
+          && (midi?.midiCommonToneConstellationFeatures?.retainedStarCount || 0) >= 1;
       }, { timeout: 30000 }).then((handle) => handle.jsonValue());
       await page.click("#midi-return-live");
       const backToLive = await page.waitForFunction(() => {
@@ -576,6 +599,8 @@ async function main() {
             midiActiveBraidFeatures,
             midiActiveWeatherFeatures,
             midiActiveRiskRadarFeatures,
+            midiActiveOrbifoldRibbonFeatures,
+            midiActiveCommonToneConstellationFeatures,
             hoveredCandidate,
             hoverReset,
             contextChanged,

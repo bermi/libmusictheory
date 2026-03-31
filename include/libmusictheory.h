@@ -18,6 +18,9 @@ extern "C" {
  *   lmt_counterpoint_max_voices, lmt_build_voiced_state,
  *   lmt_classify_motion, lmt_rank_next_steps,
  *   lmt_rank_cadence_destinations, lmt_analyze_suspension_machine,
+ *   lmt_orbifold_triad_node_count, lmt_orbifold_triad_node_at,
+ *   lmt_orbifold_triad_edge_count, lmt_orbifold_triad_edge_at,
+ *   lmt_find_orbifold_triad_node,
  *   lmt_mode_spelling_quality, lmt_rank_context_suggestions,
  *   lmt_preferred_voicing_n, and the method-specific RGBA bitmap renderers
  *   below.
@@ -293,6 +296,21 @@ typedef struct {
     uint8_t reserved2;
 } lmt_suspension_machine_summary;
 
+typedef struct {
+    lmt_pitch_class_set set_value;
+    uint8_t root;
+    uint8_t quality;
+    float x;
+    float y;
+} lmt_orbifold_triad_node;
+
+typedef struct {
+    uint8_t from_index;
+    uint8_t to_index;
+    uint8_t reserved0;
+    uint8_t reserved1;
+} lmt_orbifold_triad_edge;
+
 lmt_pitch_class_set lmt_pcs_from_list(const lmt_pitch_class *pcs, uint8_t count);
 uint8_t lmt_pcs_to_list(lmt_pitch_class_set set, lmt_pitch_class *out);
 uint8_t lmt_pcs_cardinality(lmt_pitch_class_set set);
@@ -353,6 +371,13 @@ uint32_t lmt_suspension_state_count(void);
 const char *lmt_suspension_state_name(uint32_t index);
 uint32_t lmt_sizeof_cadence_destination_score(void);
 uint32_t lmt_sizeof_suspension_machine_summary(void);
+uint32_t lmt_orbifold_triad_node_count(void);
+uint32_t lmt_sizeof_orbifold_triad_node(void);
+uint32_t lmt_orbifold_triad_node_at(uint32_t index, lmt_orbifold_triad_node *out);
+uint32_t lmt_find_orbifold_triad_node(lmt_pitch_class_set set);
+uint32_t lmt_orbifold_triad_edge_count(void);
+uint32_t lmt_sizeof_orbifold_triad_edge(void);
+uint32_t lmt_orbifold_triad_edge_at(uint32_t index, lmt_orbifold_triad_edge *out);
 void lmt_voiced_history_reset(lmt_voiced_history *history);
 uint32_t lmt_build_voiced_state(const lmt_midi_note *notes, uint32_t note_count, const lmt_midi_note *sustained_notes, uint32_t sustained_count, lmt_pitch_class tonic, lmt_mode_type mode_type, uint8_t beat_in_bar, uint8_t beats_per_bar, uint8_t subdivision, lmt_cadence_state cadence_hint, const lmt_voiced_state *previous, lmt_voiced_state *out);
 uint32_t lmt_voiced_history_push(lmt_voiced_history *history, const lmt_midi_note *notes, uint32_t note_count, const lmt_midi_note *sustained_notes, uint32_t sustained_count, lmt_pitch_class tonic, lmt_mode_type mode_type, uint8_t beat_in_bar, uint8_t beats_per_bar, uint8_t subdivision, lmt_cadence_state cadence_hint, lmt_voiced_state *out);

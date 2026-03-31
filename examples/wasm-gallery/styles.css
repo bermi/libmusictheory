@@ -468,7 +468,9 @@ select {
 .weather-frame,
 .risk-radar-frame,
 .cadence-funnel-frame,
-.suspension-machine-frame {
+.suspension-machine-frame,
+.orbifold-ribbon-frame,
+.common-tone-constellation-frame {
   min-height: 380px;
 }
 
@@ -838,6 +840,98 @@ select {
   font-size: 11px;
   fill: rgba(176, 54, 32, 0.9);
   font-weight: 700;
+}
+
+.orbifold-ribbon-shell {
+  fill: rgba(31, 125, 134, 0.04);
+  stroke: rgba(31, 125, 134, 0.18);
+  stroke-width: 2;
+}
+
+.orbifold-ribbon-edge {
+  stroke: rgba(24, 36, 47, 0.12);
+  stroke-width: 1.8;
+}
+
+.orbifold-ribbon-node {
+  stroke-width: 1.6;
+  opacity: 0.9;
+}
+
+.orbifold-ribbon-node-label {
+  font-size: 8px;
+  fill: rgba(24, 36, 47, 0.72);
+  font-weight: 700;
+}
+
+.orbifold-ribbon-current-anchor {
+  fill: rgba(31, 125, 134, 0.16);
+  stroke: rgba(31, 125, 134, 0.84);
+  stroke-width: 3;
+}
+
+.orbifold-ribbon-candidate-anchor {
+  fill: rgba(255, 255, 255, 0.92);
+  stroke: rgba(24, 36, 47, 0.18);
+  stroke-width: 2.4;
+}
+
+.orbifold-ribbon-candidate-anchor.is-focused {
+  fill: rgba(161, 22, 102, 0.12);
+  stroke: rgba(161, 22, 102, 0.78);
+}
+
+.orbifold-ribbon-highlight-ring {
+  fill: none;
+  stroke: rgba(226, 137, 26, 0.82);
+  stroke-width: 2.2;
+  stroke-dasharray: 5 4;
+}
+
+.orbifold-ribbon-ribbon {
+  fill: none;
+  stroke: rgba(24, 36, 47, 0.18);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+}
+
+.orbifold-ribbon-ribbon.is-focused {
+  stroke: rgba(161, 22, 102, 0.6);
+  stroke-width: 3.2;
+}
+
+.common-tone-constellation-axis {
+  stroke: rgba(24, 36, 47, 0.14);
+  stroke-width: 2;
+}
+
+.common-tone-constellation-history-anchor {
+  stroke: rgba(24, 36, 47, 0.18);
+  stroke-width: 1.8;
+  opacity: 0.7;
+}
+
+.common-tone-constellation-retained-link {
+  stroke: rgba(226, 137, 26, 0.42);
+  stroke-width: 2.2;
+  stroke-dasharray: 4 4;
+}
+
+.common-tone-constellation-retained-star {
+  stroke: rgba(24, 36, 47, 0.24);
+  stroke-width: 1.8;
+}
+
+.common-tone-constellation-moving-vector {
+  stroke-width: 3.2;
+  stroke-linecap: round;
+  opacity: 0.92;
+}
+
+.common-tone-constellation-current-node,
+.common-tone-constellation-candidate-node {
+  stroke: rgba(24, 36, 47, 0.2);
+  stroke-width: 1.8;
 }
 
 .optic-k-frame {

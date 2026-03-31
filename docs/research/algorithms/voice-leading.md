@@ -334,6 +334,45 @@ The current implementation is deliberately lightweight and deterministic:
 
 This keeps the cadence and suspension views reusable across the C ABI, WASM gallery, and future host applications without embedding gallery-only heuristics.
 
+## Orbifold Ribbon And Common-Tone Constellation
+
+The live counterpoint gallery now also exposes two linked explanatory views built on top of the existing voice-leading and counterpoint summaries.
+
+### Orbifold Ribbon
+
+The orbifold ribbon is intentionally local rather than global. It does not try to solve a general continuous orbifold embedding for every live texture. Instead it uses the existing triad orbifold metadata as a stable explanatory anchor layer.
+
+Current behavior:
+
+- enumerate the library-owned triad orbifold nodes and edges once through the C ABI
+- map the current state and ranked next-step candidates onto those anchors
+- prefer exact triad matches first
+- otherwise reduce richer sets to the most explanatory nearby triadic anchor by:
+  - overlap with the live set
+  - subset preservation
+  - minimized outside tones
+  - root proximity
+  - stable quality preference
+
+This makes the view useful for real live MIDI textures where the ranked candidates often contain added tones or incomplete sonorities. The ribbon is therefore an explanatory projection of counterpoint state onto harmonic geometry, not a claim that every live sonority is itself a pure orbifold node.
+
+### Common-Tone Constellation
+
+The common-tone constellation is driven by recent voiced history plus the currently focused ranked candidate.
+
+Its current presentation separates:
+
+- retained tones as fixed stars
+- moving tones as directed vectors
+- recent states as quieter history anchors
+
+The important implementation choice is that the visible retained-vs-moving split is derived from the actual current voiced notes and the candidate voiced notes, not only from already-compressed motion-summary flags. That keeps the explanatory picture aligned with the concrete notes the user is hearing and seeing.
+
+Together, the ribbon and constellation answer two different questions:
+
+- `Where is this move heading in harmonic geometry?`
+- `How much of the texture is actually staying put versus moving?`
+
 ## Dependencies
 
 - [Pitch Class Set Operations](pitch-class-set-operations.md)

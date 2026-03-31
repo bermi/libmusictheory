@@ -20,6 +20,8 @@ const LmtMotionEvaluation = api.LmtMotionEvaluation;
 const LmtNextStepSuggestion = api.LmtNextStepSuggestion;
 const LmtCadenceDestinationScore = api.LmtCadenceDestinationScore;
 const LmtSuspensionMachineSummary = api.LmtSuspensionMachineSummary;
+const LmtOrbifoldTriadNode = api.LmtOrbifoldTriadNode;
+const LmtOrbifoldTriadEdge = api.LmtOrbifoldTriadEdge;
 
 const lmt_pcs_from_list = api.lmt_pcs_from_list;
 const lmt_pcs_to_list = api.lmt_pcs_to_list;
@@ -74,6 +76,13 @@ const lmt_suspension_state_count = api.lmt_suspension_state_count;
 const lmt_suspension_state_name = api.lmt_suspension_state_name;
 const lmt_sizeof_cadence_destination_score = api.lmt_sizeof_cadence_destination_score;
 const lmt_sizeof_suspension_machine_summary = api.lmt_sizeof_suspension_machine_summary;
+const lmt_orbifold_triad_node_count = api.lmt_orbifold_triad_node_count;
+const lmt_sizeof_orbifold_triad_node = api.lmt_sizeof_orbifold_triad_node;
+const lmt_orbifold_triad_node_at = api.lmt_orbifold_triad_node_at;
+const lmt_find_orbifold_triad_node = api.lmt_find_orbifold_triad_node;
+const lmt_orbifold_triad_edge_count = api.lmt_orbifold_triad_edge_count;
+const lmt_sizeof_orbifold_triad_edge = api.lmt_sizeof_orbifold_triad_edge;
+const lmt_orbifold_triad_edge_at = api.lmt_orbifold_triad_edge_at;
 const lmt_voiced_history_reset = api.lmt_voiced_history_reset;
 const lmt_build_voiced_state = api.lmt_build_voiced_state;
 const lmt_voiced_history_push = api.lmt_voiced_history_push;
@@ -117,6 +126,8 @@ test "c abi header layout and constants" {
     try testing.expectEqual(@as(usize, 8), @sizeOf(c.lmt_voice_motion));
     try testing.expectEqual(@sizeOf(c.lmt_cadence_destination_score), @sizeOf(LmtCadenceDestinationScore));
     try testing.expectEqual(@sizeOf(c.lmt_suspension_machine_summary), @sizeOf(LmtSuspensionMachineSummary));
+    try testing.expectEqual(@sizeOf(c.lmt_orbifold_triad_node), @sizeOf(LmtOrbifoldTriadNode));
+    try testing.expectEqual(@sizeOf(c.lmt_orbifold_triad_edge), @sizeOf(LmtOrbifoldTriadEdge));
     try testing.expectEqual(@as(usize, 0), @offsetOf(c.lmt_key_context, "tonic"));
     try testing.expectEqual(@as(usize, 1), @offsetOf(c.lmt_key_context, "quality"));
     try testing.expectEqual(@as(usize, 0), @offsetOf(c.lmt_guide_dot, "position"));
@@ -136,6 +147,8 @@ test "c abi header layout and constants" {
     try testing.expectEqual(@as(u32, @sizeOf(LmtNextStepSuggestion)), lmt_sizeof_next_step_suggestion());
     try testing.expectEqual(@as(u32, @sizeOf(LmtCadenceDestinationScore)), lmt_sizeof_cadence_destination_score());
     try testing.expectEqual(@as(u32, @sizeOf(LmtSuspensionMachineSummary)), lmt_sizeof_suspension_machine_summary());
+    try testing.expectEqual(@as(u32, @sizeOf(LmtOrbifoldTriadNode)), lmt_sizeof_orbifold_triad_node());
+    try testing.expectEqual(@as(u32, @sizeOf(LmtOrbifoldTriadEdge)), lmt_sizeof_orbifold_triad_edge());
 }
 
 test "c abi set operations" {
@@ -453,6 +466,30 @@ test "c abi cadence destination and suspension helpers" {
     try testing.expectEqual(@as(u8, 0), resolved_summary.tracked_voice_id);
     try testing.expectEqual(@as(u8, 60), resolved_summary.held_midi);
     try testing.expectEqual(@as(u8, 59), resolved_summary.expected_resolution_midi);
+}
+
+test "c abi orbifold metadata helpers" {
+    const node_count = lmt_orbifold_triad_node_count();
+    try testing.expect(node_count >= 40);
+
+    var node: LmtOrbifoldTriadNode = undefined;
+    try testing.expectEqual(@as(u32, 1), lmt_orbifold_triad_node_at(0, @ptrCast(&node)));
+    try testing.expectEqual(@as(u16, pcs.C_MAJOR_TRIAD), node.set_value);
+    try testing.expectEqual(@as(u8, c.LMT_CHORD_MAJOR), node.quality);
+    try testing.expect(node.x > 0);
+    try testing.expect(node.y > 0);
+
+    try testing.expectEqual(@as(u32, 0), lmt_find_orbifold_triad_node(pcs.C_MAJOR_TRIAD));
+    try testing.expectEqual(@as(u32, 0), lmt_find_orbifold_triad_node(pcs.fromList(&[_]u4{ 0, 4, 7, 11 })));
+    try testing.expectEqual(node_count, lmt_find_orbifold_triad_node(pcs.fromList(&[_]u4{ 0, 1, 2 })));
+
+    const edge_count = lmt_orbifold_triad_edge_count();
+    try testing.expect(edge_count > 0);
+
+    var edge: LmtOrbifoldTriadEdge = undefined;
+    try testing.expectEqual(@as(u32, 1), lmt_orbifold_triad_edge_at(0, @ptrCast(&edge)));
+    try testing.expect(edge.from_index < node_count);
+    try testing.expect(edge.to_index < node_count);
 }
 
 test "c abi chords and roman numerals" {

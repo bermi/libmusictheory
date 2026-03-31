@@ -204,6 +204,12 @@ if [ -f "$ROOT_DIR/docs/plans/in_progress/0097-cadence-funnel-and-suspension-mac
     check_cmd "cd '$ROOT_DIR' && rg -n 'midiCadenceFunnelFeatures|midiSuspensionMachineFeatures|branchCount|anchorCount|stateLabel|obligationCount' examples/wasm-gallery/gallery.js scripts/lib/wasm_gallery_playwright_common.mjs scripts/validate_wasm_gallery_playwright.mjs >/dev/null" "0097 cadence/suspension guardrail (gallery summary and validation assert structural feature counts)"
 fi
 
+if [ -f "$ROOT_DIR/docs/plans/in_progress/0098-orbifold-ribbon-and-common-tone-constellation.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0098-orbifold-ribbon-and-common-tone-constellation.md" ]; then
+    check_cmd "cd '$ROOT_DIR' && rg -n 'midi-orbifold-ribbon|midi-common-tone-constellation|renderOrbifoldRibbon|renderCommonToneConstellation|Orbifold Ribbon|Common-Tone Constellation' examples/wasm-gallery/index.html examples/wasm-gallery/gallery.js examples/wasm-gallery/styles.css scripts/validate_wasm_gallery_playwright.mjs >/dev/null" "0098 orbifold/constellation guardrail (gallery hosts, runtime, styles, and validation wiring are present)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'lmt_orbifold_triad_node_count|lmt_orbifold_triad_node_at|lmt_orbifold_triad_edge_count|lmt_orbifold_triad_edge_at|lmt_find_orbifold_triad_node|lmt_orbifold_triad_node|lmt_orbifold_triad_edge' include/libmusictheory.h src/c_api.zig build.zig scripts/check_wasm_exports.mjs src/tests/c_api_test.zig >/dev/null" "0098 orbifold/constellation guardrail (experimental orbifold ABI, exports, and tests are present)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'midiOrbifoldRibbonFeatures|midiCommonToneConstellationFeatures|candidateAnchorCount|retainedStarCount|movingVectorCount' examples/wasm-gallery/gallery.js scripts/lib/wasm_gallery_playwright_common.mjs scripts/validate_wasm_gallery_playwright.mjs >/dev/null" "0098 orbifold/constellation guardrail (gallery summary and validation assert structural feature counts)"
+fi
+
 if [ -f "$ROOT_DIR/scripts/release_smoke.sh" ]; then
     check_cmd "cd '$ROOT_DIR' && test -x scripts/release_smoke.sh" "0078 release smoke guardrail (script is executable)"
     check_cmd "cd '$ROOT_DIR' && ! rg -n 'tmp/harmoniousapp\\.net|validate_harmonious_|wasm-demo|wasm-scaled-render-parity|wasm-native-rgba-proof|wasm-harmonious-spa' scripts/release_smoke.sh" "0078 release smoke guardrail (script stays on standalone surfaces and does not depend on local harmonious data)"
