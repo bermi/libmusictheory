@@ -458,6 +458,27 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
           narrativeReady: (host.querySelector(".inspector-narrative")?.textContent || "").trim().length > 0,
         };
       })(),
+      midiContinuationLadderFeatures: (() => {
+        const host = document.querySelector("#midi-continuation-ladder");
+        if (!host) {
+          return {
+            rootLabel: "",
+            continuationCount: 0,
+            continuationClockCount: 0,
+            continuationMiniCount: 0,
+            sourceFocusedIndex: -1,
+            firstContinuationLabel: "",
+          };
+        }
+        return {
+          rootLabel: (host.querySelector(".continuation-head h4")?.textContent || "").trim(),
+          continuationCount: host.querySelectorAll(".continuation-card").length,
+          continuationClockCount: host.querySelectorAll("[data-continuation-clock] :is(svg,img)").length,
+          continuationMiniCount: host.querySelectorAll("[data-continuation-mini] :is(svg,img)").length,
+          sourceFocusedIndex: -1,
+          firstContinuationLabel: (host.querySelector(".continuation-card strong")?.textContent || "").trim(),
+        };
+      })(),
       previewKinds: (() => {
         const hostIds = ["midi-clock", "midi-optic-k", "midi-evenness", "midi-keyboard", "midi-staff", "midi-current-fret", "midi-focused-mini"];
         return Object.fromEntries(hostIds.map((id) => {
@@ -504,6 +525,7 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
     const midiOrbifoldRibbonFeatures = snapshot.summary?.midiOrbifoldRibbonFeatures ?? snapshot.midiOrbifoldRibbonFeatures;
     const midiCommonToneConstellationFeatures = snapshot.summary?.midiCommonToneConstellationFeatures ?? snapshot.midiCommonToneConstellationFeatures;
     const midiInspectorFeatures = snapshot.summary?.midiInspectorFeatures ?? snapshot.midiInspectorFeatures;
+    const midiContinuationLadderFeatures = snapshot.summary?.midiContinuationLadderFeatures ?? snapshot.midiContinuationLadderFeatures;
     const keyboardFeatures = snapshot.summary?.keyboardFeatures ?? snapshot.keyboardFeaturesFallback;
     if (
       snapshot.summary?.rendered === true
@@ -529,6 +551,10 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
       && ((snapshot.previewKinds["midi-current-fret"] ?? "none") !== "none" || snapshot.summary?.currentMiniMode === "off")
       && ((snapshot.previewKinds["midi-focused-mini"] ?? "none") !== "none" || snapshot.summary?.currentMiniMode === "off")
       && midiInspectorFeatures.narrativeReady === true
+      && midiContinuationLadderFeatures.rootLabel.length > 0
+      && midiContinuationLadderFeatures.continuationCount >= 1
+      && midiContinuationLadderFeatures.continuationClockCount >= 1
+      && (midiContinuationLadderFeatures.continuationMiniCount >= 1 || snapshot.summary?.currentMiniMode === "off")
       && midiOpticKFeatures.clockCount >= 2
       && midiOpticKFeatures.linkCount >= 1
       && midiOpticKFeatures.labelCount >= 5

@@ -1330,6 +1330,95 @@ select {
   min-height: 220px;
 }
 
+.continuation-ladder-frame {
+  min-height: 380px;
+  display: grid;
+}
+
+.continuation-shell {
+  display: grid;
+  gap: 14px;
+  min-height: 100%;
+}
+
+.continuation-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.continuation-head h4 {
+  margin: 4px 0 0;
+  font-size: 1.04rem;
+}
+
+.continuation-root {
+  border-radius: 18px;
+  border: 1px solid rgba(24, 36, 47, 0.12);
+  background: linear-gradient(180deg, rgba(252, 247, 240, 0.96), rgba(244, 236, 225, 0.9));
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.continuation-root p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.continuation-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.continuation-card {
+  border-radius: 18px;
+  border: 1px solid rgba(24, 36, 47, 0.12);
+  background: rgba(255, 255, 255, 0.94);
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.continuation-card strong {
+  font-size: 1rem;
+}
+
+.continuation-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.continuation-art-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.continuation-art {
+  display: grid;
+  place-items: center;
+  min-height: 152px;
+  border-radius: 16px;
+  border: 1px solid rgba(24, 36, 47, 0.08);
+  background: linear-gradient(180deg, rgba(252, 247, 240, 0.96), rgba(244, 236, 225, 0.86));
+}
+
+.continuation-art svg,
+.continuation-art img {
+  max-height: 142px;
+}
+
+.continuation-mini .output-block,
+.continuation-empty {
+  font-size: 0.92rem;
+  color: var(--muted);
+}
+
 .inspector-shell {
   display: grid;
   gap: 12px;

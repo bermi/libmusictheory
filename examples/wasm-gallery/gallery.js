@@ -207,6 +207,7 @@ const midiSummaryEl = document.getElementById("midi-summary");
 const midiNotesEl = document.getElementById("midi-notes");
 const midiHistoryEl = document.getElementById("midi-history");
 const midiInspectorEl = document.getElementById("midi-inspector");
+const midiContinuationLadderEl = document.getElementById("midi-continuation-ladder");
 const midiClearPinEl = document.getElementById("midi-clear-pin");
 const midiClockEl = document.getElementById("midi-clock");
 const midiOpticKEl = document.getElementById("midi-optic-k");
@@ -2694,6 +2695,121 @@ function renderMidiCounterpointInspector(host, suggestion, context, profileLabel
   };
 }
 
+function renderMidiContinuationLadder(host, arena, rootSuggestion, continuationSuggestions, context, options = {}) {
+  const empty = {
+    rootLabel: "",
+    continuationCount: 0,
+    continuationClockCount: 0,
+    continuationMiniCount: 0,
+    sourceFocusedIndex: -1,
+    firstContinuationLabel: "",
+  };
+  if (!host) return empty;
+  if (!rootSuggestion) {
+    host.innerHTML = `<div class="output-block continuation-empty">Focus or pin a ranked move to see what libmusictheory thinks it naturally opens next.</div>`;
+    return empty;
+  }
+
+  const visible = continuationSuggestions.slice(0, 3);
+  const focusedLetter = options.sourceFocusedIndex != null && options.sourceFocusedIndex >= 0
+    ? String.fromCharCode(65 + options.sourceFocusedIndex)
+    : "Focused";
+  const rootLabel = rootSuggestion.noteNames.join(" · ");
+  const rootNarrative = `${focusedLetter} becomes the new present tense: libmusictheory re-ranks the next local continuations from that voiced state instead of guessing in JavaScript.`;
+
+  host.innerHTML = `
+    <div class="continuation-shell">
+      <div class="continuation-head">
+        <div>
+          <p class="eyebrow">After the focused move</p>
+          <h4>${escapeHtml(focusedLetter)}. ${escapeHtml(rootLabel)}</h4>
+        </div>
+        <div class="pill-list">
+          <span class="status-pill ${options.pinned ? "is-snapshot" : "is-live"}">${escapeHtml(options.pinned ? "Pinned source" : "Focused source")}</span>
+          <span class="status-pill is-live">${escapeHtml(rootSuggestion.cadenceLabel)}</span>
+        </div>
+      </div>
+      <article class="continuation-root">
+        <p>${escapeHtml(rootNarrative)}</p>
+        <div class="chip-row">
+          ${rootSuggestion.reasonNames.map((reason) => `<span class="pill">${escapeHtml(reason)}</span>`).join("") || `<span class="pill">neutral continuation</span>`}
+        </div>
+        <div class="chip-row">
+          ${rootSuggestion.warningNames.map((warning) => `<span class="chip warning-chip">${escapeHtml(warning)}</span>`).join("") || `<span class="chip safe-chip">clean motion</span>`}
+        </div>
+      </article>
+      <div class="continuation-grid">
+        ${visible.length > 0
+          ? visible.map((suggestion, index) => `
+            <article class="continuation-card" data-continuation-index="${index}">
+              <strong>${escapeHtml(focusedLetter)} -> ${index + 1}. ${escapeHtml(suggestion.noteNames.join(" · "))}</strong>
+              <p>${escapeHtml(suggestion.chordLabel)}</p>
+              <p>score ${escapeHtml(String(suggestion.score))} · cadence ${escapeHtml(suggestion.cadenceLabel)} · tension ${escapeHtml(suggestion.tensionDelta >= 0 ? `+${suggestion.tensionDelta}` : String(suggestion.tensionDelta))}</p>
+              <div class="chip-row">${suggestion.reasonNames.map((reason) => `<span class="pill">${escapeHtml(reason)}</span>`).join("") || `<span class="pill">no dominant reason</span>`}</div>
+              <div class="chip-row">${suggestion.warningNames.map((warning) => `<span class="chip warning-chip">${escapeHtml(warning)}</span>`).join("") || `<span class="chip safe-chip">clean motion</span>`}</div>
+              <div class="continuation-art-grid">
+                <div class="continuation-art" data-continuation-clock="${index}"></div>
+                <div class="continuation-art continuation-mini" data-continuation-mini="${index}"></div>
+              </div>
+            </article>
+          `).join("")
+          : `<div class="output-block continuation-empty">No stable second-step continuations yet for this source move.</div>`}
+      </div>
+    </div>
+  `;
+
+  let continuationClockCount = 0;
+  let continuationMiniCount = 0;
+  visible.forEach((suggestion, index) => {
+    const clockHost = host.querySelector(`[data-continuation-clock="${index}"]`);
+    if (clockHost) {
+      renderPreviewSvgOrBitmap(clockHost, {
+        svgMarkup: svgString(arena, wasm.lmt_svg_clock_optc, suggestion.setValue),
+        bitmapRenderer: {
+          renderRgba: (width, height) => clockBitmapRgba(arena, suggestion.setValue, width, height),
+        },
+        alt: `${suggestion.noteNames.join(" ")} continuation clock preview`,
+        options: { maxHeight: 138, squareWidth: 150, mediumWidth: 160, wideWidth: 170, ultraWideWidth: 180, padXRatio: 0.08, padYRatio: 0.12 },
+      });
+      continuationClockCount += 1;
+    }
+    const miniHost = host.querySelector(`[data-continuation-mini="${index}"]`);
+    if (miniHost) {
+      const rendered = renderMiniInstrumentPreview(
+        arena,
+        miniHost,
+        {
+          midiNotes: suggestion.notes,
+          setValue: suggestion.setValue,
+          tonic: context.tonic,
+          preferredBassPc: suggestion.notes.length > 0 ? Math.min(...suggestion.notes) % 12 : null,
+          fretVoicing: suggestion.fretPreview,
+        },
+        `${suggestion.noteNames.join(" ")} continuation mini preview`,
+        {
+          maxHeight: 150,
+          squareWidth: 170,
+          mediumWidth: 180,
+          wideWidth: 190,
+          ultraWideWidth: 200,
+          padXRatio: 0.08,
+          padYRatio: 0.14,
+        },
+      );
+      if (rendered) continuationMiniCount += 1;
+    }
+  });
+
+  return {
+    rootLabel,
+    continuationCount: visible.length,
+    continuationClockCount,
+    continuationMiniCount,
+    sourceFocusedIndex: options.sourceFocusedIndex ?? -1,
+    firstContinuationLabel: visible[0]?.noteNames?.join(" · ") || "",
+  };
+}
+
 function renderMiniInstrumentPreview(arena, host, spec, alt, options = {}) {
   if (!host) return false;
   const mode = options.modeOverride || miniInstrumentMode();
@@ -2763,6 +2879,31 @@ function buildCounterpointHistory(arena, frames, context) {
     );
   }
   return { historyPtr, statePtr };
+}
+
+function buildFocusedContinuationContext(arena, historyFrames, focusedSuggestion, context, profile) {
+  if (!focusedSuggestion || !Array.isArray(focusedSuggestion.notes) || focusedSuggestion.notes.length === 0) {
+    return { historyFrames: [], historyBundle: null, voicedHistory: { len: 0, states: [] }, suggestions: [] };
+  }
+  const frames = historyFrames.map(cloneHistoryFrame);
+  const nextStepIndex = frames.length > 0 ? frames[frames.length - 1].stepIndex + 1 : 0;
+  frames.push({
+    notes: focusedSuggestion.notes.slice(),
+    sustained: [],
+    timestamp: Date.now(),
+    stepIndex: nextStepIndex,
+  });
+  const cap = Math.max(1, counterpointStructSizes.historyCapacity || 4);
+  const continuationFrames = frames.slice(-cap);
+  const historyBundle = buildCounterpointHistory(arena, continuationFrames, context);
+  const suggestions = decodeRankedNextSteps(arena, historyBundle.historyPtr, profile, context);
+  const voicedHistory = decodeVoicedHistoryFromPointer(historyBundle.historyPtr);
+  return {
+    historyFrames: continuationFrames,
+    historyBundle,
+    voicedHistory,
+    suggestions,
+  };
 }
 
 function decodeRankedNextSteps(arena, historyPtr, profile, context) {
@@ -3428,6 +3569,10 @@ function renderMidiScene() {
         ))
       : [];
     const focusedSuggestion = focusedSuggestionIndex == null ? null : suggestions[focusedSuggestionIndex] || null;
+    const continuationBundle = focusedSuggestion
+      ? buildFocusedContinuationContext(arena, historyFrames, focusedSuggestion, context, profile)
+      : null;
+    const continuationSuggestions = continuationBundle?.suggestions || [];
     const displayNotesLabel = displayNotes.length > 0
       ? displayNotes.map((midi) => midiName(midi, context.tonic, context.quality))
       : [];
@@ -3472,6 +3617,17 @@ function renderMidiScene() {
       pinned: pinnedSuggestionIndex != null,
       focusedIndex: focusedSuggestionIndex,
     });
+    const midiContinuationLadderFeatures = renderMidiContinuationLadder(
+      midiContinuationLadderEl,
+      arena,
+      focusedSuggestion,
+      continuationSuggestions,
+      context,
+      {
+        pinned: pinnedSuggestionIndex != null,
+        sourceFocusedIndex: focusedSuggestionIndex,
+      },
+    );
 
     const midiHorizonFeatures = renderVoiceLeadingHorizon(midiHorizonEl, currentVoicedState, suggestions, focusedSuggestionIndex, context);
     const midiBraidFeatures = renderVoiceBraid(midiBraidEl, voicedHistory.states, candidateStates, focusedSuggestionIndex, context);
@@ -3680,6 +3836,7 @@ function renderMidiScene() {
       suggestionMiniCount: miniInstrumentMode() === MINI_INSTRUMENT_OFF ? 0 : suggestions.length,
       focusedSuggestionName: focusedSuggestion?.noteNames?.join(" · ") || "",
       midiInspectorFeatures,
+      midiContinuationLadderFeatures,
       midiOpticKFeatures,
       midiEvennessFeatures,
       midiStaffFeatures,

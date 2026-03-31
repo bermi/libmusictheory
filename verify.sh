@@ -216,6 +216,11 @@ if [ -f "$ROOT_DIR/docs/plans/in_progress/0099-counterpoint-inspector-and-candid
     check_cmd "cd '$ROOT_DIR' && rg -n 'midi-focused-mini|midi-current-fret|Mini instrument set to|currentMiniMode === \"piano\"|currentMiniMode === \"fret\"|focusedMiniRendered === true' scripts/validate_wasm_gallery_playwright.mjs scripts/lib/wasm_gallery_playwright_common.mjs examples/wasm-gallery/gallery.js >/dev/null" "0099 counterpoint inspector guardrail (current and focused instrument previews are validated under piano and fret modes)"
 fi
 
+if [ -f "$ROOT_DIR/docs/plans/in_progress/0100-counterpoint-continuation-ladder.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0100-counterpoint-continuation-ladder.md" ]; then
+    check_cmd "cd '$ROOT_DIR' && rg -n 'midi-continuation-ladder|renderMidiContinuationLadder|buildFocusedContinuationContext|Continuation Ladder|data-continuation-clock|data-continuation-mini' examples/wasm-gallery/index.html examples/wasm-gallery/gallery.js examples/wasm-gallery/styles.css scripts/validate_wasm_gallery_playwright.mjs >/dev/null" "0100 continuation ladder guardrail (gallery hosts, runtime hooks, styles, and validation wiring are present)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'midiContinuationLadderFeatures|continuationCount|continuationClockCount|continuationMiniCount|sourceFocusedIndex|firstContinuationLabel' examples/wasm-gallery/gallery.js scripts/lib/wasm_gallery_playwright_common.mjs scripts/validate_wasm_gallery_playwright.mjs >/dev/null" "0100 continuation ladder guardrail (summary and playwright prove focused follow-up ranking and mini preview coverage)"
+fi
+
 if [ -f "$ROOT_DIR/scripts/release_smoke.sh" ]; then
     check_cmd "cd '$ROOT_DIR' && test -x scripts/release_smoke.sh" "0078 release smoke guardrail (script is executable)"
     check_cmd "cd '$ROOT_DIR' && ! rg -n 'tmp/harmoniousapp\\.net|validate_harmonious_|wasm-demo|wasm-scaled-render-parity|wasm-native-rgba-proof|wasm-harmonious-spa' scripts/release_smoke.sh" "0078 release smoke guardrail (script stays on standalone surfaces and does not depend on local harmonious data)"

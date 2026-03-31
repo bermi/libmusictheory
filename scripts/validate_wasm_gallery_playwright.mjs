@@ -290,6 +290,13 @@ async function main() {
       ) {
         throw new Error(`live midi scene did not render orbifold/constellation diagnostics correctly: ${JSON.stringify({ orbifold: midiActiveOrbifoldRibbonFeatures, constellation: midiActiveCommonToneConstellationFeatures, summary: midiActive.summary })}`);
       }
+      if (
+        (midiActive.summary?.midiContinuationLadderFeatures?.continuationCount || 0) < 1
+        || (midiActive.summary?.midiContinuationLadderFeatures?.continuationClockCount || 0) < 1
+        || !midiActive.summary?.midiContinuationLadderFeatures?.rootLabel
+      ) {
+        throw new Error(`live midi scene did not render continuation ladder correctly: ${JSON.stringify({ continuation: midiActive.summary?.midiContinuationLadderFeatures, summary: midiActive.summary })}`);
+      }
       traceStep("hover-candidate");
       const hoverCandidateIndex = Math.min(1, Math.max(0, (midiActive.summary?.suggestionCount || 1) - 1));
       await page.locator(`#midi-suggestions [data-suggestion-index="${hoverCandidateIndex}"]`).hover();
@@ -303,6 +310,8 @@ async function main() {
           && (midi?.midiRiskRadarFeatures?.focusedCandidateIndex ?? -1) === targetIndex
           && (midi?.midiOrbifoldRibbonFeatures?.highlightedCandidateCount || 0) >= 1
           && (midi?.midiCommonToneConstellationFeatures?.focusedCandidateIndex ?? -1) === targetIndex
+          && (midi?.midiContinuationLadderFeatures?.sourceFocusedIndex ?? -1) === targetIndex
+          && (midi?.midiContinuationLadderFeatures?.continuationCount || 0) >= 1
           && (midi?.midiInspectorFeatures?.candidateNoteCount || 0) >= 1
           && (midi?.midiWeatherFeatures?.cellCount || 0) >= 2
           && (midi?.midiRiskRadarFeatures?.candidatePolygonCount || 0) >= 1
@@ -316,6 +325,8 @@ async function main() {
           && midi?.focusedCandidateIndex === targetIndex
           && midi?.hoveredCandidateIndex === targetIndex
           && midi?.midiInspectorFeatures?.pinned === true
+          && (midi?.midiContinuationLadderFeatures?.sourceFocusedIndex ?? -1) === targetIndex
+          && (midi?.midiContinuationLadderFeatures?.continuationCount || 0) >= 1
           && (midi?.midiInspectorFeatures?.reasonCount || 0) >= 1;
       }, hoverCandidateIndex, { timeout: 30000 }).then((handle) => handle.jsonValue());
       await page.mouse.move(8, 8);
@@ -323,7 +334,8 @@ async function main() {
         const midi = window.__lmtGallerySummary?.scenes?.midi;
         return midi?.pinnedCandidateIndex === targetIndex
           && midi?.focusedCandidateIndex === targetIndex
-          && (midi?.midiCommonToneConstellationFeatures?.focusedCandidateIndex ?? -1) === targetIndex;
+          && (midi?.midiCommonToneConstellationFeatures?.focusedCandidateIndex ?? -1) === targetIndex
+          && (midi?.midiContinuationLadderFeatures?.sourceFocusedIndex ?? -1) === targetIndex;
       }, hoverCandidateIndex, { timeout: 30000 }).then((handle) => handle.jsonValue());
       traceStep("clear-pin");
       await page.click("#midi-clear-pin");
@@ -332,7 +344,8 @@ async function main() {
         return midi?.pinnedCandidateIndex === -1
           && midi?.focusedCandidateIndex === 0
           && (midi?.midiWeatherFeatures?.focusedCandidateIndex ?? -1) === 0
-          && (midi?.midiCommonToneConstellationFeatures?.focusedCandidateIndex ?? -1) === 0;
+          && (midi?.midiCommonToneConstellationFeatures?.focusedCandidateIndex ?? -1) === 0
+          && (midi?.midiContinuationLadderFeatures?.sourceFocusedIndex ?? -1) === 0;
       }, { timeout: 30000 }).then((handle) => handle.jsonValue());
       traceStep("context-change");
       const defaultContext = await page.evaluate(() => ({
@@ -348,6 +361,7 @@ async function main() {
         return midi.contextLabel !== beforeLabel
           && nextFirstSuggestion !== beforeFirstSuggestion
           && midi.displayCount >= 3
+          && (midi.midiContinuationLadderFeatures?.continuationCount || 0) >= 1
           && (midi.midiHorizonFeatures?.candidateNodeCount || 0) >= 1
           && (midi.midiBraidFeatures?.candidateColumnCount || 0) >= 1
           && (midi.midiWeatherFeatures?.cellCount || 0) >= 2
@@ -364,6 +378,7 @@ async function main() {
         return midi?.counterpointProfileId === 3
           && midi?.counterpointProfile === "jazz-close-leading"
           && midi?.suggestionCount >= 1
+          && (midi?.midiContinuationLadderFeatures?.continuationCount || 0) >= 1
           && (midi?.midiHorizonFeatures?.candidateNodeCount || 0) >= 1
           && (midi?.midiBraidFeatures?.candidateColumnCount || 0) >= 1
           && (midi?.midiWeatherFeatures?.cellCount || 0) >= 2
@@ -383,6 +398,7 @@ async function main() {
           && midi?.currentMiniRendered === true
           && midi?.focusedMiniRendered === true
           && midi?.suggestionMiniCount >= 1
+          && (midi?.midiContinuationLadderFeatures?.continuationMiniCount || 0) >= 1
           && summary?.scenes?.set?.miniInstrumentMode === "piano"
           && summary?.scenes?.set?.miniRendered === true
           && summary?.scenes?.key?.miniRendered === true
@@ -405,6 +421,7 @@ async function main() {
           && midi?.currentMiniRendered === true
           && midi?.focusedMiniRendered === true
           && midi?.suggestionMiniCount >= 1
+          && (midi?.midiContinuationLadderFeatures?.continuationMiniCount || 0) >= 1
           && summary?.scenes?.set?.miniInstrumentMode === "fret"
           && summary?.scenes?.set?.miniRendered === true
           && summary?.scenes?.key?.miniRendered === true
