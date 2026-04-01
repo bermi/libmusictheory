@@ -208,6 +208,7 @@ const midiNotesEl = document.getElementById("midi-notes");
 const midiHistoryEl = document.getElementById("midi-history");
 const midiInspectorEl = document.getElementById("midi-inspector");
 const midiContinuationLadderEl = document.getElementById("midi-continuation-ladder");
+const midiPathWeaverEl = document.getElementById("midi-path-weaver");
 const midiClearPinEl = document.getElementById("midi-clear-pin");
 const midiClockEl = document.getElementById("midi-clock");
 const midiOpticKEl = document.getElementById("midi-optic-k");
@@ -2810,6 +2811,162 @@ function renderMidiContinuationLadder(host, arena, rootSuggestion, continuationS
   };
 }
 
+function buildContinuationPaths(arena, rootBundle, rootSuggestion, context, profile, options = {}) {
+  if (!rootBundle || !rootSuggestion) return [];
+  const branchCount = clamp(options.branchCount ?? 3, 1, 6);
+  const maxDepth = clamp(options.maxDepth ?? 3, 1, 4);
+  const firstLayer = Array.isArray(rootBundle.suggestions) ? rootBundle.suggestions.slice(0, branchCount) : [];
+  return firstLayer.map((firstSuggestion, branchIndex) => {
+    const steps = [firstSuggestion];
+    let inputFrames = rootBundle.historyFrames.map(cloneHistoryFrame);
+    let cursorSuggestion = firstSuggestion;
+    for (let depthIndex = 1; depthIndex < maxDepth; depthIndex += 1) {
+      const nextBundle = buildFocusedContinuationContext(arena, inputFrames, cursorSuggestion, context, profile);
+      inputFrames = nextBundle.historyFrames.map(cloneHistoryFrame);
+      const nextSuggestion = nextBundle.suggestions[0];
+      if (!nextSuggestion) break;
+      steps.push(nextSuggestion);
+      cursorSuggestion = nextSuggestion;
+    }
+    const terminal = steps[steps.length - 1];
+    return {
+      branchIndex,
+      steps,
+      terminal,
+      terminalLabel: terminal?.noteNames?.join(" · ") || "",
+      totalScore: steps.reduce((sum, suggestion) => sum + (suggestion.score || 0), 0),
+      cadenceTrail: [rootSuggestion.cadenceLabel, ...steps.map((suggestion) => suggestion.cadenceLabel)],
+      reasonNames: Array.from(new Set(steps.flatMap((suggestion) => suggestion.reasonNames || []))).slice(0, 4),
+      warningNames: Array.from(new Set(steps.flatMap((suggestion) => suggestion.warningNames || []))).slice(0, 4),
+    };
+  });
+}
+
+function renderMidiPathWeaver(host, arena, rootSuggestion, paths, context, options = {}) {
+  const empty = {
+    pathCount: 0,
+    pathStepCount: 0,
+    pathMiniCount: 0,
+    rootFocusedIndex: -1,
+    terminalLabels: [],
+  };
+  if (!host) return empty;
+  if (!rootSuggestion) {
+    host.innerHTML = `<div class="output-block continuation-empty">Focus or pin a ranked move to weave a few short continuation paths from it.</div>`;
+    return empty;
+  }
+
+  const visiblePaths = Array.isArray(paths) ? paths.slice(0, 3) : [];
+  const focusedLetter = options.rootFocusedIndex != null && options.rootFocusedIndex >= 0
+    ? String.fromCharCode(65 + options.rootFocusedIndex)
+    : "Focused";
+  const rootLabel = rootSuggestion.noteNames.join(" · ");
+
+  host.innerHTML = `
+    <div class="path-weaver-shell">
+      <div class="continuation-head">
+        <div>
+          <p class="eyebrow">Short recursive futures</p>
+          <h4>${escapeHtml(focusedLetter)}. ${escapeHtml(rootLabel)}</h4>
+        </div>
+        <div class="pill-list">
+          <span class="status-pill ${options.pinned ? "is-snapshot" : "is-live"}">${escapeHtml(options.pinned ? "Pinned root" : "Focused root")}</span>
+          <span class="status-pill is-live">${escapeHtml(rootSuggestion.cadenceLabel)}</span>
+        </div>
+      </div>
+      <article class="continuation-root">
+        <p>${escapeHtml("Each branch commits the focused move, then asks the same library-owned next-step ranker where the line most naturally wants to go over the next few local continuations.")}</p>
+        <div class="chip-row">
+          ${rootSuggestion.reasonNames.map((reason) => `<span class="pill">${escapeHtml(reason)}</span>`).join("") || `<span class="pill">neutral continuation</span>`}
+        </div>
+        <div class="chip-row">
+          ${rootSuggestion.warningNames.map((warning) => `<span class="chip warning-chip">${escapeHtml(warning)}</span>`).join("") || `<span class="chip safe-chip">clean motion</span>`}
+        </div>
+      </article>
+      <div class="path-weaver-grid">
+        ${visiblePaths.length > 0
+          ? visiblePaths.map((path, index) => `
+            <article class="path-weaver-card" data-path-weaver-path="${index}">
+              <strong>${escapeHtml(focusedLetter)} → ${index + 1}. ${escapeHtml(path.steps[0]?.noteNames?.join(" · ") || "No continuation")}</strong>
+              <p class="path-weaver-path-meta">path score ${escapeHtml(String(path.totalScore))} · cadence ${escapeHtml(path.cadenceTrail.join(" → "))}</p>
+              <div class="path-weaver-step-flow">
+                ${path.steps.map((step, stepIndex) => `
+                  <span class="path-weaver-step">
+                    <span class="path-weaver-step-label">${escapeHtml(stepIndex === 0 ? "Then" : `+${stepIndex}`)}</span>
+                    <span>${escapeHtml(step.noteNames.join(" · "))}</span>
+                  </span>
+                  ${stepIndex < path.steps.length - 1 ? `<span class="path-weaver-arrow">→</span>` : ""}
+                `).join("")}
+              </div>
+              <div class="chip-row">
+                ${path.reasonNames.map((reason) => `<span class="pill">${escapeHtml(reason)}</span>`).join("") || `<span class="pill">no dominant reason</span>`}
+              </div>
+              <div class="chip-row">
+                ${path.warningNames.map((warning) => `<span class="chip warning-chip">${escapeHtml(warning)}</span>`).join("") || `<span class="chip safe-chip">clean motion</span>`}
+              </div>
+              <p class="path-weaver-step-meta">terminal: ${escapeHtml(path.terminalLabel || "")}</p>
+              <div class="path-weaver-terminal-grid">
+                <div class="path-weaver-terminal-art" data-path-weaver-clock="${index}"></div>
+                <div class="path-weaver-terminal-art" data-path-weaver-mini="${index}"></div>
+              </div>
+            </article>
+          `).join("")
+          : `<div class="output-block continuation-empty">No stable multi-step branches yet for this focused move.</div>`}
+      </div>
+    </div>
+  `;
+
+  let pathMiniCount = 0;
+  visiblePaths.forEach((path, index) => {
+    const terminal = path.terminal || path.steps[path.steps.length - 1] || null;
+    if (!terminal) return;
+    const clockHost = host.querySelector(`[data-path-weaver-clock="${index}"]`);
+    if (clockHost) {
+      renderPreviewSvgOrBitmap(clockHost, {
+        svgMarkup: svgString(arena, wasm.lmt_svg_clock_optc, terminal.setValue),
+        bitmapRenderer: {
+          renderRgba: (width, height) => clockBitmapRgba(arena, terminal.setValue, width, height),
+        },
+        alt: `${terminal.noteNames.join(" ")} path terminal clock preview`,
+        options: { maxHeight: 138, squareWidth: 150, mediumWidth: 160, wideWidth: 170, ultraWideWidth: 180, padXRatio: 0.08, padYRatio: 0.12 },
+      });
+    }
+    const miniHost = host.querySelector(`[data-path-weaver-mini="${index}"]`);
+    if (miniHost) {
+      const rendered = renderMiniInstrumentPreview(
+        arena,
+        miniHost,
+        {
+          midiNotes: terminal.notes,
+          setValue: terminal.setValue,
+          tonic: context.tonic,
+          preferredBassPc: terminal.notes.length > 0 ? Math.min(...terminal.notes) % 12 : null,
+          fretVoicing: terminal.fretPreview,
+        },
+        `${terminal.noteNames.join(" ")} path terminal mini preview`,
+        {
+          maxHeight: 150,
+          squareWidth: 170,
+          mediumWidth: 180,
+          wideWidth: 190,
+          ultraWideWidth: 200,
+          padXRatio: 0.08,
+          padYRatio: 0.14,
+        },
+      );
+      if (rendered) pathMiniCount += 1;
+    }
+  });
+
+  return {
+    pathCount: visiblePaths.length,
+    pathStepCount: visiblePaths.reduce((sum, path) => sum + path.steps.length, 0),
+    pathMiniCount,
+    rootFocusedIndex: options.rootFocusedIndex ?? -1,
+    terminalLabels: visiblePaths.map((path) => path.terminalLabel),
+  };
+}
+
 function renderMiniInstrumentPreview(arena, host, spec, alt, options = {}) {
   if (!host) return false;
   const mode = options.modeOverride || miniInstrumentMode();
@@ -3573,6 +3730,9 @@ function renderMidiScene() {
       ? buildFocusedContinuationContext(arena, historyFrames, focusedSuggestion, context, profile)
       : null;
     const continuationSuggestions = continuationBundle?.suggestions || [];
+    const continuationPaths = focusedSuggestion
+      ? buildContinuationPaths(arena, continuationBundle, focusedSuggestion, context, profile, { branchCount: 3, maxDepth: 3 })
+      : [];
     const displayNotesLabel = displayNotes.length > 0
       ? displayNotes.map((midi) => midiName(midi, context.tonic, context.quality))
       : [];
@@ -3626,6 +3786,17 @@ function renderMidiScene() {
       {
         pinned: pinnedSuggestionIndex != null,
         sourceFocusedIndex: focusedSuggestionIndex,
+      },
+    );
+    const midiPathWeaverFeatures = renderMidiPathWeaver(
+      midiPathWeaverEl,
+      arena,
+      focusedSuggestion,
+      continuationPaths,
+      context,
+      {
+        pinned: pinnedSuggestionIndex != null,
+        rootFocusedIndex: focusedSuggestionIndex,
       },
     );
 
@@ -3837,6 +4008,7 @@ function renderMidiScene() {
       focusedSuggestionName: focusedSuggestion?.noteNames?.join(" · ") || "",
       midiInspectorFeatures,
       midiContinuationLadderFeatures,
+      midiPathWeaverFeatures,
       midiOpticKFeatures,
       midiEvennessFeatures,
       midiStaffFeatures,

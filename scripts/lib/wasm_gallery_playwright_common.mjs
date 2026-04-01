@@ -479,6 +479,25 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
           firstContinuationLabel: (host.querySelector(".continuation-card strong")?.textContent || "").trim(),
         };
       })(),
+      midiPathWeaverFeatures: (() => {
+        const host = document.querySelector("#midi-path-weaver");
+        if (!host) {
+          return {
+            pathCount: 0,
+            pathStepCount: 0,
+            pathMiniCount: 0,
+            rootFocusedIndex: -1,
+            terminalLabels: [],
+          };
+        }
+        return {
+          pathCount: host.querySelectorAll(".path-weaver-card").length,
+          pathStepCount: host.querySelectorAll(".path-weaver-step").length,
+          pathMiniCount: host.querySelectorAll("[data-path-weaver-mini] :is(svg,img)").length,
+          rootFocusedIndex: -1,
+          terminalLabels: Array.from(host.querySelectorAll(".path-weaver-step-meta"), (node) => (node.textContent || "").trim()).filter(Boolean),
+        };
+      })(),
       previewKinds: (() => {
         const hostIds = ["midi-clock", "midi-optic-k", "midi-evenness", "midi-keyboard", "midi-staff", "midi-current-fret", "midi-focused-mini"];
         return Object.fromEntries(hostIds.map((id) => {
@@ -526,6 +545,7 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
     const midiCommonToneConstellationFeatures = snapshot.summary?.midiCommonToneConstellationFeatures ?? snapshot.midiCommonToneConstellationFeatures;
     const midiInspectorFeatures = snapshot.summary?.midiInspectorFeatures ?? snapshot.midiInspectorFeatures;
     const midiContinuationLadderFeatures = snapshot.summary?.midiContinuationLadderFeatures ?? snapshot.midiContinuationLadderFeatures;
+    const midiPathWeaverFeatures = snapshot.summary?.midiPathWeaverFeatures ?? snapshot.midiPathWeaverFeatures;
     const keyboardFeatures = snapshot.summary?.keyboardFeatures ?? snapshot.keyboardFeaturesFallback;
     if (
       snapshot.summary?.rendered === true
@@ -555,6 +575,9 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
       && midiContinuationLadderFeatures.continuationCount >= 1
       && midiContinuationLadderFeatures.continuationClockCount >= 1
       && (midiContinuationLadderFeatures.continuationMiniCount >= 1 || snapshot.summary?.currentMiniMode === "off")
+      && midiPathWeaverFeatures.pathCount >= 1
+      && midiPathWeaverFeatures.pathStepCount >= 2
+      && (midiPathWeaverFeatures.pathMiniCount >= 1 || snapshot.summary?.currentMiniMode === "off")
       && midiOpticKFeatures.clockCount >= 2
       && midiOpticKFeatures.linkCount >= 1
       && midiOpticKFeatures.labelCount >= 5

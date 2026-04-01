@@ -221,6 +221,11 @@ if [ -f "$ROOT_DIR/docs/plans/in_progress/0100-counterpoint-continuation-ladder.
     check_cmd "cd '$ROOT_DIR' && rg -n 'midiContinuationLadderFeatures|continuationCount|continuationClockCount|continuationMiniCount|sourceFocusedIndex|firstContinuationLabel' examples/wasm-gallery/gallery.js scripts/lib/wasm_gallery_playwright_common.mjs scripts/validate_wasm_gallery_playwright.mjs >/dev/null" "0100 continuation ladder guardrail (summary and playwright prove focused follow-up ranking and mini preview coverage)"
 fi
 
+if [ -f "$ROOT_DIR/docs/plans/in_progress/0101-counterpoint-path-weaver.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0101-counterpoint-path-weaver.md" ]; then
+    check_cmd "cd '$ROOT_DIR' && rg -n 'midi-path-weaver|renderMidiPathWeaver|buildContinuationPaths|Path Weaver|data-path-weaver-mini' examples/wasm-gallery/index.html examples/wasm-gallery/gallery.js examples/wasm-gallery/styles.css scripts/validate_wasm_gallery_playwright.mjs >/dev/null" "0101 path weaver guardrail (gallery hosts, recursive path runtime hooks, styles, and validation wiring are present)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'midiPathWeaverFeatures|pathCount|pathStepCount|pathMiniCount|rootFocusedIndex|terminalLabels' examples/wasm-gallery/gallery.js scripts/lib/wasm_gallery_playwright_common.mjs scripts/validate_wasm_gallery_playwright.mjs >/dev/null" "0101 path weaver guardrail (summary and playwright prove multi-step continuation path rendering and mini preview coverage)"
+fi
+
 if [ -f "$ROOT_DIR/scripts/release_smoke.sh" ]; then
     check_cmd "cd '$ROOT_DIR' && test -x scripts/release_smoke.sh" "0078 release smoke guardrail (script is executable)"
     check_cmd "cd '$ROOT_DIR' && ! rg -n 'tmp/harmoniousapp\\.net|validate_harmonious_|wasm-demo|wasm-scaled-render-parity|wasm-native-rgba-proof|wasm-harmonious-spa' scripts/release_smoke.sh" "0078 release smoke guardrail (script stays on standalone surfaces and does not depend on local harmonious data)"

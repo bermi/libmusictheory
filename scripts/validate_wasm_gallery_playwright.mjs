@@ -149,6 +149,7 @@ async function main() {
       const midiActiveOrbifoldRibbonFeatures = midiActive.summary?.midiOrbifoldRibbonFeatures ?? midiActive.midiOrbifoldRibbonFeatures;
       const midiActiveCommonToneConstellationFeatures = midiActive.summary?.midiCommonToneConstellationFeatures ?? midiActive.midiCommonToneConstellationFeatures;
       const midiActiveInspectorFeatures = midiActive.summary?.midiInspectorFeatures ?? midiActive.midiInspectorFeatures;
+      const midiActivePathWeaverFeatures = midiActive.summary?.midiPathWeaverFeatures ?? midiActive.midiPathWeaverFeatures;
       if (
         midiActive.summary?.currentMiniMode !== "off"
         || midiActive.summary?.currentMiniRendered !== false
@@ -297,6 +298,15 @@ async function main() {
       ) {
         throw new Error(`live midi scene did not render continuation ladder correctly: ${JSON.stringify({ continuation: midiActive.summary?.midiContinuationLadderFeatures, summary: midiActive.summary })}`);
       }
+      if (
+        (midiActivePathWeaverFeatures?.pathCount || 0) < 1
+        || (midiActivePathWeaverFeatures?.pathStepCount || 0) < 2
+        || ((midiActivePathWeaverFeatures?.pathMiniCount || 0) < 1 && midiActive.summary?.currentMiniMode !== "off")
+        || !Array.isArray(midiActivePathWeaverFeatures?.terminalLabels)
+        || midiActivePathWeaverFeatures.terminalLabels.length < 1
+      ) {
+        throw new Error(`live midi scene did not render path weaver correctly: ${JSON.stringify({ pathWeaver: midiActivePathWeaverFeatures, summary: midiActive.summary })}`);
+      }
       traceStep("hover-candidate");
       const hoverCandidateIndex = Math.min(1, Math.max(0, (midiActive.summary?.suggestionCount || 1) - 1));
       await page.locator(`#midi-suggestions [data-suggestion-index="${hoverCandidateIndex}"]`).hover();
@@ -312,6 +322,9 @@ async function main() {
           && (midi?.midiCommonToneConstellationFeatures?.focusedCandidateIndex ?? -1) === targetIndex
           && (midi?.midiContinuationLadderFeatures?.sourceFocusedIndex ?? -1) === targetIndex
           && (midi?.midiContinuationLadderFeatures?.continuationCount || 0) >= 1
+          && (midi?.midiPathWeaverFeatures?.rootFocusedIndex ?? -1) === targetIndex
+          && (midi?.midiPathWeaverFeatures?.pathCount || 0) >= 1
+          && (midi?.midiPathWeaverFeatures?.pathStepCount || 0) >= 2
           && (midi?.midiInspectorFeatures?.candidateNoteCount || 0) >= 1
           && (midi?.midiWeatherFeatures?.cellCount || 0) >= 2
           && (midi?.midiRiskRadarFeatures?.candidatePolygonCount || 0) >= 1
@@ -327,6 +340,8 @@ async function main() {
           && midi?.midiInspectorFeatures?.pinned === true
           && (midi?.midiContinuationLadderFeatures?.sourceFocusedIndex ?? -1) === targetIndex
           && (midi?.midiContinuationLadderFeatures?.continuationCount || 0) >= 1
+          && (midi?.midiPathWeaverFeatures?.rootFocusedIndex ?? -1) === targetIndex
+          && (midi?.midiPathWeaverFeatures?.pathCount || 0) >= 1
           && (midi?.midiInspectorFeatures?.reasonCount || 0) >= 1;
       }, hoverCandidateIndex, { timeout: 30000 }).then((handle) => handle.jsonValue());
       await page.mouse.move(8, 8);
@@ -335,7 +350,8 @@ async function main() {
         return midi?.pinnedCandidateIndex === targetIndex
           && midi?.focusedCandidateIndex === targetIndex
           && (midi?.midiCommonToneConstellationFeatures?.focusedCandidateIndex ?? -1) === targetIndex
-          && (midi?.midiContinuationLadderFeatures?.sourceFocusedIndex ?? -1) === targetIndex;
+          && (midi?.midiContinuationLadderFeatures?.sourceFocusedIndex ?? -1) === targetIndex
+          && (midi?.midiPathWeaverFeatures?.rootFocusedIndex ?? -1) === targetIndex;
       }, hoverCandidateIndex, { timeout: 30000 }).then((handle) => handle.jsonValue());
       traceStep("clear-pin");
       await page.click("#midi-clear-pin");
@@ -345,7 +361,8 @@ async function main() {
           && midi?.focusedCandidateIndex === 0
           && (midi?.midiWeatherFeatures?.focusedCandidateIndex ?? -1) === 0
           && (midi?.midiCommonToneConstellationFeatures?.focusedCandidateIndex ?? -1) === 0
-          && (midi?.midiContinuationLadderFeatures?.sourceFocusedIndex ?? -1) === 0;
+          && (midi?.midiContinuationLadderFeatures?.sourceFocusedIndex ?? -1) === 0
+          && (midi?.midiPathWeaverFeatures?.rootFocusedIndex ?? -1) === 0;
       }, { timeout: 30000 }).then((handle) => handle.jsonValue());
       traceStep("context-change");
       const defaultContext = await page.evaluate(() => ({
@@ -362,6 +379,8 @@ async function main() {
           && nextFirstSuggestion !== beforeFirstSuggestion
           && midi.displayCount >= 3
           && (midi.midiContinuationLadderFeatures?.continuationCount || 0) >= 1
+          && (midi.midiPathWeaverFeatures?.pathCount || 0) >= 1
+          && (midi.midiPathWeaverFeatures?.pathStepCount || 0) >= 2
           && (midi.midiHorizonFeatures?.candidateNodeCount || 0) >= 1
           && (midi.midiBraidFeatures?.candidateColumnCount || 0) >= 1
           && (midi.midiWeatherFeatures?.cellCount || 0) >= 2
@@ -379,6 +398,8 @@ async function main() {
           && midi?.counterpointProfile === "jazz-close-leading"
           && midi?.suggestionCount >= 1
           && (midi?.midiContinuationLadderFeatures?.continuationCount || 0) >= 1
+          && (midi?.midiPathWeaverFeatures?.pathCount || 0) >= 1
+          && (midi?.midiPathWeaverFeatures?.pathStepCount || 0) >= 2
           && (midi?.midiHorizonFeatures?.candidateNodeCount || 0) >= 1
           && (midi?.midiBraidFeatures?.candidateColumnCount || 0) >= 1
           && (midi?.midiWeatherFeatures?.cellCount || 0) >= 2
@@ -399,6 +420,7 @@ async function main() {
           && midi?.focusedMiniRendered === true
           && midi?.suggestionMiniCount >= 1
           && (midi?.midiContinuationLadderFeatures?.continuationMiniCount || 0) >= 1
+          && (midi?.midiPathWeaverFeatures?.pathMiniCount || 0) >= 1
           && summary?.scenes?.set?.miniInstrumentMode === "piano"
           && summary?.scenes?.set?.miniRendered === true
           && summary?.scenes?.key?.miniRendered === true
@@ -422,6 +444,7 @@ async function main() {
           && midi?.focusedMiniRendered === true
           && midi?.suggestionMiniCount >= 1
           && (midi?.midiContinuationLadderFeatures?.continuationMiniCount || 0) >= 1
+          && (midi?.midiPathWeaverFeatures?.pathMiniCount || 0) >= 1
           && summary?.scenes?.set?.miniInstrumentMode === "fret"
           && summary?.scenes?.set?.miniRendered === true
           && summary?.scenes?.key?.miniRendered === true

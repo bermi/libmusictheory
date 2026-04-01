@@ -1335,6 +1335,10 @@ select {
   display: grid;
 }
 
+.path-weaver-frame {
+  min-height: 420px;
+}
+
 .continuation-shell {
   display: grid;
   gap: 14px;
@@ -1417,6 +1421,87 @@ select {
 .continuation-empty {
   font-size: 0.92rem;
   color: var(--muted);
+}
+
+.path-weaver-shell {
+  display: grid;
+  gap: 14px;
+  min-height: 100%;
+}
+
+.path-weaver-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+}
+
+.path-weaver-card {
+  border-radius: 18px;
+  border: 1px solid rgba(24, 36, 47, 0.12);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(248, 242, 233, 0.92));
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.path-weaver-card strong {
+  font-size: 1rem;
+}
+
+.path-weaver-card p,
+.path-weaver-step-meta,
+.path-weaver-path-meta {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.path-weaver-step-flow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.path-weaver-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: rgba(31, 125, 134, 0.08);
+  border: 1px solid rgba(31, 125, 134, 0.16);
+  color: var(--ink);
+  font-size: 0.9rem;
+}
+
+.path-weaver-step-label {
+  font-weight: 700;
+}
+
+.path-weaver-arrow {
+  color: var(--muted);
+  font-size: 1rem;
+}
+
+.path-weaver-terminal-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.path-weaver-terminal-art {
+  display: grid;
+  place-items: center;
+  min-height: 152px;
+  border-radius: 16px;
+  border: 1px solid rgba(24, 36, 47, 0.08);
+  background: linear-gradient(180deg, rgba(252, 247, 240, 0.96), rgba(244, 236, 225, 0.86));
+}
+
+.path-weaver-terminal-art svg,
+.path-weaver-terminal-art img {
+  max-height: 142px;
 }
 
 .inspector-shell {
