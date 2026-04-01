@@ -3,7 +3,7 @@
 > Dependencies: 0100
 > Follow-up: none
 
-Status: In Progress
+Status: Completed
 
 ## Summary
 
@@ -59,3 +59,12 @@ Add a dedicated gallery card that shows:
 
 - `node /Users/bermi/code/libmusictheory/scripts/validate_wasm_gallery_playwright.mjs`
 - `./verify.sh`
+
+## Implementation History (Point-in-Time)
+
+- `1f7fb2ab57933f3a45af072580f015a1f30cb649` — 2026-04-01
+  - shipped a live `Path Weaver` card in the MIDI counterpoint scene that extends the focused or pinned next move into several short recursively ranked multi-step continuation paths
+  - reused the existing library-owned voiced-history flow and `lmt_rank_next_steps` recursively so the path expansion stays on the same counterpoint engine instead of adding a second JavaScript-only theory policy
+  - rendered terminal clock previews and terminal mini piano/fret previews for each path branch, honoring the global mini instrument mode
+  - tightened Playwright and `./verify.sh` guardrails so hover, pin, clear-pin, context changes, profile changes, and mini instrument changes all keep the path view populated and synchronized
+  - verification gates: `node /Users/bermi/code/libmusictheory/scripts/validate_wasm_gallery_playwright.mjs`, `./verify.sh`
