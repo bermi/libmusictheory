@@ -226,6 +226,11 @@ if [ -f "$ROOT_DIR/docs/plans/in_progress/0101-counterpoint-path-weaver.md" ] ||
     check_cmd "cd '$ROOT_DIR' && rg -n 'midiPathWeaverFeatures|pathCount|pathStepCount|pathMiniCount|rootFocusedIndex|terminalLabels' examples/wasm-gallery/gallery.js scripts/lib/wasm_gallery_playwright_common.mjs scripts/validate_wasm_gallery_playwright.mjs >/dev/null" "0101 path weaver guardrail (summary and playwright prove multi-step continuation path rendering and mini preview coverage)"
 fi
 
+if [ -f "$ROOT_DIR/docs/plans/in_progress/0102-counterpoint-cadence-garden.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0102-counterpoint-cadence-garden.md" ]; then
+    check_cmd "cd '$ROOT_DIR' && rg -n 'midi-cadence-garden|renderMidiCadenceGarden|buildCadenceGardenGroups|Cadence Garden|data-cadence-garden-mini|data-cadence-garden-clock' examples/wasm-gallery/index.html examples/wasm-gallery/gallery.js examples/wasm-gallery/styles.css scripts/validate_wasm_gallery_playwright.mjs >/dev/null" "0102 cadence garden guardrail (gallery hosts, cadence grouping runtime hooks, styles, and validation wiring are present)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'midiCadenceGardenFeatures|groupCount|branchCount|terminalClockCount|terminalMiniCount|cadenceLabels|warningGroupCount' examples/wasm-gallery/gallery.js scripts/lib/wasm_gallery_playwright_common.mjs scripts/validate_wasm_gallery_playwright.mjs >/dev/null" "0102 cadence garden guardrail (summary and playwright prove grouped cadence destinations and terminal preview coverage)"
+fi
+
 if [ -f "$ROOT_DIR/scripts/release_smoke.sh" ]; then
     check_cmd "cd '$ROOT_DIR' && test -x scripts/release_smoke.sh" "0078 release smoke guardrail (script is executable)"
     check_cmd "cd '$ROOT_DIR' && ! rg -n 'tmp/harmoniousapp\\.net|validate_harmonious_|wasm-demo|wasm-scaled-render-parity|wasm-native-rgba-proof|wasm-harmonious-spa' scripts/release_smoke.sh" "0078 release smoke guardrail (script stays on standalone surfaces and does not depend on local harmonious data)"

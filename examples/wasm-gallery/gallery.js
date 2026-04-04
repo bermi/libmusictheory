@@ -209,6 +209,7 @@ const midiHistoryEl = document.getElementById("midi-history");
 const midiInspectorEl = document.getElementById("midi-inspector");
 const midiContinuationLadderEl = document.getElementById("midi-continuation-ladder");
 const midiPathWeaverEl = document.getElementById("midi-path-weaver");
+const midiCadenceGardenEl = document.getElementById("midi-cadence-garden");
 const midiClearPinEl = document.getElementById("midi-clear-pin");
 const midiClockEl = document.getElementById("midi-clock");
 const midiOpticKEl = document.getElementById("midi-optic-k");
@@ -2842,6 +2843,72 @@ function buildContinuationPaths(arena, rootBundle, rootSuggestion, context, prof
   });
 }
 
+function pathTensionSum(path) {
+  return (path?.steps || []).reduce((sum, suggestion) => sum + (suggestion?.tensionDelta || 0), 0);
+}
+
+function summarizeTensionTrend(value) {
+  if (value >= 2) return "builds tension";
+  if (value <= -2) return "releases tension";
+  return "balances tension";
+}
+
+function buildCadenceGardenGroups(paths) {
+  if (!Array.isArray(paths) || paths.length === 0) return [];
+  const groups = new Map();
+  for (const path of paths) {
+    const terminal = path?.terminal || path?.steps?.[path.steps.length - 1] || null;
+    if (!terminal) continue;
+    const cadenceLabel = terminal.cadenceLabel || path.cadenceTrail?.[path.cadenceTrail.length - 1] || "stable continuation";
+    const cadenceEffect = Number.isFinite(Number(terminal.cadenceEffect)) ? Number(terminal.cadenceEffect) : -1;
+    const key = `${cadenceEffect}|${cadenceLabel}`;
+    const tensionSum = pathTensionSum(path);
+    const entry = {
+      ...path,
+      terminal,
+      cadenceLabel,
+      cadenceEffect,
+      tensionSum,
+    };
+    if (!groups.has(key)) {
+      groups.set(key, {
+        cadenceLabel,
+        cadenceEffect,
+        paths: [],
+      });
+    }
+    groups.get(key).paths.push(entry);
+  }
+
+  return Array.from(groups.values()).map((group) => {
+    group.paths.sort((left, right) =>
+      (left.warningNames?.length || 0) - (right.warningNames?.length || 0)
+      || (right.totalScore || 0) - (left.totalScore || 0)
+      || Math.abs(left.tensionSum || 0) - Math.abs(right.tensionSum || 0));
+    const representative = group.paths[0] || null;
+    const branchCount = group.paths.length;
+    const cleanBranchCount = group.paths.filter((path) => (path.warningNames?.length || 0) === 0).length;
+    const tensionAverage = representative
+      ? group.paths.reduce((sum, path) => sum + (path.tensionSum || 0), 0) / Math.max(1, branchCount)
+      : 0;
+    return {
+      cadenceLabel: group.cadenceLabel,
+      cadenceEffect: group.cadenceEffect,
+      branchCount,
+      cleanBranchCount,
+      tensionAverage,
+      tensionTrendLabel: summarizeTensionTrend(tensionAverage),
+      warningCount: group.paths.reduce((sum, path) => sum + (path.warningNames?.length || 0), 0),
+      representative,
+      terminalLabels: group.paths.map((path) => path.terminalLabel).filter(Boolean),
+      alternates: group.paths.slice(1, 4).map((path) => path.terminalLabel).filter(Boolean),
+    };
+  }).sort((left, right) =>
+    (right.representative?.totalScore || 0) - (left.representative?.totalScore || 0)
+    || right.cleanBranchCount - left.cleanBranchCount
+    || left.warningCount - right.warningCount);
+}
+
 function renderMidiPathWeaver(host, arena, rootSuggestion, paths, context, options = {}) {
   const empty = {
     pathCount: 0,
@@ -2964,6 +3031,149 @@ function renderMidiPathWeaver(host, arena, rootSuggestion, paths, context, optio
     pathMiniCount,
     rootFocusedIndex: options.rootFocusedIndex ?? -1,
     terminalLabels: visiblePaths.map((path) => path.terminalLabel),
+  };
+}
+
+function renderMidiCadenceGarden(host, arena, rootSuggestion, groups, context, options = {}) {
+  const empty = {
+    groupCount: 0,
+    branchCount: 0,
+    terminalClockCount: 0,
+    terminalMiniCount: 0,
+    rootFocusedIndex: -1,
+    cadenceLabels: [],
+    warningGroupCount: 0,
+  };
+  if (!host) return empty;
+  if (!rootSuggestion) {
+    host.innerHTML = `<div class="output-block continuation-empty">Focus or pin a ranked move to see which cadence destinations actually open over the next few local branches.</div>`;
+    return empty;
+  }
+
+  const visibleGroups = Array.isArray(groups) ? groups.slice(0, 4) : [];
+  const focusedLetter = options.rootFocusedIndex != null && options.rootFocusedIndex >= 0
+    ? String.fromCharCode(65 + options.rootFocusedIndex)
+    : "Focused";
+  const rootLabel = rootSuggestion.noteNames.join(" · ");
+
+  host.innerHTML = `
+    <div class="cadence-garden-shell">
+      <div class="continuation-head">
+        <div>
+          <p class="eyebrow">Reachable arrival beds</p>
+          <h4>${escapeHtml(focusedLetter)}. ${escapeHtml(rootLabel)}</h4>
+        </div>
+        <div class="pill-list">
+          <span class="status-pill ${options.pinned ? "is-snapshot" : "is-live"}">${escapeHtml(options.pinned ? "Pinned root" : "Focused root")}</span>
+          <span class="status-pill is-live">${escapeHtml(rootSuggestion.cadenceLabel)}</span>
+        </div>
+      </div>
+      <article class="continuation-root">
+        <p>${escapeHtml("The garden regroups the short recursive branches by where they want to arrive. This turns several raw path strips into a map of reachable cadence regions from the current focused move.")}</p>
+        <div class="chip-row">
+          ${rootSuggestion.reasonNames.map((reason) => `<span class="pill">${escapeHtml(reason)}</span>`).join("") || `<span class="pill">neutral continuation</span>`}
+        </div>
+        <div class="chip-row">
+          ${rootSuggestion.warningNames.map((warning) => `<span class="chip warning-chip">${escapeHtml(warning)}</span>`).join("") || `<span class="chip safe-chip">clean motion</span>`}
+        </div>
+      </article>
+      <div class="cadence-garden-grid">
+        ${visibleGroups.length > 0
+          ? visibleGroups.map((group, index) => {
+            const representative = group.representative;
+            return `
+              <article class="cadence-garden-card" data-cadence-garden-group="${index}">
+                <div class="cadence-garden-card-head">
+                  <div>
+                    <p class="eyebrow">Cadence region ${index + 1}</p>
+                    <h4>${escapeHtml(group.cadenceLabel)}</h4>
+                  </div>
+                  <div class="pill-list">
+                    <span class="status-pill is-live">${escapeHtml(`${group.branchCount} branch${group.branchCount === 1 ? "" : "es"}`)}</span>
+                    <span class="status-pill ${group.warningCount > 0 ? "is-snapshot" : "is-live"}">${escapeHtml(group.tensionTrendLabel)}</span>
+                  </div>
+                </div>
+                <p class="cadence-garden-meta">best path score ${escapeHtml(String(representative?.totalScore || 0))} · clean ${escapeHtml(String(group.cleanBranchCount))}/${escapeHtml(String(group.branchCount))} · terminal ${escapeHtml(representative?.terminalLabel || "")}</p>
+                <div class="path-weaver-step-flow">
+                  ${(representative?.steps || []).map((step, stepIndex) => `
+                    <span class="path-weaver-step">
+                      <span class="path-weaver-step-label">${escapeHtml(stepIndex === 0 ? "Then" : `+${stepIndex}`)}</span>
+                      <span>${escapeHtml(step.noteNames.join(" · "))}</span>
+                    </span>
+                    ${stepIndex < (representative?.steps?.length || 0) - 1 ? `<span class="path-weaver-arrow">→</span>` : ""}
+                  `).join("")}
+                </div>
+                <div class="chip-row">
+                  ${(representative?.reasonNames || []).map((reason) => `<span class="pill">${escapeHtml(reason)}</span>`).join("") || `<span class="pill">no dominant reason</span>`}
+                </div>
+                <div class="chip-row">
+                  ${(representative?.warningNames || []).map((warning) => `<span class="chip warning-chip">${escapeHtml(warning)}</span>`).join("") || `<span class="chip safe-chip">clean motion</span>`}
+                </div>
+                <p class="cadence-garden-alternates">${escapeHtml(group.alternates.length > 0 ? `also reaches ${group.alternates.join(" · ")}` : "single strongest arrival region so far")}</p>
+                <div class="cadence-garden-art-grid">
+                  <div class="cadence-garden-art" data-cadence-garden-clock="${index}"></div>
+                  <div class="cadence-garden-art" data-cadence-garden-mini="${index}"></div>
+                </div>
+              </article>
+            `;
+          }).join("")
+          : `<div class="output-block continuation-empty">No cadence regions are populated yet for this focused move.</div>`}
+      </div>
+    </div>
+  `;
+
+  let terminalClockCount = 0;
+  let terminalMiniCount = 0;
+  visibleGroups.forEach((group, index) => {
+    const terminal = group.representative?.terminal || null;
+    if (!terminal) return;
+    const clockHost = host.querySelector(`[data-cadence-garden-clock="${index}"]`);
+    if (clockHost) {
+      renderPreviewSvgOrBitmap(clockHost, {
+        svgMarkup: svgString(arena, wasm.lmt_svg_clock_optc, terminal.setValue),
+        bitmapRenderer: {
+          renderRgba: (width, height) => clockBitmapRgba(arena, terminal.setValue, width, height),
+        },
+        alt: `${terminal.noteNames.join(" ")} cadence garden terminal clock preview`,
+        options: { maxHeight: 138, squareWidth: 150, mediumWidth: 160, wideWidth: 170, ultraWideWidth: 180, padXRatio: 0.08, padYRatio: 0.12 },
+      });
+      terminalClockCount += 1;
+    }
+    const miniHost = host.querySelector(`[data-cadence-garden-mini="${index}"]`);
+    if (miniHost) {
+      const rendered = renderMiniInstrumentPreview(
+        arena,
+        miniHost,
+        {
+          midiNotes: terminal.notes,
+          setValue: terminal.setValue,
+          tonic: context.tonic,
+          preferredBassPc: terminal.notes.length > 0 ? Math.min(...terminal.notes) % 12 : null,
+          fretVoicing: terminal.fretPreview,
+        },
+        `${terminal.noteNames.join(" ")} cadence garden terminal mini preview`,
+        {
+          maxHeight: 150,
+          squareWidth: 170,
+          mediumWidth: 180,
+          wideWidth: 190,
+          ultraWideWidth: 200,
+          padXRatio: 0.08,
+          padYRatio: 0.14,
+        },
+      );
+      if (rendered) terminalMiniCount += 1;
+    }
+  });
+
+  return {
+    groupCount: visibleGroups.length,
+    branchCount: visibleGroups.reduce((sum, group) => sum + group.branchCount, 0),
+    terminalClockCount,
+    terminalMiniCount,
+    rootFocusedIndex: options.rootFocusedIndex ?? -1,
+    cadenceLabels: visibleGroups.map((group) => group.cadenceLabel),
+    warningGroupCount: visibleGroups.filter((group) => group.warningCount > 0).length,
   };
 }
 
@@ -3733,6 +3943,7 @@ function renderMidiScene() {
     const continuationPaths = focusedSuggestion
       ? buildContinuationPaths(arena, continuationBundle, focusedSuggestion, context, profile, { branchCount: 3, maxDepth: 3 })
       : [];
+    const cadenceGardenGroups = buildCadenceGardenGroups(continuationPaths);
     const displayNotesLabel = displayNotes.length > 0
       ? displayNotes.map((midi) => midiName(midi, context.tonic, context.quality))
       : [];
@@ -3793,6 +4004,17 @@ function renderMidiScene() {
       arena,
       focusedSuggestion,
       continuationPaths,
+      context,
+      {
+        pinned: pinnedSuggestionIndex != null,
+        rootFocusedIndex: focusedSuggestionIndex,
+      },
+    );
+    const midiCadenceGardenFeatures = renderMidiCadenceGarden(
+      midiCadenceGardenEl,
+      arena,
+      focusedSuggestion,
+      cadenceGardenGroups,
       context,
       {
         pinned: pinnedSuggestionIndex != null,
@@ -4009,6 +4231,7 @@ function renderMidiScene() {
       midiInspectorFeatures,
       midiContinuationLadderFeatures,
       midiPathWeaverFeatures,
+      midiCadenceGardenFeatures,
       midiOpticKFeatures,
       midiEvennessFeatures,
       midiStaffFeatures,

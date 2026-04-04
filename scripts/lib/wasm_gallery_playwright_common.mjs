@@ -498,6 +498,32 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
           terminalLabels: Array.from(host.querySelectorAll(".path-weaver-step-meta"), (node) => (node.textContent || "").trim()).filter(Boolean),
         };
       })(),
+      midiCadenceGardenFeatures: (() => {
+        const host = document.querySelector("#midi-cadence-garden");
+        if (!host) {
+          return {
+            groupCount: 0,
+            branchCount: 0,
+            terminalClockCount: 0,
+            terminalMiniCount: 0,
+            rootFocusedIndex: -1,
+            cadenceLabels: [],
+            warningGroupCount: 0,
+          };
+        }
+        return {
+          groupCount: host.querySelectorAll(".cadence-garden-card").length,
+          branchCount: Array.from(host.querySelectorAll(".cadence-garden-card .status-pill.is-live"), (node) => node.textContent || "")
+            .map((text) => Number.parseInt(text, 10))
+            .filter((value) => Number.isFinite(value))
+            .reduce((sum, value) => sum + value, 0),
+          terminalClockCount: host.querySelectorAll("[data-cadence-garden-clock] :is(svg,img)").length,
+          terminalMiniCount: host.querySelectorAll("[data-cadence-garden-mini] :is(svg,img)").length,
+          rootFocusedIndex: -1,
+          cadenceLabels: Array.from(host.querySelectorAll(".cadence-garden-card h4"), (node) => (node.textContent || "").trim()).filter(Boolean),
+          warningGroupCount: host.querySelectorAll(".cadence-garden-card .warning-chip").length,
+        };
+      })(),
       previewKinds: (() => {
         const hostIds = ["midi-clock", "midi-optic-k", "midi-evenness", "midi-keyboard", "midi-staff", "midi-current-fret", "midi-focused-mini"];
         return Object.fromEntries(hostIds.map((id) => {
@@ -546,6 +572,7 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
     const midiInspectorFeatures = snapshot.summary?.midiInspectorFeatures ?? snapshot.midiInspectorFeatures;
     const midiContinuationLadderFeatures = snapshot.summary?.midiContinuationLadderFeatures ?? snapshot.midiContinuationLadderFeatures;
     const midiPathWeaverFeatures = snapshot.summary?.midiPathWeaverFeatures ?? snapshot.midiPathWeaverFeatures;
+    const midiCadenceGardenFeatures = snapshot.summary?.midiCadenceGardenFeatures ?? snapshot.midiCadenceGardenFeatures;
     const keyboardFeatures = snapshot.summary?.keyboardFeatures ?? snapshot.keyboardFeaturesFallback;
     if (
       snapshot.summary?.rendered === true
@@ -578,6 +605,10 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
       && midiPathWeaverFeatures.pathCount >= 1
       && midiPathWeaverFeatures.pathStepCount >= 2
       && (midiPathWeaverFeatures.pathMiniCount >= 1 || snapshot.summary?.currentMiniMode === "off")
+      && midiCadenceGardenFeatures.groupCount >= 1
+      && midiCadenceGardenFeatures.branchCount >= 1
+      && midiCadenceGardenFeatures.terminalClockCount >= 1
+      && (midiCadenceGardenFeatures.terminalMiniCount >= 1 || snapshot.summary?.currentMiniMode === "off")
       && midiOpticKFeatures.clockCount >= 2
       && midiOpticKFeatures.linkCount >= 1
       && midiOpticKFeatures.labelCount >= 5
