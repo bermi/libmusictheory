@@ -207,6 +207,7 @@ const midiSummaryEl = document.getElementById("midi-summary");
 const midiNotesEl = document.getElementById("midi-notes");
 const midiHistoryEl = document.getElementById("midi-history");
 const midiInspectorEl = document.getElementById("midi-inspector");
+const midiConsensusAtlasEl = document.getElementById("midi-consensus-atlas");
 const midiContinuationLadderEl = document.getElementById("midi-continuation-ladder");
 const midiPathWeaverEl = document.getElementById("midi-path-weaver");
 const midiCadenceGardenEl = document.getElementById("midi-cadence-garden");
@@ -2937,6 +2938,84 @@ function buildProfileOrchardEntries(arena, historyFrames, rootSuggestion, contex
   });
 }
 
+function buildConsensusAtlasEntries(arena, historyBundle, context, activeProfile, focusedSuggestion) {
+  if (!historyBundle?.historyPtr) return [];
+  const profileCount = Math.max(counterpointProfileNames.length, DEFAULT_COUNTERPOINT_PROFILE_NAMES.length, 1);
+  const clusters = new Map();
+  const focusedSignature = focusedSuggestion?.notes?.join(",") || "";
+  for (let profileIndex = 0; profileIndex < profileCount; profileIndex += 1) {
+    const profileLabel = counterpointProfileNames[profileIndex] || DEFAULT_COUNTERPOINT_PROFILE_NAMES[profileIndex] || `profile ${profileIndex + 1}`;
+    const suggestions = decodeRankedNextSteps(arena, historyBundle.historyPtr, profileIndex, context).slice(0, 3);
+    suggestions.forEach((suggestion, rankIndex) => {
+      const signature = suggestion.notes.join(",");
+      if (!clusters.has(signature)) {
+        clusters.set(signature, {
+          signature,
+          setValue: suggestion.setValue,
+          noteNames: suggestion.noteNames.slice(),
+          chordLabel: suggestion.chordLabel,
+          bestSuggestion: suggestion,
+          bestRank: rankIndex,
+          bestScore: suggestion.score,
+          memberProfiles: [],
+          memberProfileIndexes: [],
+          cadenceLabels: [],
+          reasonNames: [],
+          warningNames: [],
+          supportCount: 0,
+          topRankCount: 0,
+          activeProfileIncluded: false,
+          activeProfileRank: Number.POSITIVE_INFINITY,
+          matchesFocused: focusedSignature !== "" && signature === focusedSignature,
+        });
+      }
+      const cluster = clusters.get(signature);
+      if (!cluster.memberProfileIndexes.includes(profileIndex)) {
+        cluster.memberProfileIndexes.push(profileIndex);
+        cluster.memberProfiles.push(profileLabel);
+        cluster.supportCount += 1;
+      }
+      if (rankIndex === 0) cluster.topRankCount += 1;
+      if (profileIndex === activeProfile) {
+        cluster.activeProfileIncluded = true;
+        cluster.activeProfileRank = Math.min(cluster.activeProfileRank, rankIndex);
+      }
+      suggestion.reasonNames.forEach((reason) => {
+        if (!cluster.reasonNames.includes(reason) && cluster.reasonNames.length < 5) cluster.reasonNames.push(reason);
+      });
+      suggestion.warningNames.forEach((warning) => {
+        if (!cluster.warningNames.includes(warning) && cluster.warningNames.length < 4) cluster.warningNames.push(warning);
+      });
+      if (suggestion.cadenceLabel && !cluster.cadenceLabels.includes(suggestion.cadenceLabel) && cluster.cadenceLabels.length < 4) {
+        cluster.cadenceLabels.push(suggestion.cadenceLabel);
+      }
+      if (
+        rankIndex < cluster.bestRank
+        || (rankIndex === cluster.bestRank && suggestion.score > cluster.bestScore)
+      ) {
+        cluster.bestSuggestion = suggestion;
+        cluster.bestRank = rankIndex;
+        cluster.bestScore = suggestion.score;
+      }
+    });
+  }
+  return Array.from(clusters.values())
+    .sort((left, right) =>
+      right.supportCount - left.supportCount
+      || right.topRankCount - left.topRankCount
+      || (left.activeProfileRank - right.activeProfileRank)
+      || (right.bestScore - left.bestScore)
+      || left.warningNames.length - right.warningNames.length)
+    .map((cluster) => ({
+      ...cluster,
+      supportLabel: cluster.supportCount > 1
+        ? `${cluster.supportCount}-profile consensus`
+        : "style outlier",
+      cadenceLabel: cluster.cadenceLabels[0] || cluster.bestSuggestion?.cadenceLabel || "stable continuation",
+      terminalLabel: cluster.bestSuggestion?.noteNames?.join(" · ") || "",
+    }));
+}
+
 function renderMidiPathWeaver(host, arena, rootSuggestion, paths, context, options = {}) {
   const empty = {
     pathCount: 0,
@@ -3346,6 +3425,139 @@ function renderMidiProfileOrchard(host, arena, rootSuggestion, entries, context,
     cadenceLabels: visibleEntries.map((entry) => entry.topDestination?.label || entry.topGroup?.cadenceLabel || entry.topSuggestion?.cadenceLabel || "").filter(Boolean),
     warningCardCount: visibleEntries.filter((entry) => (entry.warningCount || 0) > 0).length,
     rootFocusedIndex: options.rootFocusedIndex ?? -1,
+  };
+}
+
+function renderMidiConsensusAtlas(host, arena, entries, context, options = {}) {
+  const empty = {
+    clusterCount: 0,
+    consensusClusterCount: 0,
+    singletonClusterCount: 0,
+    highlightedClusterCount: 0,
+    clusterClockCount: 0,
+    clusterMiniCount: 0,
+    maxSupportCount: 0,
+    focusedSignature: "",
+    profileCoverageCount: 0,
+    clusterLabels: [],
+    cadenceLabels: [],
+  };
+  if (!host) return empty;
+  if (!Array.isArray(entries) || entries.length === 0) {
+    host.innerHTML = `<div class="output-block continuation-empty">Play a voiced fragment to see which immediate next moves are shared across profiles and which ones are stylistic outliers.</div>`;
+    return empty;
+  }
+
+  const visibleEntries = entries.slice(0, 6);
+  const focusedSignature = options.focusedSignature || visibleEntries[0]?.signature || "";
+  host.innerHTML = `
+    <div class="consensus-atlas-shell">
+      <div class="continuation-head">
+        <div>
+          <p class="eyebrow">Shared next moves before commitment</p>
+          <h4>${escapeHtml(context.label)} immediate continuations</h4>
+        </div>
+        <div class="pill-list">
+          <span class="status-pill is-live">${escapeHtml(`${visibleEntries.filter((entry) => entry.supportCount > 1).length} consensus clusters`)}</span>
+          <span class="status-pill ${visibleEntries.some((entry) => entry.supportCount === 1) ? "is-snapshot" : "is-live"}">${escapeHtml(`${visibleEntries.filter((entry) => entry.supportCount === 1).length} outliers`)}</span>
+        </div>
+      </div>
+      <article class="continuation-root">
+        <p>${escapeHtml("The atlas regroups the best immediate continuations from all counterpoint profiles. Shared clusters reveal broad agreement; outliers show moves that only one style really wants.")}</p>
+        <div class="chip-row">
+          <span class="pill">${escapeHtml("highlighted cluster follows the active-profile focused or pinned candidate")}</span>
+          <span class="pill">${escapeHtml("cards stay before the orchard so you can decide what deserves deeper comparison")}</span>
+        </div>
+      </article>
+      <div class="consensus-atlas-grid">
+        ${visibleEntries.map((entry, index) => `
+          <article class="consensus-atlas-card${entry.supportCount > 1 ? " is-consensus" : " is-outlier"}${entry.signature === focusedSignature ? " is-focused-cluster" : ""}" data-consensus-atlas-card="${index}" data-consensus-signature="${entry.signature}" data-support-count="${entry.supportCount}">
+            <div class="consensus-atlas-card-head">
+              <div>
+                <p class="eyebrow">${escapeHtml(entry.signature === focusedSignature ? "Focused cluster" : entry.supportLabel)}</p>
+                <h4>${escapeHtml(entry.noteNames.join(" · "))}</h4>
+              </div>
+              <div class="pill-list">
+                <span class="status-pill ${entry.supportCount > 1 ? "is-live" : "is-muted"}">${escapeHtml(`${entry.supportCount} profile${entry.supportCount === 1 ? "" : "s"}`)}</span>
+                <span class="status-pill ${entry.warningNames.length > 0 ? "is-snapshot" : "is-live"}">${escapeHtml(entry.cadenceLabel)}</span>
+              </div>
+            </div>
+            <p class="consensus-atlas-meta">best next move ${escapeHtml(entry.terminalLabel)} · top-ranked in ${escapeHtml(String(entry.topRankCount))} profile${entry.topRankCount === 1 ? "" : "s"} · score ${escapeHtml(String(entry.bestSuggestion?.score ?? 0))}</p>
+            <p class="consensus-atlas-alternates">active profile ${entry.activeProfileIncluded ? `includes this cluster at rank ${entry.activeProfileRank + 1}` : "does not currently favor this move"} · cadence <span class="consensus-atlas-cadence">${escapeHtml(entry.cadenceLabel)}</span></p>
+            <div class="consensus-atlas-profile-list">
+              ${entry.memberProfiles.map((profileName, profileListIndex) => `<span class="consensus-atlas-profile-pill${entry.memberProfileIndexes[profileListIndex] === options.activeProfileIndex ? " is-active-profile" : ""}" data-consensus-profile="${escapeHtml(profileName)}">${escapeHtml(humanizeCounterpointLabel(profileName))}</span>`).join("")}
+            </div>
+            <div class="chip-row">
+              ${entry.reasonNames.map((reason) => `<span class="pill">${escapeHtml(reason)}</span>`).join("") || `<span class="pill">no dominant reason</span>`}
+            </div>
+            <div class="chip-row">
+              ${entry.warningNames.map((warning) => `<span class="chip warning-chip">${escapeHtml(warning)}</span>`).join("") || `<span class="chip safe-chip">clean motion</span>`}
+            </div>
+            <div class="consensus-atlas-art-grid">
+              <div class="consensus-atlas-art" data-consensus-atlas-clock="${index}"></div>
+              <div class="consensus-atlas-art" data-consensus-atlas-mini="${index}"></div>
+            </div>
+          </article>
+        `).join("")}
+      </div>
+    </div>
+  `;
+
+  let clusterClockCount = 0;
+  let clusterMiniCount = 0;
+  visibleEntries.forEach((entry, index) => {
+    const clockHost = host.querySelector(`[data-consensus-atlas-clock="${index}"]`);
+    if (clockHost) {
+      renderPreviewSvgOrBitmap(clockHost, {
+        svgMarkup: svgString(arena, wasm.lmt_svg_clock_optc, entry.bestSuggestion.setValue),
+        bitmapRenderer: {
+          renderRgba: (width, height) => clockBitmapRgba(arena, entry.bestSuggestion.setValue, width, height),
+        },
+        alt: `${entry.noteNames.join(" ")} consensus atlas clock preview`,
+        options: { maxHeight: 138, squareWidth: 150, mediumWidth: 160, wideWidth: 170, ultraWideWidth: 180, padXRatio: 0.08, padYRatio: 0.12 },
+      });
+      clusterClockCount += 1;
+    }
+    const miniHost = host.querySelector(`[data-consensus-atlas-mini="${index}"]`);
+    if (miniHost) {
+      const rendered = renderMiniInstrumentPreview(
+        arena,
+        miniHost,
+        {
+          midiNotes: entry.bestSuggestion.notes,
+          setValue: entry.bestSuggestion.setValue,
+          tonic: context.tonic,
+          preferredBassPc: entry.bestSuggestion.notes.length > 0 ? Math.min(...entry.bestSuggestion.notes) % 12 : null,
+          fretVoicing: entry.bestSuggestion.fretPreview,
+        },
+        `${entry.noteNames.join(" ")} consensus atlas mini preview`,
+        {
+          maxHeight: 150,
+          squareWidth: 170,
+          mediumWidth: 180,
+          wideWidth: 190,
+          ultraWideWidth: 200,
+          padXRatio: 0.08,
+          padYRatio: 0.14,
+        },
+      );
+      if (rendered) clusterMiniCount += 1;
+    }
+  });
+
+  const profileCoverage = new Set(visibleEntries.flatMap((entry) => entry.memberProfiles));
+  return {
+    clusterCount: visibleEntries.length,
+    consensusClusterCount: visibleEntries.filter((entry) => entry.supportCount > 1).length,
+    singletonClusterCount: visibleEntries.filter((entry) => entry.supportCount === 1).length,
+    highlightedClusterCount: visibleEntries.filter((entry) => entry.signature === focusedSignature).length,
+    clusterClockCount,
+    clusterMiniCount,
+    maxSupportCount: visibleEntries.reduce((max, entry) => Math.max(max, entry.supportCount), 0),
+    focusedSignature,
+    profileCoverageCount: profileCoverage.size,
+    clusterLabels: visibleEntries.map((entry) => entry.noteNames.join(" · ")),
+    cadenceLabels: visibleEntries.map((entry) => entry.cadenceLabel).filter(Boolean),
   };
 }
 
@@ -4116,6 +4328,7 @@ function renderMidiScene() {
       ? buildContinuationPaths(arena, continuationBundle, focusedSuggestion, context, profile, { branchCount: 3, maxDepth: 3 })
       : [];
     const cadenceGardenGroups = buildCadenceGardenGroups(continuationPaths);
+    const consensusAtlasEntries = buildConsensusAtlasEntries(arena, historyBundle, context, profile, focusedSuggestion);
     const profileOrchardEntries = focusedSuggestion
       ? buildProfileOrchardEntries(arena, historyFrames, focusedSuggestion, context, profile)
       : [];
@@ -4163,6 +4376,16 @@ function renderMidiScene() {
       pinned: pinnedSuggestionIndex != null,
       focusedIndex: focusedSuggestionIndex,
     });
+    const midiConsensusAtlasFeatures = renderMidiConsensusAtlas(
+      midiConsensusAtlasEl,
+      arena,
+      consensusAtlasEntries,
+      context,
+      {
+        activeProfileIndex: profile,
+        focusedSignature: focusedSuggestion?.notes?.join(",") || "",
+      },
+    );
     const midiContinuationLadderFeatures = renderMidiContinuationLadder(
       midiContinuationLadderEl,
       arena,
@@ -4406,7 +4629,9 @@ function renderMidiScene() {
       chordName: setValue === 0 ? "" : currentChord,
       suggestionCount: suggestions.length,
       suggestionNames: suggestions.map((one) => one.noteNames.join(" · ")),
+      suggestionSignatures: suggestions.map((one) => one.notes.join(",")),
       topSuggestionSignature: suggestions[0]?.notes?.join(",") || "",
+      focusedSuggestionSignature: focusedSuggestion?.notes?.join(",") || "",
       hoveredCandidateIndex: hoveredSuggestionIndex == null ? -1 : hoveredSuggestionIndex,
       focusedCandidateIndex: focusedSuggestionIndex == null ? -1 : focusedSuggestionIndex,
       pinnedCandidateIndex: pinnedSuggestionIndex == null ? -1 : pinnedSuggestionIndex,
@@ -4416,6 +4641,7 @@ function renderMidiScene() {
       suggestionMiniCount: miniInstrumentMode() === MINI_INSTRUMENT_OFF ? 0 : suggestions.length,
       focusedSuggestionName: focusedSuggestion?.noteNames?.join(" · ") || "",
       midiInspectorFeatures,
+      midiConsensusAtlasFeatures,
       midiContinuationLadderFeatures,
       midiPathWeaverFeatures,
       midiCadenceGardenFeatures,

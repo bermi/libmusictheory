@@ -1347,6 +1347,10 @@ select {
   min-height: 420px;
 }
 
+.consensus-atlas-frame {
+  min-height: 420px;
+}
+
 .continuation-shell {
   display: grid;
   gap: 14px;
@@ -1449,6 +1453,12 @@ select {
   min-height: 100%;
 }
 
+.consensus-atlas-shell {
+  display: grid;
+  gap: 14px;
+  min-height: 100%;
+}
+
 .path-weaver-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -1464,6 +1474,12 @@ select {
 .profile-orchard-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+}
+
+.consensus-atlas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 14px;
 }
 
@@ -1554,6 +1570,31 @@ select {
   gap: 12px;
 }
 
+.consensus-atlas-card {
+  border-radius: 18px;
+  border: 1px solid rgba(24, 36, 47, 0.12);
+  background: linear-gradient(180deg, rgba(255, 251, 246, 0.98), rgba(246, 237, 227, 0.94));
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.consensus-atlas-card.is-consensus {
+  box-shadow: inset 0 0 0 1px rgba(31, 125, 134, 0.08);
+}
+
+.consensus-atlas-card.is-outlier {
+  background: linear-gradient(180deg, rgba(255, 247, 242, 0.98), rgba(247, 233, 223, 0.94));
+}
+
+.consensus-atlas-card.is-focused-cluster {
+  background: linear-gradient(180deg, rgba(255, 242, 221, 0.98), rgba(250, 226, 191, 0.98));
+  border-color: rgba(216, 92, 51, 0.28);
+  box-shadow:
+    inset 0 0 0 1px rgba(216, 92, 51, 0.16),
+    0 12px 28px rgba(102, 58, 20, 0.1);
+}
+
 .profile-orchard-card.is-active-profile {
   background: linear-gradient(180deg, rgba(255, 242, 221, 0.98), rgba(250, 226, 191, 0.98));
   border-color: rgba(216, 92, 51, 0.28);
@@ -1573,7 +1614,19 @@ select {
   align-items: flex-start;
 }
 
+.consensus-atlas-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
 .profile-orchard-card h4 {
+  margin: 4px 0 0;
+  font-size: 1.02rem;
+}
+
+.consensus-atlas-card h4 {
   margin: 4px 0 0;
   font-size: 1.02rem;
 }
@@ -1585,12 +1638,53 @@ select {
   line-height: 1.45;
 }
 
+.consensus-atlas-meta,
+.consensus-atlas-alternates,
+.consensus-atlas-profiles {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
 .profile-orchard-cadence {
   font-weight: 700;
   color: rgba(110, 57, 18, 0.92);
 }
 
+.consensus-atlas-cadence {
+  font-weight: 700;
+  color: rgba(110, 57, 18, 0.92);
+}
+
+.consensus-atlas-profile-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.consensus-atlas-profile-pill {
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(24, 36, 47, 0.1);
+  background: rgba(255, 255, 255, 0.74);
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.consensus-atlas-profile-pill.is-active-profile {
+  background: rgba(216, 92, 51, 0.12);
+  border-color: rgba(216, 92, 51, 0.22);
+  color: rgba(130, 54, 20, 0.96);
+  font-weight: 700;
+}
+
 .profile-orchard-art-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.consensus-atlas-art-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
@@ -1605,8 +1699,22 @@ select {
   background: linear-gradient(180deg, rgba(252, 247, 240, 0.96), rgba(244, 236, 225, 0.86));
 }
 
+.consensus-atlas-art {
+  display: grid;
+  place-items: center;
+  min-height: 152px;
+  border-radius: 16px;
+  border: 1px solid rgba(24, 36, 47, 0.08);
+  background: linear-gradient(180deg, rgba(252, 247, 240, 0.96), rgba(244, 236, 225, 0.86));
+}
+
 .profile-orchard-art svg,
 .profile-orchard-art img {
+  max-height: 142px;
+}
+
+.consensus-atlas-art svg,
+.consensus-atlas-art img {
   max-height: 142px;
 }
 

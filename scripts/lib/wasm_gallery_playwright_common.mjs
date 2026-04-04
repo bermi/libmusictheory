@@ -554,6 +554,40 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
           rootFocusedIndex: -1,
         };
       })(),
+      midiConsensusAtlasFeatures: (() => {
+        const host = document.querySelector("#midi-consensus-atlas");
+        if (!host) {
+          return {
+            clusterCount: 0,
+            consensusClusterCount: 0,
+            singletonClusterCount: 0,
+            highlightedClusterCount: 0,
+            clusterClockCount: 0,
+            clusterMiniCount: 0,
+            maxSupportCount: 0,
+            focusedSignature: "",
+            profileCoverageCount: 0,
+            clusterLabels: [],
+            cadenceLabels: [],
+          };
+        }
+        const cards = Array.from(host.querySelectorAll(".consensus-atlas-card"));
+        const highlighted = cards.filter((node) => node.classList.contains("is-focused-cluster"));
+        const uniqueProfiles = new Set(Array.from(host.querySelectorAll("[data-consensus-profile]"), (node) => (node.textContent || "").trim()).filter(Boolean));
+        return {
+          clusterCount: cards.length,
+          consensusClusterCount: cards.filter((node) => node.classList.contains("is-consensus")).length,
+          singletonClusterCount: cards.filter((node) => node.classList.contains("is-outlier")).length,
+          highlightedClusterCount: highlighted.length,
+          clusterClockCount: host.querySelectorAll("[data-consensus-atlas-clock] :is(svg,img)").length,
+          clusterMiniCount: host.querySelectorAll("[data-consensus-atlas-mini] :is(svg,img)").length,
+          maxSupportCount: cards.reduce((max, node) => Math.max(max, Number.parseInt(node.getAttribute("data-support-count") || "0", 10) || 0), 0),
+          focusedSignature: highlighted[0]?.getAttribute("data-consensus-signature") || "",
+          profileCoverageCount: uniqueProfiles.size,
+          clusterLabels: Array.from(host.querySelectorAll(".consensus-atlas-card h4"), (node) => (node.textContent || "").trim()).filter(Boolean),
+          cadenceLabels: Array.from(host.querySelectorAll(".consensus-atlas-cadence, .consensus-atlas-card .status-pill"), (node) => (node.textContent || "").trim()).filter(Boolean),
+        };
+      })(),
       previewKinds: (() => {
         const hostIds = ["midi-clock", "midi-optic-k", "midi-evenness", "midi-keyboard", "midi-staff", "midi-current-fret", "midi-focused-mini"];
         return Object.fromEntries(hostIds.map((id) => {
@@ -604,6 +638,7 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
     const midiPathWeaverFeatures = snapshot.summary?.midiPathWeaverFeatures ?? snapshot.midiPathWeaverFeatures;
     const midiCadenceGardenFeatures = snapshot.summary?.midiCadenceGardenFeatures ?? snapshot.midiCadenceGardenFeatures;
     const midiProfileOrchardFeatures = snapshot.summary?.midiProfileOrchardFeatures ?? snapshot.midiProfileOrchardFeatures;
+    const midiConsensusAtlasFeatures = snapshot.summary?.midiConsensusAtlasFeatures ?? snapshot.midiConsensusAtlasFeatures;
     const keyboardFeatures = snapshot.summary?.keyboardFeatures ?? snapshot.keyboardFeaturesFallback;
     if (
       snapshot.summary?.rendered === true
@@ -648,6 +683,16 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
       && midiProfileOrchardFeatures.activeProfileIndex >= 0
       && midiProfileOrchardFeatures.profileNames.length >= 5
       && midiProfileOrchardFeatures.cadenceLabels.length >= 1
+      && midiConsensusAtlasFeatures.clusterCount >= 2
+      && midiConsensusAtlasFeatures.consensusClusterCount >= 1
+      && midiConsensusAtlasFeatures.singletonClusterCount >= 1
+      && midiConsensusAtlasFeatures.highlightedClusterCount === 1
+      && midiConsensusAtlasFeatures.clusterClockCount >= 2
+      && (midiConsensusAtlasFeatures.clusterMiniCount >= 2 || snapshot.summary?.currentMiniMode === "off")
+      && midiConsensusAtlasFeatures.maxSupportCount >= 2
+      && midiConsensusAtlasFeatures.focusedSignature.length > 0
+      && midiConsensusAtlasFeatures.profileCoverageCount >= 5
+      && midiConsensusAtlasFeatures.clusterLabels.length >= 2
       && midiOpticKFeatures.clockCount >= 2
       && midiOpticKFeatures.linkCount >= 1
       && midiOpticKFeatures.labelCount >= 5

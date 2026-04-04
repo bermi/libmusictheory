@@ -152,6 +152,7 @@ async function main() {
       const midiActivePathWeaverFeatures = midiActive.summary?.midiPathWeaverFeatures ?? midiActive.midiPathWeaverFeatures;
       const midiActiveCadenceGardenFeatures = midiActive.summary?.midiCadenceGardenFeatures ?? midiActive.midiCadenceGardenFeatures;
       const midiActiveProfileOrchardFeatures = midiActive.summary?.midiProfileOrchardFeatures ?? midiActive.midiProfileOrchardFeatures;
+      const midiActiveConsensusAtlasFeatures = midiActive.summary?.midiConsensusAtlasFeatures ?? midiActive.midiConsensusAtlasFeatures;
       if (
         midiActive.summary?.currentMiniMode !== "off"
         || midiActive.summary?.currentMiniRendered !== false
@@ -312,6 +313,19 @@ async function main() {
         throw new Error(`live midi scene did not render profile orchard correctly: ${JSON.stringify(midiActiveProfileOrchardFeatures)}`);
       }
       if (
+        (midiActiveConsensusAtlasFeatures?.clusterCount || 0) < 2
+        || (midiActiveConsensusAtlasFeatures?.consensusClusterCount || 0) < 1
+        || (midiActiveConsensusAtlasFeatures?.singletonClusterCount || 0) < 1
+        || (midiActiveConsensusAtlasFeatures?.highlightedClusterCount || 0) !== 1
+        || (midiActiveConsensusAtlasFeatures?.clusterClockCount || 0) < 2
+        || (midiActive.summary?.currentMiniMode === "off" ? false : (midiActiveConsensusAtlasFeatures?.clusterMiniCount || 0) < 2)
+        || (midiActiveConsensusAtlasFeatures?.maxSupportCount || 0) < 2
+        || (midiActiveConsensusAtlasFeatures?.profileCoverageCount || 0) < 5
+        || !midiActiveConsensusAtlasFeatures?.focusedSignature
+      ) {
+        throw new Error(`live midi scene did not render consensus atlas correctly: ${JSON.stringify(midiActiveConsensusAtlasFeatures)}`);
+      }
+      if (
         (midiActivePathWeaverFeatures?.pathCount || 0) < 1
         || (midiActivePathWeaverFeatures?.pathStepCount || 0) < 2
         || ((midiActivePathWeaverFeatures?.pathMiniCount || 0) < 1 && midiActive.summary?.currentMiniMode !== "off")
@@ -333,7 +347,7 @@ async function main() {
       traceStep("hover-candidate");
       const hoverCandidateIndex = Math.min(1, Math.max(0, (midiActive.summary?.suggestionCount || 1) - 1));
       await page.locator(`#midi-suggestions [data-suggestion-index="${hoverCandidateIndex}"]`).hover();
-      const hoveredCandidate = await page.waitForFunction((targetIndex) => {
+      const hoveredCandidate = await page.waitForFunction(({ targetIndex, targetSignature }) => {
         const midi = window.__lmtGallerySummary?.scenes?.midi;
         return midi?.hoveredCandidateIndex === targetIndex
           && midi?.focusedCandidateIndex === targetIndex
@@ -353,14 +367,20 @@ async function main() {
           && (midi?.midiCadenceGardenFeatures?.terminalClockCount || 0) >= 1
           && (midi?.midiProfileOrchardFeatures?.rootFocusedIndex ?? -1) === targetIndex
           && (midi?.midiProfileOrchardFeatures?.profileCardCount || 0) >= 5
+          && (midi?.midiConsensusAtlasFeatures?.focusedSignature || "") === targetSignature
+          && (midi?.midiConsensusAtlasFeatures?.highlightedClusterCount || 0) === 1
+          && (midi?.midiConsensusAtlasFeatures?.clusterCount || 0) >= 2
           && (midi?.midiInspectorFeatures?.candidateNoteCount || 0) >= 1
           && (midi?.midiWeatherFeatures?.cellCount || 0) >= 2
           && (midi?.midiRiskRadarFeatures?.candidatePolygonCount || 0) >= 1
           && (midi?.midiRiskRadarFeatures?.populatedAxisCount || 0) >= 4;
-      }, hoverCandidateIndex, { timeout: 30000 }).then((handle) => handle.jsonValue());
+      }, {
+        targetIndex: hoverCandidateIndex,
+        targetSignature: midiActive.summary?.suggestionSignatures?.[hoverCandidateIndex] || "",
+      }, { timeout: 30000 }).then((handle) => handle.jsonValue());
       traceStep("pin-candidate");
       await page.click(`#midi-suggestions [data-suggestion-index="${hoverCandidateIndex}"]`);
-      const pinnedCandidate = await page.waitForFunction((targetIndex) => {
+      const pinnedCandidate = await page.waitForFunction(({ targetIndex, targetSignature }) => {
         const midi = window.__lmtGallerySummary?.scenes?.midi;
         return midi?.pinnedCandidateIndex === targetIndex
           && midi?.focusedCandidateIndex === targetIndex
@@ -374,10 +394,15 @@ async function main() {
           && (midi?.midiCadenceGardenFeatures?.groupCount || 0) >= 1
           && (midi?.midiProfileOrchardFeatures?.rootFocusedIndex ?? -1) === targetIndex
           && (midi?.midiProfileOrchardFeatures?.profileCardCount || 0) >= 5
+          && (midi?.midiConsensusAtlasFeatures?.focusedSignature || "") === targetSignature
+          && (midi?.midiConsensusAtlasFeatures?.highlightedClusterCount || 0) === 1
           && (midi?.midiInspectorFeatures?.reasonCount || 0) >= 1;
-      }, hoverCandidateIndex, { timeout: 30000 }).then((handle) => handle.jsonValue());
+      }, {
+        targetIndex: hoverCandidateIndex,
+        targetSignature: midiActive.summary?.suggestionSignatures?.[hoverCandidateIndex] || "",
+      }, { timeout: 30000 }).then((handle) => handle.jsonValue());
       await page.mouse.move(8, 8);
-      const pinPersistsAfterMouseleave = await page.waitForFunction((targetIndex) => {
+      const pinPersistsAfterMouseleave = await page.waitForFunction(({ targetIndex, targetSignature }) => {
         const midi = window.__lmtGallerySummary?.scenes?.midi;
         return midi?.pinnedCandidateIndex === targetIndex
           && midi?.focusedCandidateIndex === targetIndex
@@ -385,8 +410,12 @@ async function main() {
           && (midi?.midiContinuationLadderFeatures?.sourceFocusedIndex ?? -1) === targetIndex
           && (midi?.midiPathWeaverFeatures?.rootFocusedIndex ?? -1) === targetIndex
           && (midi?.midiCadenceGardenFeatures?.rootFocusedIndex ?? -1) === targetIndex
-          && (midi?.midiProfileOrchardFeatures?.rootFocusedIndex ?? -1) === targetIndex;
-      }, hoverCandidateIndex, { timeout: 30000 }).then((handle) => handle.jsonValue());
+          && (midi?.midiProfileOrchardFeatures?.rootFocusedIndex ?? -1) === targetIndex
+          && (midi?.midiConsensusAtlasFeatures?.focusedSignature || "") === targetSignature;
+      }, {
+        targetIndex: hoverCandidateIndex,
+        targetSignature: midiActive.summary?.suggestionSignatures?.[hoverCandidateIndex] || "",
+      }, { timeout: 30000 }).then((handle) => handle.jsonValue());
       traceStep("clear-pin");
       await page.click("#midi-clear-pin");
       const hoverReset = await page.waitForFunction(() => {
@@ -398,7 +427,8 @@ async function main() {
           && (midi?.midiContinuationLadderFeatures?.sourceFocusedIndex ?? -1) === 0
           && (midi?.midiPathWeaverFeatures?.rootFocusedIndex ?? -1) === 0
           && (midi?.midiCadenceGardenFeatures?.rootFocusedIndex ?? -1) === 0
-          && (midi?.midiProfileOrchardFeatures?.rootFocusedIndex ?? -1) === 0;
+          && (midi?.midiProfileOrchardFeatures?.rootFocusedIndex ?? -1) === 0
+          && (midi?.midiConsensusAtlasFeatures?.focusedSignature || "") === (midi?.focusedSuggestionSignature || "");
       }, { timeout: 30000 }).then((handle) => handle.jsonValue());
       traceStep("context-change");
       const defaultContext = await page.evaluate(() => ({
@@ -421,6 +451,10 @@ async function main() {
           && (midi.midiProfileOrchardFeatures?.profileCardCount || 0) >= 5
           && (midi.midiProfileOrchardFeatures?.highlightedCardCount || 0) === 1
           && (midi.midiProfileOrchardFeatures?.activeProfileIndex ?? -1) === 0
+          && (midi.midiConsensusAtlasFeatures?.clusterCount || 0) >= 2
+          && (midi.midiConsensusAtlasFeatures?.consensusClusterCount || 0) >= 1
+          && (midi.midiConsensusAtlasFeatures?.highlightedClusterCount || 0) === 1
+          && (midi.midiConsensusAtlasFeatures?.focusedSignature || "") === (midi?.focusedSuggestionSignature || "")
           && (midi.midiHorizonFeatures?.candidateNodeCount || 0) >= 1
           && (midi.midiBraidFeatures?.candidateColumnCount || 0) >= 1
           && (midi.midiWeatherFeatures?.cellCount || 0) >= 2
@@ -444,6 +478,10 @@ async function main() {
           && (midi?.midiProfileOrchardFeatures?.profileCardCount || 0) >= 5
           && (midi?.midiProfileOrchardFeatures?.highlightedCardCount || 0) === 1
           && (midi?.midiProfileOrchardFeatures?.activeProfileIndex ?? -1) === 3
+          && (midi?.midiConsensusAtlasFeatures?.clusterCount || 0) >= 2
+          && (midi?.midiConsensusAtlasFeatures?.consensusClusterCount || 0) >= 1
+          && (midi?.midiConsensusAtlasFeatures?.highlightedClusterCount || 0) === 1
+          && (midi?.midiConsensusAtlasFeatures?.focusedSignature || "") === (midi?.focusedSuggestionSignature || "")
           && (midi?.midiHorizonFeatures?.candidateNodeCount || 0) >= 1
           && (midi?.midiBraidFeatures?.candidateColumnCount || 0) >= 1
           && (midi?.midiWeatherFeatures?.cellCount || 0) >= 2
@@ -467,6 +505,7 @@ async function main() {
           && (midi?.midiPathWeaverFeatures?.pathMiniCount || 0) >= 1
           && (midi?.midiCadenceGardenFeatures?.terminalMiniCount || 0) >= 1
           && (midi?.midiProfileOrchardFeatures?.profileMiniCount || 0) >= 5
+          && (midi?.midiConsensusAtlasFeatures?.clusterMiniCount || 0) >= 2
           && summary?.scenes?.set?.miniInstrumentMode === "piano"
           && summary?.scenes?.set?.miniRendered === true
           && summary?.scenes?.key?.miniRendered === true
@@ -493,6 +532,7 @@ async function main() {
           && (midi?.midiPathWeaverFeatures?.pathMiniCount || 0) >= 1
           && (midi?.midiCadenceGardenFeatures?.terminalMiniCount || 0) >= 1
           && (midi?.midiProfileOrchardFeatures?.profileMiniCount || 0) >= 5
+          && (midi?.midiConsensusAtlasFeatures?.clusterMiniCount || 0) >= 2
           && summary?.scenes?.set?.miniInstrumentMode === "fret"
           && summary?.scenes?.set?.miniRendered === true
           && summary?.scenes?.key?.miniRendered === true
@@ -630,6 +670,8 @@ async function main() {
           && (midi?.midiCadenceFunnelFeatures?.branchCount || 0) >= 2
           && (midi?.midiProfileOrchardFeatures?.highlightedCardCount || 0) === 1
           && (midi?.midiProfileOrchardFeatures?.activeProfileIndex ?? -1) === 0
+          && (midi?.midiConsensusAtlasFeatures?.clusterCount || 0) >= 2
+          && (midi?.midiConsensusAtlasFeatures?.highlightedClusterCount || 0) === 1
           && !!midi?.midiSuspensionMachineFeatures?.stateLabel
           && (midi?.midiOrbifoldRibbonFeatures?.candidateAnchorCount || 0) >= 1
           && (midi?.midiCommonToneConstellationFeatures?.retainedStarCount || 0) >= 1
@@ -644,6 +686,8 @@ async function main() {
           && midi?.snapshotCount >= 1
           && (midi?.midiCadenceFunnelFeatures?.branchCount || 0) >= 2
           && (midi?.midiProfileOrchardFeatures?.highlightedCardCount || 0) === 1
+          && (midi?.midiConsensusAtlasFeatures?.clusterCount || 0) >= 2
+          && (midi?.midiConsensusAtlasFeatures?.highlightedClusterCount || 0) === 1
           && !!midi?.midiSuspensionMachineFeatures?.stateLabel
           && (midi?.midiOrbifoldRibbonFeatures?.candidateAnchorCount || 0) >= 1
           && (midi?.midiCommonToneConstellationFeatures?.retainedStarCount || 0) >= 1;

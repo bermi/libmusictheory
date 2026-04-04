@@ -236,6 +236,11 @@ if [ -f "$ROOT_DIR/docs/plans/in_progress/0103-counterpoint-profile-orchard.md" 
     check_cmd "cd '$ROOT_DIR' && rg -n 'midiProfileOrchardFeatures|profileCardCount|populatedProfileCount|highlightedCardCount|profileClockCount|profileMiniCount|activeProfileIndex|profileNames|cadenceLabels|warningCardCount|rootFocusedIndex' examples/wasm-gallery/gallery.js scripts/lib/wasm_gallery_playwright_common.mjs scripts/validate_wasm_gallery_playwright.mjs >/dev/null" "0103 profile orchard guardrail (summary and playwright prove populated profile comparisons and mini preview coverage)"
 fi
 
+if [ -f "$ROOT_DIR/docs/plans/in_progress/0104-counterpoint-consensus-atlas.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0104-counterpoint-consensus-atlas.md" ]; then
+    check_cmd "cd '$ROOT_DIR' && rg -n 'midi-consensus-atlas|renderMidiConsensusAtlas|buildConsensusAtlasEntries|Consensus Atlas|data-consensus-atlas-mini|data-consensus-atlas-clock' examples/wasm-gallery/index.html examples/wasm-gallery/gallery.js examples/wasm-gallery/styles.css scripts/validate_wasm_gallery_playwright.mjs >/dev/null" "0104 consensus atlas guardrail (gallery host, runtime hooks, styles, and validation wiring are present)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'midiConsensusAtlasFeatures|clusterCount|consensusClusterCount|singletonClusterCount|highlightedClusterCount|clusterClockCount|clusterMiniCount|maxSupportCount|focusedSignature|profileCoverageCount|clusterLabels|cadenceLabels' examples/wasm-gallery/gallery.js scripts/lib/wasm_gallery_playwright_common.mjs scripts/validate_wasm_gallery_playwright.mjs >/dev/null" "0104 consensus atlas guardrail (summary and playwright prove shared-vs-outlier consensus clustering and mini preview coverage)"
+fi
+
 if [ -f "$ROOT_DIR/scripts/release_smoke.sh" ]; then
     check_cmd "cd '$ROOT_DIR' && test -x scripts/release_smoke.sh" "0078 release smoke guardrail (script is executable)"
     check_cmd "cd '$ROOT_DIR' && ! rg -n 'tmp/harmoniousapp\\.net|validate_harmonious_|wasm-demo|wasm-scaled-render-parity|wasm-native-rgba-proof|wasm-harmonious-spa' scripts/release_smoke.sh" "0078 release smoke guardrail (script stays on standalone surfaces and does not depend on local harmonious data)"
