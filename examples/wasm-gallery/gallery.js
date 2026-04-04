@@ -209,6 +209,7 @@ const midiHistoryEl = document.getElementById("midi-history");
 const midiInspectorEl = document.getElementById("midi-inspector");
 const midiConsensusAtlasEl = document.getElementById("midi-consensus-atlas");
 const midiObligationLedgerEl = document.getElementById("midi-obligation-ledger");
+const midiResolutionThreaderEl = document.getElementById("midi-resolution-threader");
 const midiContinuationLadderEl = document.getElementById("midi-continuation-ladder");
 const midiPathWeaverEl = document.getElementById("midi-path-weaver");
 const midiCadenceGardenEl = document.getElementById("midi-cadence-garden");
@@ -2769,6 +2770,7 @@ function buildObligationLedgerEntries(currentState, currentMotionAnalysis, caden
       verdict,
       status,
       tags: ["suspension", suspensionMachine.expectedResolutionLabel ? `to ${suspensionMachine.expectedResolutionLabel}` : "hold-aware"],
+      expectedResolutionMidi: suspensionMachine.expectedResolutionMidi,
     });
   }
 
@@ -2803,6 +2805,7 @@ function buildObligationLedgerEntries(currentState, currentMotionAnalysis, caden
       verdict,
       status,
       tags: [destination.currentMatch ? "already active" : "available", `tension ${destination.tensionBias >= 0 ? `+${destination.tensionBias}` : String(destination.tensionBias)}`],
+      targetCadenceLabel: destination.label,
     });
   }
 
@@ -2871,6 +2874,7 @@ function buildObligationLedgerEntries(currentState, currentMotionAnalysis, caden
       verdict,
       status,
       tags: [releasePreferred ? "release" : "build", suspensionMachine ? `tension ${suspensionMachine.previousTension || 0}→${suspensionMachine.currentTension || 0}` : "field summary"],
+      releasePreferred,
     });
   }
 
@@ -2932,10 +2936,85 @@ function buildObligationLedgerEntries(currentState, currentMotionAnalysis, caden
       verdict,
       status,
       tags: activeHazards.map((hazard) => shortWarningLabel(hazard.name)),
+      hazardNames: activeHazards.map((hazard) => hazard.name),
     });
   }
 
   return entries.slice(0, 5);
+}
+
+function evaluateResolutionThreadStatus(entry, suggestion) {
+  if (!entry || !suggestion) return "open";
+  const reasons = suggestion.reasonNames || [];
+  const warnings = suggestion.warningNames || [];
+  switch (entry.key) {
+    case "suspension":
+      if (Number.isFinite(entry.expectedResolutionMidi) && suggestion.notes.includes(entry.expectedResolutionMidi)) return "resolves";
+      if (reasons.includes("releases-tension")) return "supports";
+      if (warnings.includes("cluster-pressure") || warnings.includes("consecutive-leap")) return "aggravates";
+      return "open";
+    case "cadence-vector":
+      if (entry.targetCadenceLabel && suggestion.cadenceLabel === entry.targetCadenceLabel) return "supports";
+      if (reasons.includes("cadence-pull")) return "supports";
+      if (warnings.includes("outside-context")) return "aggravates";
+      return "open";
+    case "spacing":
+      if (reasons.includes("preserves-spacing")) return "supports";
+      if (warnings.includes("wide-spacing")) return "aggravates";
+      return "open";
+    case "tension":
+      if (entry.releasePreferred) {
+        if (reasons.includes("releases-tension") || suggestion.tensionDelta < 0) return "supports";
+        if (reasons.includes("builds-tension") || suggestion.tensionDelta > 0) return "aggravates";
+      } else {
+        if (reasons.includes("builds-tension") || suggestion.tensionDelta > 0) return "supports";
+        if (reasons.includes("releases-tension") || suggestion.tensionDelta < 0) return "delays";
+      }
+      return "open";
+    case "anchor":
+      if (reasons.includes("common-tone-retention") || (suggestion.motion?.commonToneCount || 0) > 0) return "supports";
+      if (warnings.includes("crossing") || warnings.includes("overlap")) return "aggravates";
+      return "open";
+    case "hazards":
+      if (warnings.some((warning) => (entry.hazardNames || []).includes(warning))) return "aggravates";
+      if (warnings.length === 0) return "supports";
+      return "open";
+    default:
+      return "open";
+  }
+}
+
+function buildResolutionThreaderRows(entries, paths) {
+  const visiblePaths = Array.isArray(paths) ? paths.slice(0, 3) : [];
+  return (Array.isArray(entries) ? entries : []).map((entry) => {
+    const threads = visiblePaths.map((path, visibleIndex) => {
+      const stepStatuses = (path.steps || []).map((step, stepIndex) => ({
+        status: evaluateResolutionThreadStatus(entry, step),
+        step,
+        stepIndex,
+      }));
+      const firstResolved = stepStatuses.find((item) => item.status === "resolves");
+      const firstSupported = stepStatuses.find((item) => item.status === "supports");
+      const firstAggravated = stepStatuses.find((item) => item.status === "aggravates");
+      const chosen = firstResolved || firstSupported || firstAggravated || null;
+      const status = chosen?.status || "open";
+      const stepOffset = chosen ? chosen.stepIndex + 1 : Math.max(1, path.steps?.length || 1);
+      const noteLabel = chosen?.step?.noteNames?.join(" · ") || path.terminalLabel || "";
+      let summary = `stays open through +${stepOffset}`;
+      if (status === "resolves") summary = `resolves by +${stepOffset}`;
+      else if (status === "supports") summary = `supports by +${stepOffset}`;
+      else if (status === "aggravates") summary = `aggravates by +${stepOffset}`;
+      else if (status === "delays") summary = `delays through +${stepOffset}`;
+      return {
+        pathIndex: visibleIndex,
+        status,
+        stepOffset,
+        noteLabel,
+        summary,
+      };
+    });
+    return { ...entry, threads };
+  }).filter((entry) => entry.threads.length > 0);
 }
 
 function renderMidiObligationLedger(host, entries, focusedSuggestion, profileLabel) {
@@ -3018,6 +3097,99 @@ function renderMidiObligationLedger(host, entries, focusedSuggestion, profileLab
     focusedSignature,
     statusLabels: entries.map((entry) => entry.status),
     entryLabels: entries.map((entry) => entry.label),
+  };
+}
+
+function renderMidiResolutionThreader(host, entries, focusedSuggestion, paths, profileLabel) {
+  const empty = {
+    rowCount: 0,
+    threadCount: 0,
+    resolvedThreadCount: 0,
+    aggravateThreadCount: 0,
+    openThreadCount: 0,
+    focusedSignature: "",
+    entryLabels: [],
+  };
+  if (!host) return empty;
+  if (!focusedSuggestion || !Array.isArray(entries) || entries.length === 0) {
+    host.innerHTML = `<div class="output-block continuation-empty">Focus or pin a ranked move to see how the strongest short continuations actually settle, sustain, or worsen the current duties.</div>`;
+    return empty;
+  }
+
+  const rows = buildResolutionThreaderRows(entries.slice(0, 4), paths);
+  if (rows.length === 0) {
+    host.innerHTML = `<div class="output-block continuation-empty">The threader needs at least one focused move and one short continuation path to project the current obligations forward.</div>`;
+    return empty;
+  }
+
+  const focusedSignature = focusedSuggestion.notes.join(",");
+  host.dataset.focusedSignature = focusedSignature;
+  const allThreads = rows.flatMap((row) => row.threads);
+  const resolvedThreadCount = allThreads.filter((thread) => thread.status === "resolves" || thread.status === "supports").length;
+  const aggravateThreadCount = allThreads.filter((thread) => thread.status === "aggravates").length;
+  const openThreadCount = allThreads.filter((thread) => thread.status === "open" || thread.status === "delays").length;
+
+  host.innerHTML = `
+    <div class="resolution-threader-shell">
+      <div class="continuation-head">
+        <div>
+          <p class="eyebrow">How the duties cash out</p>
+          <h4>${escapeHtml(humanizeCounterpointLabel(profileLabel))} obligation threads</h4>
+        </div>
+        <div class="pill-list">
+          <span class="status-pill is-live">${escapeHtml(`${resolvedThreadCount} settling`)}</span>
+          <span class="status-pill ${aggravateThreadCount > 0 ? "is-snapshot" : "is-muted"}">${escapeHtml(`${aggravateThreadCount} worsening`)}</span>
+        </div>
+      </div>
+      <article class="continuation-root">
+        <p>${escapeHtml("The ledger tells us what this moment asks for. The threader follows the strongest short continuations after the focused move and shows when each duty actually settles, stays open, or turns rougher.")}</p>
+        <div class="chip-row">
+          <span class="pill">${escapeHtml("focused move verdict first")}</span>
+          <span class="pill">${escapeHtml("short ranked continuations projected afterward")}</span>
+        </div>
+      </article>
+      <div class="resolution-threader-grid">
+        ${rows.map((entry, index) => `
+          <article class="resolution-threader-card is-${entry.tone}" data-resolution-thread="${index}">
+            <div class="resolution-threader-card-head">
+              <div>
+                <p class="eyebrow">${escapeHtml(entry.sourceLabel)}</p>
+                <h4>${escapeHtml(entry.label)}</h4>
+              </div>
+              <div class="pill-list">
+                <span class="status-pill ${entry.tone === "critical" ? "is-snapshot" : entry.tone === "caution" ? "is-muted" : "is-live"}">${escapeHtml(humanizeCounterpointLabel(entry.tone))}</span>
+                <span class="status-pill ${entry.status === "aggravates" ? "is-snapshot" : entry.status === "delays" ? "is-muted" : "is-live"}">${escapeHtml(humanizeCounterpointLabel(entry.status === "resolves" ? "resolves" : entry.status))}</span>
+              </div>
+            </div>
+            <p class="resolution-threader-meta">${escapeHtml(entry.pressureText)}</p>
+            <div class="resolution-threader-flow">
+              <article class="resolution-threader-node is-${entry.status}" data-resolution-thread-status="${entry.status}">
+                <p class="eyebrow">Focused move</p>
+                <strong>${escapeHtml(entry.status === "resolves" ? "resolves now" : entry.status === "supports" ? "supports now" : entry.status === "aggravates" ? "aggravates now" : entry.status === "delays" ? "delays now" : "stays open now")}</strong>
+                <p>${escapeHtml(entry.verdict)}</p>
+              </article>
+              ${entry.threads.map((thread) => `
+                <article class="resolution-threader-node is-${thread.status}" data-resolution-thread-status="${thread.status}" data-resolution-path="${thread.pathIndex}">
+                  <p class="eyebrow">${escapeHtml(`Path ${thread.pathIndex + 1}`)}</p>
+                  <strong>${escapeHtml(thread.summary)}</strong>
+                  <p>${escapeHtml(thread.noteLabel || "no terminal label available")}</p>
+                </article>
+              `).join("")}
+            </div>
+          </article>
+        `).join("")}
+      </div>
+    </div>
+  `;
+
+  return {
+    rowCount: rows.length,
+    threadCount: allThreads.length,
+    resolvedThreadCount,
+    aggravateThreadCount,
+    openThreadCount,
+    focusedSignature,
+    entryLabels: rows.map((row) => row.label),
   };
 }
 
@@ -4722,6 +4894,13 @@ function renderMidiScene() {
       focusedSuggestion,
       profileLabel,
     );
+    const midiResolutionThreaderFeatures = renderMidiResolutionThreader(
+      midiResolutionThreaderEl,
+      obligationLedgerEntries,
+      focusedSuggestion,
+      continuationPaths,
+      profileLabel,
+    );
     const midiContinuationLadderFeatures = renderMidiContinuationLadder(
       midiContinuationLadderEl,
       arena,
@@ -4979,6 +5158,7 @@ function renderMidiScene() {
       midiInspectorFeatures,
       midiConsensusAtlasFeatures,
       midiObligationLedgerFeatures,
+      midiResolutionThreaderFeatures,
       midiContinuationLadderFeatures,
       midiPathWeaverFeatures,
       midiCadenceGardenFeatures,

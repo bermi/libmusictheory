@@ -617,6 +617,36 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
           entryLabels: Array.from(host.querySelectorAll(".obligation-ledger-card h4"), (node) => (node.textContent || "").trim()).filter(Boolean),
         };
       })(),
+      midiResolutionThreaderFeatures: (() => {
+        const host = document.querySelector("#midi-resolution-threader");
+        if (!host) {
+          return {
+            rowCount: 0,
+            threadCount: 0,
+            resolvedThreadCount: 0,
+            aggravateThreadCount: 0,
+            openThreadCount: 0,
+            focusedSignature: "",
+            entryLabels: [],
+          };
+        }
+        const nodes = Array.from(host.querySelectorAll("[data-resolution-thread-status]"));
+        return {
+          rowCount: host.querySelectorAll(".resolution-threader-card").length,
+          threadCount: nodes.length,
+          resolvedThreadCount: nodes.filter((node) => {
+            const status = node.getAttribute("data-resolution-thread-status") || "";
+            return status === "resolves" || status === "supports";
+          }).length,
+          aggravateThreadCount: nodes.filter((node) => (node.getAttribute("data-resolution-thread-status") || "") === "aggravates").length,
+          openThreadCount: nodes.filter((node) => {
+            const status = node.getAttribute("data-resolution-thread-status") || "";
+            return status === "open" || status === "delays";
+          }).length,
+          focusedSignature: host.getAttribute("data-focused-signature") || window.__lmtGallerySummary?.scenes?.midi?.focusedSuggestionSignature || "",
+          entryLabels: Array.from(host.querySelectorAll(".resolution-threader-card h4"), (node) => (node.textContent || "").trim()).filter(Boolean),
+        };
+      })(),
       previewKinds: (() => {
         const hostIds = ["midi-clock", "midi-optic-k", "midi-evenness", "midi-keyboard", "midi-staff", "midi-current-fret", "midi-focused-mini"];
         return Object.fromEntries(hostIds.map((id) => {
@@ -669,6 +699,7 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
     const midiProfileOrchardFeatures = snapshot.summary?.midiProfileOrchardFeatures ?? snapshot.midiProfileOrchardFeatures;
     const midiConsensusAtlasFeatures = snapshot.summary?.midiConsensusAtlasFeatures ?? snapshot.midiConsensusAtlasFeatures;
     const midiObligationLedgerFeatures = snapshot.summary?.midiObligationLedgerFeatures ?? snapshot.midiObligationLedgerFeatures;
+    const midiResolutionThreaderFeatures = snapshot.summary?.midiResolutionThreaderFeatures ?? snapshot.midiResolutionThreaderFeatures;
     const keyboardFeatures = snapshot.summary?.keyboardFeatures ?? snapshot.keyboardFeaturesFallback;
     if (
       snapshot.summary?.rendered === true
@@ -729,6 +760,11 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
       && midiObligationLedgerFeatures.warningEntryCount >= 1
       && midiObligationLedgerFeatures.focusedSignature.length > 0
       && midiObligationLedgerFeatures.entryLabels.length >= 3
+      && midiResolutionThreaderFeatures.rowCount >= 2
+      && midiResolutionThreaderFeatures.threadCount >= 4
+      && midiResolutionThreaderFeatures.resolvedThreadCount >= 1
+      && midiResolutionThreaderFeatures.focusedSignature.length > 0
+      && midiResolutionThreaderFeatures.entryLabels.length >= 2
       && midiOpticKFeatures.clockCount >= 2
       && midiOpticKFeatures.linkCount >= 1
       && midiOpticKFeatures.labelCount >= 5
