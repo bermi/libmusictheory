@@ -647,6 +647,37 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
           entryLabels: Array.from(host.querySelectorAll(".resolution-threader-card h4"), (node) => (node.textContent || "").trim()).filter(Boolean),
         };
       })(),
+      midiObligationTimelineFeatures: (() => {
+        const host = document.querySelector("#midi-obligation-timeline");
+        if (!host) {
+          return {
+            rowCount: 0,
+            historyColumnCount: 0,
+            focusedColumnCount: 0,
+            actualMatchCount: 0,
+            resolvedCellCount: 0,
+            aggravateCellCount: 0,
+            inactiveCellCount: 0,
+            focusedSignature: "",
+            rowLabels: [],
+          };
+        }
+        const cells = Array.from(host.querySelectorAll("[data-obligation-timeline-status]"));
+        return {
+          rowCount: host.querySelectorAll(".obligation-timeline-row-label").length,
+          historyColumnCount: Number.parseInt(host.getAttribute("data-history-column-count") || "0", 10) || host.querySelectorAll('[data-obligation-timeline-column="history"]').length,
+          focusedColumnCount: host.querySelectorAll('[data-obligation-timeline-column="focused"]').length,
+          actualMatchCount: Number.parseInt(host.getAttribute("data-actual-match-count") || "0", 10),
+          resolvedCellCount: cells.filter((node) => {
+            const status = node.getAttribute("data-obligation-timeline-status") || "";
+            return status === "resolves" || status === "supports";
+          }).length,
+          aggravateCellCount: cells.filter((node) => (node.getAttribute("data-obligation-timeline-status") || "") === "aggravates").length,
+          inactiveCellCount: cells.filter((node) => (node.getAttribute("data-obligation-timeline-status") || "") === "inactive").length,
+          focusedSignature: host.getAttribute("data-focused-signature") || window.__lmtGallerySummary?.scenes?.midi?.focusedSuggestionSignature || "",
+          rowLabels: Array.from(host.querySelectorAll(".obligation-timeline-row-label strong"), (node) => (node.textContent || "").trim()).filter(Boolean),
+        };
+      })(),
       previewKinds: (() => {
         const hostIds = ["midi-clock", "midi-optic-k", "midi-evenness", "midi-keyboard", "midi-staff", "midi-current-fret", "midi-focused-mini"];
         return Object.fromEntries(hostIds.map((id) => {
@@ -700,6 +731,7 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
     const midiConsensusAtlasFeatures = snapshot.summary?.midiConsensusAtlasFeatures ?? snapshot.midiConsensusAtlasFeatures;
     const midiObligationLedgerFeatures = snapshot.summary?.midiObligationLedgerFeatures ?? snapshot.midiObligationLedgerFeatures;
     const midiResolutionThreaderFeatures = snapshot.summary?.midiResolutionThreaderFeatures ?? snapshot.midiResolutionThreaderFeatures;
+    const midiObligationTimelineFeatures = snapshot.summary?.midiObligationTimelineFeatures ?? snapshot.midiObligationTimelineFeatures;
     const keyboardFeatures = snapshot.summary?.keyboardFeatures ?? snapshot.keyboardFeaturesFallback;
     if (
       snapshot.summary?.rendered === true
@@ -765,6 +797,12 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
       && midiResolutionThreaderFeatures.resolvedThreadCount >= 1
       && midiResolutionThreaderFeatures.focusedSignature.length > 0
       && midiResolutionThreaderFeatures.entryLabels.length >= 2
+      && midiObligationTimelineFeatures.rowCount >= 2
+      && midiObligationTimelineFeatures.historyColumnCount >= 2
+      && midiObligationTimelineFeatures.focusedColumnCount === 1
+      && midiObligationTimelineFeatures.actualMatchCount >= 1
+      && midiObligationTimelineFeatures.focusedSignature.length > 0
+      && midiObligationTimelineFeatures.rowLabels.length >= 2
       && midiOpticKFeatures.clockCount >= 2
       && midiOpticKFeatures.linkCount >= 1
       && midiOpticKFeatures.labelCount >= 5

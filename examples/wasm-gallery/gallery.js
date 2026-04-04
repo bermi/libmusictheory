@@ -210,6 +210,7 @@ const midiInspectorEl = document.getElementById("midi-inspector");
 const midiConsensusAtlasEl = document.getElementById("midi-consensus-atlas");
 const midiObligationLedgerEl = document.getElementById("midi-obligation-ledger");
 const midiResolutionThreaderEl = document.getElementById("midi-resolution-threader");
+const midiObligationTimelineEl = document.getElementById("midi-obligation-timeline");
 const midiContinuationLadderEl = document.getElementById("midi-continuation-ladder");
 const midiPathWeaverEl = document.getElementById("midi-path-weaver");
 const midiCadenceGardenEl = document.getElementById("midi-cadence-garden");
@@ -2709,6 +2710,10 @@ function countSuggestionsWithTag(suggestions, kind, tag) {
   }, 0);
 }
 
+function noteSignature(suggestion) {
+  return Array.isArray(suggestion?.notes) ? suggestion.notes.join(",") : "";
+}
+
 function summarizeActiveHazards(suggestions, currentMotionAnalysis) {
   const hazardNames = ["parallels", "crossing", "overlap", "wide-spacing", "consecutive-leap", "outside-context", "cluster-pressure"];
   const counts = hazardNames.map((name) => ({
@@ -3190,6 +3195,186 @@ function renderMidiResolutionThreader(host, entries, focusedSuggestion, paths, p
     openThreadCount,
     focusedSignature,
     entryLabels: rows.map((row) => row.label),
+  };
+}
+
+function buildObligationTimelineColumns(arena, historyFrames, context, profile, currentEntries, focusedSuggestion) {
+  const rows = Array.isArray(currentEntries) ? currentEntries.slice(0, 4) : [];
+  if (rows.length === 0 || !focusedSuggestion) return [];
+
+  const columns = [];
+  const startIndex = Math.max(0, historyFrames.length - 4);
+  for (let index = startIndex; index < historyFrames.length - 1; index += 1) {
+    const prefixFrames = historyFrames.slice(0, index + 1).map(cloneHistoryFrame);
+    if (prefixFrames.length === 0) continue;
+    const historyBundle = buildCounterpointHistory(arena, prefixFrames, context);
+    const voicedHistory = decodeVoicedHistoryFromPointer(historyBundle.historyPtr);
+    const currentState = voicedHistory.states[voicedHistory.states.length - 1] || null;
+    const currentMotionAnalysis = buildCurrentMotionAnalysis(arena, historyBundle, voicedHistory, profile);
+    const cadenceDestinations = decodeCadenceDestinations(arena, historyBundle.historyPtr, profile);
+    const suspensionMachine = decodeSuspensionMachine(arena, historyBundle.historyPtr, profile, context);
+    const rankedSuggestions = decodeRankedNextSteps(arena, historyBundle.historyPtr, profile, context);
+    const nextFrame = historyFrames[index + 1];
+    const actual = buildActualSuggestionFromFrame(arena, historyBundle, nextFrame, context, profile, rankedSuggestions);
+    const entries = buildObligationLedgerEntries(
+      currentState,
+      currentMotionAnalysis,
+      cadenceDestinations,
+      suspensionMachine,
+      rankedSuggestions,
+      actual.suggestion,
+    );
+    const beforeOffset = historyFrames.length - index - 1;
+    const afterOffset = Math.max(0, beforeOffset - 1);
+    columns.push({
+      kind: "history",
+      label: afterOffset === 0 ? `T-${beforeOffset} → Now` : `T-${beforeOffset} → T-${afterOffset}`,
+      signature: noteSignature(actual.suggestion),
+      matched: actual.matched,
+      noteLabel: actual.suggestion?.noteNames?.join(" · ") || historyFrameDescription(nextFrame, context),
+      entries,
+    });
+  }
+
+  columns.push({
+    kind: "focused",
+    label: "Focused",
+    signature: noteSignature(focusedSuggestion),
+    matched: true,
+    noteLabel: focusedSuggestion.noteNames?.join(" · ") || "",
+    entries: rows,
+  });
+  return columns;
+}
+
+function buildObligationTimelineRows(currentEntries, columns) {
+  const rows = Array.isArray(currentEntries) ? currentEntries.slice(0, 4) : [];
+  return rows.map((entry) => {
+    const cells = columns.map((column) => {
+      const match = column.entries.find((one) => one.label === entry.label);
+      if (!match) {
+        return {
+          status: "inactive",
+          summary: column.kind === "focused" ? "not active now" : "not active yet",
+          noteLabel: column.kind === "focused" ? "focused move does not engage this duty" : "this duty had not formed at that step",
+        };
+      }
+      const status = match.status === "neutral" ? "open" : (match.status || "open");
+      return {
+        status,
+        summary: status === "resolves"
+          ? "resolves it"
+          : status === "supports"
+            ? "supports it"
+            : status === "aggravates"
+              ? "feeds it"
+              : status === "delays"
+                ? "keeps it open"
+                : "leaves it live",
+        noteLabel: column.noteLabel || match.pressureText,
+        verdict: match.verdict,
+      };
+    });
+    return { ...entry, cells };
+  });
+}
+
+function renderMidiObligationTimeline(host, arena, historyFrames, context, profile, currentEntries, focusedSuggestion, profileLabel) {
+  const empty = {
+    rowCount: 0,
+    historyColumnCount: 0,
+    focusedColumnCount: 0,
+    actualMatchCount: 0,
+    resolvedCellCount: 0,
+    aggravateCellCount: 0,
+    inactiveCellCount: 0,
+    focusedSignature: "",
+    rowLabels: [],
+  };
+  if (!host) return empty;
+  if (!focusedSuggestion || !Array.isArray(currentEntries) || currentEntries.length === 0 || !Array.isArray(historyFrames) || historyFrames.length < 2) {
+    host.innerHTML = `<div class="output-block continuation-empty">Play at least two voiced changes, then focus or pin a move to see how the current duties grew out of the recent line and how the focused move would answer them now.</div>`;
+    return empty;
+  }
+
+  const columns = buildObligationTimelineColumns(arena, historyFrames, context, profile, currentEntries, focusedSuggestion);
+  const historyColumns = columns.filter((column) => column.kind === "history");
+  const rows = buildObligationTimelineRows(currentEntries, columns);
+  if (rows.length === 0 || historyColumns.length === 0) {
+    host.innerHTML = `<div class="output-block continuation-empty">The timeline needs current duties plus at least one recent actual move to replay how those duties emerged.</div>`;
+    return empty;
+  }
+
+  const focusedSignature = noteSignature(focusedSuggestion);
+  host.dataset.focusedSignature = focusedSignature;
+  host.dataset.historyColumnCount = String(historyColumns.length);
+  host.dataset.actualMatchCount = String(historyColumns.filter((column) => column.matched).length);
+  const allCells = rows.flatMap((row) => row.cells);
+  const resolvedCellCount = allCells.filter((cell) => cell.status === "resolves" || cell.status === "supports").length;
+  const aggravateCellCount = allCells.filter((cell) => cell.status === "aggravates").length;
+  const inactiveCellCount = allCells.filter((cell) => cell.status === "inactive").length;
+  const gridColumns = `minmax(210px, 1.05fr) repeat(${columns.length}, minmax(150px, 1fr))`;
+
+  host.innerHTML = `
+    <div class="obligation-timeline-shell">
+      <div class="continuation-head">
+        <div>
+          <p class="eyebrow">How the duties got here</p>
+          <h4>${escapeHtml(humanizeCounterpointLabel(profileLabel))} obligation memory</h4>
+        </div>
+        <div class="pill-list">
+          <span class="status-pill is-live">${escapeHtml(`${historyColumns.length} recent moves`)}</span>
+          <span class="status-pill ${aggravateCellCount > 0 ? "is-snapshot" : "is-muted"}">${escapeHtml(`${resolvedCellCount} settling cells`)}</span>
+        </div>
+      </div>
+      <article class="continuation-root">
+        <p>${escapeHtml("Each row is a duty that exists now. The history columns replay how the actual recent moves treated that duty, and the focused column shows what the active next move would do with it from here.")}</p>
+        <div class="obligation-timeline-chip-row">
+          <span class="pill">${escapeHtml("history columns use actual recent moves")}</span>
+          <span class="pill">${escapeHtml("focused column stays synchronized with hover and pin state")}</span>
+        </div>
+      </article>
+      <div class="obligation-timeline-grid" style="grid-template-columns:${gridColumns}">
+        <article class="obligation-timeline-corner">
+          <p class="eyebrow">Current duties</p>
+          <strong>Read the rows first</strong>
+          <p>We keep the present duty set stable, then replay how the recent line handled those same obligations.</p>
+        </article>
+        ${columns.map((column) => `
+          <article class="obligation-timeline-column${column.kind === "focused" ? " is-focused" : ""}" data-obligation-timeline-column="${column.kind}">
+            <p class="eyebrow">${escapeHtml(column.kind === "focused" ? "Active next move" : "Recent actual move")}</p>
+            <strong>${escapeHtml(column.label)}</strong>
+            <p>${escapeHtml(column.noteLabel || "no move label available")}</p>
+          </article>
+        `).join("")}
+        ${rows.map((row, rowIndex) => `
+          <article class="obligation-timeline-row-label" data-obligation-timeline-row="${rowIndex}">
+            <p class="eyebrow">${escapeHtml(row.sourceLabel)}</p>
+            <strong>${escapeHtml(row.label)}</strong>
+            <p>${escapeHtml(row.pressureText)}</p>
+          </article>
+          ${row.cells.map((cell, cellIndex) => `
+            <article class="obligation-timeline-cell is-${cell.status}" data-obligation-timeline-status="${cell.status}" data-obligation-timeline-cell="${rowIndex}:${cellIndex}">
+              <p class="eyebrow">${escapeHtml(cell.summary)}</p>
+              <strong>${escapeHtml(cell.noteLabel || "no move label available")}</strong>
+              <p>${escapeHtml(cell.verdict || "This duty was not active at that step.")}</p>
+            </article>
+          `).join("")}
+        `).join("")}
+      </div>
+    </div>
+  `;
+
+  return {
+    rowCount: rows.length,
+    historyColumnCount: historyColumns.length,
+    focusedColumnCount: columns.filter((column) => column.kind === "focused").length,
+    actualMatchCount: historyColumns.filter((column) => column.matched).length,
+    resolvedCellCount,
+    aggravateCellCount,
+    inactiveCellCount,
+    focusedSignature,
+    rowLabels: rows.map((row) => row.label),
   };
 }
 
@@ -4151,6 +4336,87 @@ function buildFocusedContinuationContext(arena, historyFrames, focusedSuggestion
   };
 }
 
+function buildActualSuggestionFromFrame(arena, historyBundle, frame, context, profile, rankedSuggestions = []) {
+  if (!frame || !Array.isArray(frame.notes) || frame.notes.length === 0) {
+    return { suggestion: null, matched: false };
+  }
+
+  const signature = frame.notes.join(",");
+  const rankedMatch = rankedSuggestions.find((one) => noteSignature(one) === signature) || null;
+  if (rankedMatch) {
+    return { suggestion: rankedMatch, matched: true };
+  }
+
+  const candidatePtr = arena.alloc(counterpointStructSizes.voicedState || 96, 4);
+  const notesPtr = writeU8Array(arena, frame.notes);
+  const sustainedPtr = writeU8Array(arena, frame.sustained || []);
+  const beatInBar = ((frame.stepIndex ?? 0) % 4 + 4) % 4;
+  const written = wasm.lmt_build_voiced_state(
+    notesPtr,
+    frame.notes.length,
+    sustainedPtr,
+    (frame.sustained || []).length,
+    context.tonic,
+    context.modeType,
+    beatInBar,
+    4,
+    0,
+    255,
+    historyBundle?.statePtr || null,
+    candidatePtr,
+  );
+  if (!written) {
+    return { suggestion: null, matched: false };
+  }
+
+  const candidateState = decodeVoicedStateFromPointer(candidatePtr);
+  const summaryPtr = arena.alloc(96, 4);
+  const evaluationPtr = arena.alloc(32, 4);
+  let motion = null;
+  let evaluation = null;
+  if (historyBundle?.statePtr && wasm.lmt_classify_motion(historyBundle.statePtr, candidatePtr, summaryPtr)) {
+    motion = decodeMotionSummaryFromPointer(summaryPtr);
+    if (wasm.lmt_evaluate_motion_profile(profile, summaryPtr, evaluationPtr)) {
+      evaluation = decodeMotionEvaluationFromPointer(evaluationPtr);
+    }
+  }
+
+  const setValue = midiListToSet(arena, frame.notes);
+  const reasonNames = deriveMotionReasonNames(motion, evaluation, candidateState?.voiceCount || frame.notes.length);
+  if ((evaluation?.score || 0) < 0 && !reasonNames.includes("builds-tension")) {
+    reasonNames.push("builds-tension");
+  }
+  const warningNames = deriveMotionWarningNames(motion, evaluation);
+  const overlapCount = wasm.lmt_pcs_cardinality(setValue & context.setValue);
+  if (overlapCount < wasm.lmt_pcs_cardinality(setValue) && !warningNames.includes("outside-context")) {
+    warningNames.push("outside-context");
+  }
+
+  return {
+    matched: true,
+    suggestion: {
+      score: evaluation?.score || 0,
+      reasonMask: 0,
+      warningMask: 0,
+      cadenceEffect: candidateState?.cadenceState || 0,
+      cadenceLabel: cadenceLabel(candidateState?.cadenceState || 0),
+      tensionDelta: evaluation?.score || 0,
+      noteCount: frame.notes.length,
+      setValue,
+      notes: frame.notes.slice(),
+      noteNames: frame.notes.map((midi) => midiName(midi, context.tonic, context.quality)),
+      chordLabel: friendlyChordName(rawChordName(setValue)),
+      reasonNames,
+      warningNames,
+      motion,
+      evaluation,
+      fretPreview: preferredFretVoicing(arena, setValue, {
+        preferredBassPc: frame.notes.length > 0 ? Math.min(...frame.notes) % 12 : null,
+      }),
+    },
+  };
+}
+
 function decodeRankedNextSteps(arena, historyPtr, profile, context) {
   const cap = 8;
   const rowBytes = counterpointStructSizes.nextStepSuggestion || 160;
@@ -4901,6 +5167,16 @@ function renderMidiScene() {
       continuationPaths,
       profileLabel,
     );
+    const midiObligationTimelineFeatures = renderMidiObligationTimeline(
+      midiObligationTimelineEl,
+      arena,
+      historyFrames,
+      context,
+      profile,
+      obligationLedgerEntries,
+      focusedSuggestion,
+      profileLabel,
+    );
     const midiContinuationLadderFeatures = renderMidiContinuationLadder(
       midiContinuationLadderEl,
       arena,
@@ -5159,6 +5435,7 @@ function renderMidiScene() {
       midiConsensusAtlasFeatures,
       midiObligationLedgerFeatures,
       midiResolutionThreaderFeatures,
+      midiObligationTimelineFeatures,
       midiContinuationLadderFeatures,
       midiPathWeaverFeatures,
       midiCadenceGardenFeatures,

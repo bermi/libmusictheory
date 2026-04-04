@@ -1339,6 +1339,10 @@ select {
   min-height: 420px;
 }
 
+.obligation-timeline-frame {
+  min-height: 420px;
+}
+
 .path-weaver-frame {
   min-height: 420px;
 }
@@ -1733,6 +1737,12 @@ select {
   min-height: 100%;
 }
 
+.obligation-timeline-shell {
+  display: grid;
+  gap: 14px;
+  min-height: 100%;
+}
+
 .resolution-threader-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -1819,6 +1829,100 @@ select {
   margin: 0;
   color: var(--muted);
   line-height: 1.45;
+}
+
+.obligation-timeline-grid {
+  display: grid;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.obligation-timeline-corner,
+.obligation-timeline-column,
+.obligation-timeline-row-label,
+.obligation-timeline-cell {
+  border-radius: 16px;
+  border: 1px solid rgba(24, 36, 47, 0.08);
+  padding: 12px;
+}
+
+.obligation-timeline-corner,
+.obligation-timeline-column {
+  background: linear-gradient(180deg, rgba(252, 247, 240, 0.98), rgba(244, 236, 225, 0.94));
+}
+
+.obligation-timeline-corner {
+  display: grid;
+  gap: 4px;
+}
+
+.obligation-timeline-column {
+  display: grid;
+  gap: 6px;
+}
+
+.obligation-timeline-column.is-focused {
+  border-color: rgba(31, 125, 134, 0.24);
+  box-shadow: inset 0 0 0 1px rgba(31, 125, 134, 0.08);
+}
+
+.obligation-timeline-column strong {
+  font-size: 0.98rem;
+}
+
+.obligation-timeline-column p,
+.obligation-timeline-row-label p,
+.obligation-timeline-cell p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.obligation-timeline-row-label {
+  background: rgba(255, 255, 255, 0.94);
+  display: grid;
+  gap: 6px;
+}
+
+.obligation-timeline-row-label strong {
+  font-size: 0.98rem;
+}
+
+.obligation-timeline-cell {
+  display: grid;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.obligation-timeline-cell.is-resolves,
+.obligation-timeline-cell.is-supports {
+  background: linear-gradient(180deg, rgba(248, 255, 252, 0.98), rgba(235, 246, 241, 0.96));
+  border-color: rgba(31, 125, 134, 0.22);
+}
+
+.obligation-timeline-cell.is-aggravates {
+  background: linear-gradient(180deg, rgba(255, 246, 251, 0.98), rgba(247, 234, 241, 0.96));
+  border-color: rgba(161, 22, 102, 0.18);
+}
+
+.obligation-timeline-cell.is-delays,
+.obligation-timeline-cell.is-open {
+  background: linear-gradient(180deg, rgba(252, 247, 240, 0.98), rgba(244, 236, 225, 0.94));
+}
+
+.obligation-timeline-cell.is-inactive {
+  background: rgba(243, 240, 235, 0.82);
+  border-style: dashed;
+}
+
+.obligation-timeline-cell strong {
+  font-size: 0.96rem;
+}
+
+.obligation-timeline-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .obligation-ledger-grid {
@@ -2039,6 +2143,10 @@ select {
 
   .resolution-threader-grid {
     grid-template-columns: 1fr;
+  }
+
+  .obligation-timeline-grid {
+    grid-template-columns: 1fr !important;
   }
 }
 
