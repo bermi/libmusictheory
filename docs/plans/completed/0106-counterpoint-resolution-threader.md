@@ -68,4 +68,5 @@ Add a dedicated `Resolution Threader` card that shows:
 
 ## Implementation History (Point-in-Time)
 
-- Pending final implementation hash/date; filled in immediately after the implementation commit so the completed plan points at the exact shipped change.
+- `820e6c7` — 2026-04-04 — added the live MIDI `Resolution Threader`, projected each current obligation through the strongest short continuation paths, and tightened gallery verification so hover, pin, context, profile, preview-mode, mini-mode, and snapshot changes keep the projected resolution threads synchronized with the focused move.
+- Completion gates: `./zigw build wasm-gallery`, `node /Users/bermi/code/libmusictheory/scripts/validate_wasm_gallery_playwright.mjs`, `./verify.sh`
