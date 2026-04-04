@@ -156,6 +156,7 @@ async function main() {
       const midiActiveObligationLedgerFeatures = midiActive.summary?.midiObligationLedgerFeatures ?? midiActive.midiObligationLedgerFeatures;
       const midiActiveResolutionThreaderFeatures = midiActive.summary?.midiResolutionThreaderFeatures ?? midiActive.midiResolutionThreaderFeatures;
       const midiActiveObligationTimelineFeatures = midiActive.summary?.midiObligationTimelineFeatures ?? midiActive.midiObligationTimelineFeatures;
+      const midiActiveVoiceDutiesFeatures = midiActive.summary?.midiVoiceDutiesFeatures ?? midiActive.midiVoiceDutiesFeatures;
       if (
         midiActive.summary?.currentMiniMode !== "off"
         || midiActive.summary?.currentMiniRendered !== false
@@ -358,6 +359,16 @@ async function main() {
         throw new Error(`live midi scene did not render obligation timeline correctly: ${JSON.stringify(midiActiveObligationTimelineFeatures)}`);
       }
       if (
+        (midiActiveVoiceDutiesFeatures?.rowCount || 0) < 3
+        || (midiActiveVoiceDutiesFeatures?.activeDutyCount || 0) < 1
+        || (midiActiveVoiceDutiesFeatures?.currentNoteCount || 0) < (midiActiveVoiceDutiesFeatures?.rowCount || 0)
+        || (midiActiveVoiceDutiesFeatures?.focusedNoteCount || 0) < (midiActiveVoiceDutiesFeatures?.rowCount || 0)
+        || ((midiActiveVoiceDutiesFeatures?.rowLabels || []).length) < 3
+        || (midiActiveVoiceDutiesFeatures?.focusedSignature || "") !== (midiActive.summary?.focusedSuggestionSignature || "")
+      ) {
+        throw new Error(`live midi scene did not render voice duties correctly: ${JSON.stringify(midiActiveVoiceDutiesFeatures)}`);
+      }
+      if (
         (midiActivePathWeaverFeatures?.pathCount || 0) < 1
         || (midiActivePathWeaverFeatures?.pathStepCount || 0) < 2
         || ((midiActivePathWeaverFeatures?.pathMiniCount || 0) < 1 && midiActive.summary?.currentMiniMode !== "off")
@@ -407,6 +418,9 @@ async function main() {
           && (midi?.midiObligationTimelineFeatures?.focusedSignature || "") === targetSignature
           && (midi?.midiObligationTimelineFeatures?.rowCount || 0) >= 2
           && (midi?.midiObligationTimelineFeatures?.historyColumnCount || 0) >= 2
+          && (midi?.midiVoiceDutiesFeatures?.focusedSignature || "") === targetSignature
+          && (midi?.midiVoiceDutiesFeatures?.rowCount || 0) >= 3
+          && (midi?.midiVoiceDutiesFeatures?.activeDutyCount || 0) >= 1
           && (midi?.midiConsensusAtlasFeatures?.highlightedClusterCount || 0) === 1
           && (midi?.midiConsensusAtlasFeatures?.clusterCount || 0) >= 2
           && (midi?.midiInspectorFeatures?.candidateNoteCount || 0) >= 1
@@ -441,6 +455,9 @@ async function main() {
           && (midi?.midiObligationTimelineFeatures?.focusedSignature || "") === targetSignature
           && (midi?.midiObligationTimelineFeatures?.rowCount || 0) >= 2
           && (midi?.midiObligationTimelineFeatures?.historyColumnCount || 0) >= 2
+          && (midi?.midiVoiceDutiesFeatures?.focusedSignature || "") === targetSignature
+          && (midi?.midiVoiceDutiesFeatures?.rowCount || 0) >= 3
+          && (midi?.midiVoiceDutiesFeatures?.activeDutyCount || 0) >= 1
           && (midi?.midiConsensusAtlasFeatures?.highlightedClusterCount || 0) === 1
           && (midi?.midiInspectorFeatures?.reasonCount || 0) >= 1;
       }, {
@@ -460,7 +477,8 @@ async function main() {
           && (midi?.midiConsensusAtlasFeatures?.focusedSignature || "") === targetSignature
           && (midi?.midiObligationLedgerFeatures?.focusedSignature || "") === targetSignature
           && (midi?.midiResolutionThreaderFeatures?.focusedSignature || "") === targetSignature
-          && (midi?.midiObligationTimelineFeatures?.focusedSignature || "") === targetSignature;
+          && (midi?.midiObligationTimelineFeatures?.focusedSignature || "") === targetSignature
+          && (midi?.midiVoiceDutiesFeatures?.focusedSignature || "") === targetSignature;
       }, {
         targetIndex: hoverCandidateIndex,
         targetSignature: midiActive.summary?.suggestionSignatures?.[hoverCandidateIndex] || "",
@@ -480,7 +498,8 @@ async function main() {
           && (midi?.midiConsensusAtlasFeatures?.focusedSignature || "") === (midi?.focusedSuggestionSignature || "")
           && (midi?.midiObligationLedgerFeatures?.focusedSignature || "") === (midi?.focusedSuggestionSignature || "")
           && (midi?.midiResolutionThreaderFeatures?.focusedSignature || "") === (midi?.focusedSuggestionSignature || "")
-          && (midi?.midiObligationTimelineFeatures?.focusedSignature || "") === (midi?.focusedSuggestionSignature || "");
+          && (midi?.midiObligationTimelineFeatures?.focusedSignature || "") === (midi?.focusedSuggestionSignature || "")
+          && (midi?.midiVoiceDutiesFeatures?.focusedSignature || "") === (midi?.focusedSuggestionSignature || "");
       }, { timeout: 30000 }).then((handle) => handle.jsonValue());
       traceStep("context-change");
       const defaultContext = await page.evaluate(() => ({
@@ -514,6 +533,9 @@ async function main() {
           && (midi.midiObligationTimelineFeatures?.rowCount || 0) >= 2
           && (midi.midiObligationTimelineFeatures?.historyColumnCount || 0) >= 2
           && (midi.midiObligationTimelineFeatures?.focusedSignature || "") === (midi?.focusedSuggestionSignature || "")
+          && (midi.midiVoiceDutiesFeatures?.rowCount || 0) >= 3
+          && (midi.midiVoiceDutiesFeatures?.activeDutyCount || 0) >= 1
+          && (midi.midiVoiceDutiesFeatures?.focusedSignature || "") === (midi?.focusedSuggestionSignature || "")
           && (midi.midiHorizonFeatures?.candidateNodeCount || 0) >= 1
           && (midi.midiBraidFeatures?.candidateColumnCount || 0) >= 1
           && (midi.midiWeatherFeatures?.cellCount || 0) >= 2
@@ -548,6 +570,9 @@ async function main() {
           && (midi?.midiObligationTimelineFeatures?.rowCount || 0) >= 2
           && (midi?.midiObligationTimelineFeatures?.historyColumnCount || 0) >= 2
           && (midi?.midiObligationTimelineFeatures?.focusedSignature || "") === (midi?.focusedSuggestionSignature || "")
+          && (midi?.midiVoiceDutiesFeatures?.rowCount || 0) >= 3
+          && (midi?.midiVoiceDutiesFeatures?.activeDutyCount || 0) >= 1
+          && (midi?.midiVoiceDutiesFeatures?.focusedSignature || "") === (midi?.focusedSuggestionSignature || "")
           && (midi?.midiHorizonFeatures?.candidateNodeCount || 0) >= 1
           && (midi?.midiBraidFeatures?.candidateColumnCount || 0) >= 1
           && (midi?.midiWeatherFeatures?.cellCount || 0) >= 2
@@ -576,6 +601,8 @@ async function main() {
           && (midi?.midiResolutionThreaderFeatures?.rowCount || 0) >= 2
           && (midi?.midiObligationTimelineFeatures?.rowCount || 0) >= 2
           && (midi?.midiObligationTimelineFeatures?.historyColumnCount || 0) >= 2
+          && (midi?.midiVoiceDutiesFeatures?.rowCount || 0) >= 3
+          && (midi?.midiVoiceDutiesFeatures?.activeDutyCount || 0) >= 1
           && summary?.scenes?.set?.miniInstrumentMode === "piano"
           && summary?.scenes?.set?.miniRendered === true
           && summary?.scenes?.key?.miniRendered === true
@@ -607,6 +634,8 @@ async function main() {
           && (midi?.midiResolutionThreaderFeatures?.rowCount || 0) >= 2
           && (midi?.midiObligationTimelineFeatures?.rowCount || 0) >= 2
           && (midi?.midiObligationTimelineFeatures?.historyColumnCount || 0) >= 2
+          && (midi?.midiVoiceDutiesFeatures?.rowCount || 0) >= 3
+          && (midi?.midiVoiceDutiesFeatures?.activeDutyCount || 0) >= 1
           && summary?.scenes?.set?.miniInstrumentMode === "fret"
           && summary?.scenes?.set?.miniRendered === true
           && summary?.scenes?.key?.miniRendered === true
@@ -750,6 +779,9 @@ async function main() {
           && (midi?.midiResolutionThreaderFeatures?.rowCount || 0) >= 2
           && (midi?.midiObligationTimelineFeatures?.rowCount || 0) >= 2
           && (midi?.midiObligationTimelineFeatures?.historyColumnCount || 0) >= 2
+          && (midi?.midiVoiceDutiesFeatures?.rowCount || 0) >= 3
+          && (midi?.midiVoiceDutiesFeatures?.activeDutyCount || 0) >= 1
+          && (midi?.midiVoiceDutiesFeatures?.focusedSignature || "") === (midi?.focusedSuggestionSignature || "")
           && !!midi?.midiSuspensionMachineFeatures?.stateLabel
           && (midi?.midiOrbifoldRibbonFeatures?.candidateAnchorCount || 0) >= 1
           && (midi?.midiCommonToneConstellationFeatures?.retainedStarCount || 0) >= 1
@@ -770,6 +802,9 @@ async function main() {
           && (midi?.midiResolutionThreaderFeatures?.rowCount || 0) >= 2
           && (midi?.midiObligationTimelineFeatures?.rowCount || 0) >= 2
           && (midi?.midiObligationTimelineFeatures?.historyColumnCount || 0) >= 2
+          && (midi?.midiVoiceDutiesFeatures?.rowCount || 0) >= 3
+          && (midi?.midiVoiceDutiesFeatures?.activeDutyCount || 0) >= 1
+          && (midi?.midiVoiceDutiesFeatures?.focusedSignature || "") === (midi?.focusedSuggestionSignature || "")
           && !!midi?.midiSuspensionMachineFeatures?.stateLabel
           && (midi?.midiOrbifoldRibbonFeatures?.candidateAnchorCount || 0) >= 1
           && (midi?.midiCommonToneConstellationFeatures?.retainedStarCount || 0) >= 1;

@@ -1343,6 +1343,10 @@ select {
   min-height: 420px;
 }
 
+.voice-duties-frame {
+  min-height: 420px;
+}
+
 .path-weaver-frame {
   min-height: 420px;
 }
@@ -1743,6 +1747,12 @@ select {
   min-height: 100%;
 }
 
+.voice-duties-shell {
+  display: grid;
+  gap: 14px;
+  min-height: 100%;
+}
+
 .resolution-threader-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -1923,6 +1933,88 @@ select {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+.voice-duties-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.voice-duty-card {
+  border-radius: 18px;
+  border: 1px solid rgba(24, 36, 47, 0.08);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(247, 241, 233, 0.92));
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.voice-duty-card.is-resolves,
+.voice-duty-card.is-supports {
+  background: linear-gradient(180deg, rgba(248, 255, 252, 0.98), rgba(235, 246, 241, 0.96));
+  border-color: rgba(31, 125, 134, 0.22);
+}
+
+.voice-duty-card.is-aggravates {
+  background: linear-gradient(180deg, rgba(255, 246, 251, 0.98), rgba(247, 234, 241, 0.96));
+  border-color: rgba(161, 22, 102, 0.18);
+}
+
+.voice-duty-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.voice-duty-title {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.voice-duty-swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 2px solid rgba(24, 36, 47, 0.16);
+  margin-top: 4px;
+  flex: 0 0 auto;
+}
+
+.voice-duty-title h4 {
+  margin: 4px 0 0;
+  font-size: 1rem;
+}
+
+.voice-duty-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.voice-duty-cell {
+  border-radius: 16px;
+  border: 1px solid rgba(24, 36, 47, 0.08);
+  background: rgba(255, 255, 255, 0.84);
+  padding: 12px;
+  display: grid;
+  gap: 6px;
+}
+
+.voice-duty-cell.is-outcome {
+  background: linear-gradient(180deg, rgba(248, 244, 237, 0.96), rgba(241, 233, 221, 0.94));
+}
+
+.voice-duty-cell strong {
+  font-size: 0.98rem;
+}
+
+.voice-duty-cell p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
 }
 
 .obligation-ledger-grid {
@@ -2142,6 +2234,10 @@ select {
   }
 
   .resolution-threader-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .voice-duty-grid {
     grid-template-columns: 1fr;
   }
 

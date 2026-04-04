@@ -211,6 +211,7 @@ const midiConsensusAtlasEl = document.getElementById("midi-consensus-atlas");
 const midiObligationLedgerEl = document.getElementById("midi-obligation-ledger");
 const midiResolutionThreaderEl = document.getElementById("midi-resolution-threader");
 const midiObligationTimelineEl = document.getElementById("midi-obligation-timeline");
+const midiVoiceDutiesEl = document.getElementById("midi-voice-duties");
 const midiContinuationLadderEl = document.getElementById("midi-continuation-ladder");
 const midiPathWeaverEl = document.getElementById("midi-path-weaver");
 const midiCadenceGardenEl = document.getElementById("midi-cadence-garden");
@@ -3378,6 +3379,261 @@ function renderMidiObligationTimeline(host, arena, historyFrames, context, profi
   };
 }
 
+function voiceRegisterRole(index, count) {
+  if (count <= 1) return "solo";
+  if (index === 0) return "top";
+  if (index === count - 1) return "bass";
+  if (index === 1) return "upper inner";
+  if (index === count - 2) return "lower inner";
+  return "inner";
+}
+
+function describeRecentVoiceMotion(previousVoice, currentVoice, context) {
+  if (!currentVoice) return "voice unavailable";
+  if (!previousVoice) return `enters on ${midiName(currentVoice.midi, context.tonic, context.quality)}`;
+  const delta = currentVoice.midi - previousVoice.midi;
+  if (delta === 0) return `holds ${midiName(currentVoice.midi, context.tonic, context.quality)}`;
+  const direction = delta > 0 ? "up" : "down";
+  const absDelta = Math.abs(delta);
+  if (absDelta <= 2) return `steps ${direction} from ${midiName(previousVoice.midi, context.tonic, context.quality)}`;
+  if (absDelta <= 4) return `skips ${direction} from ${midiName(previousVoice.midi, context.tonic, context.quality)}`;
+  return `leaps ${direction} from ${midiName(previousVoice.midi, context.tonic, context.quality)}`;
+}
+
+function voiceDutyCueDeltaLabel(delta) {
+  if (!Number.isFinite(delta) || delta === 0) return "hold";
+  const direction = delta > 0 ? "up" : "down";
+  const absDelta = Math.abs(delta);
+  if (absDelta === 1) return `step ${direction}`;
+  if (absDelta === 2) return `whole step ${direction}`;
+  return `${absDelta}-semitone ${direction}`;
+}
+
+function deriveVoiceDuty(currentVoice, previousVoice, focusedVoice, context, suspensionMachine) {
+  const currentLabel = midiName(currentVoice.midi, context.tonic, context.quality);
+  const focusedLabel = focusedVoice ? midiName(focusedVoice.midi, context.tonic, context.quality) : "missing in focused move";
+  const previousDelta = previousVoice ? currentVoice.midi - previousVoice.midi : 0;
+  const leadingTonePc = ((context.tonic + 11) % 12 + 12) % 12;
+
+  let dutyType = "smooth";
+  let dutyLabel = "Keep the motion compact";
+  let cueLabel = previousVoice ? describeRecentVoiceMotion(previousVoice, currentVoice, context) : "new entry";
+  let targetMidi = null;
+
+  if (suspensionMachine && suspensionMachine.trackedVoiceId === currentVoice.id && suspensionMachine.expectedResolutionMidi <= 127) {
+    dutyType = "suspension";
+    targetMidi = suspensionMachine.expectedResolutionMidi;
+    dutyLabel = `Resolve suspension to ${midiName(targetMidi, context.tonic, context.quality)}`;
+    cueLabel = `${suspensionMachine.heldNoteLabel || currentLabel} held above the line`;
+  } else if (currentVoice.pitchClass === leadingTonePc) {
+    dutyType = "leading-tone";
+    targetMidi = currentVoice.midi + 1;
+    dutyLabel = `Lift the leading tone to ${midiName(targetMidi, context.tonic, context.quality)}`;
+    cueLabel = `cadence gravity toward ${spellNote(context.tonic, context.tonic, context.quality)}`;
+  } else if (previousVoice && Math.abs(previousDelta) >= 5) {
+    dutyType = "leap-recovery";
+    targetMidi = currentVoice.midi + (previousDelta > 0 ? -1 : 1);
+    dutyLabel = `Recover the leap by ${voiceDutyCueDeltaLabel(targetMidi - currentVoice.midi)}`;
+    cueLabel = describeRecentVoiceMotion(previousVoice, currentVoice, context);
+  } else if (previousVoice && previousVoice.midi === currentVoice.midi) {
+    dutyType = "anchor";
+    targetMidi = currentVoice.midi;
+    dutyLabel = `Keep ${currentLabel} audible as an anchor`;
+    cueLabel = "common tone held across the line";
+  } else if (!previousVoice) {
+    dutyType = "entry";
+    dutyLabel = `Place ${currentLabel} cleanly into the texture`;
+    cueLabel = "newly entered voice";
+  }
+
+  let status = "delays";
+  let outcomeLabel = focusedLabel;
+  let verdict = "Focused move not available for this voice.";
+  if (focusedVoice) {
+    const focusedDelta = focusedVoice.midi - currentVoice.midi;
+    const targetDelta = targetMidi == null ? 0 : targetMidi - currentVoice.midi;
+    if (dutyType === "suspension" || dutyType === "leading-tone" || dutyType === "leap-recovery") {
+      if (targetMidi != null && focusedVoice.midi === targetMidi) {
+        status = "resolves";
+        verdict = `Focused move lands exactly on ${midiName(targetMidi, context.tonic, context.quality)}.`;
+      } else if (focusedDelta !== 0 && Math.sign(focusedDelta) === Math.sign(targetDelta) && Math.abs(focusedDelta) <= Math.max(2, Math.abs(targetDelta))) {
+        status = "supports";
+        verdict = `Focused move heads ${voiceDutyCueDeltaLabel(focusedDelta)} toward the expected resolution without finishing it yet.`;
+      } else if (focusedDelta === 0) {
+        status = "delays";
+        verdict = "Focused move keeps the pressure in place instead of resolving it.";
+      } else {
+        status = "aggravates";
+        verdict = `Focused move heads away from the needed ${voiceDutyCueDeltaLabel(targetDelta)} release.`;
+      }
+    } else if (dutyType === "anchor") {
+      if (focusedVoice.midi === currentVoice.midi) {
+        status = "supports";
+        verdict = "Focused move keeps the anchor tone steady.";
+      } else if (Math.abs(focusedDelta) <= 2) {
+        status = "delays";
+        verdict = "Focused move releases the anchor gently, but the held support disappears.";
+      } else {
+        status = "aggravates";
+        verdict = "Focused move throws away the anchor with a larger displacement.";
+      }
+    } else {
+      if (Math.abs(focusedDelta) <= 2) {
+        status = "supports";
+        verdict = "Focused move keeps this voice compact and readable.";
+      } else if (Math.abs(focusedDelta) >= 5) {
+        status = "aggravates";
+        verdict = "Focused move asks this voice for another large displacement.";
+      } else {
+        status = "delays";
+        verdict = "Focused move is workable, but it is less compact than the line currently suggests.";
+      }
+    }
+  }
+
+  return {
+    voiceId: currentVoice.id,
+    currentMidi: currentVoice.midi,
+    currentLabel,
+    focusedLabel,
+    recentMotionLabel: describeRecentVoiceMotion(previousVoice, currentVoice, context),
+    dutyType,
+    dutyLabel,
+    cueLabel,
+    targetMidi,
+    targetLabel: targetMidi == null ? "" : midiName(targetMidi, context.tonic, context.quality),
+    status,
+    verdict,
+  };
+}
+
+function buildVoiceDutyRows(currentState, previousState, focusedCandidateState, context, suspensionMachine) {
+  if (!currentState || !Array.isArray(currentState.voices) || currentState.voices.length === 0) return [];
+  const previousById = new Map((previousState?.voices || []).map((voice) => [voice.id, voice]));
+  const focusedById = new Map((focusedCandidateState?.voices || []).map((voice) => [voice.id, voice]));
+  const orderedVoices = currentState.voices.slice().sort((left, right) => right.midi - left.midi);
+
+  return orderedVoices.map((voice, index) => {
+    const previousVoice = previousById.get(voice.id) || null;
+    const focusedVoice = focusedById.get(voice.id) || null;
+    return {
+      ...deriveVoiceDuty(voice, previousVoice, focusedVoice, context, suspensionMachine),
+      voiceLabel: `V${voice.id} · ${voiceRegisterRole(index, orderedVoices.length)}`,
+      voiceColor: voiceColor(voice.id),
+      currentRoleIndex: index,
+    };
+  });
+}
+
+function renderMidiVoiceDuties(host, currentState, previousState, focusedCandidateState, context, suspensionMachine, focusedSuggestion) {
+  const empty = {
+    rowCount: 0,
+    activeDutyCount: 0,
+    resolveCount: 0,
+    aggravateCount: 0,
+    suspensionVoiceCount: 0,
+    leadingToneVoiceCount: 0,
+    leapRecoveryCount: 0,
+    currentNoteCount: 0,
+    focusedNoteCount: 0,
+    focusedSignature: "",
+    rowLabels: [],
+  };
+  if (!host) return empty;
+  if (!currentState || !focusedSuggestion) {
+    host.innerHTML = `<div class="output-block continuation-empty">Focus or pin a ranked move to see which exact voices are carrying today’s duties and how that move treats each one.</div>`;
+    return empty;
+  }
+
+  const rows = buildVoiceDutyRows(currentState, previousState, focusedCandidateState, context, suspensionMachine);
+  if (rows.length === 0) {
+    host.innerHTML = `<div class="output-block continuation-empty">Voice duties need a current voiced state plus a focused candidate state to compare voice-by-voice outcomes.</div>`;
+    return empty;
+  }
+
+  const activeDutyCount = rows.filter((row) => row.dutyType !== "smooth" && row.dutyType !== "entry").length;
+  const resolveCount = rows.filter((row) => row.status === "resolves" || row.status === "supports").length;
+  const aggravateCount = rows.filter((row) => row.status === "aggravates").length;
+  const focusedSignature = noteSignature(focusedSuggestion);
+  host.dataset.focusedSignature = focusedSignature;
+  host.dataset.activeDutyCount = String(activeDutyCount);
+  host.dataset.suspensionVoiceCount = String(rows.filter((row) => row.dutyType === "suspension").length);
+  host.dataset.leadingToneVoiceCount = String(rows.filter((row) => row.dutyType === "leading-tone").length);
+  host.dataset.leapRecoveryCount = String(rows.filter((row) => row.dutyType === "leap-recovery").length);
+
+  host.innerHTML = `
+    <div class="voice-duties-shell">
+      <div class="continuation-head">
+        <div>
+          <p class="eyebrow">Who is carrying the pressure</p>
+          <h4>Persistent voice duties</h4>
+        </div>
+        <div class="pill-list">
+          <span class="status-pill is-live">${escapeHtml(`${resolveCount} helping`)}</span>
+          <span class="status-pill ${aggravateCount > 0 ? "is-snapshot" : "is-muted"}">${escapeHtml(`${aggravateCount} aggravating`)}</span>
+        </div>
+      </div>
+      <article class="continuation-root">
+        <p>${escapeHtml("The ledger talks about the state. This panel shows which exact voices are carrying that pressure right now, using the persistent voice ids from temporal memory and the currently focused move.")}</p>
+        <div class="chip-row">
+          <span class="pill">${escapeHtml("rows stay matched by persistent voice id")}</span>
+          <span class="pill">${escapeHtml("current note, present duty, and focused outcome stay synchronized together")}</span>
+        </div>
+      </article>
+      <div class="voice-duties-grid">
+        ${rows.map((row, index) => `
+          <article class="voice-duty-card is-${row.status}" data-voice-duty-row="${index}" data-voice-duty-status="${row.status}" data-voice-duty-type="${row.dutyType}" data-voice-id="${row.voiceId}">
+            <div class="voice-duty-card-head">
+              <div class="voice-duty-title">
+                <span class="voice-duty-swatch" style="background:${escapeHtml(row.voiceColor)}"></span>
+                <div>
+                  <p class="eyebrow">${escapeHtml(`voice ${row.voiceId}`)}</p>
+                  <h4>${escapeHtml(row.voiceLabel)}</h4>
+                </div>
+              </div>
+              <div class="pill-list">
+                <span class="status-pill is-muted">${escapeHtml(humanizeCounterpointLabel(row.dutyType))}</span>
+                <span class="status-pill ${row.status === "aggravates" ? "is-snapshot" : row.status === "delays" ? "is-muted" : "is-live"}">${escapeHtml(humanizeCounterpointLabel(row.status === "resolves" ? "resolves" : row.status))}</span>
+              </div>
+            </div>
+            <div class="voice-duty-grid">
+              <article class="voice-duty-cell">
+                <p class="eyebrow">Recent motion</p>
+                <strong class="voice-duties-current-note">${escapeHtml(row.currentLabel)}</strong>
+                <p>${escapeHtml(row.recentMotionLabel)}</p>
+              </article>
+              <article class="voice-duty-cell">
+                <p class="eyebrow">Present duty</p>
+                <strong class="voice-duties-duty-label">${escapeHtml(row.dutyLabel)}</strong>
+                <p>${escapeHtml(row.targetLabel ? `${row.cueLabel} · target ${row.targetLabel}` : row.cueLabel)}</p>
+              </article>
+              <article class="voice-duty-cell is-outcome">
+                <p class="eyebrow">Focused move</p>
+                <strong class="voice-duties-focused-note">${escapeHtml(row.focusedLabel)}</strong>
+                <p>${escapeHtml(row.verdict)}</p>
+              </article>
+            </div>
+          </article>
+        `).join("")}
+      </div>
+    </div>
+  `;
+
+  return {
+    rowCount: rows.length,
+    activeDutyCount,
+    resolveCount,
+    aggravateCount,
+    suspensionVoiceCount: rows.filter((row) => row.dutyType === "suspension").length,
+    leadingToneVoiceCount: rows.filter((row) => row.dutyType === "leading-tone").length,
+    leapRecoveryCount: rows.filter((row) => row.dutyType === "leap-recovery").length,
+    currentNoteCount: rows.filter((row) => row.currentLabel.length > 0).length,
+    focusedNoteCount: rows.filter((row) => row.focusedLabel.length > 0).length,
+    focusedSignature,
+    rowLabels: rows.map((row) => row.voiceLabel),
+  };
+}
+
 function renderMidiContinuationLadder(host, arena, rootSuggestion, continuationSuggestions, context, options = {}) {
   const empty = {
     rootLabel: "",
@@ -5065,6 +5321,7 @@ function renderMidiScene() {
     const suggestions = historyBundle ? decodeRankedNextSteps(arena, historyBundle.historyPtr, profile, context) : [];
     const voicedHistory = historyBundle ? decodeVoicedHistoryFromPointer(historyBundle.historyPtr) : { len: 0, states: [] };
     const currentVoicedState = voicedHistory.states[voicedHistory.states.length - 1] || null;
+    const previousVoicedState = voicedHistory.states.length >= 2 ? voicedHistory.states[voicedHistory.states.length - 2] : null;
     const currentMotionAnalysis = buildCurrentMotionAnalysis(arena, historyBundle, voicedHistory, profile);
     const cadenceDestinations = historyBundle ? decodeCadenceDestinations(arena, historyBundle.historyPtr, profile) : [];
     const suspensionMachine = historyBundle ? decodeSuspensionMachine(arena, historyBundle.historyPtr, profile, context) : null;
@@ -5080,6 +5337,7 @@ function renderMidiScene() {
         ))
       : [];
     const focusedSuggestion = focusedSuggestionIndex == null ? null : suggestions[focusedSuggestionIndex] || null;
+    const focusedCandidateState = focusedSuggestionIndex == null ? null : candidateStates[focusedSuggestionIndex] || null;
     const continuationBundle = focusedSuggestion
       ? buildFocusedContinuationContext(arena, historyFrames, focusedSuggestion, context, profile)
       : null;
@@ -5176,6 +5434,15 @@ function renderMidiScene() {
       obligationLedgerEntries,
       focusedSuggestion,
       profileLabel,
+    );
+    const midiVoiceDutiesFeatures = renderMidiVoiceDuties(
+      midiVoiceDutiesEl,
+      currentVoicedState,
+      previousVoicedState,
+      focusedCandidateState,
+      context,
+      suspensionMachine,
+      focusedSuggestion,
     );
     const midiContinuationLadderFeatures = renderMidiContinuationLadder(
       midiContinuationLadderEl,
@@ -5436,6 +5703,7 @@ function renderMidiScene() {
       midiObligationLedgerFeatures,
       midiResolutionThreaderFeatures,
       midiObligationTimelineFeatures,
+      midiVoiceDutiesFeatures,
       midiContinuationLadderFeatures,
       midiPathWeaverFeatures,
       midiCadenceGardenFeatures,

@@ -678,6 +678,41 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
           rowLabels: Array.from(host.querySelectorAll(".obligation-timeline-row-label strong"), (node) => (node.textContent || "").trim()).filter(Boolean),
         };
       })(),
+      midiVoiceDutiesFeatures: (() => {
+        const host = document.querySelector("#midi-voice-duties");
+        if (!host) {
+          return {
+            rowCount: 0,
+            activeDutyCount: 0,
+            resolveCount: 0,
+            aggravateCount: 0,
+            suspensionVoiceCount: 0,
+            leadingToneVoiceCount: 0,
+            leapRecoveryCount: 0,
+            currentNoteCount: 0,
+            focusedNoteCount: 0,
+            focusedSignature: "",
+            rowLabels: [],
+          };
+        }
+        const rows = Array.from(host.querySelectorAll("[data-voice-duty-row]"));
+        return {
+          rowCount: rows.length,
+          activeDutyCount: Number.parseInt(host.getAttribute("data-active-duty-count") || "0", 10),
+          resolveCount: rows.filter((node) => {
+            const status = node.getAttribute("data-voice-duty-status") || "";
+            return status === "resolves" || status === "supports";
+          }).length,
+          aggravateCount: rows.filter((node) => (node.getAttribute("data-voice-duty-status") || "") === "aggravates").length,
+          suspensionVoiceCount: Number.parseInt(host.getAttribute("data-suspension-voice-count") || "0", 10),
+          leadingToneVoiceCount: Number.parseInt(host.getAttribute("data-leading-tone-voice-count") || "0", 10),
+          leapRecoveryCount: Number.parseInt(host.getAttribute("data-leap-recovery-count") || "0", 10),
+          currentNoteCount: host.querySelectorAll(".voice-duties-current-note").length,
+          focusedNoteCount: host.querySelectorAll(".voice-duties-focused-note").length,
+          focusedSignature: host.getAttribute("data-focused-signature") || window.__lmtGallerySummary?.scenes?.midi?.focusedSuggestionSignature || "",
+          rowLabels: Array.from(host.querySelectorAll(".voice-duty-title h4"), (node) => (node.textContent || "").trim()).filter(Boolean),
+        };
+      })(),
       previewKinds: (() => {
         const hostIds = ["midi-clock", "midi-optic-k", "midi-evenness", "midi-keyboard", "midi-staff", "midi-current-fret", "midi-focused-mini"];
         return Object.fromEntries(hostIds.map((id) => {
@@ -732,6 +767,7 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
     const midiObligationLedgerFeatures = snapshot.summary?.midiObligationLedgerFeatures ?? snapshot.midiObligationLedgerFeatures;
     const midiResolutionThreaderFeatures = snapshot.summary?.midiResolutionThreaderFeatures ?? snapshot.midiResolutionThreaderFeatures;
     const midiObligationTimelineFeatures = snapshot.summary?.midiObligationTimelineFeatures ?? snapshot.midiObligationTimelineFeatures;
+    const midiVoiceDutiesFeatures = snapshot.summary?.midiVoiceDutiesFeatures ?? snapshot.midiVoiceDutiesFeatures;
     const keyboardFeatures = snapshot.summary?.keyboardFeatures ?? snapshot.keyboardFeaturesFallback;
     if (
       snapshot.summary?.rendered === true
@@ -803,6 +839,12 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
       && midiObligationTimelineFeatures.actualMatchCount >= 1
       && midiObligationTimelineFeatures.focusedSignature.length > 0
       && midiObligationTimelineFeatures.rowLabels.length >= 2
+      && midiVoiceDutiesFeatures.rowCount >= 3
+      && midiVoiceDutiesFeatures.activeDutyCount >= 1
+      && midiVoiceDutiesFeatures.currentNoteCount >= midiVoiceDutiesFeatures.rowCount
+      && midiVoiceDutiesFeatures.focusedNoteCount >= midiVoiceDutiesFeatures.rowCount
+      && midiVoiceDutiesFeatures.focusedSignature.length > 0
+      && midiVoiceDutiesFeatures.rowLabels.length >= 3
       && midiOpticKFeatures.clockCount >= 2
       && midiOpticKFeatures.linkCount >= 1
       && midiOpticKFeatures.labelCount >= 5
