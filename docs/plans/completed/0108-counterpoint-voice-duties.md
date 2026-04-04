@@ -3,7 +3,7 @@
 > Dependencies: 0105, 0107, 0091
 > Follow-up: none
 
-Status: In progress
+Status: Completed
 
 ## Summary
 
@@ -72,3 +72,20 @@ Add a dedicated `Voice Duties` card that shows, per current voice:
 - the focused outcome stays synchronized with hover, pin, clear-pin, context, profile, mini-mode, and snapshot changes
 - gallery validation proves the panel exposes multiple voices, non-empty duty labels, and synchronized focus state
 - `./verify.sh` passes
+
+## Verification Commands
+
+- `./zigw build wasm-gallery`
+- `node /Users/bermi/code/libmusictheory/scripts/validate_wasm_gallery_playwright.mjs`
+- `./verify.sh`
+
+## Implementation History (Point-in-Time)
+
+- `01f18b1` — `2026-04-04`
+  - shipped a new `Voice Duties` panel in the live MIDI counterpoint scene
+  - rendered one row per persistent voice with recent motion, current note, derived duty, and focused-move outcome
+  - extended gallery summary and Playwright validation so hover, pin, context/profile changes, mini-mode changes, and snapshot recall keep the per-voice duties synchronized
+  - verification gates used:
+    - `./zigw build wasm-gallery`
+    - `node /Users/bermi/code/libmusictheory/scripts/validate_wasm_gallery_playwright.mjs`
+    - `./verify.sh`
