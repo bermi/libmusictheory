@@ -3,7 +3,7 @@
 > Dependencies: 0105, 0106, 0091
 > Follow-up: none
 
-Status: In progress
+Status: Completed
 
 ## Summary
 
@@ -69,3 +69,16 @@ Add a dedicated `Obligation Timeline` card that shows:
 - the focused column stays synchronized with hover, pin, clear-pin, context, profile, preview-mode, mini-mode, and snapshot changes
 - gallery validation proves the timeline renders multiple rows, historical columns, and a synchronized focused column
 - `./verify.sh` passes
+
+## Verification Commands
+
+- `./zigw build wasm-gallery`
+- `node /Users/bermi/code/libmusictheory/scripts/validate_wasm_gallery_playwright.mjs`
+- `./verify.sh`
+
+## Implementation History (Point-in-Time)
+
+- `6397faa` — `2026-04-04`
+  - Shipped the live `Obligation Timeline` for the counterpoint gallery, showing recent actual-move columns alongside a synchronized focused-move column over the current duty set.
+  - Added gallery/runtime/validator wiring so hover, pin, clear-pin, context, profile, preview-mode, mini-mode, and snapshot changes keep the timeline synchronized and populated from recent temporal memory.
+  - Completion gates: `./zigw build wasm-gallery`, `node /Users/bermi/code/libmusictheory/scripts/validate_wasm_gallery_playwright.mjs`, `./verify.sh`
