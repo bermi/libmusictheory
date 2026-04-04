@@ -524,6 +524,36 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
           warningGroupCount: host.querySelectorAll(".cadence-garden-card .warning-chip").length,
         };
       })(),
+      midiProfileOrchardFeatures: (() => {
+        const host = document.querySelector("#midi-profile-orchard");
+        if (!host) {
+          return {
+            profileCardCount: 0,
+            populatedProfileCount: 0,
+            highlightedCardCount: 0,
+            profileClockCount: 0,
+            profileMiniCount: 0,
+            activeProfileIndex: -1,
+            profileNames: [],
+            cadenceLabels: [],
+            warningCardCount: 0,
+            rootFocusedIndex: -1,
+          };
+        }
+        const highlighted = Array.from(host.querySelectorAll(".profile-orchard-card.is-active-profile"));
+        return {
+          profileCardCount: host.querySelectorAll(".profile-orchard-card").length,
+          populatedProfileCount: host.querySelectorAll(".profile-orchard-card:not(.is-empty-profile)").length,
+          highlightedCardCount: highlighted.length,
+          profileClockCount: host.querySelectorAll("[data-profile-orchard-clock] :is(svg,img)").length,
+          profileMiniCount: host.querySelectorAll("[data-profile-orchard-mini] :is(svg,img)").length,
+          activeProfileIndex: highlighted.length > 0 ? Number.parseInt(highlighted[0].getAttribute("data-profile-index") || "-1", 10) : -1,
+          profileNames: Array.from(host.querySelectorAll(".profile-orchard-card h4"), (node) => (node.textContent || "").trim()).filter(Boolean),
+          cadenceLabels: Array.from(host.querySelectorAll(".profile-orchard-cadence"), (node) => (node.textContent || "").trim()).filter(Boolean),
+          warningCardCount: host.querySelectorAll(".profile-orchard-card .warning-chip").length,
+          rootFocusedIndex: -1,
+        };
+      })(),
       previewKinds: (() => {
         const hostIds = ["midi-clock", "midi-optic-k", "midi-evenness", "midi-keyboard", "midi-staff", "midi-current-fret", "midi-focused-mini"];
         return Object.fromEntries(hostIds.map((id) => {
@@ -573,6 +603,7 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
     const midiContinuationLadderFeatures = snapshot.summary?.midiContinuationLadderFeatures ?? snapshot.midiContinuationLadderFeatures;
     const midiPathWeaverFeatures = snapshot.summary?.midiPathWeaverFeatures ?? snapshot.midiPathWeaverFeatures;
     const midiCadenceGardenFeatures = snapshot.summary?.midiCadenceGardenFeatures ?? snapshot.midiCadenceGardenFeatures;
+    const midiProfileOrchardFeatures = snapshot.summary?.midiProfileOrchardFeatures ?? snapshot.midiProfileOrchardFeatures;
     const keyboardFeatures = snapshot.summary?.keyboardFeatures ?? snapshot.keyboardFeaturesFallback;
     if (
       snapshot.summary?.rendered === true
@@ -609,6 +640,14 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
       && midiCadenceGardenFeatures.branchCount >= 1
       && midiCadenceGardenFeatures.terminalClockCount >= 1
       && (midiCadenceGardenFeatures.terminalMiniCount >= 1 || snapshot.summary?.currentMiniMode === "off")
+      && midiProfileOrchardFeatures.profileCardCount >= 5
+      && midiProfileOrchardFeatures.populatedProfileCount >= 5
+      && midiProfileOrchardFeatures.highlightedCardCount === 1
+      && midiProfileOrchardFeatures.profileClockCount >= 5
+      && (midiProfileOrchardFeatures.profileMiniCount >= 5 || snapshot.summary?.currentMiniMode === "off")
+      && midiProfileOrchardFeatures.activeProfileIndex >= 0
+      && midiProfileOrchardFeatures.profileNames.length >= 5
+      && midiProfileOrchardFeatures.cadenceLabels.length >= 1
       && midiOpticKFeatures.clockCount >= 2
       && midiOpticKFeatures.linkCount >= 1
       && midiOpticKFeatures.labelCount >= 5

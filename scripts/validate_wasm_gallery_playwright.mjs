@@ -151,6 +151,7 @@ async function main() {
       const midiActiveInspectorFeatures = midiActive.summary?.midiInspectorFeatures ?? midiActive.midiInspectorFeatures;
       const midiActivePathWeaverFeatures = midiActive.summary?.midiPathWeaverFeatures ?? midiActive.midiPathWeaverFeatures;
       const midiActiveCadenceGardenFeatures = midiActive.summary?.midiCadenceGardenFeatures ?? midiActive.midiCadenceGardenFeatures;
+      const midiActiveProfileOrchardFeatures = midiActive.summary?.midiProfileOrchardFeatures ?? midiActive.midiProfileOrchardFeatures;
       if (
         midiActive.summary?.currentMiniMode !== "off"
         || midiActive.summary?.currentMiniRendered !== false
@@ -300,6 +301,17 @@ async function main() {
         throw new Error(`live midi scene did not render continuation ladder correctly: ${JSON.stringify({ continuation: midiActive.summary?.midiContinuationLadderFeatures, summary: midiActive.summary })}`);
       }
       if (
+        (midiActiveProfileOrchardFeatures?.profileCardCount || 0) < 5
+        || (midiActiveProfileOrchardFeatures?.populatedProfileCount || 0) < 5
+        || (midiActiveProfileOrchardFeatures?.highlightedCardCount || 0) !== 1
+        || (midiActiveProfileOrchardFeatures?.profileClockCount || 0) < 5
+        || (midiActive.summary?.currentMiniMode === "off" ? false : (midiActiveProfileOrchardFeatures?.profileMiniCount || 0) < 5)
+        || (midiActiveProfileOrchardFeatures?.activeProfileIndex ?? -1) < 0
+        || (midiActiveProfileOrchardFeatures?.profileNames?.length || 0) < 5
+      ) {
+        throw new Error(`live midi scene did not render profile orchard correctly: ${JSON.stringify(midiActiveProfileOrchardFeatures)}`);
+      }
+      if (
         (midiActivePathWeaverFeatures?.pathCount || 0) < 1
         || (midiActivePathWeaverFeatures?.pathStepCount || 0) < 2
         || ((midiActivePathWeaverFeatures?.pathMiniCount || 0) < 1 && midiActive.summary?.currentMiniMode !== "off")
@@ -339,6 +351,8 @@ async function main() {
           && (midi?.midiCadenceGardenFeatures?.rootFocusedIndex ?? -1) === targetIndex
           && (midi?.midiCadenceGardenFeatures?.groupCount || 0) >= 1
           && (midi?.midiCadenceGardenFeatures?.terminalClockCount || 0) >= 1
+          && (midi?.midiProfileOrchardFeatures?.rootFocusedIndex ?? -1) === targetIndex
+          && (midi?.midiProfileOrchardFeatures?.profileCardCount || 0) >= 5
           && (midi?.midiInspectorFeatures?.candidateNoteCount || 0) >= 1
           && (midi?.midiWeatherFeatures?.cellCount || 0) >= 2
           && (midi?.midiRiskRadarFeatures?.candidatePolygonCount || 0) >= 1
@@ -358,6 +372,8 @@ async function main() {
           && (midi?.midiPathWeaverFeatures?.pathCount || 0) >= 1
           && (midi?.midiCadenceGardenFeatures?.rootFocusedIndex ?? -1) === targetIndex
           && (midi?.midiCadenceGardenFeatures?.groupCount || 0) >= 1
+          && (midi?.midiProfileOrchardFeatures?.rootFocusedIndex ?? -1) === targetIndex
+          && (midi?.midiProfileOrchardFeatures?.profileCardCount || 0) >= 5
           && (midi?.midiInspectorFeatures?.reasonCount || 0) >= 1;
       }, hoverCandidateIndex, { timeout: 30000 }).then((handle) => handle.jsonValue());
       await page.mouse.move(8, 8);
@@ -368,7 +384,8 @@ async function main() {
           && (midi?.midiCommonToneConstellationFeatures?.focusedCandidateIndex ?? -1) === targetIndex
           && (midi?.midiContinuationLadderFeatures?.sourceFocusedIndex ?? -1) === targetIndex
           && (midi?.midiPathWeaverFeatures?.rootFocusedIndex ?? -1) === targetIndex
-          && (midi?.midiCadenceGardenFeatures?.rootFocusedIndex ?? -1) === targetIndex;
+          && (midi?.midiCadenceGardenFeatures?.rootFocusedIndex ?? -1) === targetIndex
+          && (midi?.midiProfileOrchardFeatures?.rootFocusedIndex ?? -1) === targetIndex;
       }, hoverCandidateIndex, { timeout: 30000 }).then((handle) => handle.jsonValue());
       traceStep("clear-pin");
       await page.click("#midi-clear-pin");
@@ -380,7 +397,8 @@ async function main() {
           && (midi?.midiCommonToneConstellationFeatures?.focusedCandidateIndex ?? -1) === 0
           && (midi?.midiContinuationLadderFeatures?.sourceFocusedIndex ?? -1) === 0
           && (midi?.midiPathWeaverFeatures?.rootFocusedIndex ?? -1) === 0
-          && (midi?.midiCadenceGardenFeatures?.rootFocusedIndex ?? -1) === 0;
+          && (midi?.midiCadenceGardenFeatures?.rootFocusedIndex ?? -1) === 0
+          && (midi?.midiProfileOrchardFeatures?.rootFocusedIndex ?? -1) === 0;
       }, { timeout: 30000 }).then((handle) => handle.jsonValue());
       traceStep("context-change");
       const defaultContext = await page.evaluate(() => ({
@@ -400,6 +418,9 @@ async function main() {
           && (midi.midiPathWeaverFeatures?.pathCount || 0) >= 1
           && (midi.midiPathWeaverFeatures?.pathStepCount || 0) >= 2
           && (midi.midiCadenceGardenFeatures?.groupCount || 0) >= 1
+          && (midi.midiProfileOrchardFeatures?.profileCardCount || 0) >= 5
+          && (midi.midiProfileOrchardFeatures?.highlightedCardCount || 0) === 1
+          && (midi.midiProfileOrchardFeatures?.activeProfileIndex ?? -1) === 0
           && (midi.midiHorizonFeatures?.candidateNodeCount || 0) >= 1
           && (midi.midiBraidFeatures?.candidateColumnCount || 0) >= 1
           && (midi.midiWeatherFeatures?.cellCount || 0) >= 2
@@ -420,6 +441,9 @@ async function main() {
           && (midi?.midiPathWeaverFeatures?.pathCount || 0) >= 1
           && (midi?.midiPathWeaverFeatures?.pathStepCount || 0) >= 2
           && (midi?.midiCadenceGardenFeatures?.groupCount || 0) >= 1
+          && (midi?.midiProfileOrchardFeatures?.profileCardCount || 0) >= 5
+          && (midi?.midiProfileOrchardFeatures?.highlightedCardCount || 0) === 1
+          && (midi?.midiProfileOrchardFeatures?.activeProfileIndex ?? -1) === 3
           && (midi?.midiHorizonFeatures?.candidateNodeCount || 0) >= 1
           && (midi?.midiBraidFeatures?.candidateColumnCount || 0) >= 1
           && (midi?.midiWeatherFeatures?.cellCount || 0) >= 2
@@ -442,6 +466,7 @@ async function main() {
           && (midi?.midiContinuationLadderFeatures?.continuationMiniCount || 0) >= 1
           && (midi?.midiPathWeaverFeatures?.pathMiniCount || 0) >= 1
           && (midi?.midiCadenceGardenFeatures?.terminalMiniCount || 0) >= 1
+          && (midi?.midiProfileOrchardFeatures?.profileMiniCount || 0) >= 5
           && summary?.scenes?.set?.miniInstrumentMode === "piano"
           && summary?.scenes?.set?.miniRendered === true
           && summary?.scenes?.key?.miniRendered === true
@@ -467,6 +492,7 @@ async function main() {
           && (midi?.midiContinuationLadderFeatures?.continuationMiniCount || 0) >= 1
           && (midi?.midiPathWeaverFeatures?.pathMiniCount || 0) >= 1
           && (midi?.midiCadenceGardenFeatures?.terminalMiniCount || 0) >= 1
+          && (midi?.midiProfileOrchardFeatures?.profileMiniCount || 0) >= 5
           && summary?.scenes?.set?.miniInstrumentMode === "fret"
           && summary?.scenes?.set?.miniRendered === true
           && summary?.scenes?.key?.miniRendered === true
@@ -602,6 +628,8 @@ async function main() {
           && midi?.counterpointProfileId === 0
           && midi?.historyFrameCount >= 1
           && (midi?.midiCadenceFunnelFeatures?.branchCount || 0) >= 2
+          && (midi?.midiProfileOrchardFeatures?.highlightedCardCount || 0) === 1
+          && (midi?.midiProfileOrchardFeatures?.activeProfileIndex ?? -1) === 0
           && !!midi?.midiSuspensionMachineFeatures?.stateLabel
           && (midi?.midiOrbifoldRibbonFeatures?.candidateAnchorCount || 0) >= 1
           && (midi?.midiCommonToneConstellationFeatures?.retainedStarCount || 0) >= 1
@@ -615,6 +643,7 @@ async function main() {
           && midi?.displayCount >= 3
           && midi?.snapshotCount >= 1
           && (midi?.midiCadenceFunnelFeatures?.branchCount || 0) >= 2
+          && (midi?.midiProfileOrchardFeatures?.highlightedCardCount || 0) === 1
           && !!midi?.midiSuspensionMachineFeatures?.stateLabel
           && (midi?.midiOrbifoldRibbonFeatures?.candidateAnchorCount || 0) >= 1
           && (midi?.midiCommonToneConstellationFeatures?.retainedStarCount || 0) >= 1;

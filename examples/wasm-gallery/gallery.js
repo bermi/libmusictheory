@@ -210,6 +210,7 @@ const midiInspectorEl = document.getElementById("midi-inspector");
 const midiContinuationLadderEl = document.getElementById("midi-continuation-ladder");
 const midiPathWeaverEl = document.getElementById("midi-path-weaver");
 const midiCadenceGardenEl = document.getElementById("midi-cadence-garden");
+const midiProfileOrchardEl = document.getElementById("midi-profile-orchard");
 const midiClearPinEl = document.getElementById("midi-clear-pin");
 const midiClockEl = document.getElementById("midi-clock");
 const midiOpticKEl = document.getElementById("midi-optic-k");
@@ -2909,6 +2910,33 @@ function buildCadenceGardenGroups(paths) {
     || left.warningCount - right.warningCount);
 }
 
+function buildProfileOrchardEntries(arena, historyFrames, rootSuggestion, context, activeProfile) {
+  const profileCount = Math.max(counterpointProfileNames.length, DEFAULT_COUNTERPOINT_PROFILE_NAMES.length, 1);
+  return Array.from({ length: profileCount }, (_unused, profileIndex) => {
+    const profileLabel = counterpointProfileNames[profileIndex] || DEFAULT_COUNTERPOINT_PROFILE_NAMES[profileIndex] || `profile ${profileIndex + 1}`;
+    const continuationBundle = buildFocusedContinuationContext(arena, historyFrames, rootSuggestion, context, profileIndex);
+    const topSuggestion = continuationBundle.suggestions[0] || null;
+    const cadenceDestinations = continuationBundle.historyBundle
+      ? decodeCadenceDestinations(arena, continuationBundle.historyBundle.historyPtr, profileIndex)
+      : [];
+    const topDestination = cadenceDestinations[0] || null;
+    const paths = topSuggestion
+      ? buildContinuationPaths(arena, continuationBundle, topSuggestion, context, profileIndex, { branchCount: 2, maxDepth: 3 })
+      : [];
+    const topGroup = buildCadenceGardenGroups(paths)[0] || null;
+    return {
+      profileIndex,
+      profileLabel,
+      active: profileIndex === activeProfile,
+      topSuggestion,
+      topDestination,
+      topPath: paths[0] || null,
+      topGroup,
+      warningCount: topSuggestion?.warningNames?.length || 0,
+    };
+  });
+}
+
 function renderMidiPathWeaver(host, arena, rootSuggestion, paths, context, options = {}) {
   const empty = {
     pathCount: 0,
@@ -3174,6 +3202,150 @@ function renderMidiCadenceGarden(host, arena, rootSuggestion, groups, context, o
     rootFocusedIndex: options.rootFocusedIndex ?? -1,
     cadenceLabels: visibleGroups.map((group) => group.cadenceLabel),
     warningGroupCount: visibleGroups.filter((group) => group.warningCount > 0).length,
+  };
+}
+
+function renderMidiProfileOrchard(host, arena, rootSuggestion, entries, context, options = {}) {
+  const empty = {
+    profileCardCount: 0,
+    populatedProfileCount: 0,
+    highlightedCardCount: 0,
+    profileClockCount: 0,
+    profileMiniCount: 0,
+    activeProfileIndex: -1,
+    profileNames: [],
+    cadenceLabels: [],
+    warningCardCount: 0,
+    rootFocusedIndex: -1,
+  };
+  if (!host) return empty;
+  if (!rootSuggestion) {
+    host.innerHTML = `<div class="output-block continuation-empty">Focus or pin a ranked move to compare how the same musical moment evolves under each counterpoint rule profile.</div>`;
+    return empty;
+  }
+
+  const visibleEntries = Array.isArray(entries)
+    ? entries.slice(0, Math.max(counterpointProfileNames.length, DEFAULT_COUNTERPOINT_PROFILE_NAMES.length, 1))
+    : [];
+  const focusedLetter = options.rootFocusedIndex != null && options.rootFocusedIndex >= 0
+    ? String.fromCharCode(65 + options.rootFocusedIndex)
+    : "Focused";
+  const rootLabel = rootSuggestion.noteNames.join(" · ");
+
+  host.innerHTML = `
+    <div class="profile-orchard-shell">
+      <div class="continuation-head">
+        <div>
+          <p class="eyebrow">Same root, different rule worlds</p>
+          <h4>${escapeHtml(focusedLetter)}. ${escapeHtml(rootLabel)}</h4>
+        </div>
+        <div class="pill-list">
+          <span class="status-pill ${options.pinned ? "is-snapshot" : "is-live"}">${escapeHtml(options.pinned ? "Pinned root" : "Focused root")}</span>
+          <span class="status-pill is-live">${escapeHtml(rootSuggestion.cadenceLabel)}</span>
+        </div>
+      </div>
+      <article class="continuation-root">
+        <p>${escapeHtml("Each card commits the same focused move, then asks a different counterpoint profile what should happen next. The selected profile stays highlighted, but the whole orchard remains visible for comparison.")}</p>
+        <div class="chip-row">
+          ${rootSuggestion.reasonNames.map((reason) => `<span class="pill">${escapeHtml(reason)}</span>`).join("") || `<span class="pill">neutral continuation</span>`}
+        </div>
+        <div class="chip-row">
+          ${rootSuggestion.warningNames.map((warning) => `<span class="chip warning-chip">${escapeHtml(warning)}</span>`).join("") || `<span class="chip safe-chip">clean motion</span>`}
+        </div>
+      </article>
+      <div class="profile-orchard-grid">
+        ${visibleEntries.map((entry, index) => {
+          const populated = !!entry.topSuggestion;
+          const cadenceLabel = entry.topDestination?.label || entry.topGroup?.cadenceLabel || entry.topSuggestion?.cadenceLabel || "stable continuation";
+          return `
+            <article class="profile-orchard-card${entry.active ? " is-active-profile" : ""}${populated ? "" : " is-empty-profile"}" data-profile-orchard-card="${index}" data-profile-index="${entry.profileIndex}">
+              <div class="profile-orchard-card-head">
+                <div>
+                  <p class="eyebrow">${escapeHtml(entry.active ? "Selected profile" : "Comparison profile")}</p>
+                  <h4>${escapeHtml(humanizeCounterpointLabel(entry.profileLabel))}</h4>
+                </div>
+                <div class="pill-list">
+                  ${entry.active ? `<span class="status-pill is-live">active</span>` : `<span class="status-pill is-muted">compare</span>`}
+                  <span class="status-pill ${entry.warningCount > 0 ? "is-snapshot" : "is-live"}">${escapeHtml(cadenceLabel)}</span>
+                </div>
+              </div>
+              ${populated ? `
+                <p class="profile-orchard-meta">best next move ${escapeHtml(entry.topSuggestion.noteNames.join(" · "))} · score ${escapeHtml(String(entry.topSuggestion.score))}</p>
+                <p class="profile-orchard-alternates">arrival tendency <span class="profile-orchard-cadence">${escapeHtml(cadenceLabel)}</span>${entry.topPath?.terminalLabel ? ` · terminal ${escapeHtml(entry.topPath.terminalLabel)}` : ""}</p>
+                <div class="chip-row">
+                  ${entry.topSuggestion.reasonNames.map((reason) => `<span class="pill">${escapeHtml(reason)}</span>`).join("") || `<span class="pill">no dominant reason</span>`}
+                </div>
+                <div class="chip-row">
+                  ${entry.topSuggestion.warningNames.map((warning) => `<span class="chip warning-chip">${escapeHtml(warning)}</span>`).join("") || `<span class="chip safe-chip">clean motion</span>`}
+                </div>
+                <div class="profile-orchard-art-grid">
+                  <div class="profile-orchard-art" data-profile-orchard-clock="${index}"></div>
+                  <div class="profile-orchard-art" data-profile-orchard-mini="${index}"></div>
+                </div>
+              ` : `
+                <div class="output-block continuation-empty">No stable continuation ranked yet for this profile from the shared root.</div>
+              `}
+            </article>
+          `;
+        }).join("")}
+      </div>
+    </div>
+  `;
+
+  let profileClockCount = 0;
+  let profileMiniCount = 0;
+  visibleEntries.forEach((entry, index) => {
+    if (!entry.topSuggestion) return;
+    const clockHost = host.querySelector(`[data-profile-orchard-clock="${index}"]`);
+    if (clockHost) {
+      renderPreviewSvgOrBitmap(clockHost, {
+        svgMarkup: svgString(arena, wasm.lmt_svg_clock_optc, entry.topSuggestion.setValue),
+        bitmapRenderer: {
+          renderRgba: (width, height) => clockBitmapRgba(arena, entry.topSuggestion.setValue, width, height),
+        },
+        alt: `${entry.profileLabel} profile orchard clock preview`,
+        options: { maxHeight: 138, squareWidth: 150, mediumWidth: 160, wideWidth: 170, ultraWideWidth: 180, padXRatio: 0.08, padYRatio: 0.12 },
+      });
+      profileClockCount += 1;
+    }
+    const miniHost = host.querySelector(`[data-profile-orchard-mini="${index}"]`);
+    if (miniHost) {
+      const rendered = renderMiniInstrumentPreview(
+        arena,
+        miniHost,
+        {
+          midiNotes: entry.topSuggestion.notes,
+          setValue: entry.topSuggestion.setValue,
+          tonic: context.tonic,
+          preferredBassPc: entry.topSuggestion.notes.length > 0 ? Math.min(...entry.topSuggestion.notes) % 12 : null,
+          fretVoicing: entry.topSuggestion.fretPreview,
+        },
+        `${entry.profileLabel} profile orchard mini preview`,
+        {
+          maxHeight: 150,
+          squareWidth: 170,
+          mediumWidth: 180,
+          wideWidth: 190,
+          ultraWideWidth: 200,
+          padXRatio: 0.08,
+          padYRatio: 0.14,
+        },
+      );
+      if (rendered) profileMiniCount += 1;
+    }
+  });
+
+  return {
+    profileCardCount: visibleEntries.length,
+    populatedProfileCount: visibleEntries.filter((entry) => !!entry.topSuggestion).length,
+    highlightedCardCount: visibleEntries.filter((entry) => entry.active).length,
+    profileClockCount,
+    profileMiniCount,
+    activeProfileIndex: options.activeProfileIndex ?? -1,
+    profileNames: visibleEntries.map((entry) => entry.profileLabel),
+    cadenceLabels: visibleEntries.map((entry) => entry.topDestination?.label || entry.topGroup?.cadenceLabel || entry.topSuggestion?.cadenceLabel || "").filter(Boolean),
+    warningCardCount: visibleEntries.filter((entry) => (entry.warningCount || 0) > 0).length,
+    rootFocusedIndex: options.rootFocusedIndex ?? -1,
   };
 }
 
@@ -3944,6 +4116,9 @@ function renderMidiScene() {
       ? buildContinuationPaths(arena, continuationBundle, focusedSuggestion, context, profile, { branchCount: 3, maxDepth: 3 })
       : [];
     const cadenceGardenGroups = buildCadenceGardenGroups(continuationPaths);
+    const profileOrchardEntries = focusedSuggestion
+      ? buildProfileOrchardEntries(arena, historyFrames, focusedSuggestion, context, profile)
+      : [];
     const displayNotesLabel = displayNotes.length > 0
       ? displayNotes.map((midi) => midiName(midi, context.tonic, context.quality))
       : [];
@@ -4018,6 +4193,18 @@ function renderMidiScene() {
       context,
       {
         pinned: pinnedSuggestionIndex != null,
+        rootFocusedIndex: focusedSuggestionIndex,
+      },
+    );
+    const midiProfileOrchardFeatures = renderMidiProfileOrchard(
+      midiProfileOrchardEl,
+      arena,
+      focusedSuggestion,
+      profileOrchardEntries,
+      context,
+      {
+        pinned: pinnedSuggestionIndex != null,
+        activeProfileIndex: profile,
         rootFocusedIndex: focusedSuggestionIndex,
       },
     );
@@ -4232,6 +4419,7 @@ function renderMidiScene() {
       midiContinuationLadderFeatures,
       midiPathWeaverFeatures,
       midiCadenceGardenFeatures,
+      midiProfileOrchardFeatures,
       midiOpticKFeatures,
       midiEvennessFeatures,
       midiStaffFeatures,

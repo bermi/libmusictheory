@@ -1343,6 +1343,10 @@ select {
   min-height: 420px;
 }
 
+.profile-orchard-frame {
+  min-height: 420px;
+}
+
 .continuation-shell {
   display: grid;
   gap: 14px;
@@ -1439,6 +1443,12 @@ select {
   min-height: 100%;
 }
 
+.profile-orchard-shell {
+  display: grid;
+  gap: 14px;
+  min-height: 100%;
+}
+
 .path-weaver-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -1448,6 +1458,12 @@ select {
 .cadence-garden-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 14px;
+}
+
+.profile-orchard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 14px;
 }
 
@@ -1527,6 +1543,71 @@ select {
   padding: 14px;
   display: grid;
   gap: 12px;
+}
+
+.profile-orchard-card {
+  border-radius: 18px;
+  border: 1px solid rgba(24, 36, 47, 0.12);
+  background: linear-gradient(180deg, rgba(255, 251, 246, 0.96), rgba(246, 237, 227, 0.94));
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.profile-orchard-card.is-active-profile {
+  background: linear-gradient(180deg, rgba(255, 242, 221, 0.98), rgba(250, 226, 191, 0.98));
+  border-color: rgba(216, 92, 51, 0.28);
+  box-shadow:
+    inset 0 0 0 1px rgba(216, 92, 51, 0.16),
+    0 12px 28px rgba(102, 58, 20, 0.1);
+}
+
+.profile-orchard-card.is-empty-profile {
+  opacity: 0.72;
+}
+
+.profile-orchard-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.profile-orchard-card h4 {
+  margin: 4px 0 0;
+  font-size: 1.02rem;
+}
+
+.profile-orchard-meta,
+.profile-orchard-alternates {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.profile-orchard-cadence {
+  font-weight: 700;
+  color: rgba(110, 57, 18, 0.92);
+}
+
+.profile-orchard-art-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.profile-orchard-art {
+  display: grid;
+  place-items: center;
+  min-height: 152px;
+  border-radius: 16px;
+  border: 1px solid rgba(24, 36, 47, 0.08);
+  background: linear-gradient(180deg, rgba(252, 247, 240, 0.96), rgba(244, 236, 225, 0.86));
+}
+
+.profile-orchard-art svg,
+.profile-orchard-art img {
+  max-height: 142px;
 }
 
 .cadence-garden-card-head {
