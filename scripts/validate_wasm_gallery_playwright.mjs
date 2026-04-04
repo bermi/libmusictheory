@@ -153,6 +153,7 @@ async function main() {
       const midiActiveCadenceGardenFeatures = midiActive.summary?.midiCadenceGardenFeatures ?? midiActive.midiCadenceGardenFeatures;
       const midiActiveProfileOrchardFeatures = midiActive.summary?.midiProfileOrchardFeatures ?? midiActive.midiProfileOrchardFeatures;
       const midiActiveConsensusAtlasFeatures = midiActive.summary?.midiConsensusAtlasFeatures ?? midiActive.midiConsensusAtlasFeatures;
+      const midiActiveObligationLedgerFeatures = midiActive.summary?.midiObligationLedgerFeatures ?? midiActive.midiObligationLedgerFeatures;
       if (
         midiActive.summary?.currentMiniMode !== "off"
         || midiActive.summary?.currentMiniRendered !== false
@@ -326,6 +327,16 @@ async function main() {
         throw new Error(`live midi scene did not render consensus atlas correctly: ${JSON.stringify(midiActiveConsensusAtlasFeatures)}`);
       }
       if (
+        (midiActiveObligationLedgerFeatures?.entryCount || 0) < 3
+        || (midiActiveObligationLedgerFeatures?.criticalEntryCount || 0) < 1
+        || ((midiActiveObligationLedgerFeatures?.focusedSupportCount || 0) + (midiActiveObligationLedgerFeatures?.focusedDelayCount || 0) + (midiActiveObligationLedgerFeatures?.focusedAggravateCount || 0)) < 1
+        || (midiActiveObligationLedgerFeatures?.warningEntryCount || 0) < 1
+        || ((midiActiveObligationLedgerFeatures?.entryLabels || []).length) < 3
+        || (midiActiveObligationLedgerFeatures?.focusedSignature || "") !== (midiActive.summary?.focusedSuggestionSignature || "")
+      ) {
+        throw new Error(`live midi scene did not render obligation ledger correctly: ${JSON.stringify(midiActiveObligationLedgerFeatures)}`);
+      }
+      if (
         (midiActivePathWeaverFeatures?.pathCount || 0) < 1
         || (midiActivePathWeaverFeatures?.pathStepCount || 0) < 2
         || ((midiActivePathWeaverFeatures?.pathMiniCount || 0) < 1 && midiActive.summary?.currentMiniMode !== "off")
@@ -368,6 +379,8 @@ async function main() {
           && (midi?.midiProfileOrchardFeatures?.rootFocusedIndex ?? -1) === targetIndex
           && (midi?.midiProfileOrchardFeatures?.profileCardCount || 0) >= 5
           && (midi?.midiConsensusAtlasFeatures?.focusedSignature || "") === targetSignature
+          && (midi?.midiObligationLedgerFeatures?.focusedSignature || "") === targetSignature
+          && (midi?.midiObligationLedgerFeatures?.entryCount || 0) >= 3
           && (midi?.midiConsensusAtlasFeatures?.highlightedClusterCount || 0) === 1
           && (midi?.midiConsensusAtlasFeatures?.clusterCount || 0) >= 2
           && (midi?.midiInspectorFeatures?.candidateNoteCount || 0) >= 1
@@ -395,6 +408,8 @@ async function main() {
           && (midi?.midiProfileOrchardFeatures?.rootFocusedIndex ?? -1) === targetIndex
           && (midi?.midiProfileOrchardFeatures?.profileCardCount || 0) >= 5
           && (midi?.midiConsensusAtlasFeatures?.focusedSignature || "") === targetSignature
+          && (midi?.midiObligationLedgerFeatures?.focusedSignature || "") === targetSignature
+          && (midi?.midiObligationLedgerFeatures?.entryCount || 0) >= 3
           && (midi?.midiConsensusAtlasFeatures?.highlightedClusterCount || 0) === 1
           && (midi?.midiInspectorFeatures?.reasonCount || 0) >= 1;
       }, {
@@ -411,7 +426,8 @@ async function main() {
           && (midi?.midiPathWeaverFeatures?.rootFocusedIndex ?? -1) === targetIndex
           && (midi?.midiCadenceGardenFeatures?.rootFocusedIndex ?? -1) === targetIndex
           && (midi?.midiProfileOrchardFeatures?.rootFocusedIndex ?? -1) === targetIndex
-          && (midi?.midiConsensusAtlasFeatures?.focusedSignature || "") === targetSignature;
+          && (midi?.midiConsensusAtlasFeatures?.focusedSignature || "") === targetSignature
+          && (midi?.midiObligationLedgerFeatures?.focusedSignature || "") === targetSignature;
       }, {
         targetIndex: hoverCandidateIndex,
         targetSignature: midiActive.summary?.suggestionSignatures?.[hoverCandidateIndex] || "",
@@ -428,7 +444,8 @@ async function main() {
           && (midi?.midiPathWeaverFeatures?.rootFocusedIndex ?? -1) === 0
           && (midi?.midiCadenceGardenFeatures?.rootFocusedIndex ?? -1) === 0
           && (midi?.midiProfileOrchardFeatures?.rootFocusedIndex ?? -1) === 0
-          && (midi?.midiConsensusAtlasFeatures?.focusedSignature || "") === (midi?.focusedSuggestionSignature || "");
+          && (midi?.midiConsensusAtlasFeatures?.focusedSignature || "") === (midi?.focusedSuggestionSignature || "")
+          && (midi?.midiObligationLedgerFeatures?.focusedSignature || "") === (midi?.focusedSuggestionSignature || "");
       }, { timeout: 30000 }).then((handle) => handle.jsonValue());
       traceStep("context-change");
       const defaultContext = await page.evaluate(() => ({
@@ -455,6 +472,8 @@ async function main() {
           && (midi.midiConsensusAtlasFeatures?.consensusClusterCount || 0) >= 1
           && (midi.midiConsensusAtlasFeatures?.highlightedClusterCount || 0) === 1
           && (midi.midiConsensusAtlasFeatures?.focusedSignature || "") === (midi?.focusedSuggestionSignature || "")
+          && (midi.midiObligationLedgerFeatures?.entryCount || 0) >= 3
+          && (midi.midiObligationLedgerFeatures?.focusedSignature || "") === (midi?.focusedSuggestionSignature || "")
           && (midi.midiHorizonFeatures?.candidateNodeCount || 0) >= 1
           && (midi.midiBraidFeatures?.candidateColumnCount || 0) >= 1
           && (midi.midiWeatherFeatures?.cellCount || 0) >= 2
@@ -482,6 +501,8 @@ async function main() {
           && (midi?.midiConsensusAtlasFeatures?.consensusClusterCount || 0) >= 1
           && (midi?.midiConsensusAtlasFeatures?.highlightedClusterCount || 0) === 1
           && (midi?.midiConsensusAtlasFeatures?.focusedSignature || "") === (midi?.focusedSuggestionSignature || "")
+          && (midi?.midiObligationLedgerFeatures?.entryCount || 0) >= 3
+          && (midi?.midiObligationLedgerFeatures?.focusedSignature || "") === (midi?.focusedSuggestionSignature || "")
           && (midi?.midiHorizonFeatures?.candidateNodeCount || 0) >= 1
           && (midi?.midiBraidFeatures?.candidateColumnCount || 0) >= 1
           && (midi?.midiWeatherFeatures?.cellCount || 0) >= 2
@@ -506,6 +527,7 @@ async function main() {
           && (midi?.midiCadenceGardenFeatures?.terminalMiniCount || 0) >= 1
           && (midi?.midiProfileOrchardFeatures?.profileMiniCount || 0) >= 5
           && (midi?.midiConsensusAtlasFeatures?.clusterMiniCount || 0) >= 2
+          && (midi?.midiObligationLedgerFeatures?.entryCount || 0) >= 3
           && summary?.scenes?.set?.miniInstrumentMode === "piano"
           && summary?.scenes?.set?.miniRendered === true
           && summary?.scenes?.key?.miniRendered === true
@@ -533,6 +555,7 @@ async function main() {
           && (midi?.midiCadenceGardenFeatures?.terminalMiniCount || 0) >= 1
           && (midi?.midiProfileOrchardFeatures?.profileMiniCount || 0) >= 5
           && (midi?.midiConsensusAtlasFeatures?.clusterMiniCount || 0) >= 2
+          && (midi?.midiObligationLedgerFeatures?.entryCount || 0) >= 3
           && summary?.scenes?.set?.miniInstrumentMode === "fret"
           && summary?.scenes?.set?.miniRendered === true
           && summary?.scenes?.key?.miniRendered === true
@@ -672,6 +695,7 @@ async function main() {
           && (midi?.midiProfileOrchardFeatures?.activeProfileIndex ?? -1) === 0
           && (midi?.midiConsensusAtlasFeatures?.clusterCount || 0) >= 2
           && (midi?.midiConsensusAtlasFeatures?.highlightedClusterCount || 0) === 1
+          && (midi?.midiObligationLedgerFeatures?.entryCount || 0) >= 3
           && !!midi?.midiSuspensionMachineFeatures?.stateLabel
           && (midi?.midiOrbifoldRibbonFeatures?.candidateAnchorCount || 0) >= 1
           && (midi?.midiCommonToneConstellationFeatures?.retainedStarCount || 0) >= 1
@@ -688,6 +712,7 @@ async function main() {
           && (midi?.midiProfileOrchardFeatures?.highlightedCardCount || 0) === 1
           && (midi?.midiConsensusAtlasFeatures?.clusterCount || 0) >= 2
           && (midi?.midiConsensusAtlasFeatures?.highlightedClusterCount || 0) === 1
+          && (midi?.midiObligationLedgerFeatures?.entryCount || 0) >= 3
           && !!midi?.midiSuspensionMachineFeatures?.stateLabel
           && (midi?.midiOrbifoldRibbonFeatures?.candidateAnchorCount || 0) >= 1
           && (midi?.midiCommonToneConstellationFeatures?.retainedStarCount || 0) >= 1;

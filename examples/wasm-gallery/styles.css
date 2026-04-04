@@ -1718,6 +1718,87 @@ select {
   max-height: 142px;
 }
 
+.obligation-ledger-shell {
+  display: grid;
+  gap: 14px;
+}
+
+.obligation-ledger-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.obligation-ledger-card {
+  border-radius: 18px;
+  border: 1px solid rgba(24, 36, 47, 0.08);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(247, 241, 233, 0.92));
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.obligation-ledger-card.is-critical {
+  border-color: rgba(161, 22, 102, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(161, 22, 102, 0.05);
+}
+
+.obligation-ledger-card.is-caution {
+  border-color: rgba(176, 110, 12, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(176, 110, 12, 0.05);
+}
+
+.obligation-ledger-card.is-opportunity {
+  border-color: rgba(31, 125, 134, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(31, 125, 134, 0.05);
+}
+
+.obligation-ledger-card.is-aggravates {
+  background: linear-gradient(180deg, rgba(255, 246, 251, 0.98), rgba(247, 234, 241, 0.96));
+}
+
+.obligation-ledger-card.is-supports,
+.obligation-ledger-card.is-resolves {
+  background: linear-gradient(180deg, rgba(248, 255, 252, 0.98), rgba(235, 246, 241, 0.96));
+}
+
+.obligation-ledger-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.obligation-ledger-card h4 {
+  margin: 4px 0 0;
+  font-size: 1rem;
+}
+
+.obligation-ledger-pressure,
+.obligation-ledger-verdict {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.obligation-ledger-verdict {
+  color: var(--ink);
+}
+
+.obligation-ledger-meter {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(24, 36, 47, 0.08);
+  overflow: hidden;
+}
+
+.obligation-ledger-meter span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(31, 125, 134, 0.84), rgba(216, 92, 51, 0.72));
+}
+
 .cadence-garden-card-head {
   display: flex;
   justify-content: space-between;
@@ -1852,6 +1933,10 @@ select {
 
   .inspector-metric-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .obligation-ledger-grid {
+    grid-template-columns: 1fr;
   }
 }
 

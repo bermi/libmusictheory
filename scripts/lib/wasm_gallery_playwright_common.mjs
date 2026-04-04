@@ -588,6 +588,35 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
           cadenceLabels: Array.from(host.querySelectorAll(".consensus-atlas-cadence, .consensus-atlas-card .status-pill"), (node) => (node.textContent || "").trim()).filter(Boolean),
         };
       })(),
+      midiObligationLedgerFeatures: (() => {
+        const host = document.querySelector("#midi-obligation-ledger");
+        if (!host) {
+          return {
+            entryCount: 0,
+            criticalEntryCount: 0,
+            focusedSupportCount: 0,
+            focusedDelayCount: 0,
+            focusedAggravateCount: 0,
+            warningEntryCount: 0,
+            focusedSignature: "",
+            statusLabels: [],
+            entryLabels: [],
+          };
+        }
+        const cards = Array.from(host.querySelectorAll(".obligation-ledger-card"));
+        const statusLabels = cards.map((node) => node.getAttribute("data-obligation-status") || "").filter(Boolean);
+        return {
+          entryCount: cards.length,
+          criticalEntryCount: cards.filter((node) => node.classList.contains("is-critical")).length,
+          focusedSupportCount: statusLabels.filter((status) => status === "supports" || status === "resolves").length,
+          focusedDelayCount: statusLabels.filter((status) => status === "delays").length,
+          focusedAggravateCount: statusLabels.filter((status) => status === "aggravates").length,
+          warningEntryCount: cards.filter((node) => node.classList.contains("is-critical") || node.classList.contains("is-caution")).length,
+          focusedSignature: host.getAttribute("data-focused-signature") || window.__lmtGallerySummary?.scenes?.midi?.focusedSuggestionSignature || "",
+          statusLabels,
+          entryLabels: Array.from(host.querySelectorAll(".obligation-ledger-card h4"), (node) => (node.textContent || "").trim()).filter(Boolean),
+        };
+      })(),
       previewKinds: (() => {
         const hostIds = ["midi-clock", "midi-optic-k", "midi-evenness", "midi-keyboard", "midi-staff", "midi-current-fret", "midi-focused-mini"];
         return Object.fromEntries(hostIds.map((id) => {
@@ -639,6 +668,7 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
     const midiCadenceGardenFeatures = snapshot.summary?.midiCadenceGardenFeatures ?? snapshot.midiCadenceGardenFeatures;
     const midiProfileOrchardFeatures = snapshot.summary?.midiProfileOrchardFeatures ?? snapshot.midiProfileOrchardFeatures;
     const midiConsensusAtlasFeatures = snapshot.summary?.midiConsensusAtlasFeatures ?? snapshot.midiConsensusAtlasFeatures;
+    const midiObligationLedgerFeatures = snapshot.summary?.midiObligationLedgerFeatures ?? snapshot.midiObligationLedgerFeatures;
     const keyboardFeatures = snapshot.summary?.keyboardFeatures ?? snapshot.keyboardFeaturesFallback;
     if (
       snapshot.summary?.rendered === true
@@ -693,6 +723,12 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
       && midiConsensusAtlasFeatures.focusedSignature.length > 0
       && midiConsensusAtlasFeatures.profileCoverageCount >= 5
       && midiConsensusAtlasFeatures.clusterLabels.length >= 2
+      && midiObligationLedgerFeatures.entryCount >= 3
+      && midiObligationLedgerFeatures.criticalEntryCount >= 1
+      && (midiObligationLedgerFeatures.focusedSupportCount + midiObligationLedgerFeatures.focusedDelayCount + midiObligationLedgerFeatures.focusedAggravateCount) >= 1
+      && midiObligationLedgerFeatures.warningEntryCount >= 1
+      && midiObligationLedgerFeatures.focusedSignature.length > 0
+      && midiObligationLedgerFeatures.entryLabels.length >= 3
       && midiOpticKFeatures.clockCount >= 2
       && midiOpticKFeatures.linkCount >= 1
       && midiOpticKFeatures.labelCount >= 5

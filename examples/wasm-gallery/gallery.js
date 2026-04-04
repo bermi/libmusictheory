@@ -208,6 +208,7 @@ const midiNotesEl = document.getElementById("midi-notes");
 const midiHistoryEl = document.getElementById("midi-history");
 const midiInspectorEl = document.getElementById("midi-inspector");
 const midiConsensusAtlasEl = document.getElementById("midi-consensus-atlas");
+const midiObligationLedgerEl = document.getElementById("midi-obligation-ledger");
 const midiContinuationLadderEl = document.getElementById("midi-continuation-ladder");
 const midiPathWeaverEl = document.getElementById("midi-path-weaver");
 const midiCadenceGardenEl = document.getElementById("midi-cadence-garden");
@@ -2699,6 +2700,327 @@ function renderMidiCounterpointInspector(host, suggestion, context, profileLabel
   };
 }
 
+function countSuggestionsWithTag(suggestions, kind, tag) {
+  if (!Array.isArray(suggestions) || suggestions.length === 0) return 0;
+  return suggestions.reduce((sum, suggestion) => {
+    const values = kind === "warning" ? (suggestion.warningNames || []) : (suggestion.reasonNames || []);
+    return sum + (values.includes(tag) ? 1 : 0);
+  }, 0);
+}
+
+function summarizeActiveHazards(suggestions, currentMotionAnalysis) {
+  const hazardNames = ["parallels", "crossing", "overlap", "wide-spacing", "consecutive-leap", "outside-context", "cluster-pressure"];
+  const counts = hazardNames.map((name) => ({
+    name,
+    count: countSuggestionsWithTag(suggestions, "warning", name) + ((currentMotionAnalysis?.warningNames || []).includes(name) ? 1 : 0),
+  })).filter((entry) => entry.count > 0);
+  counts.sort((left, right) => right.count - left.count || left.name.localeCompare(right.name));
+  return counts.slice(0, 3);
+}
+
+function topCadenceDestination(destinations) {
+  if (!Array.isArray(destinations) || destinations.length === 0) return null;
+  return destinations[0] || null;
+}
+
+function obligationSupportRatio(count, total) {
+  if (!total || total <= 0) return 0;
+  return clamp(count / total, 0, 1);
+}
+
+function buildObligationLedgerEntries(currentState, currentMotionAnalysis, cadenceDestinations, suspensionMachine, suggestions, focusedSuggestion) {
+  const topSuggestions = Array.isArray(suggestions) ? suggestions.slice(0, 5) : [];
+  const suggestionCount = Math.max(1, topSuggestions.length);
+  const focusedWarnings = focusedSuggestion?.warningNames || [];
+  const focusedReasons = focusedSuggestion?.reasonNames || [];
+  const entries = [];
+
+  if (suspensionMachine && ((suspensionMachine.obligationCount || 0) > 0 || (suspensionMachine.warningCount || 0) > 0 || (suspensionMachine.stateLabel && suspensionMachine.stateLabel !== "none" && suspensionMachine.stateLabel !== "resolved"))) {
+    const obligationText = suspensionMachine.obligationCount > 0 && suspensionMachine.expectedResolutionLabel
+      ? `resolve ${suspensionMachine.heldNoteLabel || "held tone"} ${suspensionMachine.resolutionDirection < 0 ? "down" : suspensionMachine.resolutionDirection > 0 ? "up" : "by step"} to ${suspensionMachine.expectedResolutionLabel}`
+      : "stabilize the held dissonance before adding more pressure";
+    let status = "neutral";
+    let verdict = "No focused move is selected yet.";
+    if (focusedSuggestion) {
+      const resolves = suspensionMachine.expectedResolutionMidi <= 127 && focusedSuggestion.notes.includes(suspensionMachine.expectedResolutionMidi);
+      const aggravates = focusedWarnings.includes("consecutive-leap") || focusedWarnings.includes("cluster-pressure");
+      if (resolves) {
+        status = "resolves";
+        verdict = `Focused move lands on ${suspensionMachine.expectedResolutionLabel}, so it actively resolves the held tension.`;
+      } else if (focusedReasons.includes("releases-tension")) {
+        status = "supports";
+        verdict = "Focused move lowers local pressure, but it leaves the explicit suspension obligation open.";
+      } else if (aggravates) {
+        status = "aggravates";
+        verdict = "Focused move adds extra instability before the suspension fully settles.";
+      } else {
+        status = "delays";
+        verdict = "Focused move keeps the suspension alive without resolving it yet.";
+      }
+    }
+    entries.push({
+      key: "suspension",
+      label: "Resolve held tension",
+      tone: (suspensionMachine.warningCount || 0) > 0 ? "critical" : "caution",
+      supportCount: Math.max(1, suspensionMachine.obligationCount || 0),
+      supportRatio: obligationSupportRatio(Math.max(1, suspensionMachine.obligationCount || 0), suggestionCount),
+      sourceLabel: humanizeCounterpointLabel(suspensionMachine.stateLabel || "suspension"),
+      pressureText: obligationText,
+      verdict,
+      status,
+      tags: ["suspension", suspensionMachine.expectedResolutionLabel ? `to ${suspensionMachine.expectedResolutionLabel}` : "hold-aware"],
+    });
+  }
+
+  const destination = topCadenceDestination(cadenceDestinations);
+  if (destination && ((destination.score || 0) > 0 || (destination.candidateCount || 0) > 0 || (currentState?.cadenceState || 0) > 0)) {
+    const desiredDestination = destination.destination;
+    let status = "neutral";
+    let verdict = "No focused move is selected yet.";
+    if (focusedSuggestion) {
+      const focusedDestination = cadenceDestinationFromCadenceEffect(focusedSuggestion.cadenceEffect);
+      if (focusedDestination === desiredDestination) {
+        status = "supports";
+        verdict = `Focused move reinforces the strongest cadence pull toward ${humanizeCounterpointLabel(destination.label)}.`;
+      } else if (focusedReasons.includes("cadence-pull")) {
+        status = "delays";
+        verdict = `Focused move still leans cadentially, but it redirects away from the strongest ${humanizeCounterpointLabel(destination.label)} path.`;
+      } else if (focusedWarnings.includes("outside-context")) {
+        status = "aggravates";
+        verdict = "Focused move breaks away from the current cadence gravity instead of clarifying it.";
+      } else {
+        verdict = "Focused move neither clearly strengthens nor clearly contradicts the current cadence pull.";
+      }
+    }
+    entries.push({
+      key: "cadence-vector",
+      label: "Honor cadence gravity",
+      tone: destination.warningCount > 0 ? "caution" : "opportunity",
+      supportCount: Math.max(1, destination.candidateCount || 0),
+      supportRatio: obligationSupportRatio(Math.max(1, destination.candidateCount || 0), suggestionCount),
+      sourceLabel: humanizeCounterpointLabel(destination.label),
+      pressureText: `top destination ${humanizeCounterpointLabel(destination.label)} · score ${destination.score} · ${destination.candidateCount} of the sampled paths already point there`,
+      verdict,
+      status,
+      tags: [destination.currentMatch ? "already active" : "available", `tension ${destination.tensionBias >= 0 ? `+${destination.tensionBias}` : String(destination.tensionBias)}`],
+    });
+  }
+
+  const preserveSpacingCount = countSuggestionsWithTag(topSuggestions, "reason", "preserves-spacing");
+  const wideSpacingCount = countSuggestionsWithTag(topSuggestions, "warning", "wide-spacing");
+  if (preserveSpacingCount > 0 || wideSpacingCount > 0 || (currentMotionAnalysis?.warningNames || []).includes("wide-spacing")) {
+    let status = "neutral";
+    let verdict = "No focused move is selected yet.";
+    if (focusedSuggestion) {
+      if (focusedReasons.includes("preserves-spacing")) {
+        status = "supports";
+        verdict = "Focused move keeps the voicing compact enough to preserve the current spacing shape.";
+      } else if (focusedWarnings.includes("wide-spacing")) {
+        status = "aggravates";
+        verdict = "Focused move stretches the spacing and makes the registral frame harder to control.";
+      } else {
+        status = "delays";
+        verdict = "Focused move is usable, but it does not directly reinforce the compact spacing favored by the field.";
+      }
+    }
+    entries.push({
+      key: "spacing",
+      label: "Keep the spacing coherent",
+      tone: wideSpacingCount > 0 ? "caution" : "opportunity",
+      supportCount: Math.max(preserveSpacingCount, wideSpacingCount, 1),
+      supportRatio: obligationSupportRatio(Math.max(preserveSpacingCount, wideSpacingCount, 1), suggestionCount),
+      sourceLabel: preserveSpacingCount >= wideSpacingCount ? "compact field" : "wide-span risk",
+      pressureText: `${preserveSpacingCount}/${suggestionCount} sampled moves preserve spacing; ${wideSpacingCount}/${suggestionCount} trigger width strain`,
+      verdict,
+      status,
+      tags: ["spacing", preserveSpacingCount >= wideSpacingCount ? "compact favored" : "watch register"],
+    });
+  }
+
+  const releaseCount = countSuggestionsWithTag(topSuggestions, "reason", "releases-tension");
+  const buildCount = countSuggestionsWithTag(topSuggestions, "reason", "builds-tension");
+  if (releaseCount > 0 || buildCount > 0 || (suspensionMachine && Math.abs((suspensionMachine.currentTension || 0) - (suspensionMachine.previousTension || 0)) > 0)) {
+    const releasePreferred = releaseCount >= buildCount;
+    let status = "neutral";
+    let verdict = "No focused move is selected yet.";
+    if (focusedSuggestion) {
+      if (releasePreferred && focusedReasons.includes("releases-tension")) {
+        status = "supports";
+        verdict = "Focused move follows the field’s bias toward easing the current local pressure.";
+      } else if (!releasePreferred && focusedReasons.includes("builds-tension")) {
+        status = "supports";
+        verdict = "Focused move intentionally intensifies the line in the same direction the field is already leaning.";
+      } else if (releasePreferred && focusedReasons.includes("builds-tension")) {
+        status = "aggravates";
+        verdict = "Focused move adds more pressure when most nearby paths are trying to settle.";
+      } else if (!releasePreferred && focusedReasons.includes("releases-tension")) {
+        status = "delays";
+        verdict = "Focused move cools the texture instead of following the field’s stronger intensifying pull.";
+      } else {
+        verdict = "Focused move does not strongly reshape the current pressure field either way.";
+      }
+    }
+    entries.push({
+      key: "tension",
+      label: releasePreferred ? "Let pressure settle" : "Lean into the tension",
+      tone: "opportunity",
+      supportCount: Math.max(releaseCount, buildCount, 1),
+      supportRatio: obligationSupportRatio(Math.max(releaseCount, buildCount, 1), suggestionCount),
+      sourceLabel: releasePreferred ? "release bias" : "build bias",
+      pressureText: `${releaseCount}/${suggestionCount} sampled moves release tension; ${buildCount}/${suggestionCount} build it`,
+      verdict,
+      status,
+      tags: [releasePreferred ? "release" : "build", suspensionMachine ? `tension ${suspensionMachine.previousTension || 0}→${suspensionMachine.currentTension || 0}` : "field summary"],
+    });
+  }
+
+  const retentionCount = countSuggestionsWithTag(topSuggestions, "reason", "common-tone-retention");
+  const currentRetained = currentMotionAnalysis?.motion?.commonToneCount || 0;
+  if (retentionCount > 0 || currentRetained > 0) {
+    let status = "neutral";
+    let verdict = "No focused move is selected yet.";
+    if (focusedSuggestion) {
+      if (focusedReasons.includes("common-tone-retention") || (focusedSuggestion.motion?.commonToneCount || 0) > 0) {
+        status = "supports";
+        verdict = `Focused move preserves ${focusedSuggestion.motion?.commonToneCount || 0} common tone${(focusedSuggestion.motion?.commonToneCount || 0) === 1 ? "" : "s"}, keeping the texture anchored.`;
+      } else if (focusedWarnings.includes("crossing") || focusedWarnings.includes("overlap")) {
+        status = "aggravates";
+        verdict = "Focused move trades away too much anchor and adds voice entanglement at the same time.";
+      } else {
+        status = "delays";
+        verdict = "Focused move changes more material at once, so the common-tone anchor becomes weaker.";
+      }
+    }
+    entries.push({
+      key: "anchor",
+      label: "Keep anchor tones audible",
+      tone: "opportunity",
+      supportCount: Math.max(retentionCount, currentRetained, 1),
+      supportRatio: obligationSupportRatio(Math.max(retentionCount, currentRetained, 1), suggestionCount),
+      sourceLabel: "common-tone anchor",
+      pressureText: `${retentionCount}/${suggestionCount} sampled moves preserve anchor tones; current motion retained ${currentRetained}`,
+      verdict,
+      status,
+      tags: ["common tones", currentRetained > 0 ? `${currentRetained} retained now` : "next-step anchor"],
+    });
+  }
+
+  const activeHazards = summarizeActiveHazards(topSuggestions, currentMotionAnalysis);
+  if (activeHazards.length > 0) {
+    let status = "neutral";
+    let verdict = "No focused move is selected yet.";
+    if (focusedSuggestion) {
+      if (focusedWarnings.length === 0) {
+        status = "supports";
+        verdict = "Focused move stays clear of the main hazards lighting up around this state.";
+      } else if (focusedWarnings.some((warning) => activeHazards.some((hazard) => hazard.name === warning))) {
+        status = "aggravates";
+        verdict = `Focused move steps directly into ${focusedWarnings.filter((warning) => activeHazards.some((hazard) => hazard.name === warning)).map(shortWarningLabel).join(", ")}.`;
+      } else {
+        status = "delays";
+        verdict = "Focused move avoids the worst traps but still carries secondary caution flags.";
+      }
+    }
+    entries.push({
+      key: "hazards",
+      label: "Stay off the red rails",
+      tone: "critical",
+      supportCount: activeHazards[0]?.count || 1,
+      supportRatio: obligationSupportRatio(activeHazards[0]?.count || 1, suggestionCount + 1),
+      sourceLabel: activeHazards.map((hazard) => shortWarningLabel(hazard.name)).join(" · "),
+      pressureText: `most active hazards across the current field: ${activeHazards.map((hazard) => `${shortWarningLabel(hazard.name)} (${hazard.count})`).join(", ")}`,
+      verdict,
+      status,
+      tags: activeHazards.map((hazard) => shortWarningLabel(hazard.name)),
+    });
+  }
+
+  return entries.slice(0, 5);
+}
+
+function renderMidiObligationLedger(host, entries, focusedSuggestion, profileLabel) {
+  const empty = {
+    entryCount: 0,
+    criticalEntryCount: 0,
+    focusedSupportCount: 0,
+    focusedDelayCount: 0,
+    focusedAggravateCount: 0,
+    warningEntryCount: 0,
+    focusedSignature: "",
+    statusLabels: [],
+    entryLabels: [],
+  };
+  if (!host) return empty;
+  if (!Array.isArray(entries) || entries.length === 0) {
+    host.innerHTML = `<div class="output-block continuation-empty">Once a voiced state is active, the ledger will summarize what this moment is asking for next and how the focused move responds.</div>`;
+    return empty;
+  }
+
+  const focusedSignature = focusedSuggestion?.notes?.join(",") || "";
+  const supportCount = entries.filter((entry) => entry.status === "supports" || entry.status === "resolves").length;
+  const delayCount = entries.filter((entry) => entry.status === "delays").length;
+  const aggravateCount = entries.filter((entry) => entry.status === "aggravates").length;
+  host.dataset.focusedSignature = focusedSignature;
+
+  host.innerHTML = `
+    <div class="obligation-ledger-shell">
+      <div class="continuation-head">
+        <div>
+          <p class="eyebrow">Current duties and relief valves</p>
+          <h4>${escapeHtml(humanizeCounterpointLabel(profileLabel))} obligation readout</h4>
+        </div>
+        <div class="pill-list">
+          <span class="status-pill is-live">${escapeHtml(`${supportCount} helping`)}</span>
+          <span class="status-pill ${aggravateCount > 0 ? "is-snapshot" : "is-live"}">${escapeHtml(`${aggravateCount} aggravating`)}</span>
+        </div>
+      </div>
+      <article class="continuation-root">
+        <p>${escapeHtml("The ledger turns the current state’s pressure into readable duties. Each row says why that duty exists now, then grades the focused or pinned move against it.")}</p>
+        <div class="chip-row">
+          <span class="pill">${escapeHtml("current state pressure comes from suspension, cadence, motion memory, and the top-ranked local field")}</span>
+          <span class="pill">${escapeHtml("focused move verdict stays synchronized with hover and pin state")}</span>
+        </div>
+      </article>
+      <div class="obligation-ledger-grid">
+        ${entries.map((entry, index) => `
+          <article class="obligation-ledger-card is-${entry.tone} is-${entry.status}" data-obligation-ledger-card="${index}" data-obligation-status="${entry.status}">
+            <div class="obligation-ledger-card-head">
+              <div>
+                <p class="eyebrow">${escapeHtml(entry.sourceLabel)}</p>
+                <h4>${escapeHtml(entry.label)}</h4>
+              </div>
+              <div class="pill-list">
+                <span class="status-pill ${entry.tone === "critical" ? "is-snapshot" : entry.tone === "caution" ? "is-muted" : "is-live"}">${escapeHtml(humanizeCounterpointLabel(entry.tone))}</span>
+                <span class="status-pill ${entry.status === "aggravates" ? "is-snapshot" : entry.status === "delays" ? "is-muted" : "is-live"}">${escapeHtml(humanizeCounterpointLabel(entry.status === "resolves" ? "resolves" : entry.status))}</span>
+              </div>
+            </div>
+            <p class="obligation-ledger-pressure">${escapeHtml(entry.pressureText)}</p>
+            <div class="obligation-ledger-meter" aria-hidden="true">
+              <span style="width:${(entry.supportRatio * 100).toFixed(1)}%"></span>
+            </div>
+            <p class="obligation-ledger-verdict">${escapeHtml(entry.verdict)}</p>
+            <div class="chip-row">
+              ${entry.tags.map((tag) => `<span class="pill">${escapeHtml(tag)}</span>`).join("")}
+            </div>
+          </article>
+        `).join("")}
+      </div>
+    </div>
+  `;
+
+  return {
+    entryCount: entries.length,
+    criticalEntryCount: entries.filter((entry) => entry.tone === "critical").length,
+    focusedSupportCount: supportCount,
+    focusedDelayCount: delayCount,
+    focusedAggravateCount: aggravateCount,
+    warningEntryCount: entries.filter((entry) => entry.tone === "critical" || entry.tone === "caution").length,
+    focusedSignature,
+    statusLabels: entries.map((entry) => entry.status),
+    entryLabels: entries.map((entry) => entry.label),
+  };
+}
+
 function renderMidiContinuationLadder(host, arena, rootSuggestion, continuationSuggestions, context, options = {}) {
   const empty = {
     rootLabel: "",
@@ -4329,6 +4651,14 @@ function renderMidiScene() {
       : [];
     const cadenceGardenGroups = buildCadenceGardenGroups(continuationPaths);
     const consensusAtlasEntries = buildConsensusAtlasEntries(arena, historyBundle, context, profile, focusedSuggestion);
+    const obligationLedgerEntries = buildObligationLedgerEntries(
+      currentVoicedState,
+      currentMotionAnalysis,
+      cadenceDestinations,
+      suspensionMachine,
+      suggestions,
+      focusedSuggestion,
+    );
     const profileOrchardEntries = focusedSuggestion
       ? buildProfileOrchardEntries(arena, historyFrames, focusedSuggestion, context, profile)
       : [];
@@ -4385,6 +4715,12 @@ function renderMidiScene() {
         activeProfileIndex: profile,
         focusedSignature: focusedSuggestion?.notes?.join(",") || "",
       },
+    );
+    const midiObligationLedgerFeatures = renderMidiObligationLedger(
+      midiObligationLedgerEl,
+      obligationLedgerEntries,
+      focusedSuggestion,
+      profileLabel,
     );
     const midiContinuationLadderFeatures = renderMidiContinuationLadder(
       midiContinuationLadderEl,
@@ -4642,6 +4978,7 @@ function renderMidiScene() {
       focusedSuggestionName: focusedSuggestion?.noteNames?.join(" · ") || "",
       midiInspectorFeatures,
       midiConsensusAtlasFeatures,
+      midiObligationLedgerFeatures,
       midiContinuationLadderFeatures,
       midiPathWeaverFeatures,
       midiCadenceGardenFeatures,
