@@ -11,14 +11,12 @@ Evaluate the `0.1.0-rc.1` state against the stable release bar, decide whether a
 
 ## Remaining Work
 
-- execute the post-`0087` reviewer sweep on the actual shipped tree
-- record a real go / no-go decision for `0.1.0`
-- if the bar is met, promote release metadata from RC to stable
-- if the bar is not met, cut `0.1.0-rc.2` honestly instead of pretending the stable decision was already made
+- execute `0115` to promote the release metadata and handoff from `0.1.0-rc.1` to stable `0.1.0`
+- close `0086` once the promotion lane is complete
 
 ## Detailed Execution Order
 
-1. `0114` — stable review sweep and release decision
+1. completed `0114` — stable review sweep and release decision
 2. `0115` — stable `0.1.0` promotion and tag handoff
 3. close `0086`
 

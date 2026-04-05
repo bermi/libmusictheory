@@ -3,7 +3,7 @@
 > Dependencies: 0113, 0086
 > Follow-up: 0115
 
-Status: In progress
+Status: Completed
 
 ## Summary
 
@@ -42,3 +42,13 @@ Before implementation:
 - a documented go / no-go decision exists for `0.1.0`
 - the remaining delta to the chosen release target is explicit
 - `./verify.sh` passes
+
+
+## Verification Commands
+
+- `./verify.sh`
+- `./scripts/release_smoke.sh`
+
+## Implementation History (Point-in-Time)
+
+- `8c4ce3d` (2026-04-05) — added `/Users/bermi/code/libmusictheory/docs/release/stable-review-decision.md`, recorded an explicit go decision for stable `0.1.0`, updated the release checklist to include the decision record, and added `0114` guardrails so a completed review cannot leave the decision pending or disagree with the current RC-vs-stable metadata lane. Completion gates: `./verify.sh`, `./scripts/release_smoke.sh`.

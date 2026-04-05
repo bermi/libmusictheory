@@ -21,16 +21,15 @@ Promote `0.1.0-rc.1` to a stable `0.1.0` release only after the remaining RC rev
 
 The remaining execution lane is now narrow and explicit:
 
-1. run the stable reviewer sweep and make a go / no-go decision under `0086`
-2. either promote to `0.1.0` or honestly cut `0.1.0-rc.2`
-3. close `0086` after the decision and promotion lane is complete
-4. close the master plan after `0086` is completed
+1. complete `0115` and promote the current tree from `0.1.0-rc.1` to stable `0.1.0`
+2. close `0086` after the promotion lane is complete
+3. close the master plan after `0086` is completed
 
 ## Detailed Execution Order
 
 ### Stable Decision And Promotion
 
-1. `0114` — stable reviewer sweep and release decision
+1. completed `0114` — stable reviewer sweep and release decision
 2. `0115` — stable `0.1.0` promotion and tag handoff
 3. close `0086`
 
