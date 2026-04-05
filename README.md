@@ -85,6 +85,22 @@ Return-value rules are explicit:
   - Do not treat it as thread-safe shared state.
 - Core theory algorithms are written to avoid allocation-heavy embedding patterns. For consumers, the safe assumption is that all durable output memory is owned by the caller.
 
+## Recommended Clone-To-Review Path
+
+If you want one obvious path from clone to confidence, use this order:
+
+1. `./verify.sh`
+2. `./zigw build wasm-docs`
+3. `./zigw build wasm-gallery`
+
+Interpretation:
+
+- `./verify.sh` is the source-of-truth gate for the repo
+- `wasm-docs` is the stable browser contract demonstration
+- `wasm-gallery` is a supported standalone example surface that uses stable public SVG APIs plus experimental counterpoint and bitmap helpers
+
+On macOS arm64, use `/Users/bermi/code/libmusictheory/zigw` instead of a raw `zig` binary. The wrapper pins a working Zig `0.15.x` toolchain for this repo and avoids the host-side `zig build` linker failure that affects this machine.
+
 ## Quickstart (C ABI)
 
 Build the native artifacts:
@@ -154,6 +170,8 @@ The stable Zig-facing namespaces are the core theory and rendering modules expor
 
 The public browser-facing entries today are the standalone docs bundle and the standalone gallery bundle.
 
+Start with the docs bundle if you want the stable browser contract demonstration. Use the gallery when you want the supported exploratory/example surface.
+
 ```bash
 cd /Users/bermi/code/libmusictheory
 ./zigw build wasm-docs
@@ -162,16 +180,17 @@ python3 -m http.server --directory /Users/bermi/code/libmusictheory/zig-out/wasm
 
 Open [http://localhost:8001/index.html](http://localhost:8001/index.html).
 
-For a single-image QA atlas covering the public image-producing docs methods as direct library RGBA bitmaps:
+For a single-image QA atlas covering the stable public image methods rendered by the docs bundle:
 
 ```bash
 cd /Users/bermi/code/libmusictheory
+./zigw build wasm-docs
 python3 -m http.server --directory /Users/bermi/code/libmusictheory/zig-out/wasm-docs 8001
 ```
 
 Open [http://localhost:8001/qa-atlas.html](http://localhost:8001/qa-atlas.html).
 
-For the standalone gallery bundle, which uses the stable public SVG APIs plus experimental counterpoint and bitmap helpers:
+For the standalone gallery bundle, which is a supported standalone example surface and uses stable public SVG APIs plus experimental counterpoint and bitmap helpers:
 
 ```bash
 cd /Users/bermi/code/libmusictheory
@@ -198,8 +217,6 @@ These scenes are driven by the authored preset manifest at `/Users/bermi/code/li
 For the live MIDI scene, run the gallery in a Chromium-family browser with Web MIDI enabled on `localhost` or `https:`. Sustain (`CC64`) is tracked as sounding state, the selected tonic/mode drives spelling quality and next-step suggestion ranking through experimental library helpers, and middle pedal / sostenuto (`CC66`) stores clickable snapshots that restore both notes and context. The gallery also exposes a global preview-mode toggle so every large visualization can switch between SVG large vector previews and direct RGBA bitmap previews rendered by the library itself.
 
 The gallery bundle is a supported standalone example surface, but its live counterpoint engine and direct bitmap preview helpers are still experimental APIs rather than the stable embedding contract.
-
-On macOS arm64, use `/Users/bermi/code/libmusictheory/zigw` instead of a raw `zig` binary. The wrapper pins a working Zig `0.15.x` toolchain for this repo and avoids the host-side `zig build` linker failure that affects this machine.
 
 ## Release Readiness
 

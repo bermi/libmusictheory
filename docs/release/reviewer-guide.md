@@ -6,6 +6,15 @@ This guide is for local review of the standalone `libmusictheory` release candid
 
 Read `/Users/bermi/code/libmusictheory/docs/release/stability-matrix.md` first. It is the authoritative stable / experimental / internal classification for release review.
 
+## Start Here
+
+1. Run `./verify.sh`.
+2. Run `./scripts/release_smoke.sh`.
+3. Review `wasm-docs` as the stable browser contract demonstration.
+4. Review `wasm-gallery` as the supported standalone example surface.
+
+This order keeps the stable signoff path clear before you spend time on the exploratory gallery surfaces.
+
 ## What To Review
 
 Review only the standalone surfaces:
@@ -49,6 +58,26 @@ Expected summary:
 - gallery bundle export and browser smoke succeed
 - gallery screenshot capture succeeds
 
+## Stable Docs Review
+
+Run:
+
+```bash
+cd /Users/bermi/code/libmusictheory
+./zigw build wasm-docs
+python3 -m http.server --directory /Users/bermi/code/libmusictheory/zig-out/wasm-docs 8001
+```
+
+Open [http://localhost:8001/index.html](http://localhost:8001/index.html).
+
+Review points:
+
+- the docs bundle loads without console/runtime errors
+- the docs page demonstrates the stable browser contract, not gallery-only experimental helpers
+- interactive public SVG examples render and remain legible
+- the QA atlas is reachable at [http://localhost:8001/qa-atlas.html](http://localhost:8001/qa-atlas.html) and shows direct PNGs encoded from RGBA buffers returned by the library
+- docs wording continues to point stable users to `/Users/bermi/code/libmusictheory/include/libmusictheory.h`, `/Users/bermi/code/libmusictheory/src/root.zig`, and `wasm-docs` before the gallery
+
 ## Gallery Review
 
 Run:
@@ -60,6 +89,8 @@ python3 -m http.server --directory /Users/bermi/code/libmusictheory/zig-out/wasm
 ```
 
 Open [http://localhost:8002/index.html](http://localhost:8002/index.html).
+
+Treat this as supported example review, not stable ABI signoff.
 
 Review points:
 
@@ -100,7 +131,7 @@ Inspect:
 - `/Users/bermi/code/libmusictheory/zig-out/wasm-docs-qa/qa-atlas.png`
 - `/Users/bermi/code/libmusictheory/zig-out/wasm-docs-qa/qa-atlas.json`
 
-The atlas is a single labeled image that lays out only the public image-producing docs methods, one row per method, as direct PNGs encoded from RGBA buffers returned by the library. It is not an SVG preview sheet. The current public set includes the `OPTIC/K` group diagram, the static evenness chart, the focused evenness field, and the multi-bar `lmt_svg_key_staff` row.
+The atlas is a single labeled image that lays out only the stable public image-producing docs methods, one row per method, as direct PNGs encoded from RGBA buffers returned by the library. It is not an SVG preview sheet. The current public set includes the `OPTIC/K` group diagram, the static evenness chart, the focused evenness field, and the multi-bar `lmt_svg_key_staff` row.
 
 ## Public API Review
 

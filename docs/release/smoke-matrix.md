@@ -2,6 +2,8 @@
 
 The standalone release smoke path verifies the public library surface without depending on local Harmonious reference data.
 
+Use `./verify.sh` when you want the full repo gate. Use `./scripts/release_smoke.sh` when you want only the standalone release path below.
+
 | Surface | Command | Expected Result |
 | --- | --- | --- |
 | Native build | `./zigw build` | native headers and libraries install to `zig-out/` |
@@ -13,6 +15,11 @@ The standalone release smoke path verifies the public library surface without de
 | Gallery export profile | `node scripts/check_wasm_exports.mjs --profile gallery --wasm zig-out/wasm-gallery/libmusictheory.wasm` | required gallery wasm exports present |
 | Gallery browser smoke | `node scripts/validate_wasm_gallery_playwright.mjs` | gallery scenes render successfully, including fake-MIDI validation of the live composer scene |
 | Gallery screenshot capture | `node scripts/capture_wasm_gallery_screenshots.mjs` | release-candidate screenshots and `captures.json` regenerate successfully, including `scene-midi.png` |
+
+Interpretation:
+
+- `wasm-docs` is the stable browser contract demonstration
+- `wasm-gallery` is a supported standalone example surface reviewed for bundle quality and regression safety
 
 ## Summary Signal
 

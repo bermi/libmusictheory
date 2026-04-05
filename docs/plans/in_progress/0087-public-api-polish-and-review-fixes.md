@@ -20,16 +20,14 @@ Address the remaining small public-surface rough edges discovered during RC revi
 
 ## Remaining Work
 
-- inventory the real stable contract and enforce it consistently
 - clean up quickstarts, examples, and reviewer-facing docs around that contract
 - resolve the remaining public image parity / review claims so the stable cut is honest about what is fully guaranteed and what remains experimental
 
 ## Detailed Execution Order
 
-1. `0111` — public stable contract audit and enforcement
-2. `0112` — public docs, quickstarts, and example boundary
-3. `0113` — public image review and parity closure
-4. close `0087`
+1. `0112` — public docs, quickstarts, and example boundary
+2. `0113` — public image review and parity closure
+3. close `0087`
 
 ## Remaining Candidate Scope
 

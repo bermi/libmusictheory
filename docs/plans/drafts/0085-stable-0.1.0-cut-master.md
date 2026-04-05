@@ -30,10 +30,9 @@ The remaining execution lane is now narrow and explicit:
 
 ### Public-Surface Closure
 
-1. `0111` — public stable contract audit and enforcement
-2. `0112` — public docs, quickstarts, and example boundary cleanup
-3. `0113` — public image review and parity closure
-4. close `0087`
+1. `0112` — public docs, quickstarts, and example boundary cleanup
+2. `0113` — public image review and parity closure
+3. close `0087`
 
 ### Stable Decision And Promotion
 
@@ -60,7 +59,6 @@ Review `0.1.0-rc.1`, collect any explicit deltas required for a stable cut, and 
 
 Detailed child plans:
 
-- `0111`
 - `0112`
 - `0113`
 

@@ -4,19 +4,24 @@
 
 The standalone release surface is composed of:
 
-- native install outputs from `zig build`
+- stable native install outputs from `./zigw build`
   - `zig-out/include/libmusictheory.h`
   - `zig-out/lib/*`
-- standalone docs bundle from `zig build wasm-docs`
+- stable browser contract demonstration from `./zigw build wasm-docs`
   - `zig-out/wasm-docs/index.html`
   - `zig-out/wasm-docs/libmusictheory.wasm`
   - `zig-out/wasm-docs/app.js`
   - `zig-out/wasm-docs/styles.css`
-- standalone gallery bundle from `zig build wasm-gallery`
+- supported standalone example surface from `./zigw build wasm-gallery`
   - `zig-out/wasm-gallery/index.html`
   - `zig-out/wasm-gallery/libmusictheory.wasm`
   - `zig-out/wasm-gallery/gallery.js`
   - `zig-out/wasm-gallery/styles.css`
+
+Interpretation:
+
+- `wasm-docs` demonstrates the stable browser-facing public contract
+- `wasm-gallery` is intentionally broader review material and may exercise experimental helpers called out in `/Users/bermi/code/libmusictheory/docs/release/stability-matrix.md`
 
 ## Reproducible Review Artifacts
 
