@@ -713,6 +713,32 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
           rowLabels: Array.from(host.querySelectorAll(".voice-duty-title h4"), (node) => (node.textContent || "").trim()).filter(Boolean),
         };
       })(),
+      midiRepairLabFeatures: (() => {
+        const host = document.querySelector("#midi-repair-lab");
+        if (!host) {
+          return {
+            rowCount: 0,
+            improvedRepairCount: 0,
+            improvedVoiceCount: 0,
+            warningReductionCount: 0,
+            targetHitCount: 0,
+            focusedSignature: "",
+            repairLabels: [],
+            voiceLabels: [],
+          };
+        }
+        const rows = Array.from(host.querySelectorAll("[data-repair-row]"));
+        return {
+          rowCount: rows.length,
+          improvedRepairCount: Number.parseInt(host.getAttribute("data-improved-repair-count") || "0", 10),
+          improvedVoiceCount: Number.parseInt(host.getAttribute("data-improved-voice-count") || "0", 10),
+          warningReductionCount: Number.parseInt(host.getAttribute("data-warning-reduction-count") || "0", 10),
+          targetHitCount: Number.parseInt(host.getAttribute("data-target-hit-count") || "0", 10),
+          focusedSignature: host.getAttribute("data-focused-signature") || window.__lmtGallerySummary?.scenes?.midi?.focusedSuggestionSignature || "",
+          repairLabels: Array.from(host.querySelectorAll("[data-repair-label]"), (node) => (node.textContent || "").trim()).filter(Boolean),
+          voiceLabels: rows.map((node) => (node.getAttribute("data-repair-voice-id") || "").trim()).filter(Boolean),
+        };
+      })(),
       previewKinds: (() => {
         const hostIds = ["midi-clock", "midi-optic-k", "midi-evenness", "midi-keyboard", "midi-staff", "midi-current-fret", "midi-focused-mini"];
         return Object.fromEntries(hostIds.map((id) => {
@@ -768,6 +794,7 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
     const midiResolutionThreaderFeatures = snapshot.summary?.midiResolutionThreaderFeatures ?? snapshot.midiResolutionThreaderFeatures;
     const midiObligationTimelineFeatures = snapshot.summary?.midiObligationTimelineFeatures ?? snapshot.midiObligationTimelineFeatures;
     const midiVoiceDutiesFeatures = snapshot.summary?.midiVoiceDutiesFeatures ?? snapshot.midiVoiceDutiesFeatures;
+    const midiRepairLabFeatures = snapshot.summary?.midiRepairLabFeatures ?? snapshot.midiRepairLabFeatures;
     const keyboardFeatures = snapshot.summary?.keyboardFeatures ?? snapshot.keyboardFeaturesFallback;
     if (
       snapshot.summary?.rendered === true
@@ -845,6 +872,11 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
       && midiVoiceDutiesFeatures.focusedNoteCount >= midiVoiceDutiesFeatures.rowCount
       && midiVoiceDutiesFeatures.focusedSignature.length > 0
       && midiVoiceDutiesFeatures.rowLabels.length >= 3
+      && midiRepairLabFeatures.rowCount >= 2
+      && midiRepairLabFeatures.improvedRepairCount >= 1
+      && midiRepairLabFeatures.improvedVoiceCount >= 1
+      && midiRepairLabFeatures.focusedSignature.length > 0
+      && midiRepairLabFeatures.repairLabels.length >= 2
       && midiOpticKFeatures.clockCount >= 2
       && midiOpticKFeatures.linkCount >= 1
       && midiOpticKFeatures.labelCount >= 5

@@ -157,6 +157,7 @@ async function main() {
       const midiActiveResolutionThreaderFeatures = midiActive.summary?.midiResolutionThreaderFeatures ?? midiActive.midiResolutionThreaderFeatures;
       const midiActiveObligationTimelineFeatures = midiActive.summary?.midiObligationTimelineFeatures ?? midiActive.midiObligationTimelineFeatures;
       const midiActiveVoiceDutiesFeatures = midiActive.summary?.midiVoiceDutiesFeatures ?? midiActive.midiVoiceDutiesFeatures;
+      const midiActiveRepairLabFeatures = midiActive.summary?.midiRepairLabFeatures ?? midiActive.midiRepairLabFeatures;
       if (
         midiActive.summary?.currentMiniMode !== "off"
         || midiActive.summary?.currentMiniRendered !== false
@@ -269,6 +270,15 @@ async function main() {
         || (midiActiveBraidFeatures?.strandCount || 0) < 1
       ) {
         throw new Error(`live midi scene did not render voice-leading horizon and braid correctly: ${JSON.stringify({ horizon: midiActiveHorizonFeatures, braid: midiActiveBraidFeatures })}`);
+      }
+      if (
+        (midiActiveRepairLabFeatures?.rowCount || 0) < 2
+        || (midiActiveRepairLabFeatures?.improvedRepairCount || 0) < 1
+        || (midiActiveRepairLabFeatures?.improvedVoiceCount || 0) < 1
+        || (midiActiveRepairLabFeatures?.repairLabels?.length || 0) < 2
+        || (midiActiveRepairLabFeatures?.focusedSignature || "") !== (midiActive.summary?.focusedSuggestionSignature || "")
+      ) {
+        throw new Error(`live midi scene did not render repair lab correctly: ${JSON.stringify(midiActiveRepairLabFeatures)}`);
       }
       if (
         (midiActive.summary?.suggestionCount || 0) < 2
@@ -421,6 +431,9 @@ async function main() {
           && (midi?.midiVoiceDutiesFeatures?.focusedSignature || "") === targetSignature
           && (midi?.midiVoiceDutiesFeatures?.rowCount || 0) >= 3
           && (midi?.midiVoiceDutiesFeatures?.activeDutyCount || 0) >= 1
+          && (midi?.midiRepairLabFeatures?.focusedSignature || "") === targetSignature
+          && (midi?.midiRepairLabFeatures?.rowCount || 0) >= 2
+          && (midi?.midiRepairLabFeatures?.improvedRepairCount || 0) >= 1
           && (midi?.midiConsensusAtlasFeatures?.highlightedClusterCount || 0) === 1
           && (midi?.midiConsensusAtlasFeatures?.clusterCount || 0) >= 2
           && (midi?.midiInspectorFeatures?.candidateNoteCount || 0) >= 1
@@ -458,6 +471,9 @@ async function main() {
           && (midi?.midiVoiceDutiesFeatures?.focusedSignature || "") === targetSignature
           && (midi?.midiVoiceDutiesFeatures?.rowCount || 0) >= 3
           && (midi?.midiVoiceDutiesFeatures?.activeDutyCount || 0) >= 1
+          && (midi?.midiRepairLabFeatures?.focusedSignature || "") === targetSignature
+          && (midi?.midiRepairLabFeatures?.rowCount || 0) >= 2
+          && (midi?.midiRepairLabFeatures?.improvedRepairCount || 0) >= 1
           && (midi?.midiConsensusAtlasFeatures?.highlightedClusterCount || 0) === 1
           && (midi?.midiInspectorFeatures?.reasonCount || 0) >= 1;
       }, {
@@ -478,7 +494,9 @@ async function main() {
           && (midi?.midiObligationLedgerFeatures?.focusedSignature || "") === targetSignature
           && (midi?.midiResolutionThreaderFeatures?.focusedSignature || "") === targetSignature
           && (midi?.midiObligationTimelineFeatures?.focusedSignature || "") === targetSignature
-          && (midi?.midiVoiceDutiesFeatures?.focusedSignature || "") === targetSignature;
+          && (midi?.midiVoiceDutiesFeatures?.focusedSignature || "") === targetSignature
+          && (midi?.midiRepairLabFeatures?.focusedSignature || "") === targetSignature
+          && (midi?.midiRepairLabFeatures?.rowCount || 0) >= 2;
       }, {
         targetIndex: hoverCandidateIndex,
         targetSignature: midiActive.summary?.suggestionSignatures?.[hoverCandidateIndex] || "",
@@ -499,7 +517,10 @@ async function main() {
           && (midi?.midiObligationLedgerFeatures?.focusedSignature || "") === (midi?.focusedSuggestionSignature || "")
           && (midi?.midiResolutionThreaderFeatures?.focusedSignature || "") === (midi?.focusedSuggestionSignature || "")
           && (midi?.midiObligationTimelineFeatures?.focusedSignature || "") === (midi?.focusedSuggestionSignature || "")
-          && (midi?.midiVoiceDutiesFeatures?.focusedSignature || "") === (midi?.focusedSuggestionSignature || "");
+          && (midi?.midiVoiceDutiesFeatures?.focusedSignature || "") === (midi?.focusedSuggestionSignature || "")
+          && (midi?.midiRepairLabFeatures?.focusedSignature || "") === (midi?.focusedSuggestionSignature || "")
+          && (midi?.midiRepairLabFeatures?.rowCount || 0) >= 2
+          && (midi?.midiRepairLabFeatures?.improvedRepairCount || 0) >= 1;
       }, { timeout: 30000 }).then((handle) => handle.jsonValue());
       traceStep("context-change");
       const defaultContext = await page.evaluate(() => ({
@@ -536,6 +557,9 @@ async function main() {
           && (midi.midiVoiceDutiesFeatures?.rowCount || 0) >= 3
           && (midi.midiVoiceDutiesFeatures?.activeDutyCount || 0) >= 1
           && (midi.midiVoiceDutiesFeatures?.focusedSignature || "") === (midi?.focusedSuggestionSignature || "")
+          && (midi.midiRepairLabFeatures?.rowCount || 0) >= 2
+          && (midi.midiRepairLabFeatures?.improvedRepairCount || 0) >= 1
+          && (midi.midiRepairLabFeatures?.focusedSignature || "") === (midi?.focusedSuggestionSignature || "")
           && (midi.midiHorizonFeatures?.candidateNodeCount || 0) >= 1
           && (midi.midiBraidFeatures?.candidateColumnCount || 0) >= 1
           && (midi.midiWeatherFeatures?.cellCount || 0) >= 2
@@ -573,6 +597,9 @@ async function main() {
           && (midi?.midiVoiceDutiesFeatures?.rowCount || 0) >= 3
           && (midi?.midiVoiceDutiesFeatures?.activeDutyCount || 0) >= 1
           && (midi?.midiVoiceDutiesFeatures?.focusedSignature || "") === (midi?.focusedSuggestionSignature || "")
+          && (midi?.midiRepairLabFeatures?.rowCount || 0) >= 2
+          && (midi?.midiRepairLabFeatures?.improvedRepairCount || 0) >= 1
+          && (midi?.midiRepairLabFeatures?.focusedSignature || "") === (midi?.focusedSuggestionSignature || "")
           && (midi?.midiHorizonFeatures?.candidateNodeCount || 0) >= 1
           && (midi?.midiBraidFeatures?.candidateColumnCount || 0) >= 1
           && (midi?.midiWeatherFeatures?.cellCount || 0) >= 2
@@ -603,6 +630,8 @@ async function main() {
           && (midi?.midiObligationTimelineFeatures?.historyColumnCount || 0) >= 2
           && (midi?.midiVoiceDutiesFeatures?.rowCount || 0) >= 3
           && (midi?.midiVoiceDutiesFeatures?.activeDutyCount || 0) >= 1
+          && (midi?.midiRepairLabFeatures?.rowCount || 0) >= 2
+          && (midi?.midiRepairLabFeatures?.improvedRepairCount || 0) >= 1
           && summary?.scenes?.set?.miniInstrumentMode === "piano"
           && summary?.scenes?.set?.miniRendered === true
           && summary?.scenes?.key?.miniRendered === true
@@ -636,6 +665,8 @@ async function main() {
           && (midi?.midiObligationTimelineFeatures?.historyColumnCount || 0) >= 2
           && (midi?.midiVoiceDutiesFeatures?.rowCount || 0) >= 3
           && (midi?.midiVoiceDutiesFeatures?.activeDutyCount || 0) >= 1
+          && (midi?.midiRepairLabFeatures?.rowCount || 0) >= 2
+          && (midi?.midiRepairLabFeatures?.improvedRepairCount || 0) >= 1
           && summary?.scenes?.set?.miniInstrumentMode === "fret"
           && summary?.scenes?.set?.miniRendered === true
           && summary?.scenes?.key?.miniRendered === true
@@ -782,6 +813,9 @@ async function main() {
           && (midi?.midiVoiceDutiesFeatures?.rowCount || 0) >= 3
           && (midi?.midiVoiceDutiesFeatures?.activeDutyCount || 0) >= 1
           && (midi?.midiVoiceDutiesFeatures?.focusedSignature || "") === (midi?.focusedSuggestionSignature || "")
+          && (midi?.midiRepairLabFeatures?.rowCount || 0) >= 2
+          && (midi?.midiRepairLabFeatures?.improvedRepairCount || 0) >= 1
+          && (midi?.midiRepairLabFeatures?.focusedSignature || "") === (midi?.focusedSuggestionSignature || "")
           && !!midi?.midiSuspensionMachineFeatures?.stateLabel
           && (midi?.midiOrbifoldRibbonFeatures?.candidateAnchorCount || 0) >= 1
           && (midi?.midiCommonToneConstellationFeatures?.retainedStarCount || 0) >= 1
@@ -805,6 +839,9 @@ async function main() {
           && (midi?.midiVoiceDutiesFeatures?.rowCount || 0) >= 3
           && (midi?.midiVoiceDutiesFeatures?.activeDutyCount || 0) >= 1
           && (midi?.midiVoiceDutiesFeatures?.focusedSignature || "") === (midi?.focusedSuggestionSignature || "")
+          && (midi?.midiRepairLabFeatures?.rowCount || 0) >= 2
+          && (midi?.midiRepairLabFeatures?.improvedRepairCount || 0) >= 1
+          && (midi?.midiRepairLabFeatures?.focusedSignature || "") === (midi?.focusedSuggestionSignature || "")
           && !!midi?.midiSuspensionMachineFeatures?.stateLabel
           && (midi?.midiOrbifoldRibbonFeatures?.candidateAnchorCount || 0) >= 1
           && (midi?.midiCommonToneConstellationFeatures?.retainedStarCount || 0) >= 1;

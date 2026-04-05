@@ -212,6 +212,7 @@ const midiObligationLedgerEl = document.getElementById("midi-obligation-ledger")
 const midiResolutionThreaderEl = document.getElementById("midi-resolution-threader");
 const midiObligationTimelineEl = document.getElementById("midi-obligation-timeline");
 const midiVoiceDutiesEl = document.getElementById("midi-voice-duties");
+const midiRepairLabEl = document.getElementById("midi-repair-lab");
 const midiContinuationLadderEl = document.getElementById("midi-continuation-ladder");
 const midiPathWeaverEl = document.getElementById("midi-path-weaver");
 const midiCadenceGardenEl = document.getElementById("midi-cadence-garden");
@@ -3521,8 +3522,310 @@ function buildVoiceDutyRows(currentState, previousState, focusedCandidateState, 
       voiceLabel: `V${voice.id} · ${voiceRegisterRole(index, orderedVoices.length)}`,
       voiceColor: voiceColor(voice.id),
       currentRoleIndex: index,
+      previousMidi: previousVoice?.midi ?? null,
     };
   });
+}
+
+function counterpointStatusRank(status) {
+  switch (status) {
+    case "resolves":
+      return 4;
+    case "supports":
+      return 3;
+    case "delays":
+      return 2;
+    case "open":
+    case "neutral":
+      return 1;
+    case "aggravates":
+      return 0;
+    default:
+      return 1;
+  }
+}
+
+function voiceRepairKindLabel(kind) {
+  switch (kind) {
+    case "resolve-duty":
+      return "answer the duty";
+    case "restore-line":
+      return "restore the line";
+    case "context-step":
+      return "step inside context";
+    default:
+      return "local repair";
+  }
+}
+
+function findContextStepRepairTarget(row, focusedVoice, occupiedMidis, context) {
+  const sourceMidi = focusedVoice?.midi ?? row.currentMidi;
+  if (!Number.isFinite(sourceMidi)) return null;
+  const targetSign = Number.isFinite(row.targetMidi) ? Math.sign(row.targetMidi - sourceMidi) : 0;
+  const directions = targetSign === 0 ? [-1, 1] : [targetSign, -targetSign];
+  let best = null;
+  for (let radius = 1; radius <= 7; radius += 1) {
+    for (const direction of directions) {
+      const midi = clamp(sourceMidi + direction * radius, 24, 96);
+      if (midi === sourceMidi || occupiedMidis.has(midi)) continue;
+      const pc = ((midi % 12) + 12) % 12;
+      if (((context.setValue >> pc) & 1) === 0) continue;
+      const targetBias = Number.isFinite(row.targetMidi) ? Math.abs(midi - row.targetMidi) * 0.15 : 0;
+      const currentBias = Math.abs(midi - row.currentMidi) * 0.05;
+      const score = radius + targetBias + currentBias;
+      if (!best || score < best.score) best = { midi, score };
+    }
+  }
+  return best?.midi ?? null;
+}
+
+function buildRepairTargetsForVoice(row, focusedVoice, context, occupiedMidis) {
+  const targets = [];
+  const focusedMidi = focusedVoice?.midi ?? null;
+  const pushTarget = (midi, kind) => {
+    if (!Number.isFinite(midi)) return;
+    const bounded = clamp(midi, 24, 96);
+    if (bounded === focusedMidi || occupiedMidis.has(bounded)) return;
+    if (targets.some((entry) => entry.targetMidi === bounded)) return;
+    targets.push({ targetMidi: bounded, kind });
+  };
+
+  if (Number.isFinite(row.targetMidi)) pushTarget(row.targetMidi, "resolve-duty");
+  if (Number.isFinite(row.currentMidi) && row.currentMidi !== focusedMidi) pushTarget(row.currentMidi, "restore-line");
+  pushTarget(findContextStepRepairTarget(row, focusedVoice, occupiedMidis, context), "context-step");
+  return targets.slice(0, 3);
+}
+
+function buildRepairVariantNotes(focusedCandidateState, voiceId, targetMidi) {
+  if (!focusedCandidateState || !Array.isArray(focusedCandidateState.voices) || !Number.isFinite(targetMidi)) return null;
+  const nextVoices = focusedCandidateState.voices.map((voice) => (
+    voice.id === voiceId
+      ? { ...voice, midi: targetMidi, pitchClass: ((targetMidi % 12) + 12) % 12 }
+      : voice
+  ));
+  if (!nextVoices.some((voice) => voice.id === voiceId)) return null;
+  const midiCounts = new Map();
+  for (const voice of nextVoices) {
+    midiCounts.set(voice.midi, (midiCounts.get(voice.midi) || 0) + 1);
+  }
+  if ([...midiCounts.values()].some((count) => count > 1)) return null;
+  const notes = nextVoices.map((voice) => voice.midi).sort((a, b) => a - b);
+  if (noteSignature({ notes }) === noteSignature({ notes: focusedCandidateState.voices.map((voice) => voice.midi).sort((a, b) => a - b) })) {
+    return null;
+  }
+  return notes;
+}
+
+function buildRepairSummaryBits(repair, row) {
+  const bits = [];
+  if (repair.targetHit && row.targetLabel) bits.push(`hits ${row.targetLabel}`);
+  else if (repair.restoreCurrent) bits.push(`restores ${row.currentLabel}`);
+  if (repair.warningDelta > 0) bits.push(`drops ${repair.warningDelta} warning${repair.warningDelta === 1 ? "" : "s"}`);
+  if (repair.commonToneDelta > 0) bits.push(`keeps ${repair.commonToneDelta} more common tone${repair.commonToneDelta === 1 ? "" : "s"}`);
+  if (repair.spacingImproved) bits.push("tightens spacing");
+  if (repair.leapImproved) bits.push("eases leap strain");
+  if (repair.scoreDelta > 0) bits.push(`score +${repair.scoreDelta}`);
+  if (bits.length === 0 && repair.suggestion.reasonNames.length > 0) bits.push(shortReasonLabel(repair.suggestion.reasonNames[0]));
+  if (bits.length === 0) bits.push(repair.statusClass === "tradeoff" ? "helps one duty, costs another" : "clean local repair");
+  return bits.slice(0, 3);
+}
+
+function buildRepairLabEntries(arena, historyBundle, currentState, focusedSuggestion, focusedCandidateState, voiceDutyRows, context, profile, rankedSuggestions, suspensionMachine) {
+  if (!historyBundle || !currentState || !focusedSuggestion || !focusedCandidateState || !Array.isArray(voiceDutyRows) || voiceDutyRows.length === 0) {
+    return [];
+  }
+
+  const focusedScore = focusedSuggestion.score || 0;
+  const focusedWarningCount = focusedSuggestion.warningNames?.length || 0;
+  const focusedCommonTones = focusedSuggestion.motion?.commonToneCount || 0;
+  const focusedSpacingPenalty = focusedSuggestion.evaluation?.spacingPenalty || 0;
+  const focusedLeapPenalty = focusedSuggestion.evaluation?.leapPenalty || 0;
+  const baseStatusRank = new Map(voiceDutyRows.map((row) => [row.voiceId, counterpointStatusRank(row.status)]));
+  const seenSignatures = new Set();
+  const entries = [];
+  const nextStepIndex = (currentState.stateIndex || 0) + 1;
+
+  for (const row of voiceDutyRows) {
+    const focusedVoice = focusedCandidateState.voices.find((voice) => voice.id === row.voiceId) || null;
+    if (!focusedVoice) continue;
+    const occupiedMidis = new Set(focusedCandidateState.voices.filter((voice) => voice.id !== row.voiceId).map((voice) => voice.midi));
+    const targets = buildRepairTargetsForVoice(row, focusedVoice, context, occupiedMidis);
+    let bestEntry = null;
+
+    for (const target of targets) {
+      const variantNotes = buildRepairVariantNotes(focusedCandidateState, row.voiceId, target.targetMidi);
+      if (!variantNotes) continue;
+      const signature = variantNotes.join(",");
+      if (seenSignatures.has(signature)) continue;
+      const actual = buildActualSuggestionFromFrame(
+        arena,
+        historyBundle,
+        {
+          notes: variantNotes,
+          sustained: [],
+          stepIndex: nextStepIndex,
+        },
+        context,
+        profile,
+        rankedSuggestions,
+      );
+      const suggestion = actual.suggestion;
+      if (!suggestion) continue;
+
+      const repairedVoice = {
+        id: row.voiceId,
+        midi: target.targetMidi,
+        pitchClass: ((target.targetMidi % 12) + 12) % 12,
+      };
+      const previousVoice = Number.isFinite(row.previousMidi)
+        ? { id: row.voiceId, midi: row.previousMidi, pitchClass: ((row.previousMidi % 12) + 12) % 12 }
+        : null;
+      const currentVoice = { id: row.voiceId, midi: row.currentMidi, pitchClass: ((row.currentMidi % 12) + 12) % 12 };
+      const dutyOutcome = deriveVoiceDuty(currentVoice, previousVoice, repairedVoice, context, suspensionMachine);
+      const warningDelta = focusedWarningCount - (suggestion.warningNames?.length || 0);
+      const commonToneDelta = (suggestion.motion?.commonToneCount || 0) - focusedCommonTones;
+      const spacingImproved = (suggestion.evaluation?.spacingPenalty || 0) < focusedSpacingPenalty;
+      const leapImproved = (suggestion.evaluation?.leapPenalty || 0) < focusedLeapPenalty;
+      const scoreDelta = (suggestion.score || 0) - focusedScore;
+      const targetHit = Number.isFinite(row.targetMidi) && target.targetMidi === row.targetMidi;
+      const restoreCurrent = target.targetMidi === row.currentMidi;
+      const statusDelta = counterpointStatusRank(dutyOutcome.status) - (baseStatusRank.get(row.voiceId) || 0);
+      const improves = statusDelta > 0 || warningDelta > 0 || spacingImproved || leapImproved || scoreDelta > 0;
+      const tradeoff = !improves && (warningDelta < 0 || statusDelta < 0 || scoreDelta < 0);
+      const repairScore = statusDelta * 9
+        + warningDelta * 6
+        + commonToneDelta * 2
+        + (spacingImproved ? 2 : 0)
+        + (leapImproved ? 2 : 0)
+        + (targetHit ? 3 : 0)
+        + (restoreCurrent ? 1 : 0)
+        + scoreDelta * 0.25;
+      const entry = {
+        voiceId: row.voiceId,
+        voiceLabel: row.voiceLabel,
+        voiceColor: row.voiceColor,
+        kind: target.kind,
+        kindLabel: voiceRepairKindLabel(target.kind),
+        targetMidi: target.targetMidi,
+        targetLabel: midiName(target.targetMidi, context.tonic, context.quality),
+        suggestion,
+        verdict: dutyOutcome.verdict,
+        dutyLabel: row.dutyLabel,
+        sourceLabel: `${row.currentLabel} → ${midiName(target.targetMidi, context.tonic, context.quality)}`,
+        statusClass: tradeoff ? "tradeoff" : (improves ? "improves" : "sidegrade"),
+        warningDelta,
+        commonToneDelta,
+        spacingImproved,
+        leapImproved,
+        scoreDelta,
+        targetHit,
+        restoreCurrent,
+        repairScore,
+        signature,
+      };
+      entry.summaryBits = buildRepairSummaryBits(entry, row);
+      if (!bestEntry || entry.repairScore > bestEntry.repairScore) bestEntry = entry;
+    }
+
+    if (bestEntry) {
+      seenSignatures.add(bestEntry.signature);
+      entries.push(bestEntry);
+    }
+  }
+
+  return entries
+    .sort((left, right) => right.repairScore - left.repairScore || left.voiceId - right.voiceId)
+    .slice(0, 4);
+}
+
+function renderMidiRepairLab(host, repairs, focusedSuggestion) {
+  const empty = {
+    rowCount: 0,
+    improvedRepairCount: 0,
+    improvedVoiceCount: 0,
+    warningReductionCount: 0,
+    targetHitCount: 0,
+    focusedSignature: "",
+    repairLabels: [],
+    voiceLabels: [],
+  };
+  if (!host) return empty;
+  if (!focusedSuggestion) {
+    host.innerHTML = `<div class="output-block continuation-empty">Focus or pin a ranked move to see the smallest per-voice edits that would improve it without throwing the move away.</div>`;
+    return empty;
+  }
+  if (!Array.isArray(repairs) || repairs.length === 0) {
+    host.innerHTML = `<div class="output-block continuation-empty">No small one-voice repairs are available yet for the focused move. Try a different candidate, context, or profile.</div>`;
+    return empty;
+  }
+
+  const focusedSignature = noteSignature(focusedSuggestion);
+  const improvedRepairs = repairs.filter((repair) => repair.statusClass === "improves");
+  const warningReductionCount = repairs.filter((repair) => repair.warningDelta > 0).length;
+  const targetHitCount = repairs.filter((repair) => repair.targetHit).length;
+  host.dataset.focusedSignature = focusedSignature;
+  host.dataset.improvedRepairCount = String(improvedRepairs.length);
+  host.dataset.improvedVoiceCount = String(new Set(improvedRepairs.map((repair) => repair.voiceId)).size);
+  host.dataset.warningReductionCount = String(warningReductionCount);
+  host.dataset.targetHitCount = String(targetHitCount);
+
+  host.innerHTML = `
+    <div class="repair-lab-shell">
+      <div class="continuation-head">
+        <div>
+          <p class="eyebrow">Smallest fixes for the focused move</p>
+          <h4>Repair Lab</h4>
+        </div>
+        <div class="pill-list">
+          <span class="status-pill is-live">${escapeHtml(`${improvedRepairs.length} improving`)}</span>
+          <span class="status-pill ${warningReductionCount > 0 ? "is-live" : "is-muted"}">${escapeHtml(`${warningReductionCount} warning drops`)}</span>
+        </div>
+      </div>
+      <article class="continuation-root">
+        <p>${escapeHtml("Each row keeps the focused move recognizable, changes one persistent voice, and re-evaluates the result through the same counterpoint path used for the ranked field.")}</p>
+        <div class="repair-lab-chip-row">
+          <span class="pill">${escapeHtml("one persistent voice changes at a time")}</span>
+          <span class="pill">${escapeHtml("repairs stay synchronized with hover, pin, context, profile, and snapshots")}</span>
+        </div>
+      </article>
+      <div class="repair-lab-grid">
+        ${repairs.map((repair, index) => `
+          <article class="repair-lab-card${repair.statusClass === "improves" ? " is-improves" : repair.statusClass === "tradeoff" ? " is-tradeoff" : ""}" data-repair-row="${index}" data-repair-status="${repair.statusClass}" data-repair-voice-id="${repair.voiceId}" data-repair-warning-improved="${repair.warningDelta > 0 ? "true" : "false"}">
+            <div class="repair-lab-card-head">
+              <div class="voice-duty-title">
+                <span class="voice-duty-swatch" style="background:${escapeHtml(repair.voiceColor)}"></span>
+                <div>
+                  <p class="eyebrow">${escapeHtml(`voice ${repair.voiceId}`)}</p>
+                  <h4 data-repair-label="${escapeHtml(repair.voiceLabel)}">${escapeHtml(repair.voiceLabel)}</h4>
+                </div>
+              </div>
+              <div class="pill-list">
+                <span class="status-pill is-muted">${escapeHtml(repair.kindLabel)}</span>
+                <span class="status-pill ${repair.statusClass === "tradeoff" ? "is-snapshot" : repair.statusClass === "improves" ? "is-live" : "is-muted"}">${escapeHtml(humanizeCounterpointLabel(repair.statusClass))}</span>
+              </div>
+            </div>
+            <strong>${escapeHtml(repair.sourceLabel)}</strong>
+            <p class="repair-lab-meta">${escapeHtml(repair.dutyLabel)} · ${escapeHtml(repair.suggestion.noteNames.join(" · "))}</p>
+            <p class="repair-lab-verdict">${escapeHtml(repair.verdict)}</p>
+            <div class="repair-lab-chip-row">
+              ${repair.summaryBits.map((bit) => `<span class="pill">${escapeHtml(bit)}</span>`).join("")}
+            </div>
+          </article>
+        `).join("")}
+      </div>
+    </div>
+  `;
+
+  return {
+    rowCount: repairs.length,
+    improvedRepairCount: improvedRepairs.length,
+    improvedVoiceCount: new Set(improvedRepairs.map((repair) => repair.voiceId)).size,
+    warningReductionCount,
+    targetHitCount,
+    focusedSignature,
+    repairLabels: repairs.map((repair) => repair.sourceLabel),
+    voiceLabels: repairs.map((repair) => repair.voiceLabel),
+  };
 }
 
 function renderMidiVoiceDuties(host, currentState, previousState, focusedCandidateState, context, suspensionMachine, focusedSuggestion) {
@@ -5355,6 +5658,13 @@ function renderMidiScene() {
       suggestions,
       focusedSuggestion,
     );
+    const voiceDutyRows = buildVoiceDutyRows(
+      currentVoicedState,
+      previousVoicedState,
+      focusedCandidateState,
+      context,
+      suspensionMachine,
+    );
     const profileOrchardEntries = focusedSuggestion
       ? buildProfileOrchardEntries(arena, historyFrames, focusedSuggestion, context, profile)
       : [];
@@ -5442,6 +5752,23 @@ function renderMidiScene() {
       focusedCandidateState,
       context,
       suspensionMachine,
+      focusedSuggestion,
+    );
+    const repairLabEntries = buildRepairLabEntries(
+      arena,
+      historyBundle,
+      currentVoicedState,
+      focusedSuggestion,
+      focusedCandidateState,
+      voiceDutyRows,
+      context,
+      profile,
+      suggestions,
+      suspensionMachine,
+    );
+    const midiRepairLabFeatures = renderMidiRepairLab(
+      midiRepairLabEl,
+      repairLabEntries,
       focusedSuggestion,
     );
     const midiContinuationLadderFeatures = renderMidiContinuationLadder(
@@ -5704,6 +6031,7 @@ function renderMidiScene() {
       midiResolutionThreaderFeatures,
       midiObligationTimelineFeatures,
       midiVoiceDutiesFeatures,
+      midiRepairLabFeatures,
       midiContinuationLadderFeatures,
       midiPathWeaverFeatures,
       midiCadenceGardenFeatures,

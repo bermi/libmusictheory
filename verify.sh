@@ -261,6 +261,11 @@ if [ -f "$ROOT_DIR/docs/plans/in_progress/0108-counterpoint-voice-duties.md" ] |
     check_cmd "cd '$ROOT_DIR' && rg -n 'midiVoiceDutiesFeatures|activeDutyCount|resolveCount|aggravateCount|suspensionVoiceCount|leadingToneVoiceCount|leapRecoveryCount|currentNoteCount|focusedNoteCount|focusedSignature|rowLabels' examples/wasm-gallery/gallery.js scripts/lib/wasm_gallery_playwright_common.mjs scripts/validate_wasm_gallery_playwright.mjs >/dev/null" "0108 voice duties guardrail (summary and playwright prove per-voice duties, synchronized focus, and non-neutral seeded rows)"
 fi
 
+if [ -f "$ROOT_DIR/docs/plans/in_progress/0109-counterpoint-repair-lab.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0109-counterpoint-repair-lab.md" ]; then
+    check_cmd "cd '$ROOT_DIR' && rg -n 'midi-repair-lab|renderMidiRepairLab|buildRepairLabEntries|buildRepairTargetsForVoice|Repair Lab|data-repair-status|data-repair-label' examples/wasm-gallery/index.html examples/wasm-gallery/gallery.js examples/wasm-gallery/styles.css scripts/validate_wasm_gallery_playwright.mjs >/dev/null" "0109 repair lab guardrail (gallery host, runtime hooks, styles, and validation wiring are present)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'midiRepairLabFeatures|improvedRepairCount|improvedVoiceCount|warningReductionCount|targetHitCount|focusedSignature|repairLabels|voiceLabels' examples/wasm-gallery/gallery.js scripts/lib/wasm_gallery_playwright_common.mjs scripts/validate_wasm_gallery_playwright.mjs >/dev/null" "0109 repair lab guardrail (summary and playwright prove multiple synchronized repair candidates and concrete per-voice improvements)"
+fi
+
 if [ -f "$ROOT_DIR/scripts/release_smoke.sh" ]; then
     check_cmd "cd '$ROOT_DIR' && test -x scripts/release_smoke.sh" "0078 release smoke guardrail (script is executable)"
     check_cmd "cd '$ROOT_DIR' && ! rg -n 'tmp/harmoniousapp\\.net|validate_harmonious_|wasm-demo|wasm-scaled-render-parity|wasm-native-rgba-proof|wasm-harmonious-spa' scripts/release_smoke.sh" "0078 release smoke guardrail (script stays on standalone surfaces and does not depend on local harmonious data)"
