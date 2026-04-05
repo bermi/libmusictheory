@@ -3,7 +3,7 @@
 > Dependencies: 0111, 0112, 0087
 > Follow-up: 0114
 
-Status: In progress
+Status: Completed
 
 ## Summary
 
@@ -45,3 +45,13 @@ Before implementation:
 - stable surfaces have the corresponding verification bar
 - experimental surfaces remain available but explicitly non-stable
 - `./verify.sh` passes
+
+
+## Verification Commands
+
+- `./verify.sh`
+- `./zigw build verify`
+
+## Implementation History (Point-in-Time)
+
+- `848104c` (2026-04-05) — added `/Users/bermi/code/libmusictheory/docs/release/image-review-matrix.md`, aligned the README / reviewer guide / checklist / stability matrix with the actual `0.005` docs QA and `0.07` gallery preview thresholds, and added `0113` guardrails so release docs cannot overstate bitmap parity beyond what verification proves. Completion gates: `./verify.sh`, `./zigw build verify`.

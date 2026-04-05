@@ -21,17 +21,12 @@ Promote `0.1.0-rc.1` to a stable `0.1.0` release only after the remaining RC rev
 
 The remaining execution lane is now narrow and explicit:
 
-1. finish the public-surface closeout under `0087`
-2. run the stable reviewer sweep and make a go / no-go decision under `0086`
-3. either promote to `0.1.0` or honestly cut `0.1.0-rc.2`
-4. close the master plan only after both umbrellas are completed
+1. run the stable reviewer sweep and make a go / no-go decision under `0086`
+2. either promote to `0.1.0` or honestly cut `0.1.0-rc.2`
+3. close `0086` after the decision and promotion lane is complete
+4. close the master plan after `0086` is completed
 
 ## Detailed Execution Order
-
-### Public-Surface Closure
-
-1. `0113` — public image review and parity closure
-2. close `0087`
 
 ### Stable Decision And Promotion
 
@@ -58,10 +53,13 @@ Review `0.1.0-rc.1`, collect any explicit deltas required for a stable cut, and 
 
 Detailed child plans:
 
+Completed under `0087`:
+
+- `0111`
 - `0112`
 - `0113`
 
-Make bounded, explicit improvements to the stable public surface:
+Completed bounded improvements to the stable public surface:
 
 - clearer naming and docs where the public contract is awkward
 - better examples for public C/WASM entry points

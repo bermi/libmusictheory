@@ -3,7 +3,7 @@
 > Dependencies: 0085, 0074, 0076
 > Follow-up: 0111, 0112, 0113
 
-Status: In progress
+Status: Completed
 
 ## Summary
 
@@ -20,12 +20,15 @@ Address the remaining small public-surface rough edges discovered during RC revi
 
 ## Remaining Work
 
-- resolve the remaining public image parity / review claims so the stable cut is honest about what is fully guaranteed and what remains experimental
+None. The public-surface closeout is complete under `0111`, `0112`, and `0113`.
 
 ## Detailed Execution Order
 
-1. `0113` — public image review and parity closure
-2. close `0087`
+Completed:
+
+1. `0111` — public stable contract audit and enforcement
+2. `0112` — public docs, quickstart, and example boundary
+3. `0113` — public image review and parity closure
 
 ## Remaining Candidate Scope
 
@@ -54,3 +57,15 @@ Before implementation:
 - the bitmap QA atlas remains visually inspectable and does not distort method output during capture
 - known public image defects from RC review are either fixed or explicitly tracked; no silent `close enough` claims
 - `./verify.sh` passes
+
+
+## Verification Commands
+
+- `./verify.sh`
+- `./zigw build verify`
+
+## Implementation History (Point-in-Time)
+
+- `c798926` (2026-04-05) — closed the stable/experimental/internal contract audit around `/Users/bermi/code/libmusictheory/docs/release/stability-matrix.md` and enforced it in the header, README, reviewer guide, and `./verify.sh`. Completion gates: `./verify.sh`, `./zigw build verify`.
+- `a4ce848` (2026-04-05) — tightened the clone-to-review path, docs/gallery boundary, and reviewer onboarding so `wasm-docs` is the stable browser contract demo and `wasm-gallery` stays a supported example surface. Completion gates: `./verify.sh`, `./zigw build verify`.
+- `848104c` (2026-04-05) — closed the remaining public image review story with `/Users/bermi/code/libmusictheory/docs/release/image-review-matrix.md`, explicit docs/gallery drift thresholds, and guardrails preventing stronger bitmap parity claims than the current verification lane proves. Completion gates: `./verify.sh`, `./zigw build verify`.
