@@ -1,7 +1,7 @@
 # 0087 — Public API Polish And Review Fixes
 
 > Dependencies: 0085, 0074, 0076
-> Follow-up: none
+> Follow-up: 0111, 0112, 0113
 
 Status: In progress
 
@@ -9,37 +9,40 @@ Status: In progress
 
 Address the remaining small public-surface rough edges discovered during RC review without widening the supported API beyond what the first stable cut can actually guarantee.
 
-## Goals
+## Already Shipped Under This Umbrella
 
-- improve public API clarity where names, docs, or examples are misleading
-- tighten the standalone docs/gallery examples around the stable contract
-- keep all compatibility/proof infrastructure internal
+- deterministic bitmap QA atlas and capture path for public image methods
+- standalone docs/gallery exposure for public clocks, `OPTIC/K`, evenness, staffs, keyboard, piano staff, and fret surfaces
+- gallery SVG / bitmap preview toggle and validation wiring
+- live MIDI counterpoint scene plus instrument miniviews and repair / continuation surfaces
+- stable Zig wrapper path for supported repo builds on current macOS hosts
+- experimental helper extraction from gallery JS into Zig for fret voicing and counterpoint suggestion policy
 
-## Candidate Scope
+## Remaining Work
+
+- inventory the real stable contract and enforce it consistently
+- clean up quickstarts, examples, and reviewer-facing docs around that contract
+- resolve the remaining public image parity / review claims so the stable cut is honest about what is fully guaranteed and what remains experimental
+
+## Detailed Execution Order
+
+1. `0111` — public stable contract audit and enforcement
+2. `0112` — public docs, quickstarts, and example boundary
+3. `0113` — public image review and parity closure
+4. close `0087`
+
+## Remaining Candidate Scope
 
 - public header documentation cleanup
 - README and docs quickstart refinements
 - example code improvements in docs/gallery where the stable surface is underspecified
 - minor ergonomic improvements that preserve caller-owned buffer discipline and current ABI boundaries
-- deterministic QA atlas page and screenshot capture for the public image-producing docs methods
-- review-driven public image QA fixes:
-  - measured clock-label layout for `lmt_svg_clock_optc`
-  - public pitch-class clocks use the standalone palette instead of monochrome fallback
-  - expose a public algorithmic `OPTIC/K` group diagram in docs, gallery, and bitmap QA atlas
-  - expose a public focused evenness-field diagram in docs, gallery, live MIDI scene, and bitmap QA atlas
-  - false-barre rejection for `lmt_svg_fret`
-  - explicit barre-sample coverage in the bitmap QA atlas for `lmt_svg_fret`
-  - aspect-correct bitmap QA capture for `lmt_svg_chord_staff`
-  - public staff-position cleanup where line/ledger placement was visually misleading
-  - lower-C ledger-line placement and stem-notehead alignment fixes for `lmt_svg_chord_staff`
-  - add a real public multi-bar key-staff API and gallery/docs example instead of implying that a one-bar chord staff covers melodic/key notation
-  - expose the public evenness chart in the docs, gallery, and bitmap QA atlas instead of showing only a scalar evenness number
-  - expose a public keyboard diagram with highlighted notes and pitch-class colors on the standalone surface
-  - replace the live MIDI scene's triad proxy with a real public piano-staff API that paints treble, bass, or grand staff from arbitrary MIDI note arrays
-  - add live MIDI fret guidance in the gallery so the current held set and ranked next-step suggestions both expose compact `EADGBE` voicing previews
-  - provide a stable Zig `0.15.x` wrapper for repo builds so `verify.sh`, release smoke, docs, and gallery commands do not depend on the broken host `zig build` path on macOS arm64
-  - move the live MIDI compact-fret voicing selector out of gallery JS and into an explicitly experimental library helper so browser and embedded hosts use the same deterministic selection policy
-  - move live mode-spelling quality inference and next-step suggestion ranking out of gallery JS and into explicitly experimental library helpers so browser and embedded hosts use the same deterministic context policy
+- honest stable / experimental / internal classification across header, README, reviewer guide, and gallery wording
+- stable quickstart and reviewer paths that do not require repo archaeology
+- remaining public image review / parity closure:
+  - tighten or explicitly scope SVG-vs-bitmap parity claims
+  - keep the QA atlas and gallery toggle aligned with the actual public image methods
+  - avoid silent `close enough` wording where a surface is still experimental
 
 ## Verification-First Guardrails
 
@@ -53,5 +56,5 @@ Before implementation:
 - public docs and examples are clearer at the stable boundary
 - any changed API language is enforced by verification
 - the bitmap QA atlas remains visually inspectable and does not distort method output during capture
-- known public image defects from RC review are either fixed or explicitly tracked; no silent “close enough” claims
+- known public image defects from RC review are either fixed or explicitly tracked; no silent `close enough` claims
 - `./verify.sh` passes
