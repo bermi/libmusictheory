@@ -3,7 +3,7 @@
 > Dependencies: 0114, 0086, 0085
 > Follow-up: none
 
-Status: In progress
+Status: Completed
 
 ## Summary
 
@@ -40,3 +40,17 @@ Before implementation:
 - the repo metadata matches the chosen release target exactly
 - the release/tag handoff is explicit and executable
 - `./verify.sh` passes
+
+## Verification Commands
+
+- `./verify.sh`
+- `./scripts/release_smoke.sh`
+
+## Implementation History (Point-in-Time)
+
+- `0bb9721809d6411b5177067f90d7569084daefe0` — `2026-04-05 17:47:19 +0200`
+  - promoted `/Users/bermi/code/libmusictheory/VERSION` from `0.1.0-rc.1` to `0.1.0`
+  - rewrote `/Users/bermi/code/libmusictheory/CHANGELOG.md`, `/Users/bermi/code/libmusictheory/RELEASE_CHECKLIST.md`, `/Users/bermi/code/libmusictheory/docs/release/reviewer-guide.md`, and `/Users/bermi/code/libmusictheory/docs/release/versioning.md` for a stable release
+  - added `/Users/bermi/code/libmusictheory/docs/release/tag-handoff.md` with the exact merge and tag sequence for `0.1.0`
+  - tightened `/Users/bermi/code/libmusictheory/verify.sh` so stable metadata and handoff docs must stay internally consistent
+  - verification gates: `./verify.sh`, `./scripts/release_smoke.sh`
