@@ -9,8 +9,8 @@ Build `libmusictheory`, a Zig library exposing a C ABI that implements the compl
 
 ## Lifecycle Status
 
-- Draft: 0001, 0085, 0113, 0114, 0115
-- In progress: 0086, 0087
+- Draft: 0001, 0085, 0114, 0115
+- In progress: 0086, 0087, 0113
 ## Current Remaining Work
 
 The only open execution lane is the stable-release closeout. Run it in this order:

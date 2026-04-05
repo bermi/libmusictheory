@@ -5,6 +5,7 @@ Target: `0.1.0-rc.1`
 This guide is for local review of the standalone `libmusictheory` release candidate.
 
 Read `/Users/bermi/code/libmusictheory/docs/release/stability-matrix.md` first. It is the authoritative stable / experimental / internal classification for release review.
+Then read `/Users/bermi/code/libmusictheory/docs/release/image-review-matrix.md` for the image-quality and parity interpretation.
 
 ## Start Here
 
@@ -76,6 +77,7 @@ Review points:
 - the docs page demonstrates the stable browser contract, not gallery-only experimental helpers
 - interactive public SVG examples render and remain legible
 - the QA atlas is reachable at [http://localhost:8001/qa-atlas.html](http://localhost:8001/qa-atlas.html) and shows direct PNGs encoded from RGBA buffers returned by the library
+- the QA atlas is a review tool for experimental bitmap APIs, not a stable promise of exact parity; the enforced docs-side drift threshold is `0.005`
 - docs wording continues to point stable users to `/Users/bermi/code/libmusictheory/include/libmusictheory.h`, `/Users/bermi/code/libmusictheory/src/root.zig`, and `wasm-docs` before the gallery
 
 ## Gallery Review
@@ -101,6 +103,7 @@ Review points:
 - the set scene includes all three public set visuals together: colored clock, `OPTIC/K` group diagram, and focused evenness field
 - chord/staff scenes show proper clef opening, simultaneous cluster layout, readable accidentals, and the key scene includes a visible multi-bar staff walk
 - fret scenes are centered and remain legible across arbitrary tuning/string-count examples
+- the preview toggle remains an experimental proof tool; the enforced critical-host drift threshold is `0.07`, so use it to catch incoherent regressions rather than to sign off exact bitmap parity
 
 Optional deterministic screenshot regeneration:
 

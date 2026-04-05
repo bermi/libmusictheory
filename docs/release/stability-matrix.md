@@ -55,6 +55,8 @@ These helpers are intentionally public and reviewed, but they are not part of th
 
 These helpers are valid to ship, document, and review. They are useful for demos, hardware-oriented rendering paths, and exploratory composition tooling. They should still be described as experimental anywhere they appear publicly.
 
+Their current review interpretation is defined in `/Users/bermi/code/libmusictheory/docs/release/image-review-matrix.md`: the QA atlas and gallery preview toggle are proof tools for these helpers, not stable promises of exact bitmap parity.
+
 ## Supported Standalone Example Surface
 
 The standalone gallery bundle is supported as a release artifact and review surface:

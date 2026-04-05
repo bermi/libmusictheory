@@ -44,6 +44,7 @@ Target release candidate: `0.1.0-rc.1`
 
 - review `README.md`
 - review `docs/release/artifacts.md`
+- review `docs/release/image-review-matrix.md`
 - review `docs/release/reviewer-guide.md`
 - review `docs/release/smoke-matrix.md`
 - review `docs/release/stability-matrix.md`

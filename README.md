@@ -190,6 +190,8 @@ python3 -m http.server --directory /Users/bermi/code/libmusictheory/zig-out/wasm
 
 Open [http://localhost:8001/qa-atlas.html](http://localhost:8001/qa-atlas.html).
 
+The QA atlas is a review instrument for the experimental direct bitmap companions to the stable SVG image methods. Its enforced docs-side drift threshold is currently `0.005`; that makes it a strong regression bar, but not a stable `1:1` bitmap contract.
+
 For the standalone gallery bundle, which is a supported standalone example surface and uses stable public SVG APIs plus experimental counterpoint and bitmap helpers:
 
 ```bash
@@ -218,6 +220,8 @@ For the live MIDI scene, run the gallery in a Chromium-family browser with Web M
 
 The gallery bundle is a supported standalone example surface, but its live counterpoint engine and direct bitmap preview helpers are still experimental APIs rather than the stable embedding contract.
 
+The gallery preview toggle is also an experimental proof tool. It compares large SVG previews against direct library bitmap previews with a bundle-level drift threshold of `0.07` on the critical set/context hosts. Treat that as coherence validation for the example surface, not as a stable promise of exact SVG-vs-bitmap parity.
+
 ## Release Readiness
 
 The standalone release scaffold is documented here:
@@ -225,6 +229,7 @@ The standalone release scaffold is documented here:
 - `/Users/bermi/code/libmusictheory/RELEASE_CHECKLIST.md`
 - `/Users/bermi/code/libmusictheory/docs/release/artifacts.md`
 - `/Users/bermi/code/libmusictheory/docs/release/gallery-capture.md`
+- `/Users/bermi/code/libmusictheory/docs/release/image-review-matrix.md`
 - `/Users/bermi/code/libmusictheory/docs/release/reviewer-guide.md`
 - `/Users/bermi/code/libmusictheory/docs/release/smoke-matrix.md`
 - `/Users/bermi/code/libmusictheory/docs/release/stability-matrix.md`
