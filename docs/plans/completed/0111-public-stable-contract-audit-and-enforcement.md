@@ -3,7 +3,7 @@
 > Dependencies: 0087, 0076, 0077
 > Follow-up: 0112, 0113
 
-Status: Draft
+Status: Completed
 
 ## Summary
 
@@ -40,3 +40,18 @@ Before implementation:
 - experimental helpers are still usable, but clearly marked as experimental everywhere they appear publicly
 - internal verification surfaces remain documented as internal infrastructure only
 - `./verify.sh` passes
+
+## Verification Commands
+
+- `./verify.sh`
+- `./zigw build verify`
+
+## Implementation History (Point-in-Time)
+
+- `786e5b28ed901c46101bf05f2138faadabe9813c` — 2026-04-05
+  - added `/Users/bermi/code/libmusictheory/docs/release/stability-matrix.md` as the authoritative stable / experimental / internal surface inventory
+  - aligned `/Users/bermi/code/libmusictheory/include/libmusictheory.h`, `/Users/bermi/code/libmusictheory/README.md`, `/Users/bermi/code/libmusictheory/docs/release/reviewer-guide.md`, `/Users/bermi/code/libmusictheory/docs/release/artifacts.md`, and `/Users/bermi/code/libmusictheory/docs/release/versioning.md` around the same contract wording
+  - added `./verify.sh` guardrails proving the stability matrix exists and that header, README, and reviewer docs point at the same stable / experimental / internal split
+  - verification gates:
+    - `./verify.sh`
+    - `./zigw build verify`
