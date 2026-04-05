@@ -3,7 +3,7 @@
 > Dependencies: 0078, 0082
 > Follow-up: 0086, 0087, 0111, 0112, 0113, 0114, 0115
 
-Status: In progress
+Status: Completed
 
 ## Objective
 
@@ -19,23 +19,19 @@ Promote `0.1.0-rc.1` to a stable `0.1.0` release only after the remaining RC rev
 
 ## Current Remaining Work
 
-The remaining execution lane is now narrow and explicit:
-
-1. complete `0115` and promote the current tree from `0.1.0-rc.1` to stable `0.1.0`
-2. close `0086` after the promotion lane is complete
-3. close the master plan after `0086` is completed
+The remaining execution lane is complete.
 
 ## Detailed Execution Order
 
 ### Stable Decision And Promotion
 
 1. completed `0114` — stable reviewer sweep and release decision
-2. `0115` — stable `0.1.0` promotion and tag handoff
-3. close `0086`
+2. completed `0115` — stable `0.1.0` promotion and tag handoff
+3. completed `0086`
 
 ### Master Closeout
 
-1. close `0085` after `0086` and `0087` are both completed
+1. completed `0085` after `0086` and `0087` were both completed
 
 ## Workstreams
 
@@ -77,3 +73,21 @@ Completed bounded improvements to the stable public surface:
 - `./verify.sh` still passes
 - `VERSION`, `CHANGELOG.md`, `RELEASE_CHECKLIST.md`, and reviewer docs are updated for a stable cut
 - the resulting stable cut is honest about what is stable, experimental, and internal
+
+## Verification Commands
+
+- `./verify.sh`
+- `./scripts/release_smoke.sh`
+
+## Implementation History (Point-in-Time)
+
+- `07edf30404bb8b9591b473ec8edea9b76bca3e54` — `2026-04-05 17:04:07 +0200`
+  - closed `/Users/bermi/code/libmusictheory/docs/plans/completed/0087-public-api-polish-and-review-fixes.md`
+  - finalized the public-surface documentation lane through `0111`, `0112`, and `0113`, including the stability matrix, docs boundary, and image review matrix
+  - left the stable lane with an explicit and honest stable-versus-experimental contract before the final promotion
+  - verification gates: `./verify.sh`
+- `a8b96e061f194ecb9d0ef0469ee9389334dbf78e` — `2026-04-05 17:49:25 +0200`
+  - closed `/Users/bermi/code/libmusictheory/docs/plans/completed/0086-stable-cut-readiness-and-promotion.md`
+  - completed the decision-and-promotion lane through `0114` and `0115`, promoting the repo from `0.1.0-rc.1` to stable `0.1.0`
+  - confirmed stable metadata, reviewer docs, and release handoff instructions stayed consistent under `/Users/bermi/code/libmusictheory/./verify.sh` and `/Users/bermi/code/libmusictheory/./scripts/release_smoke.sh`
+  - verification gates: `./verify.sh`, `./scripts/release_smoke.sh`
