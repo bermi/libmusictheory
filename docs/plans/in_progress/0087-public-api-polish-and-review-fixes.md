@@ -20,14 +20,12 @@ Address the remaining small public-surface rough edges discovered during RC revi
 
 ## Remaining Work
 
-- clean up quickstarts, examples, and reviewer-facing docs around that contract
 - resolve the remaining public image parity / review claims so the stable cut is honest about what is fully guaranteed and what remains experimental
 
 ## Detailed Execution Order
 
-1. `0112` — public docs, quickstarts, and example boundary
-2. `0113` — public image review and parity closure
-3. close `0087`
+1. `0113` — public image review and parity closure
+2. close `0087`
 
 ## Remaining Candidate Scope
 

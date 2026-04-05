@@ -3,7 +3,7 @@
 > Dependencies: 0111, 0087, 0076
 > Follow-up: 0113, 0114
 
-Status: In progress
+Status: Completed
 
 ## Summary
 
@@ -47,3 +47,18 @@ Before implementation:
 - stable and experimental examples are clearly separated
 - release docs read like a stable handoff instead of RC scaffolding
 - `./verify.sh` passes
+
+## Verification Commands
+
+- `./verify.sh`
+- `./zigw build verify`
+
+## Implementation History (Point-in-Time)
+
+- `d08ff3b1e1a81f204ecd4be9c0a1b089267d1460` — 2026-04-05
+  - tightened `/Users/bermi/code/libmusictheory/README.md`, `/Users/bermi/code/libmusictheory/RELEASE_CHECKLIST.md`, `/Users/bermi/code/libmusictheory/docs/release/reviewer-guide.md`, `/Users/bermi/code/libmusictheory/docs/release/artifacts.md`, and `/Users/bermi/code/libmusictheory/docs/release/smoke-matrix.md` around one clone-to-review path
+  - made `wasm-docs` the explicit stable browser contract demonstration and `wasm-gallery` the explicit supported example surface across public release docs
+  - added `0112` guardrails to `/Users/bermi/code/libmusictheory/verify.sh` so quickstart commands, reviewer flow, and docs/gallery boundary claims stay synchronized
+  - verification gates:
+    - `./verify.sh`
+    - `./zigw build verify`

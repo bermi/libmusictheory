@@ -30,9 +30,8 @@ The remaining execution lane is now narrow and explicit:
 
 ### Public-Surface Closure
 
-1. `0112` — public docs, quickstarts, and example boundary cleanup
-2. `0113` — public image review and parity closure
-3. close `0087`
+1. `0113` — public image review and parity closure
+2. close `0087`
 
 ### Stable Decision And Promotion
 
