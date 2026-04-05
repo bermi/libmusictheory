@@ -3,7 +3,7 @@
 > Dependencies: 0109, 0100, 0102
 > Follow-up: none
 
-Status: In progress
+Status: Completed
 
 ## Summary
 
@@ -64,3 +64,19 @@ Add a dedicated `Repair Futures` card that shows, per repair row:
 - futures remain synchronized with the currently focused move and gallery interaction state
 - gallery validation proves multiple repairs produce concrete future summaries
 - `./verify.sh` passes
+
+## Verification Commands
+
+- `./verify.sh`
+- `./zigw build verify`
+
+## Implementation History (Point-in-Time)
+
+- `bfd769bfba4496a120f4f2014a0fb6f81952128f` — 2026-04-05
+  - shipped the `Repair Futures` panel in the live MIDI counterpoint scene
+  - projected each top `Repair Lab` fix through the existing continuation and cadence machinery instead of introducing a second search engine
+  - surfaced concrete best-next labels, cadence trend chips, future pressure/headroom deltas, and optional mini instrument previews for repaired futures
+  - added gallery validation and `verify.sh` guardrails proving multiple synchronized repair futures, concrete continuations, and future-path lift from the seeded MIDI state
+  - verification gates:
+    - `./verify.sh`
+    - `./zigw build verify`
