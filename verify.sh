@@ -175,9 +175,10 @@ if [ -f "$ROOT_DIR/docs/plans/in_progress/0113-public-image-review-and-parity-cl
 fi
 
 if [ -f "$ROOT_DIR/docs/plans/in_progress/0114-stable-review-sweep-and-release-decision.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0114-stable-review-sweep-and-release-decision.md" ]; then
-    check_cmd "cd '$ROOT_DIR' && test -f docs/release/stable-review-decision.md && rg -n '^# Stable Review Decision$|^Status: (Pending|Go for stable 0\.1\.0|Hold for another RC)$|^Target under review: `0\.1\.0-rc\.1`$|^## Decision$|^## Remaining Delta$' docs/release/stable-review-decision.md >/dev/null" "0114 stable decision guardrail (stable review decision record exists with the required sections)"
+    check_cmd "cd '$ROOT_DIR' && test -f docs/release/stable-review-decision.md && rg -n '^# Stable Review Decision$|^Status: (Pending|Go for stable 0\.1\.0|Hold for another RC)$|^Target under review:' docs/release/stable-review-decision.md >/dev/null && rg -n '^## Decision$|^## Remaining Delta$' docs/release/stable-review-decision.md >/dev/null" "0114 stable decision guardrail (stable review decision record exists with the required sections)"
+    check_cmd "cd '$ROOT_DIR' && if [ -f docs/plans/completed/0114-stable-review-sweep-and-release-decision.md ]; then ! rg -n '^Status: Pending$' docs/release/stable-review-decision.md >/dev/null; else true; fi" "0114 stable decision guardrail (completed stable review cannot leave the decision record pending)"
     check_cmd "cd '$ROOT_DIR' && if rg -n '^Status: Go for stable 0\.1\.0$' docs/release/stable-review-decision.md >/dev/null; then rg -n '^0\.1\.0-rc\.1$|^0\.1\.0$' VERSION >/dev/null; else true; fi" "0114 stable decision guardrail (the decision record is compatible with the current promotion lane state)"
-    check_cmd "cd '$ROOT_DIR' && if rg -n '^0\.1\.0-rc\.1$' VERSION >/dev/null; then rg -n '^# Release Candidate Reviewer Guide$|^Target: `0\.1\.0-rc\.1`$' docs/release/reviewer-guide.md >/dev/null; else true; fi" "0114 stable decision guardrail (while metadata is still RC, reviewer docs remain RC and do not silently claim a stable cut)"
+    check_cmd "cd '$ROOT_DIR' && if rg -n '^0\.1\.0-rc\.1$' VERSION >/dev/null; then rg -n '^# Release Candidate Reviewer Guide$|^Target:' docs/release/reviewer-guide.md >/dev/null && rg -n '0\.1\.0-rc\.1' docs/release/reviewer-guide.md >/dev/null; else true; fi" "0114 stable decision guardrail (while metadata is still RC, reviewer docs remain RC and do not silently claim a stable cut)"
 fi
 
 
