@@ -213,6 +213,7 @@ const midiResolutionThreaderEl = document.getElementById("midi-resolution-thread
 const midiObligationTimelineEl = document.getElementById("midi-obligation-timeline");
 const midiVoiceDutiesEl = document.getElementById("midi-voice-duties");
 const midiRepairLabEl = document.getElementById("midi-repair-lab");
+const midiRepairFuturesEl = document.getElementById("midi-repair-futures");
 const midiContinuationLadderEl = document.getElementById("midi-continuation-ladder");
 const midiPathWeaverEl = document.getElementById("midi-path-weaver");
 const midiCadenceGardenEl = document.getElementById("midi-cadence-garden");
@@ -3738,6 +3739,69 @@ function buildRepairLabEntries(arena, historyBundle, currentState, focusedSugges
     .slice(0, 4);
 }
 
+function buildRepairFutureSummaryBits(entry) {
+  const bits = [];
+  if (entry.futureWarningDelta > 0) bits.push(`drops ${entry.futureWarningDelta} future warning${entry.futureWarningDelta === 1 ? "" : "s"}`);
+  if (entry.futureCleanDelta > 0) bits.push(`opens ${entry.futureCleanDelta} cleaner cadence path${entry.futureCleanDelta === 1 ? "" : "s"}`);
+  if (entry.futureBranchDelta > 0) bits.push(`adds ${entry.futureBranchDelta} branch${entry.futureBranchDelta === 1 ? "" : "es"}`);
+  if (entry.futureScoreDelta > 0) bits.push(`future score +${entry.futureScoreDelta}`);
+  if (bits.length === 0 && entry.topGroup?.tensionTrendLabel) bits.push(entry.topGroup.tensionTrendLabel);
+  if (bits.length === 0 && entry.bestFuture?.reasonNames?.length) bits.push(shortReasonLabel(entry.bestFuture.reasonNames[0]));
+  if (bits.length === 0) bits.push(entry.statusClass === "tradeoff" ? "stabilizes now but narrows the future path" : "keeps the future path steady");
+  return bits.slice(0, 3);
+}
+
+function buildRepairFutureVerdict(entry) {
+  if (!entry.bestFuture) {
+    return "The repair improves the local move, but no immediate ranked continuation surfaced from the current history window.";
+  }
+  if (entry.statusClass === "improves") {
+    return `After the repair, the strongest next move is ${entry.bestFuture.noteNames.join(" · ")} and the path leans toward ${entry.topGroup?.cadenceLabel || entry.bestFuture.cadenceLabel}.`;
+  }
+  if (entry.statusClass === "tradeoff") {
+    return `The repair still leads to ${entry.bestFuture.noteNames.join(" · ")}, but the future path loses some headroom compared with the unrepaired move.`;
+  }
+  return `The repair keeps a comparable future path through ${entry.bestFuture.noteNames.join(" · ")} without materially changing the next-step pressure.`;
+}
+
+function buildRepairFutureEntries(arena, historyFrames, focusedSuggestion, repairs, context, profile, rootContinuationSuggestions, rootCadenceGardenGroups) {
+  if (!focusedSuggestion || !Array.isArray(repairs) || repairs.length === 0) return [];
+  const rootBestFuture = Array.isArray(rootContinuationSuggestions) ? (rootContinuationSuggestions[0] || null) : null;
+  const rootTopGroup = Array.isArray(rootCadenceGardenGroups) ? (rootCadenceGardenGroups[0] || null) : null;
+
+  return repairs.map((repair) => {
+    const continuationBundle = buildFocusedContinuationContext(arena, historyFrames, repair.suggestion, context, profile);
+    const bestFuture = continuationBundle.suggestions[0] || null;
+    const paths = bestFuture
+      ? buildContinuationPaths(arena, continuationBundle, bestFuture, context, profile, { branchCount: 2, maxDepth: 3 })
+      : [];
+    const topGroup = buildCadenceGardenGroups(paths)[0] || null;
+    const rootWarningCount = rootBestFuture?.warningNames?.length || 0;
+    const futureWarningCount = bestFuture?.warningNames?.length || 0;
+    const futureWarningDelta = rootWarningCount - futureWarningCount;
+    const futureScoreDelta = bestFuture && rootBestFuture ? (bestFuture.score || 0) - (rootBestFuture.score || 0) : 0;
+    const futureCleanDelta = (topGroup?.cleanBranchCount || 0) - (rootTopGroup?.cleanBranchCount || 0);
+    const futureBranchDelta = (topGroup?.branchCount || 0) - (rootTopGroup?.branchCount || 0);
+    const improves = !!bestFuture && (futureWarningDelta > 0 || futureScoreDelta > 0 || futureCleanDelta > 0 || futureBranchDelta > 0);
+    const tradeoff = !!bestFuture && !improves && (futureWarningDelta < 0 || futureScoreDelta < 0 || futureCleanDelta < 0 || futureBranchDelta < 0);
+    const entry = {
+      ...repair,
+      bestFuture,
+      topGroup,
+      futureWarningDelta,
+      futureScoreDelta,
+      futureCleanDelta,
+      futureBranchDelta,
+      statusClass: !bestFuture ? "sidegrade" : tradeoff ? "tradeoff" : improves ? "improves" : "sidegrade",
+      cadenceTrendLabel: topGroup?.cadenceLabel || bestFuture?.cadenceLabel || "no continuation yet",
+      futureLabel: bestFuture?.noteNames?.join(" · ") || "",
+    };
+    entry.summaryBits = buildRepairFutureSummaryBits(entry);
+    entry.verdict = buildRepairFutureVerdict(entry);
+    return entry;
+  }).filter((entry) => entry.bestFuture || entry.topGroup).slice(0, 4);
+}
+
 function renderMidiRepairLab(host, repairs, focusedSuggestion) {
   const empty = {
     rowCount: 0,
@@ -3825,6 +3889,139 @@ function renderMidiRepairLab(host, repairs, focusedSuggestion) {
     focusedSignature,
     repairLabels: repairs.map((repair) => repair.sourceLabel),
     voiceLabels: repairs.map((repair) => repair.voiceLabel),
+  };
+}
+
+function renderMidiRepairFutures(host, arena, repairs, futureEntries, focusedSuggestion, context) {
+  const empty = {
+    rowCount: 0,
+    concreteFutureCount: 0,
+    improvedFutureCount: 0,
+    cadenceImprovedCount: 0,
+    futureClockCount: 0,
+    futureMiniCount: 0,
+    focusedSignature: "",
+    futureLabels: [],
+  };
+  if (!host) return empty;
+  if (!focusedSuggestion) {
+    host.innerHTML = `<div class="output-block continuation-empty">Focus or pin a ranked move to see whether each local repair opens a better future path or merely patches the present moment.</div>`;
+    return empty;
+  }
+  if (!Array.isArray(repairs) || repairs.length === 0 || !Array.isArray(futureEntries) || futureEntries.length === 0) {
+    host.innerHTML = `<div class="output-block continuation-empty">Repair futures appear once at least one repair can be projected through the existing continuation engine.</div>`;
+    return empty;
+  }
+
+  const focusedSignature = noteSignature(focusedSuggestion);
+  const concreteFutureCount = futureEntries.filter((entry) => !!entry.bestFuture).length;
+  const improvedFutureCount = futureEntries.filter((entry) => entry.statusClass === "improves").length;
+  const cadenceImprovedCount = futureEntries.filter((entry) => entry.futureCleanDelta > 0 || entry.futureBranchDelta > 0).length;
+  host.dataset.focusedSignature = focusedSignature;
+  host.dataset.concreteFutureCount = String(concreteFutureCount);
+  host.dataset.improvedFutureCount = String(improvedFutureCount);
+  host.dataset.cadenceImprovedCount = String(cadenceImprovedCount);
+
+  host.innerHTML = `
+    <div class="repair-futures-shell">
+      <div class="continuation-head">
+        <div>
+          <p class="eyebrow">What each fix opens up next</p>
+          <h4>Repair Futures</h4>
+        </div>
+        <div class="pill-list">
+          <span class="status-pill is-live">${escapeHtml(`${concreteFutureCount} concrete futures`)}</span>
+          <span class="status-pill ${cadenceImprovedCount > 0 ? "is-live" : "is-muted"}">${escapeHtml(`${cadenceImprovedCount} cadence lifts`)}</span>
+        </div>
+      </div>
+      <article class="continuation-root">
+        <p>${escapeHtml("Each row reuses the existing continuation engine after applying a repair, so local fixes can be judged by where they lead next rather than by present cleanup alone.")}</p>
+        <div class="repair-future-chip-row">
+          <span class="pill">${escapeHtml("same ranked-next-step engine")}</span>
+          <span class="pill">${escapeHtml("one repair, one projected future field")}</span>
+        </div>
+      </article>
+      <div class="repair-futures-grid">
+        ${futureEntries.map((entry, index) => `
+          <article class="repair-future-card${entry.statusClass === "improves" ? " is-improves" : entry.statusClass === "tradeoff" ? " is-tradeoff" : ""}" data-repair-future-row="${index}" data-repair-future-status="${entry.statusClass}">
+            <div class="repair-future-card-head">
+              <div>
+                <p class="eyebrow">${escapeHtml(entry.voiceLabel)}</p>
+                <h4 data-repair-future-label="${escapeHtml(entry.sourceLabel)}">${escapeHtml(entry.sourceLabel)}</h4>
+              </div>
+              <div class="pill-list">
+                <span class="status-pill is-muted">${escapeHtml(entry.kindLabel)}</span>
+                <span class="status-pill ${entry.statusClass === "tradeoff" ? "is-snapshot" : entry.statusClass === "improves" ? "is-live" : "is-muted"}">${escapeHtml(humanizeCounterpointLabel(entry.statusClass))}</span>
+              </div>
+            </div>
+            <strong>${escapeHtml(entry.futureLabel || "No concrete continuation yet")}</strong>
+            <p class="repair-future-meta">${escapeHtml(entry.cadenceTrendLabel)}${entry.bestFuture ? ` · score ${entry.bestFuture.score}` : ""}</p>
+            <p class="repair-future-verdict">${escapeHtml(entry.verdict)}</p>
+            <div class="repair-future-chip-row">
+              ${entry.summaryBits.map((bit) => `<span class="pill">${escapeHtml(bit)}</span>`).join("")}
+            </div>
+            <div class="repair-future-art-grid">
+              <div class="repair-future-art" data-repair-future-clock="${index}"></div>
+              <div class="repair-future-art" data-repair-future-mini="${index}"></div>
+            </div>
+          </article>
+        `).join("")}
+      </div>
+    </div>
+  `;
+
+  let futureClockCount = 0;
+  let futureMiniCount = 0;
+  futureEntries.forEach((entry, index) => {
+    if (!entry.bestFuture) return;
+    const clockHost = host.querySelector(`[data-repair-future-clock="${index}"]`);
+    if (clockHost) {
+      renderPreviewSvgOrBitmap(clockHost, {
+        svgMarkup: svgString(arena, wasm.lmt_svg_clock_optc, entry.bestFuture.setValue),
+        bitmapRenderer: {
+          renderRgba: (width, height) => clockBitmapRgba(arena, entry.bestFuture.setValue, width, height),
+        },
+        alt: `${entry.futureLabel} repair future clock`,
+        options: { maxHeight: 150, squareWidth: 150, mediumWidth: 170, wideWidth: 180, ultraWideWidth: 190, padXRatio: 0.08, padYRatio: 0.12 },
+      });
+      futureClockCount += 1;
+    }
+    const miniHost = host.querySelector(`[data-repair-future-mini="${index}"]`);
+    if (miniHost) {
+      const rendered = renderMiniInstrumentPreview(
+        arena,
+        miniHost,
+        {
+          midiNotes: entry.bestFuture.notes,
+          setValue: entry.bestFuture.setValue,
+          tonic: context.tonic,
+          preferredBassPc: entry.bestFuture.notes.length > 0 ? Math.min(...entry.bestFuture.notes) % 12 : null,
+          fretVoicing: entry.bestFuture.fretPreview,
+        },
+        `${entry.futureLabel} repair future mini preview`,
+        {
+          maxHeight: 150,
+          squareWidth: 170,
+          mediumWidth: 180,
+          wideWidth: 190,
+          ultraWideWidth: 200,
+          padXRatio: 0.08,
+          padYRatio: 0.14,
+        },
+      );
+      if (rendered) futureMiniCount += 1;
+    }
+  });
+
+  return {
+    rowCount: futureEntries.length,
+    concreteFutureCount,
+    improvedFutureCount,
+    cadenceImprovedCount,
+    futureClockCount,
+    futureMiniCount,
+    focusedSignature,
+    futureLabels: futureEntries.map((entry) => entry.futureLabel || entry.cadenceTrendLabel).filter(Boolean),
   };
 }
 
@@ -5766,10 +5963,28 @@ function renderMidiScene() {
       suggestions,
       suspensionMachine,
     );
+    const repairFutureEntries = buildRepairFutureEntries(
+      arena,
+      historyFrames,
+      focusedSuggestion,
+      repairLabEntries,
+      context,
+      profile,
+      continuationSuggestions,
+      cadenceGardenGroups,
+    );
     const midiRepairLabFeatures = renderMidiRepairLab(
       midiRepairLabEl,
       repairLabEntries,
       focusedSuggestion,
+    );
+    const midiRepairFutureFeatures = renderMidiRepairFutures(
+      midiRepairFuturesEl,
+      arena,
+      repairLabEntries,
+      repairFutureEntries,
+      focusedSuggestion,
+      context,
     );
     const midiContinuationLadderFeatures = renderMidiContinuationLadder(
       midiContinuationLadderEl,
@@ -6032,6 +6247,7 @@ function renderMidiScene() {
       midiObligationTimelineFeatures,
       midiVoiceDutiesFeatures,
       midiRepairLabFeatures,
+      midiRepairFutureFeatures,
       midiContinuationLadderFeatures,
       midiPathWeaverFeatures,
       midiCadenceGardenFeatures,

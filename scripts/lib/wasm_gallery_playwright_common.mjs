@@ -739,6 +739,32 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
           voiceLabels: rows.map((node) => (node.getAttribute("data-repair-voice-id") || "").trim()).filter(Boolean),
         };
       })(),
+      midiRepairFutureFeatures: (() => {
+        const host = document.querySelector("#midi-repair-futures");
+        if (!host) {
+          return {
+            rowCount: 0,
+            concreteFutureCount: 0,
+            improvedFutureCount: 0,
+            cadenceImprovedCount: 0,
+            futureClockCount: 0,
+            futureMiniCount: 0,
+            focusedSignature: "",
+            futureLabels: [],
+          };
+        }
+        const rows = Array.from(host.querySelectorAll("[data-repair-future-row]"));
+        return {
+          rowCount: rows.length,
+          concreteFutureCount: Number.parseInt(host.getAttribute("data-concrete-future-count") || "0", 10),
+          improvedFutureCount: Number.parseInt(host.getAttribute("data-improved-future-count") || "0", 10),
+          cadenceImprovedCount: Number.parseInt(host.getAttribute("data-cadence-improved-count") || "0", 10),
+          futureClockCount: host.querySelectorAll("[data-repair-future-clock] :is(svg,img)").length,
+          futureMiniCount: host.querySelectorAll("[data-repair-future-mini] :is(svg,img)").length,
+          focusedSignature: host.getAttribute("data-focused-signature") || window.__lmtGallerySummary?.scenes?.midi?.focusedSuggestionSignature || "",
+          futureLabels: Array.from(host.querySelectorAll("[data-repair-future-label]"), (node) => (node.textContent || "").trim()).filter(Boolean),
+        };
+      })(),
       previewKinds: (() => {
         const hostIds = ["midi-clock", "midi-optic-k", "midi-evenness", "midi-keyboard", "midi-staff", "midi-current-fret", "midi-focused-mini"];
         return Object.fromEntries(hostIds.map((id) => {
@@ -795,6 +821,7 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
     const midiObligationTimelineFeatures = snapshot.summary?.midiObligationTimelineFeatures ?? snapshot.midiObligationTimelineFeatures;
     const midiVoiceDutiesFeatures = snapshot.summary?.midiVoiceDutiesFeatures ?? snapshot.midiVoiceDutiesFeatures;
     const midiRepairLabFeatures = snapshot.summary?.midiRepairLabFeatures ?? snapshot.midiRepairLabFeatures;
+    const midiRepairFutureFeatures = snapshot.summary?.midiRepairFutureFeatures ?? snapshot.midiRepairFutureFeatures;
     const keyboardFeatures = snapshot.summary?.keyboardFeatures ?? snapshot.keyboardFeaturesFallback;
     if (
       snapshot.summary?.rendered === true
@@ -877,6 +904,13 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
       && midiRepairLabFeatures.improvedVoiceCount >= 1
       && midiRepairLabFeatures.focusedSignature.length > 0
       && midiRepairLabFeatures.repairLabels.length >= 2
+      && midiRepairFutureFeatures.rowCount >= 2
+      && midiRepairFutureFeatures.concreteFutureCount >= 1
+      && midiRepairFutureFeatures.improvedFutureCount >= 1
+      && midiRepairFutureFeatures.futureClockCount >= 1
+      && (midiRepairFutureFeatures.futureMiniCount >= 1 || snapshot.summary?.currentMiniMode === "off")
+      && midiRepairFutureFeatures.focusedSignature.length > 0
+      && midiRepairFutureFeatures.futureLabels.length >= 2
       && midiOpticKFeatures.clockCount >= 2
       && midiOpticKFeatures.linkCount >= 1
       && midiOpticKFeatures.labelCount >= 5

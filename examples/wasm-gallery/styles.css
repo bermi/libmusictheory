@@ -1351,6 +1351,10 @@ select {
   min-height: 420px;
 }
 
+.repair-futures-frame {
+  min-height: 420px;
+}
+
 .path-weaver-frame {
   min-height: 420px;
 }
@@ -1763,6 +1767,12 @@ select {
   min-height: 100%;
 }
 
+.repair-futures-shell {
+  display: grid;
+  gap: 14px;
+  min-height: 100%;
+}
+
 .resolution-threader-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -1957,6 +1967,12 @@ select {
   gap: 14px;
 }
 
+.repair-futures-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+}
+
 .voice-duty-card {
   border-radius: 18px;
   border: 1px solid rgba(24, 36, 47, 0.08);
@@ -2073,6 +2089,71 @@ select {
 }
 
 .repair-lab-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.repair-future-card {
+  border-radius: 18px;
+  border: 1px solid rgba(24, 36, 47, 0.08);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(247, 241, 233, 0.92));
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.repair-future-card.is-improves {
+  background: linear-gradient(180deg, rgba(248, 255, 252, 0.98), rgba(235, 246, 241, 0.96));
+  border-color: rgba(31, 125, 134, 0.22);
+}
+
+.repair-future-card.is-tradeoff {
+  background: linear-gradient(180deg, rgba(255, 246, 251, 0.98), rgba(247, 234, 241, 0.96));
+  border-color: rgba(161, 22, 102, 0.18);
+}
+
+.repair-future-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.repair-future-card strong {
+  display: block;
+  font-size: 1rem;
+  margin-top: 4px;
+}
+
+.repair-future-meta,
+.repair-future-verdict {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.repair-future-art-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.repair-future-art {
+  display: grid;
+  place-items: center;
+  min-height: 150px;
+  border-radius: 16px;
+  border: 1px solid rgba(24, 36, 47, 0.08);
+  background: linear-gradient(180deg, rgba(252, 247, 240, 0.96), rgba(244, 236, 225, 0.86));
+}
+
+.repair-future-art svg,
+.repair-future-art img {
+  max-height: 140px;
+}
+
+.repair-future-chip-row {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
