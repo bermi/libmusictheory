@@ -3,7 +3,7 @@
 > Dependencies: 0108, 0105, 0099
 > Follow-up: none
 
-Status: In progress
+Status: Completed
 
 ## Summary
 
@@ -64,3 +64,19 @@ Add a dedicated `Repair Lab` card that shows:
 - repairs stay tied to specific voice ids and concrete target notes
 - gallery validation proves the panel renders multiple repairs and stays synchronized with live interaction state
 - `./verify.sh` passes
+
+## Verification Commands
+
+- `./verify.sh`
+- `./zigw build verify`
+
+## Implementation History (Point-in-Time)
+
+- `6619cdac02e03db07c7bcf9a3c659527fe72ac87` — 2026-04-05
+  - shipped the `Repair Lab` panel in the live MIDI counterpoint scene
+  - generated minimal one-voice repair variants from the focused move using existing counterpoint state, duties, and ranked-move evaluation
+  - exposed per-repair voice labels, target notes, improvement/tradeoff status, and compact warning/target-hit summaries
+  - added gallery validation and `verify.sh` guardrails proving multiple synchronized repair candidates and concrete per-voice improvements
+  - verification gates:
+    - `./verify.sh`
+    - `./zigw build verify`
