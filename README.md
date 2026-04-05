@@ -14,24 +14,17 @@ It covers:
 
 The stable public surface is intentionally smaller than the full repository.
 
-- Stable public surface:
-  - `/Users/bermi/code/libmusictheory/include/libmusictheory.h`
-  - `/Users/bermi/code/libmusictheory/src/root.zig` for core Zig consumers
-  - `./zigw build`, `./zigw build test`, `./zigw build verify`
+- Stable contract:
+  - `/Users/bermi/code/libmusictheory/include/libmusictheory.h`, except the APIs explicitly marked experimental in that header
+  - `/Users/bermi/code/libmusictheory/src/root.zig` for source-based Zig consumers
+  - `./zigw build`, `./zigw build test`, `./zigw build verify`, and `./verify.sh`
   - `./zigw build wasm-docs` as the standalone browser bundle
-  - `./zigw build wasm-gallery` as the standalone creative example bundle
-- Experimental surface:
-  - `lmt_raster_is_enabled`
-  - `lmt_raster_demo_rgba`
-  - `lmt_counterpoint_max_voices`
-  - `lmt_build_voiced_state`
-  - `lmt_classify_motion`
-  - `lmt_rank_next_steps`
-  - `lmt_mode_spelling_quality`
-  - `lmt_rank_context_suggestions`
-  - `lmt_preferred_voicing_n`
+- Experimental public surface:
+  - counterpoint state, cadence, orbifold, and next-step helpers
+  - gallery policy helpers such as `lmt_mode_spelling_quality`, `lmt_rank_context_suggestions`, and `lmt_preferred_voicing_n`
   - method-specific RGBA bitmap renderers such as `lmt_bitmap_clock_optc_rgba`, `lmt_bitmap_keyboard_rgba`, and `lmt_bitmap_piano_staff_rgba`
-- Internal surface:
+  - `./zigw build wasm-gallery` as a supported standalone example bundle that intentionally exercises some experimental helpers
+- Internal regression infrastructure:
   - `/Users/bermi/code/libmusictheory/include/libmusictheory_compat.h`
   - Harmonious parity/proof/SPA bundles:
     - `wasm-demo`
@@ -42,52 +35,26 @@ The stable public surface is intentionally smaller than the full repository.
 
 If you are integrating the library into your own app, start with `libmusictheory.h` or the core Zig modules. Treat the compat/proof surface as regression infrastructure, not product API.
 
+The authoritative stable / experimental / internal classification lives in `/Users/bermi/code/libmusictheory/docs/release/stability-matrix.md`.
+
 The internal regression infrastructure is documented separately in `/Users/bermi/code/libmusictheory/docs/internal/harmonious-regression.md`.
 
 ## Stable API Contract
 
-This repository now has an explicit stable public surface.
+This repository now has an explicit stable public surface. The authoritative inventory is `/Users/bermi/code/libmusictheory/docs/release/stability-matrix.md`.
 
-- Stable:
-  - the declarations in `/Users/bermi/code/libmusictheory/include/libmusictheory.h`, except the APIs called out as experimental below
+In short:
+
+- stable:
   - scalar theory functions such as `lmt_pcs_*`, `lmt_scale`, `lmt_mode`, `lmt_chord`, `lmt_evenness_distance`
   - public string helpers such as `lmt_spell_note`, `lmt_chord_name`, `lmt_roman_numeral`
   - public fretboard helpers such as `lmt_fret_to_midi_n`, `lmt_midi_to_fret_positions_n`, `lmt_generate_voicings_n`, `lmt_pitch_class_guide_n`, `lmt_frets_to_url_n`, `lmt_url_to_frets_n`
   - public SVG helpers such as `lmt_svg_clock_optc`, `lmt_svg_optic_k_group`, `lmt_svg_evenness_chart`, `lmt_svg_evenness_field`, `lmt_svg_fret`, `lmt_svg_fret_n`, `lmt_svg_chord_staff`, `lmt_svg_key_staff`, `lmt_svg_piano_staff`, `lmt_svg_keyboard`
-- Experimental:
-  - `lmt_raster_is_enabled`
-  - `lmt_raster_demo_rgba`
-  - `lmt_counterpoint_max_voices`
-  - `lmt_counterpoint_history_capacity`
-  - `lmt_counterpoint_rule_profile_count`
-  - `lmt_counterpoint_rule_profile_name`
-  - `lmt_sizeof_voiced_state`
-  - `lmt_sizeof_voiced_history`
-  - `lmt_sizeof_next_step_suggestion`
-  - `lmt_cadence_destination_count`
-  - `lmt_cadence_destination_name`
-  - `lmt_suspension_state_count`
-  - `lmt_suspension_state_name`
-  - `lmt_sizeof_cadence_destination_score`
-  - `lmt_sizeof_suspension_machine_summary`
-  - `lmt_voiced_history_reset`
-  - `lmt_build_voiced_state`
-  - `lmt_voiced_history_push`
-  - `lmt_classify_motion`
-  - `lmt_evaluate_motion_profile`
-  - `lmt_rank_next_steps`
-  - `lmt_rank_cadence_destinations`
-  - `lmt_analyze_suspension_machine`
-  - `lmt_next_step_reason_count`
-  - `lmt_next_step_reason_name`
-  - `lmt_next_step_warning_count`
-  - `lmt_next_step_warning_name`
-  - `lmt_mode_spelling_quality`
-  - `lmt_rank_context_suggestions`
-  - `lmt_preferred_voicing_n`
-  - the RGBA bitmap renderers such as `lmt_bitmap_clock_optc_rgba`, `lmt_bitmap_evenness_field_rgba`, `lmt_bitmap_keyboard_rgba`, and `lmt_bitmap_piano_staff_rgba`
-  - these are useful for demos and internal rendering work, but not yet the stable embedding contract
-- Internal:
+- experimental:
+  - counterpoint state/ranking/orbifold helpers
+  - gallery policy helpers such as `lmt_mode_spelling_quality`, `lmt_rank_context_suggestions`, and `lmt_preferred_voicing_n`
+  - direct RGBA bitmap renderers
+- internal:
   - everything declared only in `/Users/bermi/code/libmusictheory/include/libmusictheory_compat.h`
   - all exact harmoniousapp.net parity/proof helpers
   - internal browser verification bundles and the Harmonious SPA shell
@@ -243,6 +210,7 @@ The standalone release scaffold is documented here:
 - `/Users/bermi/code/libmusictheory/docs/release/gallery-capture.md`
 - `/Users/bermi/code/libmusictheory/docs/release/reviewer-guide.md`
 - `/Users/bermi/code/libmusictheory/docs/release/smoke-matrix.md`
+- `/Users/bermi/code/libmusictheory/docs/release/stability-matrix.md`
 - `/Users/bermi/code/libmusictheory/docs/release/versioning.md`
 
 To run the standalone release smoke path directly:

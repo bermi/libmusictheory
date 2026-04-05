@@ -4,6 +4,8 @@ Target: `0.1.0-rc.1`
 
 This guide is for local review of the standalone `libmusictheory` release candidate.
 
+Read `/Users/bermi/code/libmusictheory/docs/release/stability-matrix.md` first. It is the authoritative stable / experimental / internal classification for release review.
+
 ## What To Review
 
 Review only the standalone surfaces:
@@ -15,6 +17,20 @@ Review only the standalone surfaces:
 
 Do not use internal Harmonious validation/proof bundles for release-candidate signoff.
 The gallery bundle exercises experimental counterpoint and direct bitmap-preview helpers; review those for bundle quality, but they are not part of stable release signoff.
+
+## Surface Classes
+
+- stable release signoff:
+  - `/Users/bermi/code/libmusictheory/include/libmusictheory.h`, except APIs explicitly marked experimental
+  - native library artifacts from `./zigw build`
+  - standalone docs bundle from `./zigw build wasm-docs`
+- supported example review:
+  - standalone gallery bundle from `./zigw build wasm-gallery`
+- internal-only regression infrastructure:
+  - `/Users/bermi/code/libmusictheory/include/libmusictheory_compat.h`
+  - Harmonious parity/proof/SPA bundles
+
+The gallery should be reviewed carefully, but it must not be used to silently widen the stable contract beyond the stability matrix.
 
 ## Quick Smoke Path
 

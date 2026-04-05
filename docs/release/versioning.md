@@ -8,9 +8,11 @@ Version compatibility is defined by:
 
 - `include/libmusictheory.h`
 - the documented memory/lifetime rules in `README.md`
+- `docs/release/stability-matrix.md`
 - the public standalone bundles:
   - `wasm-docs`
-  - `wasm-gallery`
+
+The gallery bundle is a supported standalone example and review artifact, but it is not by itself the stable embedding contract when it exercises experimental helpers.
 
 It is not defined by:
 

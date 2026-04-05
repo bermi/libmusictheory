@@ -34,6 +34,7 @@ Release-candidate gallery screenshots are reproducible local review artifacts, n
 Reviewer instructions live in:
 
 - `/Users/bermi/code/libmusictheory/docs/release/reviewer-guide.md`
+- `/Users/bermi/code/libmusictheory/docs/release/stability-matrix.md`
 
 ## Public Headers
 

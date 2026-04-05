@@ -11,6 +11,9 @@ extern "C" {
 /*
  * Stable public C ABI for libmusictheory.
  *
+ * Detailed release-surface classification lives in
+ * docs/release/stability-matrix.md.
+ *
  * Surface classes:
  * - Stable public C ABI: declarations in this header, except those marked as
  *   experimental.
