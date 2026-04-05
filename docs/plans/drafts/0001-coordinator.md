@@ -9,13 +9,13 @@ Build `libmusictheory`, a Zig library exposing a C ABI that implements the compl
 
 ## Lifecycle Status
 
-- Draft: 0001, 0085, 0115
-- In progress: 0086
+- Draft: 0001
+- In progress: 0085, 0086, 0115
 ## Current Remaining Work
 
 The only open execution lane is the stable-release promotion path. Run it in this order:
 
-1. `0115` — stable `0.1.0` promotion and tag handoff
+1. complete `0115` — stable `0.1.0` promotion and tag handoff
 2. close `0086`
 3. close `0085`
 

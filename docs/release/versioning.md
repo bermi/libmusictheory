@@ -36,6 +36,6 @@ Current policy:
 - bug fixes and internal-only changes require a patch-version bump
 - purely internal Harmonious regression work does not require a public version bump unless it changes the standalone contract or release artifacts
 
-Current release-candidate target:
+Current stable target:
 
-- `0.1.0-rc.1`
+- `0.1.0`

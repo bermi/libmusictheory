@@ -1,11 +1,12 @@
-# Release Candidate Reviewer Guide
+# Stable Release Reviewer Guide
 
-Target: `0.1.0-rc.1`
+Target: `0.1.0`
 
-This guide is for local review of the standalone `libmusictheory` release candidate.
+This guide is for local review of the standalone stable `libmusictheory` release.
 
 Read `/Users/bermi/code/libmusictheory/docs/release/stability-matrix.md` first. It is the authoritative stable / experimental / internal classification for release review.
 Then read `/Users/bermi/code/libmusictheory/docs/release/image-review-matrix.md` for the image-quality and parity interpretation.
+Then read `/Users/bermi/code/libmusictheory/docs/release/stable-review-decision.md` for the explicit go / no-go record behind this cut.
 
 ## Start Here
 
@@ -25,7 +26,7 @@ Review only the standalone surfaces:
 - the standalone docs bundle from `./zigw build wasm-docs`
 - the standalone gallery bundle from `./zigw build wasm-gallery`
 
-Do not use internal Harmonious validation/proof bundles for release-candidate signoff.
+Do not use internal Harmonious validation/proof bundles for stable signoff.
 The gallery bundle exercises experimental counterpoint and direct bitmap-preview helpers; review those for bundle quality, but they are not part of stable release signoff.
 
 ## Surface Classes

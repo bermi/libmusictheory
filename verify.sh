@@ -116,10 +116,12 @@ else
 fi
 
 if [ -f "$ROOT_DIR/docs/plans/in_progress/0082-first-release-candidate-cut.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0082-first-release-candidate-cut.md" ]; then
-    check_cmd "cd '$ROOT_DIR' && rg -n '^[0-9]+\\.[0-9]+\\.[0-9]+-rc\\.[0-9]+$' VERSION" "0082 release-candidate guardrail (VERSION is an rc cut, not a dev placeholder)"
-    check_cmd "cd '$ROOT_DIR' && ! rg -n '^## \\[Unreleased\\]$' CHANGELOG.md && rg -n '^## \\[[0-9]+\\.[0-9]+\\.[0-9]+-rc\\.[0-9]+\\] - [0-9]{4}-[0-9]{2}-[0-9]{2}$' CHANGELOG.md" "0082 release-candidate guardrail (CHANGELOG has a dated rc entry and no unreleased-only scaffold)"
-    check_cmd "cd '$ROOT_DIR' && rg -n '^## Reviewer Evaluation$|docs/release/reviewer-guide\\.md|0\\.1\\.0-rc\\.1|rc reviewer|release candidate' RELEASE_CHECKLIST.md" "0082 release-candidate guardrail (checklist is upgraded for rc review)"
-    check_cmd "cd '$ROOT_DIR' && rg -n '^# Release Candidate Reviewer Guide$|^## What To Review$|^## Quick Smoke Path$|^## Gallery Review$|^## Public API Review$' docs/release/reviewer-guide.md" "0082 release-candidate guardrail (reviewer guide exists with concrete evaluation steps)"
+    if rg -q '^[0-9]+\.[0-9]+\.[0-9]+-rc\.[0-9]+$' "$ROOT_DIR/VERSION"; then
+        check_cmd "cd '$ROOT_DIR' && rg -n '^[0-9]+\\.[0-9]+\\.[0-9]+-rc\\.[0-9]+$' VERSION" "0082 release-candidate guardrail (VERSION is an rc cut, not a dev placeholder)"
+        check_cmd "cd '$ROOT_DIR' && ! rg -n '^## \\[Unreleased\\]$' CHANGELOG.md && rg -n '^## \\[[0-9]+\\.[0-9]+\\.[0-9]+-rc\\.[0-9]+\\] - [0-9]{4}-[0-9]{2}-[0-9]{2}$' CHANGELOG.md" "0082 release-candidate guardrail (CHANGELOG has a dated rc entry and no unreleased-only scaffold)"
+        check_cmd "cd '$ROOT_DIR' && rg -n '^## Reviewer Evaluation$|docs/release/reviewer-guide\\.md|0\\.1\\.0-rc\\.1|rc reviewer|release candidate' RELEASE_CHECKLIST.md" "0082 release-candidate guardrail (checklist is upgraded for rc review)"
+        check_cmd "cd '$ROOT_DIR' && rg -n '^# Release Candidate Reviewer Guide$|^## What To Review$|^## Quick Smoke Path$|^## Gallery Review$|^## Public API Review$' docs/release/reviewer-guide.md" "0082 release-candidate guardrail (reviewer guide exists with concrete evaluation steps)"
+    fi
     check_cmd "cd '$ROOT_DIR' && ! rg -n 'tmp/harmoniousapp\\.net|wasm-demo|wasm-scaled-render-parity|wasm-native-rgba-proof|wasm-harmonious-spa|validate_harmonious_' docs/release" "0082 release-candidate guardrail (public release docs stay independent from Harmonious-local tooling)"
 fi
 
@@ -127,7 +129,7 @@ if [ -f "$ROOT_DIR/docs/plans/in_progress/0086-stable-cut-readiness-and-promotio
     if rg -q '^[0-9]+\.[0-9]+\.[0-9]+$' "$ROOT_DIR/VERSION"; then
         check_cmd "cd '$ROOT_DIR' && rg -n '^## \\[[0-9]+\\.[0-9]+\\.[0-9]+\\] - [0-9]{4}-[0-9]{2}-[0-9]{2}$' CHANGELOG.md && ! rg -n '\\-rc\\.[0-9]+' CHANGELOG.md" "0086 stable-cut guardrail (CHANGELOG is promoted from rc to stable entry)"
         check_cmd "cd '$ROOT_DIR' && ! rg -n 'release candidate|0\\.[0-9]+\\.[0-9]+-rc\\.[0-9]+' RELEASE_CHECKLIST.md docs/release/reviewer-guide.md docs/release/versioning.md" "0086 stable-cut guardrail (checklist and release docs no longer describe an rc cut after promotion)"
-        check_cmd "cd '$ROOT_DIR' && rg -n '^# Stable Release Reviewer Guide$|^Target: `[0-9]+\\.[0-9]+\\.[0-9]+`$' docs/release/reviewer-guide.md" "0086 stable-cut guardrail (reviewer guide is rewritten for a stable cut)"
+        check_cmd "cd '$ROOT_DIR' && rg -n '^# Stable Release Reviewer Guide$' docs/release/reviewer-guide.md >/dev/null && rg -n '^Target: \\x60[0-9]+\\.[0-9]+\\.[0-9]+\\x60$' docs/release/reviewer-guide.md >/dev/null" "0086 stable-cut guardrail (reviewer guide is rewritten for a stable cut)"
     fi
 fi
 
@@ -180,6 +182,12 @@ if [ -f "$ROOT_DIR/docs/plans/in_progress/0114-stable-review-sweep-and-release-d
     check_cmd "cd '$ROOT_DIR' && if rg -n '^Status: Go for stable 0\.1\.0$' docs/release/stable-review-decision.md >/dev/null; then rg -n '^0\.1\.0-rc\.1$|^0\.1\.0$' VERSION >/dev/null; else true; fi" "0114 stable decision guardrail (the decision record is compatible with the current promotion lane state)"
     check_cmd "cd '$ROOT_DIR' && if rg -n '^0\.1\.0-rc\.1$' VERSION >/dev/null; then rg -n '^# Release Candidate Reviewer Guide$|^Target:' docs/release/reviewer-guide.md >/dev/null && rg -n '0\.1\.0-rc\.1' docs/release/reviewer-guide.md >/dev/null; else true; fi" "0114 stable decision guardrail (while metadata is still RC, reviewer docs remain RC and do not silently claim a stable cut)"
 fi
+
+if [ -f "$ROOT_DIR/docs/plans/in_progress/0115-stable-0.1.0-promotion-and-tag-handoff.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0115-stable-0.1.0-promotion-and-tag-handoff.md" ]; then
+    check_cmd "cd '$ROOT_DIR' && test -f docs/release/tag-handoff.md && rg -n '^# Stable Tag Handoff$|^## Preconditions$|^## Exact Sequence$|^## Interpretation$' docs/release/tag-handoff.md >/dev/null && rg -n 'git merge --ff-only codex/stable-cut-execution-plan|git tag 0\.1\.0|git push origin 0\.1\.0' docs/release/tag-handoff.md >/dev/null" "0115 stable handoff guardrail (exact stable merge/tag sequence is documented)"
+    check_cmd "cd '$ROOT_DIR' && if rg -n '^[0-9]+\.[0-9]+\.[0-9]+$' VERSION >/dev/null; then rg -n '^0\.1\.0$' VERSION >/dev/null && rg -n '^## \[0\.1\.0\] - [0-9]{4}-[0-9]{2}-[0-9]{2}$' CHANGELOG.md >/dev/null && rg -n '^Target release: \\x600\.1\.0\\x60$' RELEASE_CHECKLIST.md >/dev/null && rg -n '^# Stable Release Reviewer Guide$' docs/release/reviewer-guide.md >/dev/null && rg -n '^Target: \\x600\.1\.0\\x60$' docs/release/reviewer-guide.md >/dev/null && rg -n '^Current stable target:$' docs/release/versioning.md >/dev/null && rg -n '^- \\x600\.1\.0\\x60$' docs/release/versioning.md >/dev/null; else true; fi" "0115 stable handoff guardrail (stable metadata is rewritten consistently when VERSION is stable)"
+fi
+
 
 
 if [ -f "$ROOT_DIR/docs/plans/in_progress/0088-live-midi-composer-scene.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0088-live-midi-composer-scene.md" ]; then

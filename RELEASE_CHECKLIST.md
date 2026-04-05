@@ -1,6 +1,6 @@
 # Release Checklist
 
-Target release candidate: `0.1.0-rc.1`
+Target release: `0.1.0`
 
 ## Preconditions
 
@@ -9,13 +9,14 @@ Target release candidate: `0.1.0-rc.1`
 - working tree is clean
 - release branch is merged or ready to merge
 - `docs/release/stability-matrix.md` has been reread so the reviewer path matches the real stable / experimental / internal split
+- `docs/release/stable-review-decision.md` records `Status: Go for stable 0.1.0`
 
 ## Versioning
 
 - update `VERSION`
 - review `docs/release/versioning.md`
-- add a changelog entry in `CHANGELOG.md`
-- confirm `VERSION` is the intended `-rc.N` target and not a `-dev` placeholder
+- add the stable changelog entry in `CHANGELOG.md`
+- confirm `VERSION` is the intended stable target and not an RC placeholder
 
 ## Native Surface
 
@@ -45,10 +46,11 @@ Target release candidate: `0.1.0-rc.1`
 - review `README.md`
 - review `docs/release/artifacts.md`
 - review `docs/release/image-review-matrix.md`
-- review `docs/release/stable-review-decision.md`
 - review `docs/release/reviewer-guide.md`
 - review `docs/release/smoke-matrix.md`
 - review `docs/release/stability-matrix.md`
+- review `docs/release/stable-review-decision.md`
+- review `docs/release/tag-handoff.md`
 - review `docs/release/versioning.md`
 
 ## Reviewer Evaluation
@@ -66,5 +68,7 @@ Target release candidate: `0.1.0-rc.1`
 ## Release Cut
 
 - commit release metadata updates
-- tag the release
-- push branch and tag
+- merge the release branch into `main`
+- create tag `0.1.0`
+- push `main` and the tag
+- follow `/Users/bermi/code/libmusictheory/docs/release/tag-handoff.md` exactly
