@@ -17,6 +17,7 @@ const chord_detection = @import("chord_detection.zig");
 const harmony = @import("harmony.zig");
 const counterpoint = @import("counterpoint.zig");
 const voice_leading_rules = @import("voice_leading_rules.zig");
+const choir = @import("choir.zig");
 const guitar = @import("guitar.zig");
 const keyboard_logic = @import("keyboard.zig");
 const svg_clock = @import("svg/clock.zig");
@@ -187,6 +188,17 @@ pub const LmtMotionIndependenceSummary = extern struct {
     descending_count: u8,
     retained_voice_count: u8,
     reserved0: u8,
+};
+
+pub const LmtSatbRegisterViolation = extern struct {
+    voice_id: u8,
+    satb_voice: u8,
+    midi: u8,
+    direction: i8,
+    low: u8,
+    high: u8,
+    reserved0: u8,
+    reserved1: u8,
 };
 
 pub const LmtNextStepSuggestion = extern struct {
@@ -648,6 +660,19 @@ fn writeMotionIndependenceSummary(out: *LmtMotionIndependenceSummary, summary: v
     };
 }
 
+fn writeSatbRegisterViolation(out: *LmtSatbRegisterViolation, violation: choir.RegisterViolation) void {
+    out.* = .{
+        .voice_id = violation.voice_id,
+        .satb_voice = @intFromEnum(violation.satb_voice),
+        .midi = violation.midi,
+        .direction = violation.direction,
+        .low = violation.low,
+        .high = violation.high,
+        .reserved0 = 0,
+        .reserved1 = 0,
+    };
+}
+
 fn writeNextStepSuggestion(out: *LmtNextStepSuggestion, suggestion: counterpoint.NextStepSuggestion) void {
     out.* = .{
         .score = suggestion.score,
@@ -1057,6 +1082,16 @@ pub export fn lmt_voice_leading_violation_kind_name(index: u32) callconv(.c) [*c
     return writeCString(voice_leading_rules.VIOLATION_KIND_NAMES[idx]);
 }
 
+pub export fn lmt_satb_voice_count() callconv(.c) u32 {
+    return @as(u32, @intCast(choir.SATB_VOICE_NAMES.len));
+}
+
+pub export fn lmt_satb_voice_name(index: u32) callconv(.c) [*c]const u8 {
+    const idx = @as(usize, @intCast(index));
+    if (idx >= choir.SATB_VOICE_NAMES.len) return null;
+    return writeCString(choir.SATB_VOICE_NAMES[idx]);
+}
+
 pub export fn lmt_sizeof_voiced_state() callconv(.c) u32 {
     return @as(u32, @intCast(@sizeOf(LmtVoicedState)));
 }
@@ -1075,6 +1110,10 @@ pub export fn lmt_sizeof_voice_pair_violation() callconv(.c) u32 {
 
 pub export fn lmt_sizeof_motion_independence_summary() callconv(.c) u32 {
     return @as(u32, @intCast(@sizeOf(LmtMotionIndependenceSummary)));
+}
+
+pub export fn lmt_sizeof_satb_register_violation() callconv(.c) u32 {
+    return @as(u32, @intCast(@sizeOf(LmtSatbRegisterViolation)));
 }
 
 pub export fn lmt_cadence_destination_count() callconv(.c) u32 {
@@ -1380,6 +1419,54 @@ pub export fn lmt_check_motion_independence(
     const summary = voice_leading_rules.detectMotionIndependence(&previous_value, &current_value);
     writeMotionIndependenceSummary(out_summary, summary);
     return 1;
+}
+
+fn decodeSatbVoice(raw: u8) ?choir.SatbVoice {
+    return switch (raw) {
+        0 => .soprano,
+        1 => .alto,
+        2 => .tenor,
+        3 => .bass,
+        else => null,
+    };
+}
+
+pub export fn lmt_satb_range_low(voice: u8) callconv(.c) u8 {
+    const satb_voice = decodeSatbVoice(voice) orelse return 0;
+    return choir.rangeLow(satb_voice);
+}
+
+pub export fn lmt_satb_range_high(voice: u8) callconv(.c) u8 {
+    const satb_voice = decodeSatbVoice(voice) orelse return 0;
+    return choir.rangeHigh(satb_voice);
+}
+
+pub export fn lmt_satb_range_contains(voice: u8, midi: u8) callconv(.c) bool {
+    const satb_voice = decodeSatbVoice(voice) orelse return false;
+    if (midi > 127) return false;
+    return choir.rangeContains(satb_voice, @as(pitch.MidiNote, @intCast(midi)));
+}
+
+pub export fn lmt_check_satb_registers(
+    current: [*c]const LmtVoicedState,
+    out: [*c]LmtSatbRegisterViolation,
+    out_cap: u32,
+) callconv(.c) u32 {
+    if (current == null) return 0;
+    if (out_cap > 0 and out == null) return 0;
+
+    const current_state: *const LmtVoicedState = @ptrCast(current);
+    const current_value = decodeVoicedState(current_state.*);
+
+    var violations: [choir.MAX_REGISTER_VIOLATIONS]choir.RegisterViolation = undefined;
+    const total = choir.checkRegisters(&current_value, violations[0..]);
+    const write_count = @min(@as(usize, total), @as(usize, @intCast(out_cap)));
+    var index: usize = 0;
+    while (index < write_count) : (index += 1) {
+        const out_violation: *LmtSatbRegisterViolation = @ptrCast(&out[index]);
+        writeSatbRegisterViolation(out_violation, violations[index]);
+    }
+    return total;
 }
 
 pub export fn lmt_rank_next_steps(history: [*c]const LmtVoicedHistory, profile: u8, out: [*c]LmtNextStepSuggestion, out_cap: u32) callconv(.c) u32 {

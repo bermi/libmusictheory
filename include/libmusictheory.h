@@ -21,6 +21,10 @@ extern "C" {
  *   lmt_counterpoint_max_voices, lmt_build_voiced_state,
  *   lmt_classify_motion, lmt_rank_next_steps,
  *   lmt_rank_cadence_destinations, lmt_analyze_suspension_machine,
+ *   lmt_satb_voice_count, lmt_satb_voice_name,
+ *   lmt_sizeof_satb_register_violation,
+ *   lmt_satb_range_low, lmt_satb_range_high,
+ *   lmt_satb_range_contains, lmt_check_satb_registers,
  *   lmt_orbifold_triad_node_count, lmt_orbifold_triad_node_at,
  *   lmt_orbifold_triad_edge_count, lmt_orbifold_triad_edge_at,
  *   lmt_find_orbifold_triad_node,
@@ -259,6 +263,14 @@ typedef enum {
     LMT_PAIR_MOTION_OBLIQUE = 4,
 } lmt_pair_motion_class;
 
+typedef uint8_t lmt_satb_voice;
+enum {
+    LMT_SATB_SOPRANO = 0,
+    LMT_SATB_ALTO = 1,
+    LMT_SATB_TENOR = 2,
+    LMT_SATB_BASS = 3,
+};
+
 typedef enum {
     LMT_COUNTERPOINT_SPECIES = 0,
     LMT_COUNTERPOINT_TONAL_CHORALE = 1,
@@ -337,6 +349,17 @@ typedef struct {
     uint8_t retained_voice_count;
     uint8_t reserved0;
 } lmt_motion_independence_summary;
+
+typedef struct {
+    uint8_t voice_id;
+    uint8_t satb_voice;
+    uint8_t midi;
+    int8_t direction;
+    uint8_t low;
+    uint8_t high;
+    uint8_t reserved0;
+    uint8_t reserved1;
+} lmt_satb_register_violation;
 
 typedef struct {
     int32_t score;
@@ -460,11 +483,14 @@ uint32_t lmt_counterpoint_rule_profile_count(void);
 const char *lmt_counterpoint_rule_profile_name(uint32_t index);
 uint32_t lmt_voice_leading_violation_kind_count(void);
 const char *lmt_voice_leading_violation_kind_name(uint32_t index);
+uint32_t lmt_satb_voice_count(void);
+const char *lmt_satb_voice_name(uint32_t index);
 uint32_t lmt_sizeof_voiced_state(void);
 uint32_t lmt_sizeof_voiced_history(void);
 uint32_t lmt_sizeof_next_step_suggestion(void);
 uint32_t lmt_sizeof_voice_pair_violation(void);
 uint32_t lmt_sizeof_motion_independence_summary(void);
+uint32_t lmt_sizeof_satb_register_violation(void);
 uint32_t lmt_cadence_destination_count(void);
 const char *lmt_cadence_destination_name(uint32_t index);
 uint32_t lmt_suspension_state_count(void);
@@ -487,6 +513,10 @@ uint32_t lmt_check_parallel_perfects(const lmt_voiced_state *previous, const lmt
 uint32_t lmt_check_voice_crossing(const lmt_voiced_state *previous, const lmt_voiced_state *current, lmt_voice_pair_violation *out, uint32_t out_cap);
 uint32_t lmt_check_spacing(const lmt_voiced_state *current, lmt_voice_pair_violation *out, uint32_t out_cap);
 uint32_t lmt_check_motion_independence(const lmt_voiced_state *previous, const lmt_voiced_state *current, lmt_motion_independence_summary *out);
+uint8_t lmt_satb_range_low(lmt_satb_voice voice);
+uint8_t lmt_satb_range_high(lmt_satb_voice voice);
+bool lmt_satb_range_contains(lmt_satb_voice voice, lmt_midi_note midi);
+uint32_t lmt_check_satb_registers(const lmt_voiced_state *current, lmt_satb_register_violation *out, uint32_t out_cap);
 uint32_t lmt_rank_next_steps(const lmt_voiced_history *history, lmt_counterpoint_rule_profile profile, lmt_next_step_suggestion *out, uint32_t out_cap);
 uint32_t lmt_rank_cadence_destinations(const lmt_voiced_history *history, lmt_counterpoint_rule_profile profile, lmt_cadence_destination_score *out, uint32_t out_cap);
 uint32_t lmt_analyze_suspension_machine(const lmt_voiced_history *history, lmt_counterpoint_rule_profile profile, lmt_suspension_machine_summary *out);

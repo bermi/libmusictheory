@@ -41,6 +41,7 @@ These helpers are intentionally public and reviewed, but they are not part of th
   - `lmt_voiced_history_*`
   - `lmt_classify_motion`
   - `lmt_evaluate_motion_profile`
+  - `lmt_satb_*`
   - `lmt_rank_next_steps`
   - `lmt_rank_cadence_destinations`
   - `lmt_analyze_suspension_machine`

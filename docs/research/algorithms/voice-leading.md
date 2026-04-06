@@ -261,6 +261,7 @@ The standalone library now exposes explicit rule detectors over the same `Voiced
 - voice crossing
 - upper-voice spacing violations
 - motion-independence collapse
+- choir-specific SATB range checks
 
 These detectors intentionally reuse the same voice identities that `VoicedHistoryWindow` and `MotionSummary` already use. They do **not** create a second notion of voice assignment.
 
@@ -270,6 +271,14 @@ Design notes:
 - voice crossing is also adjacent-state, for the same reason
 - spacing is a current-state check and follows the common SATB convention: adjacent upper voices should stay within an octave, while the lowest pair is exempt
 - motion-independence collapse reports whether all retained moving voices travel in the same direction with no stationary voice breaking the texture
+- SATB helpers stay explicitly choir-scoped and only apply the conventional bass/tenor/alto/soprano mapping when a `VoicedState` contains exactly four voices ordered low-to-high
+
+The corresponding choir-specific helper surface is:
+
+- `lmt_satb_range_low`
+- `lmt_satb_range_high`
+- `lmt_satb_range_contains`
+- `lmt_check_satb_registers`
 
 That makes the outputs directly explainable:
 

@@ -22,6 +22,7 @@ const LmtMotionSummary = api.LmtMotionSummary;
 const LmtMotionEvaluation = api.LmtMotionEvaluation;
 const LmtVoicePairViolation = api.LmtVoicePairViolation;
 const LmtMotionIndependenceSummary = api.LmtMotionIndependenceSummary;
+const LmtSatbRegisterViolation = api.LmtSatbRegisterViolation;
 const LmtNextStepSuggestion = api.LmtNextStepSuggestion;
 const LmtCadenceDestinationScore = api.LmtCadenceDestinationScore;
 const LmtSuspensionMachineSummary = api.LmtSuspensionMachineSummary;
@@ -85,11 +86,14 @@ const lmt_counterpoint_rule_profile_count = api.lmt_counterpoint_rule_profile_co
 const lmt_counterpoint_rule_profile_name = api.lmt_counterpoint_rule_profile_name;
 const lmt_voice_leading_violation_kind_count = api.lmt_voice_leading_violation_kind_count;
 const lmt_voice_leading_violation_kind_name = api.lmt_voice_leading_violation_kind_name;
+const lmt_satb_voice_count = api.lmt_satb_voice_count;
+const lmt_satb_voice_name = api.lmt_satb_voice_name;
 const lmt_sizeof_voiced_state = api.lmt_sizeof_voiced_state;
 const lmt_sizeof_voiced_history = api.lmt_sizeof_voiced_history;
 const lmt_sizeof_next_step_suggestion = api.lmt_sizeof_next_step_suggestion;
 const lmt_sizeof_voice_pair_violation = api.lmt_sizeof_voice_pair_violation;
 const lmt_sizeof_motion_independence_summary = api.lmt_sizeof_motion_independence_summary;
+const lmt_sizeof_satb_register_violation = api.lmt_sizeof_satb_register_violation;
 const lmt_cadence_destination_count = api.lmt_cadence_destination_count;
 const lmt_cadence_destination_name = api.lmt_cadence_destination_name;
 const lmt_suspension_state_count = api.lmt_suspension_state_count;
@@ -112,6 +116,10 @@ const lmt_check_parallel_perfects = api.lmt_check_parallel_perfects;
 const lmt_check_voice_crossing = api.lmt_check_voice_crossing;
 const lmt_check_spacing = api.lmt_check_spacing;
 const lmt_check_motion_independence = api.lmt_check_motion_independence;
+const lmt_satb_range_low = api.lmt_satb_range_low;
+const lmt_satb_range_high = api.lmt_satb_range_high;
+const lmt_satb_range_contains = api.lmt_satb_range_contains;
+const lmt_check_satb_registers = api.lmt_check_satb_registers;
 const lmt_rank_next_steps = api.lmt_rank_next_steps;
 const lmt_rank_cadence_destinations = api.lmt_rank_cadence_destinations;
 const lmt_analyze_suspension_machine = api.lmt_analyze_suspension_machine;
@@ -155,6 +163,7 @@ test "c abi header layout and constants" {
     try testing.expectEqual(@sizeOf(c.lmt_suspension_machine_summary), @sizeOf(LmtSuspensionMachineSummary));
     try testing.expectEqual(@sizeOf(c.lmt_voice_pair_violation), @sizeOf(LmtVoicePairViolation));
     try testing.expectEqual(@sizeOf(c.lmt_motion_independence_summary), @sizeOf(LmtMotionIndependenceSummary));
+    try testing.expectEqual(@sizeOf(c.lmt_satb_register_violation), @sizeOf(LmtSatbRegisterViolation));
     try testing.expectEqual(@sizeOf(c.lmt_orbifold_triad_node), @sizeOf(LmtOrbifoldTriadNode));
     try testing.expectEqual(@sizeOf(c.lmt_orbifold_triad_edge), @sizeOf(LmtOrbifoldTriadEdge));
     try testing.expectEqual(@as(usize, 0), @offsetOf(c.lmt_key_context, "tonic"));
@@ -178,6 +187,7 @@ test "c abi header layout and constants" {
     try testing.expectEqual(@as(u32, @sizeOf(LmtNextStepSuggestion)), lmt_sizeof_next_step_suggestion());
     try testing.expectEqual(@as(u32, @sizeOf(LmtVoicePairViolation)), lmt_sizeof_voice_pair_violation());
     try testing.expectEqual(@as(u32, @sizeOf(LmtMotionIndependenceSummary)), lmt_sizeof_motion_independence_summary());
+    try testing.expectEqual(@as(u32, @sizeOf(LmtSatbRegisterViolation)), lmt_sizeof_satb_register_violation());
     try testing.expectEqual(@as(u32, @sizeOf(LmtCadenceDestinationScore)), lmt_sizeof_cadence_destination_score());
     try testing.expectEqual(@as(u32, @sizeOf(LmtSuspensionMachineSummary)), lmt_sizeof_suspension_machine_summary());
     try testing.expectEqual(@as(u32, @sizeOf(LmtOrbifoldTriadNode)), lmt_sizeof_orbifold_triad_node());
@@ -444,6 +454,31 @@ test "c abi voice-leading rule detectors" {
     try testing.expectEqual(@as(u8, 2), independence.moving_voice_count);
 }
 
+test "c abi satb register helpers" {
+    try testing.expectEqual(@as(u32, 4), lmt_satb_voice_count());
+    try testing.expectEqualStrings("alto", std.mem.sliceTo(@as([*:0]const u8, @ptrCast(lmt_satb_voice_name(c.LMT_SATB_ALTO))), 0));
+    try testing.expect(lmt_satb_voice_name(lmt_satb_voice_count()) == null);
+
+    try testing.expectEqual(@as(u8, 40), lmt_satb_range_low(c.LMT_SATB_BASS));
+    try testing.expectEqual(@as(u8, 64), lmt_satb_range_high(c.LMT_SATB_BASS));
+    try testing.expect(lmt_satb_range_contains(c.LMT_SATB_ALTO, 60));
+    try testing.expect(!lmt_satb_range_contains(c.LMT_SATB_ALTO, 54));
+
+    var chorale = manualVoicedState(&[_]ManualVoicedVoice{
+        .{ .id = 0, .midi = 36 },
+        .{ .id = 1, .midi = 50 },
+        .{ .id = 2, .midi = 57 },
+        .{ .id = 3, .midi = 84 },
+    });
+    var violations: [4]LmtSatbRegisterViolation = undefined;
+    const total = lmt_check_satb_registers(@ptrCast(&chorale), @ptrCast(&violations), violations.len);
+    try testing.expectEqual(@as(u32, 2), total);
+    try testing.expectEqual(@as(u8, c.LMT_SATB_BASS), violations[0].satb_voice);
+    try testing.expectEqual(@as(i8, -1), violations[0].direction);
+    try testing.expectEqual(@as(u8, c.LMT_SATB_SOPRANO), violations[1].satb_voice);
+    try testing.expectEqual(@as(i8, 1), violations[1].direction);
+}
+
 test "c abi next step ranker and reason tables" {
     var history: LmtVoicedHistory = undefined;
     var current: LmtVoicedState = undefined;
@@ -531,6 +566,12 @@ test "c abi counterpoint helper metadata" {
     const violation_name = std.mem.sliceTo(@as([*:0]const u8, @ptrCast(lmt_voice_leading_violation_kind_name(0))), 0);
     try testing.expectEqualStrings("parallel-fifth", violation_name);
     try testing.expect(lmt_voice_leading_violation_kind_name(violation_kind_count) == null);
+
+    const satb_voice_count = lmt_satb_voice_count();
+    try testing.expectEqual(@as(u32, 4), satb_voice_count);
+    const satb_name = std.mem.sliceTo(@as([*:0]const u8, @ptrCast(lmt_satb_voice_name(0))), 0);
+    try testing.expectEqualStrings("soprano", satb_name);
+    try testing.expect(lmt_satb_voice_name(satb_voice_count) == null);
 }
 
 test "c abi cadence destination and suspension helpers" {
