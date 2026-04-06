@@ -1,9 +1,9 @@
 # Contrapunk Theory Integration
 
 > Dependencies: 0007, 0009, 0010, 0011, 0020, 0115
-> Follow-up: implementation slices to be created from this plan once Phase 0 decisions are accepted
+> Follow-up: implemented through 0122 and closed
 
-Status: In progress
+Status: Completed
 
 ## Summary
 
@@ -498,7 +498,13 @@ This plan is ready to close only when:
 
 ## Implementation History (Point-in-Time)
 
-_To be filled when implementation is complete._
-- `<commit-hash>` (<date>):
-  - Shipped behavior: ...
-  - Verification: `./verify.sh`, `zig build verify`
+- `40e1664` (2026-04-06):
+  - Shipped behavior:
+    - added the ordered-scale foundation and extended the public mode inventory to the full planned 29-mode surface
+    - shipped degree-aware note primitives, explicit nearest-scale helpers, and modal interchange containment matches
+    - added structured chord detection, voice-leading rule detectors, and choir-scoped SATB register helpers
+    - resolved Barry Harris as an experimental ordered-scale-only surface with explicit parity helpers instead of overloading `ScaleType` or `ModeType`
+    - documented the accepted vs rejected Contrapunk-derived features so explainable theory facts are first-class and opaque heuristics remain excluded
+  - Verification:
+    - `/Users/bermi/code/libmusictheory/./verify.sh`
+    - `/Users/bermi/code/libmusictheory/./zigw build verify`
