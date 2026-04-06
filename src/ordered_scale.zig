@@ -11,6 +11,7 @@ pub const Family = enum {
     diminished,
     whole_tone,
     exotic,
+    barry_harris,
 };
 
 pub const PatternId = enum {
@@ -24,6 +25,8 @@ pub const PatternId = enum {
     enigmatic,
     neapolitan_minor,
     neapolitan_major,
+    barry_harris_major_sixth_diminished,
+    barry_harris_minor_sixth_diminished,
 };
 
 pub const OrderedScaleInfo = struct {
@@ -54,6 +57,16 @@ pub const ScaleNeighborTones = struct {
     upper_distance: u8 = 0,
 };
 
+pub const BarryHarrisParityKind = enum(u8) {
+    chord_tone,
+    passing_tone,
+};
+
+pub const BarryHarrisParity = struct {
+    degree: u8,
+    kind: BarryHarrisParityKind,
+};
+
 pub const ALL_PATTERNS = [_]OrderedScaleInfo{
     makePattern(.diatonic, "Diatonic", .diatonic, &[_]pitch.PitchClass{ 0, 2, 4, 5, 7, 9, 11 }),
     makePattern(.melodic_minor, "Melodic Minor", .melodic_minor, &[_]pitch.PitchClass{ 0, 2, 3, 5, 7, 9, 11 }),
@@ -65,10 +78,25 @@ pub const ALL_PATTERNS = [_]OrderedScaleInfo{
     makePattern(.enigmatic, "Enigmatic", .exotic, &[_]pitch.PitchClass{ 0, 1, 4, 6, 8, 10, 11 }),
     makePattern(.neapolitan_minor, "Neapolitan Minor", .exotic, &[_]pitch.PitchClass{ 0, 1, 3, 5, 7, 8, 11 }),
     makePattern(.neapolitan_major, "Neapolitan Major", .exotic, &[_]pitch.PitchClass{ 0, 1, 3, 5, 7, 9, 11 }),
+    makePattern(.barry_harris_major_sixth_diminished, "Barry Harris Major 6th Diminished", .barry_harris, &[_]pitch.PitchClass{ 0, 2, 4, 5, 7, 8, 9, 11 }),
+    makePattern(.barry_harris_minor_sixth_diminished, "Barry Harris Minor 6th Diminished", .barry_harris, &[_]pitch.PitchClass{ 0, 2, 3, 5, 7, 8, 9, 11 }),
 };
 
 pub fn info(id: PatternId) *const OrderedScaleInfo {
     return &ALL_PATTERNS[@intFromEnum(id)];
+}
+
+pub fn count() usize {
+    return ALL_PATTERNS.len;
+}
+
+pub fn fromInt(raw: u8) ?PatternId {
+    if (raw >= ALL_PATTERNS.len) return null;
+    return @enumFromInt(raw);
+}
+
+pub fn rootedPitchClassSet(id: PatternId, tonic: pitch.PitchClass) pcs.PitchClassSet {
+    return pcs.transpose(info(id).pcs, tonic);
 }
 
 pub fn offsetsFor(id: PatternId) []const pitch.PitchClass {
@@ -186,6 +214,22 @@ pub fn snapToScale(
     if (neighbors.has_lower) return neighbors.lower;
     if (neighbors.has_upper) return neighbors.upper;
     return null;
+}
+
+pub fn isBarryHarris(id: PatternId) bool {
+    return switch (id) {
+        .barry_harris_major_sixth_diminished, .barry_harris_minor_sixth_diminished => true,
+        else => false,
+    };
+}
+
+pub fn barryHarrisParity(id: PatternId, tonic: pitch.PitchClass, note: pitch.MidiNote) ?BarryHarrisParity {
+    if (!isBarryHarris(id)) return null;
+    const degree = degreeIndexForOffsets(offsetsFor(id), tonic, note) orelse return null;
+    return .{
+        .degree = degree,
+        .kind = if ((degree % 2) == 0) .chord_tone else .passing_tone,
+    };
 }
 
 fn makePattern(

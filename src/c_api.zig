@@ -292,7 +292,7 @@ const MINOR_SEVENTH = pcs.fromList(&[_]pitch.PitchClass{ 0, 3, 7, 10 });
 const HALF_DIMINISHED_SEVENTH = pcs.fromList(&[_]pitch.PitchClass{ 0, 3, 6, 10 });
 const DIMINISHED_SEVENTH = pcs.fromList(&[_]pitch.PitchClass{ 0, 3, 6, 9 });
 
-var c_string_slots: [8][32]u8 = [_][32]u8{[_]u8{0} ** 32} ** 8;
+var c_string_slots: [8][64]u8 = [_][64]u8{[_]u8{0} ** 64} ** 8;
 var c_string_slot_index: usize = 0;
 var compat_svg_buf: [4 * 1024 * 1024]u8 = undefined;
 var wasm_client_scratch: [8 * 1024 * 1024]u8 = undefined;
@@ -349,6 +349,11 @@ fn decodeModeType(mode_type: u8) ?mode.ModeType {
 
 fn decodeSnapTiePolicy(raw: u8) ordered_scale.SnapTiePolicy {
     return if (raw == 1) .higher else .lower;
+}
+
+fn decodeOrderedScalePattern(index: u32) ?ordered_scale.PatternId {
+    if (index > std.math.maxInt(u8)) return null;
+    return ordered_scale.fromInt(@as(u8, @intCast(index)));
 }
 
 fn modeSet(mode_type: mode.ModeType) pcs.PitchClassSet {
@@ -923,6 +928,40 @@ pub export fn lmt_mode_type_name(index: u32) callconv(.c) [*c]const u8 {
     const idx = @as(usize, @intCast(index));
     if (idx >= mode.count()) return null;
     return writeCString(mode.name(@enumFromInt(@as(u8, @intCast(index)))));
+}
+
+pub export fn lmt_ordered_scale_pattern_count() callconv(.c) u32 {
+    return @as(u32, @intCast(ordered_scale.count()));
+}
+
+pub export fn lmt_ordered_scale_pattern_name(index: u32) callconv(.c) [*c]const u8 {
+    const pattern_id = decodeOrderedScalePattern(index) orelse return null;
+    return writeCString(ordered_scale.info(pattern_id).name);
+}
+
+pub export fn lmt_ordered_scale_degree_count(index: u32) callconv(.c) u8 {
+    const pattern_id = decodeOrderedScalePattern(index) orelse return 0;
+    return ordered_scale.info(pattern_id).degree_count;
+}
+
+pub export fn lmt_ordered_scale_pitch_class_set(index: u32, tonic: u8) callconv(.c) u16 {
+    const pattern_id = decodeOrderedScalePattern(index) orelse return 0;
+    return toCSet(ordered_scale.rootedPitchClassSet(pattern_id, @as(pitch.PitchClass, @intCast(tonic % 12))));
+}
+
+pub export fn lmt_barry_harris_parity(index: u32, tonic: u8, note: u8, out_degree: [*c]u8) callconv(.c) u8 {
+    if (note > 127) return 0;
+    const pattern_id = decodeOrderedScalePattern(index) orelse return 0;
+    const parity = ordered_scale.barryHarrisParity(
+        pattern_id,
+        @as(pitch.PitchClass, @intCast(tonic % 12)),
+        @as(pitch.MidiNote, @intCast(note)),
+    ) orelse return 0;
+    if (out_degree != null) out_degree[0] = parity.degree;
+    return switch (parity.kind) {
+        .chord_tone => 1,
+        .passing_tone => 2,
+    };
 }
 
 pub export fn lmt_scale_degree(tonic: u8, mode_type: u8, note: u8) callconv(.c) u8 {

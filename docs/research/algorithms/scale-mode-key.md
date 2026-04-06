@@ -250,6 +250,29 @@ For the tessellation map:
 - `KeySignature`: struct { sharps_or_flats: enum, accidentals: []NoteName }
 - Static tables: 29 mode types, 15 key signatures (expandable to all scale types)
 
+## Barry Harris Decision
+
+`libmusictheory` accepts Barry Harris major/minor sixth-diminished material as an **experimental ordered-scale-only surface**, not as a new `ScaleType` or `ModeType`.
+
+That boundary is deliberate:
+
+- the existing `ScaleType` / `ModeType` APIs describe named scale and mode identities used by mode lookup, key context, and note-spelling surfaces
+- Barry Harris major/minor sixth-diminished scales are best understood here as 8-note ordered pedagogical inventories with an explicit parity claim
+- the current ordered-scale layer already supports `MAX_DEGREES = 8`, so the theory fits naturally there without changing mode-identification semantics
+
+The exposed ordered-scale helpers are:
+
+- `lmt_ordered_scale_pattern_count`
+- `lmt_ordered_scale_pattern_name`
+- `lmt_ordered_scale_degree_count`
+- `lmt_ordered_scale_pitch_class_set`
+- `lmt_barry_harris_parity`
+
+Explainability stays direct:
+
+- `C Barry Harris Major 6th Diminished contains C D E F G Ab A B.`
+- `E is an even-degree chord tone in that ordered scale; F is an odd-degree passing tone.`
+
 ## Dependencies
 
 - [Pitch Class Set Operations](pitch-class-set-operations.md)

@@ -9,6 +9,7 @@ const pitch = @import("../pitch.zig");
 const chord_detection = @import("../chord_detection.zig");
 const mode = @import("../mode.zig");
 const modal_interchange = @import("../modal_interchange.zig");
+const ordered_scale = @import("../ordered_scale.zig");
 
 test "properties hold for all 4096 pitch-class sets" {
     var dec: u16 = 0;
@@ -115,6 +116,29 @@ test "modal interchange matches always contain the queried pitch class" {
             for (out[0..total]) |match| {
                 try testing.expect(mode.degreeOfPitchClass(tonic, match.mode, note_pc) != null);
                 try testing.expectEqual(match.degree, mode.degreeOfPitchClass(tonic, match.mode, note_pc).? + 1);
+            }
+        }
+    }
+}
+
+test "barry harris parity alternates across rooted ordered-scale degrees" {
+    const patterns = [_]ordered_scale.PatternId{
+        .barry_harris_major_sixth_diminished,
+        .barry_harris_minor_sixth_diminished,
+    };
+
+    for (patterns) |pattern| {
+        var tonic: u4 = 0;
+        while (tonic < 12) : (tonic += 1) {
+            const offsets = ordered_scale.offsetsFor(pattern);
+            for (offsets, 0..) |offset, degree| {
+                const note = pitch.pcToMidi(@as(u4, @intCast((@as(u8, tonic) + @as(u8, offset)) % 12)), 4);
+                const parity = ordered_scale.barryHarrisParity(pattern, tonic, note).?;
+                try testing.expectEqual(@as(u8, @intCast(degree)), parity.degree);
+                try testing.expectEqual(
+                    if ((degree % 2) == 0) ordered_scale.BarryHarrisParityKind.chord_tone else ordered_scale.BarryHarrisParityKind.passing_tone,
+                    parity.kind,
+                );
             }
         }
     }

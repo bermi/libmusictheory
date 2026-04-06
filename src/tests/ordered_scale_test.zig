@@ -33,4 +33,6 @@ test "ordered scale mode rotation derives harmonic minor family members" {
 test "ordered scale supports non-heptatonic parent patterns" {
     try testing.expectEqual(@as(u4, 8), ordered_scale.info(.diminished).degree_count);
     try testing.expectEqual(@as(u4, 6), ordered_scale.info(.whole_tone).degree_count);
+    try testing.expectEqual(@as(u4, 8), ordered_scale.info(.barry_harris_major_sixth_diminished).degree_count);
+    try testing.expectEqual(@as(u4, 8), ordered_scale.info(.barry_harris_minor_sixth_diminished).degree_count);
 }

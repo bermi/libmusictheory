@@ -51,6 +51,9 @@ These helpers are intentionally public and reviewed, but they are not part of th
   - `lmt_mode_spelling_quality`
   - `lmt_rank_context_suggestions`
   - `lmt_preferred_voicing_n`
+- ordered-scale pedagogy helpers:
+  - `lmt_ordered_scale_*`
+  - `lmt_barry_harris_parity`
 - direct RGBA bitmap renderers:
   - all `lmt_bitmap_*_rgba` methods
 

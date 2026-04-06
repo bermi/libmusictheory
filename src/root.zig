@@ -67,6 +67,7 @@ test {
     _ = @import("tests/cluster_evenness_test.zig");
     _ = @import("tests/even_compat_model_test.zig");
     _ = @import("tests/ordered_scale_test.zig");
+    _ = @import("tests/barry_harris_test.zig");
     _ = @import("tests/diatonic_test.zig");
     _ = @import("tests/modal_interchange_test.zig");
     _ = @import("tests/scales_modes_test.zig");

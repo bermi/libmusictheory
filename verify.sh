@@ -213,7 +213,7 @@ if [ -f "$ROOT_DIR/docs/plans/in_progress/0121-satb-register-helpers.md" ] || [ 
 fi
 
 if [ -f "$ROOT_DIR/docs/plans/in_progress/0122-barry-harris-evaluation-gate-and-master-closeout.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0122-barry-harris-evaluation-gate-and-master-closeout.md" ]; then
-    check_cmd "cd '$ROOT_DIR' && rg -n 'barry harris|major sixth diminished|minor sixth diminished|ordered-scale-only|parity' docs/research/algorithms/scale-mode-key.md docs/plans/in_progress/contrapunk-theory-integration.md docs/plans/drafts/0001-coordinator.md >/dev/null && rg -n 'lmt_ordered_scale_pattern_count|lmt_ordered_scale_pattern_name|lmt_ordered_scale_degree_count|lmt_ordered_scale_pitch_class_set|lmt_barry_harris_parity' include/libmusictheory.h src/c_api.zig build.zig scripts/check_wasm_exports.mjs src/tests/c_api_test.zig >/dev/null" "0122 Barry Harris gate guardrail (decision docs and ordered-scale parity ABI are wired)"
+    check_cmd "cd '$ROOT_DIR' && master_plan='docs/plans/in_progress/contrapunk-theory-integration.md'; if [ ! -f \"\$master_plan\" ]; then master_plan='docs/plans/completed/contrapunk-theory-integration.md'; fi; rg -n 'barry harris|major sixth diminished|minor sixth diminished|ordered-scale-only|parity' docs/research/algorithms/scale-mode-key.md \"\$master_plan\" docs/plans/drafts/0001-coordinator.md >/dev/null && rg -n 'lmt_ordered_scale_pattern_count|lmt_ordered_scale_pattern_name|lmt_ordered_scale_degree_count|lmt_ordered_scale_pitch_class_set|lmt_barry_harris_parity' include/libmusictheory.h src/c_api.zig build.zig scripts/check_wasm_exports.mjs src/tests/c_api_test.zig >/dev/null" "0122 Barry Harris gate guardrail (decision docs and ordered-scale parity ABI are wired)"
 fi
 
 

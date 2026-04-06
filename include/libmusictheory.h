@@ -29,6 +29,9 @@ extern "C" {
  *   lmt_orbifold_triad_edge_count, lmt_orbifold_triad_edge_at,
  *   lmt_find_orbifold_triad_node,
  *   lmt_mode_type_count, lmt_mode_type_name,
+ *   lmt_ordered_scale_pattern_count, lmt_ordered_scale_pattern_name,
+ *   lmt_ordered_scale_degree_count, lmt_ordered_scale_pitch_class_set,
+ *   lmt_barry_harris_parity,
  *   lmt_scale_degree, lmt_transpose_diatonic,
  *   lmt_nearest_scale_tones, lmt_snap_to_scale,
  *   lmt_find_containing_modes,
@@ -106,6 +109,13 @@ typedef uint8_t lmt_snap_tie_policy;
 enum {
     LMT_SNAP_TIE_LOWER = 0,
     LMT_SNAP_TIE_HIGHER = 1,
+};
+
+typedef uint8_t lmt_barry_harris_parity_kind;
+enum {
+    LMT_BARRY_HARRIS_NOT_APPLICABLE = 0,
+    LMT_BARRY_HARRIS_CHORD_TONE = 1,
+    LMT_BARRY_HARRIS_PASSING_TONE = 2,
 };
 
 typedef uint8_t lmt_chord_type;
@@ -483,6 +493,11 @@ uint32_t lmt_counterpoint_rule_profile_count(void);
 const char *lmt_counterpoint_rule_profile_name(uint32_t index);
 uint32_t lmt_voice_leading_violation_kind_count(void);
 const char *lmt_voice_leading_violation_kind_name(uint32_t index);
+uint32_t lmt_ordered_scale_pattern_count(void);
+const char *lmt_ordered_scale_pattern_name(uint32_t index);
+uint8_t lmt_ordered_scale_degree_count(uint32_t index);
+lmt_pitch_class_set lmt_ordered_scale_pitch_class_set(uint32_t index, lmt_pitch_class tonic);
+uint8_t lmt_barry_harris_parity(uint32_t index, lmt_pitch_class tonic, lmt_midi_note note, uint8_t *out_degree);
 uint32_t lmt_satb_voice_count(void);
 const char *lmt_satb_voice_name(uint32_t index);
 uint32_t lmt_sizeof_voiced_state(void);

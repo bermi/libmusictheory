@@ -44,7 +44,7 @@ Every feature in this plan must survive these checks before implementation:
 | Harmonic-minor family modes | Adopt | These are objective interval structures and fit the existing mode system cleanly. They should be added only after cross-checking names and pitch-class content against `tonal-ts` and literature. |
 | 5 exotic modes | Adopt | These are explainable as named scale definitions, but only if each is traceable to established literature and not just a project-local nickname. |
 | "11 new modes" | Push back | The audit understates the count. Relative to the current `ModeType`, the repo is missing 12 seven-note modes if it adds the full harmonic-minor family plus the 5 named exotic modes. The implementation plan should treat the count honestly. |
-| Barry Harris 8-note scales | Gate behind design review | The scales themselves are explainable. The danger is not cardinality; the repo already handles 6- and 8-note families (`whole_tone`, `diminished`) at the PCS level. The real question is whether Barry Harris belongs as a first-class mode family in the same API semantics as church/jazz modes, or as a separate ordered-scale pedagogy surface. |
+| Barry Harris 8-note scales | Adopt as experimental ordered-scale-only surface | The scales themselves are explainable, and `ordered_scale` already supports 8-note inventories. The clean boundary is to keep Barry Harris out of `ScaleType`/`ModeType` and expose only the explicit ordered pattern facts plus parity helpers. |
 | Diatonic transposition | Adopt first | This is one of the cleanest additions in the whole audit and should land before modal interchange or any explainable harmony helpers. |
 | `snap_to_scale` with implicit lower-on-tie | Push back on default | "Lower on tie" is deterministic, but it is still a policy choice. The library should expose both candidates or require a caller-supplied tie policy rather than hardcoding an unexplained default. |
 | 39-pattern chord detection | Adopt with API redesign | The chord vocabulary is explainable and useful, but a single string-returning API hides ambiguity. The library should return structured matches first and keep string formatting as a helper. |
@@ -92,14 +92,14 @@ Returning only `ModeType[]` is insufficient for explanation. The result should i
 - `F# belongs to C Lydian as raised 4`
 - `Eb belongs to C Aeolian as minor 3`
 
-### 4. Barry Harris Is Not Blocked By Cardinality Alone
+### 4. Barry Harris Belongs In Ordered Scale, Not In `ModeType`
 
-The repo already models non-heptatonic scale families at the PCS level. The real design choice is semantic:
-- are Barry Harris scales first-class `ScaleType` families?
-- are they an experimental `ordered_scale` family only?
-- do they participate in `ModeType` identification, or remain explicit pedagogical named scales?
+The repo already models non-heptatonic scale families at the PCS level. The real design choice was semantic, and implementation resolves it this way:
+- Barry Harris scales are **not** first-class `ScaleType` families
+- they are **not** promoted into `ModeType`
+- they remain experimental `ordered_scale` patterns with an explicit parity helper
 
-This plan treats Barry Harris as a gated track that can proceed only after ordered-scale semantics are explicit.
+That keeps `identifyMode` and the public mode table honest while still exposing the explainable pedagogical fact that even/odd degrees alternate chord-tone and passing-tone roles.
 
 ### 5. Voice-Leading Rules Should Reuse Existing Counterpoint State
 
@@ -342,8 +342,12 @@ Files to create/modify:
 
 Recommended C API surface:
 - `typedef enum lmt_satb_voice { ... } lmt_satb_voice;`
-- `uint8_t lmt_satb_range_contains(lmt_satb_voice voice, lmt_midi_note note);`
-- `uint8_t lmt_check_satb_registers(const lmt_voiced_state *state, const lmt_satb_voice *voices, uint8_t voice_count, lmt_voice_pair_violation *out, uint8_t out_len);`
+- `uint32_t lmt_satb_voice_count(void);`
+- `const char *lmt_satb_voice_name(uint32_t index);`
+- `uint8_t lmt_satb_range_low(lmt_satb_voice voice);`
+- `uint8_t lmt_satb_range_high(lmt_satb_voice voice);`
+- `bool lmt_satb_range_contains(lmt_satb_voice voice, lmt_midi_note note);`
+- `uint32_t lmt_check_satb_registers(const lmt_voiced_state *current, lmt_satb_register_violation *out, uint32_t out_cap);`
 
 Scope: S
 
@@ -356,26 +360,31 @@ Deliver:
 - a documented yes/no decision on whether Barry Harris belongs in the core ordered-scale surface
 - implementation only if the API can stay explicit and explainable
 
-Questions the gate must answer:
-- Are Barry Harris families modeled as `ScaleType`, `ModeType`, or experimental ordered-scale names only?
-- Can `identifyMode` remain honest if Barry Harris joins the public mode table?
-- Do parity/chord-tone semantics require a dedicated API rather than overloading plain mode identification?
+Resolution:
+- accepted as an **experimental ordered-scale-only** surface
+- rejected as a `ScaleType` or `ModeType` addition
+- exposed through explicit pattern discovery, rooted PCS lookup, degree-count lookup, and parity helpers
 
-If accepted, files to create/modify:
+Questions the gate answered:
+- Barry Harris families are modeled as experimental ordered-scale names only
+- `identifyMode` stays honest because Barry Harris does **not** join the public mode table
+- parity/chord-tone semantics use a dedicated API instead of overloading plain mode identification
+
+Files to create/modify:
 - modify `/Users/bermi/code/libmusictheory/src/ordered_scale.zig`
-- modify `/Users/bermi/code/libmusictheory/src/scale.zig`
-- modify `/Users/bermi/code/libmusictheory/src/mode.zig` only if mode semantics remain clean
 - modify `/Users/bermi/code/libmusictheory/src/root.zig`
 - modify `/Users/bermi/code/libmusictheory/src/c_api.zig`
 - modify `/Users/bermi/code/libmusictheory/include/libmusictheory.h`
 - create `/Users/bermi/code/libmusictheory/src/tests/barry_harris_test.zig`
 - modify `/Users/bermi/code/libmusictheory/src/tests/c_api_test.zig`
-- modify `/Users/bermi/code/libmusictheory/src/tests/property_test.zig`
 - modify `/Users/bermi/code/libmusictheory/docs/research/algorithms/scale-mode-key.md`
 
-Recommended C API surface if accepted:
-- `uint8_t lmt_ordered_scale_degree_count(...);`
-- `uint8_t lmt_barry_harris_parity(...);` only if the parity rule is surfaced explicitly and not smuggled into generic scale APIs
+Recommended C API surface:
+- `uint32_t lmt_ordered_scale_pattern_count(void);`
+- `const char *lmt_ordered_scale_pattern_name(uint32_t index);`
+- `uint8_t lmt_ordered_scale_degree_count(uint32_t index);`
+- `lmt_pitch_class_set lmt_ordered_scale_pitch_class_set(uint32_t index, lmt_pitch_class tonic);`
+- `uint8_t lmt_barry_harris_parity(uint32_t index, lmt_pitch_class tonic, lmt_midi_note note, uint8_t *out_degree);`
 
 Scope: M (evaluation) / L (if implemented)
 
@@ -394,17 +403,16 @@ Explainability check:
 | Voice-leading rule checks | `src/voice_leading_rules.zig`, `src/voice_leading.zig`, `src/counterpoint.zig`, `src/c_api.zig`, `include/libmusictheory.h` | pairwise violation structs + check functions | `src/tests/voice_leading_rules_test.zig`, `src/tests/counterpoint_test.zig`, `src/tests/c_api_test.zig` | M | "The violation is explainable because these two named voices move into or maintain a prohibited relationship." |
 | Suspension overlap audit | `src/counterpoint.zig`, `src/c_api.zig`, `include/libmusictheory.h` | extend existing suspension summary only if needed | `src/tests/counterpoint_test.zig`, `src/tests/c_api_test.zig` | S | "This is a suspension because a prepared tone is held into dissonance and then resolves by step." |
 | SATB range helpers | `src/choir.zig`, `src/c_api.zig`, `include/libmusictheory.h` | SATB range membership helpers | `src/tests/choir_test.zig`, `src/tests/c_api_test.zig` | S | "This range check is specific to four-part choral writing, not a universal rule of music." |
-| Barry Harris evaluation | `src/ordered_scale.zig`, `src/scale.zig`, optional `src/mode.zig`, `src/c_api.zig`, `include/libmusictheory.h` | only if semantics stay explicit | `src/tests/barry_harris_test.zig`, `src/tests/c_api_test.zig`, `src/tests/property_test.zig` | M/L | "The usefulness here comes from the documented parity rule, not from importing Barry Harris stylistic defaults wholesale." |
+| Barry Harris evaluation | `src/ordered_scale.zig`, `src/c_api.zig`, `include/libmusictheory.h` | `lmt_ordered_scale_pattern_*`, `lmt_barry_harris_parity` | `src/tests/barry_harris_test.zig`, `src/tests/c_api_test.zig` | M | "The usefulness here comes from the documented parity rule, not from importing Barry Harris stylistic defaults wholesale." |
 
-## Structural Decisions Needing Resolution
+## Resolved Structural Decisions
 
 1. **Mode count honesty**
-   - The request says "11 new modes," but the missing seven-note set is 12 if the full harmonic-minor family and the 5 named exotic modes are all added.
-   - Resolution required before coding: treat the count as 12 or narrow the requested scope intentionally.
+   - The request said "11 new modes," but the missing seven-note set was 12.
+   - Resolved by treating the count honestly and extending `ModeType` to 29 entries.
 
 2. **Ordered-scale boundary**
-   - Decide whether degree-aware note operations live in a new internal module (`ordered_scale.zig`) or are spread across `scale.zig` and `mode.zig`.
-   - Recommended: one internal ordered-scale layer to avoid mixing PCS identity logic with note-level degree logic.
+   - Resolved by keeping degree-aware note operations in `/Users/bermi/code/libmusictheory/src/ordered_scale.zig` and reusing that layer from higher-level mode helpers.
 
 3. **Chord detection boundary**
    - Keep `src/chord_construction.zig` as formula/PCS construction.
@@ -415,24 +423,19 @@ Explainability check:
    - This especially matters for chord detection and modal interchange.
 
 5. **Nearest-scale-tone policy**
-   - No silent lower-on-tie behavior.
-   - Resolution required: either expose two nearest candidates or require an explicit tie policy enum.
+   - Resolved by exposing neighbor candidates directly and requiring an explicit tie-policy enum for `lmt_snap_to_scale`.
 
 6. **Suspension overlap**
    - First document whether the current `counterpoint` suspension summary already covers preparation, held dissonance, and resolution well enough for an LLM explanation.
    - Only then add or extend fields.
 
 7. **SATB scope**
-   - Keep SATB helpers experimental and choir-specific.
-   - They must not become generic validity gates for all composition contexts.
+   - Resolved by keeping SATB helpers experimental and choir-specific.
+   - The shipped helper only evaluates conventional SATB ranges when a `VoicedState` has exactly four voices mapped low-to-high as bass, tenor, alto, soprano.
 
 8. **Barry Harris placement**
-   - Decide whether Barry Harris is:
-     - a public `ScaleType`
-     - a public `ModeType`
-     - an experimental ordered-scale family only
-     - or deferred entirely
-   - Recommended default: evaluate after Phase 2, do not commit it up front.
+   - Resolved as an experimental ordered-scale family only.
+   - Barry Harris does not extend `ScaleType` or `ModeType`, and its explainable parity rule is exposed through dedicated helpers instead of generic mode identification.
 
 ## Verification Checklist Per Phase
 
@@ -488,12 +491,10 @@ Explainability check:
 
 ## Acceptance Criteria
 
-This plan is ready to split into implementation slices only when:
-- the mode-count discrepancy is resolved honestly
-- the ordered-scale boundary is accepted
-- chord detection is approved as a structured API rather than string-only
-- nearest-scale behavior has an explicit tie policy decision
-- Barry Harris is explicitly marked as gated rather than assumed
+This plan is ready to close only when:
+- the implemented slices have passed `./verify.sh`
+- the Barry Harris decision is documented as shipped or deferred
+- the coordinator reflects the final lifecycle state honestly
 
 ## Implementation History (Point-in-Time)
 
