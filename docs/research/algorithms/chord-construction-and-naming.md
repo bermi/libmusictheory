@@ -8,6 +8,8 @@
 
 Algorithms for constructing chords from formulas, naming pitch class sets as chords, and the exhaustive "Game" algorithm that catalogs all chord-mode relationships.
 
+The explainable Contrapunk expansion adds a separate structured chord-detection layer beside construction. Construction still answers "what notes belong to this named chord formula?", while detection answers "which explicit interval patterns does this concrete pitch-class set exactly realize, under which candidate roots, and with which bass degree?".
+
 ## Static Data
 
 ### Interval Formula to Semitone Mapping

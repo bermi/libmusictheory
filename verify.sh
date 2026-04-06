@@ -200,6 +200,10 @@ if [ -f "$ROOT_DIR/docs/plans/in_progress/0118-modal-interchange-containment.md"
     check_cmd "cd '$ROOT_DIR' && test -f src/modal_interchange.zig && test -f src/tests/modal_interchange_test.zig && rg -n 'modal_interchange\\.zig|modal_interchange_test\\.zig|lmt_find_containing_modes|lmt_containing_mode_match|degreeOfPitchClass|findContainingModes' src/root.zig src/modal_interchange.zig src/mode.zig src/ordered_scale.zig src/c_api.zig include/libmusictheory.h build.zig scripts/check_wasm_exports.mjs src/tests/modal_interchange_test.zig src/tests/c_api_test.zig src/tests/property_test.zig >/dev/null" "0118 modal interchange containment guardrail (module, ABI surface, and focused tests are wired)"
 fi
 
+if [ -f "$ROOT_DIR/docs/plans/in_progress/0119-structured-chord-detection.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0119-structured-chord-detection.md" ]; then
+    check_cmd "cd '$ROOT_DIR' && test -f src/chord_detection.zig && test -f src/tests/chord_detection_test.zig && rg -n 'chord_detection\\.zig|chord_detection_test\\.zig|lmt_chord_pattern_count|lmt_chord_pattern_name|lmt_chord_pattern_formula|lmt_detect_chord_matches|lmt_chord_match|ALL_PATTERNS|detectMatches' src/root.zig src/chord_detection.zig src/c_api.zig include/libmusictheory.h build.zig scripts/check_wasm_exports.mjs src/tests/chord_detection_test.zig src/tests/c_api_test.zig src/tests/property_test.zig src/tests/reference_data_test.zig >/dev/null" "0119 structured chord detection guardrail (pattern inventory, ABI surface, and focused tests are wired)"
+fi
+
 
 
 if [ -f "$ROOT_DIR/docs/plans/in_progress/0088-live-midi-composer-scene.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0088-live-midi-composer-scene.md" ]; then
@@ -566,6 +570,10 @@ fi
 
 if [ -f "$ROOT_DIR/docs/plans/in_progress/0118-modal-interchange-containment.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0118-modal-interchange-containment.md" ]; then
     check_cmd "cd '$ROOT_DIR' && zig build test 2>&1" "0118 modal interchange containment test suite"
+fi
+
+if [ -f "$ROOT_DIR/docs/plans/in_progress/0119-structured-chord-detection.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0119-structured-chord-detection.md" ]; then
+    check_cmd "cd '$ROOT_DIR' && zig build test 2>&1" "0119 structured chord detection test suite"
 fi
 
 if [ -f "$ROOT_DIR/src/tests/keys_signatures_test.zig" ]; then

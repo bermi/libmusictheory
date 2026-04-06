@@ -10,7 +10,7 @@ Build `libmusictheory`, a Zig library exposing a C ABI that implements the compl
 ## Lifecycle Status
 
 - Draft: 0001
-- In progress: contrapunk-theory-integration
+- In progress: contrapunk-theory-integration, 0119-structured-chord-detection
 ## Current Remaining Work
 
 The stable-release execution lane is complete. A new post-`0.1.0` explainable-theory expansion lane is now open.

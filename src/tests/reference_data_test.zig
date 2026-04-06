@@ -5,6 +5,7 @@ const forte = @import("../forte.zig");
 const set_class = @import("../set_class.zig");
 const interval_vector = @import("../interval_vector.zig");
 const chord = @import("../chord_construction.zig");
+const chord_detection = @import("../chord_detection.zig");
 const mode = @import("../mode.zig");
 const tables = @import("../tables.zig");
 
@@ -52,4 +53,11 @@ test "tonal-ts spot check: expanded mode inventory matches textbook interval fac
     try testing.expectEqual(pcs.fromList(&[_]u4{ 0, 1, 4, 5, 7, 8, 11 }), mode.info(.double_harmonic).pcs);
     try testing.expectEqual(pcs.fromList(&[_]u4{ 0, 2, 3, 6, 7, 8, 11 }), mode.info(.hungarian_minor).pcs);
     try testing.expectEqual(pcs.fromList(&[_]u4{ 0, 1, 4, 6, 8, 10, 11 }), mode.info(.enigmatic).pcs);
+}
+
+test "tonal-ts spot check: structured chord patterns match published interval facts" {
+    try testing.expectEqual(chord.formulaToPCS("1 3 5 7"), chord_detection.pattern(.maj7).pcs);
+    try testing.expectEqual(chord.formulaToPCS("1 3 5 b7 9 13"), chord_detection.pattern(.dominant13).pcs);
+    try testing.expectEqual(chord.formulaToPCS("1 b3 b5 b7"), chord_detection.pattern(.min7_flat5).pcs);
+    try testing.expectEqual(chord.formulaToPCS("1 4 5"), chord_detection.pattern(.sus4).pcs);
 }

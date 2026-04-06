@@ -15,6 +15,7 @@ const LmtFretPos = api.LmtFretPos;
 const LmtGuideDot = api.LmtGuideDot;
 const LmtScaleSnapCandidates = api.LmtScaleSnapCandidates;
 const LmtContainingModeMatch = api.LmtContainingModeMatch;
+const LmtChordMatch = api.LmtChordMatch;
 const LmtVoicedState = api.LmtVoicedState;
 const LmtVoicedHistory = api.LmtVoicedHistory;
 const LmtMotionSummary = api.LmtMotionSummary;
@@ -45,6 +46,10 @@ const lmt_transpose_diatonic = api.lmt_transpose_diatonic;
 const lmt_nearest_scale_tones = api.lmt_nearest_scale_tones;
 const lmt_snap_to_scale = api.lmt_snap_to_scale;
 const lmt_find_containing_modes = api.lmt_find_containing_modes;
+const lmt_chord_pattern_count = api.lmt_chord_pattern_count;
+const lmt_chord_pattern_name = api.lmt_chord_pattern_name;
+const lmt_chord_pattern_formula = api.lmt_chord_pattern_formula;
+const lmt_detect_chord_matches = api.lmt_detect_chord_matches;
 const lmt_mode_spelling_quality = api.lmt_mode_spelling_quality;
 const lmt_spell_note = api.lmt_spell_note;
 const lmt_chord = api.lmt_chord;
@@ -131,6 +136,7 @@ test "c abi header layout and constants" {
     try testing.expectEqual(@as(usize, 8), @sizeOf(c.lmt_guide_dot));
     try testing.expectEqual(@sizeOf(c.lmt_scale_snap_candidates), @sizeOf(LmtScaleSnapCandidates));
     try testing.expectEqual(@sizeOf(c.lmt_containing_mode_match), @sizeOf(LmtContainingModeMatch));
+    try testing.expectEqual(@sizeOf(c.lmt_chord_match), @sizeOf(LmtChordMatch));
     try testing.expectEqual(@as(usize, 12), @sizeOf(c.lmt_context_suggestion));
     try testing.expectEqual(@as(usize, 4), @sizeOf(c.lmt_metric_position));
     try testing.expectEqual(@as(usize, 8), @sizeOf(c.lmt_voice));
@@ -253,6 +259,23 @@ test "c abi context suggestion ranking" {
     try testing.expect(pcs_found[5]);
     try testing.expect(pcs_found[9]);
     try testing.expect(pcs_found[11]);
+}
+
+test "c abi structured chord detection" {
+    try testing.expectEqual(@as(u32, 37), lmt_chord_pattern_count());
+    try testing.expectEqualStrings("maj7", std.mem.sliceTo(@as([*:0]const u8, @ptrCast(lmt_chord_pattern_name(20))), 0));
+    try testing.expectEqualStrings("1 3 5 7", std.mem.sliceTo(@as([*:0]const u8, @ptrCast(lmt_chord_pattern_formula(20))), 0));
+
+    var matches: [8]c.lmt_chord_match = undefined;
+    const total = lmt_detect_chord_matches(pcs.fromList(&[_]u4{ 0, 4, 7, 11 }), 4, true, @ptrCast(&matches), matches.len);
+    try testing.expectEqual(@as(u16, 1), total);
+    try testing.expectEqual(@as(u8, 0), matches[0].root);
+    try testing.expectEqual(@as(u8, 4), matches[0].bass);
+    try testing.expectEqual(@as(u8, 20), matches[0].pattern);
+    try testing.expectEqual(@as(u8, 4), matches[0].interval_count);
+    try testing.expectEqual(@as(u8, 1), matches[0].bass_known);
+    try testing.expectEqual(@as(u8, 0), matches[0].root_is_bass);
+    try testing.expectEqual(@as(u8, 2), matches[0].bass_degree);
 }
 
 test "c abi voiced state and history" {

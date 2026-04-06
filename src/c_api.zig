@@ -13,6 +13,7 @@ const key = @import("key.zig");
 const note_spelling = @import("note_spelling.zig");
 const chord_type = @import("chord_type.zig");
 const chord = @import("chord_construction.zig");
+const chord_detection = @import("chord_detection.zig");
 const harmony = @import("harmony.zig");
 const counterpoint = @import("counterpoint.zig");
 const guitar = @import("guitar.zig");
@@ -70,6 +71,17 @@ pub const LmtContainingModeMatch = extern struct {
     degree: u8,
     reserved0: u8,
     reserved1: u8,
+};
+
+pub const LmtChordMatch = extern struct {
+    root: u8,
+    bass: u8,
+    pattern: u8,
+    interval_count: u8,
+    bass_known: u8,
+    root_is_bass: u8,
+    bass_degree: u8,
+    reserved0: u8,
 };
 
 pub const LmtMetricPosition = extern struct {
@@ -914,6 +926,55 @@ pub export fn lmt_find_containing_modes(
             .degree = matches_buf[index].degree,
             .reserved0 = 0,
             .reserved1 = 0,
+        };
+    }
+    return total;
+}
+
+pub export fn lmt_chord_pattern_count() callconv(.c) u32 {
+    return @as(u32, @intCast(chord_detection.count()));
+}
+
+pub export fn lmt_chord_pattern_name(index: u32) callconv(.c) [*c]const u8 {
+    const pattern_id = chord_detection.fromInt(@as(u8, @intCast(index))) orelse return null;
+    return writeCString(chord_detection.pattern(pattern_id).name);
+}
+
+pub export fn lmt_chord_pattern_formula(index: u32) callconv(.c) [*c]const u8 {
+    const pattern_id = chord_detection.fromInt(@as(u8, @intCast(index))) orelse return null;
+    return writeCString(chord_detection.pattern(pattern_id).formula);
+}
+
+pub export fn lmt_detect_chord_matches(
+    set: u16,
+    bass: u8,
+    bass_known: bool,
+    out: [*c]LmtChordMatch,
+    out_len: u8,
+) callconv(.c) u16 {
+    if (out_len > 0 and out == null) return 0;
+    const chord_set = maskPitchClassSet(set);
+    if (chord_set == 0) return 0;
+
+    var matches_buf: [chord_detection.MAX_MATCHES]chord_detection.Match = undefined;
+    const total = chord_detection.detectMatches(
+        chord_set,
+        bass_known,
+        @as(pitch.PitchClass, @intCast(bass % 12)),
+        matches_buf[0..],
+    );
+    const write_count = @min(@as(usize, total), @as(usize, out_len));
+    var index: usize = 0;
+    while (index < write_count) : (index += 1) {
+        out[index] = .{
+            .root = matches_buf[index].root,
+            .bass = matches_buf[index].bass,
+            .pattern = @intFromEnum(matches_buf[index].pattern),
+            .interval_count = matches_buf[index].interval_count,
+            .bass_known = @intFromBool(matches_buf[index].bass_known),
+            .root_is_bass = @intFromBool(matches_buf[index].root_is_bass),
+            .bass_degree = matches_buf[index].bass_degree,
+            .reserved0 = 0,
         };
     }
     return total;

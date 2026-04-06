@@ -28,6 +28,8 @@ extern "C" {
  *   lmt_scale_degree, lmt_transpose_diatonic,
  *   lmt_nearest_scale_tones, lmt_snap_to_scale,
  *   lmt_find_containing_modes,
+ *   lmt_chord_pattern_count, lmt_chord_pattern_name,
+ *   lmt_chord_pattern_formula, lmt_detect_chord_matches,
  *   lmt_mode_spelling_quality, lmt_rank_context_suggestions,
  *   lmt_preferred_voicing_n, and the method-specific RGBA bitmap renderers
  *   below.
@@ -160,6 +162,17 @@ typedef struct {
     uint8_t reserved0;
     uint8_t reserved1;
 } lmt_containing_mode_match;
+
+typedef struct {
+    uint8_t root;
+    uint8_t bass;
+    uint8_t pattern;
+    uint8_t interval_count;
+    uint8_t bass_known;
+    uint8_t root_is_bass;
+    uint8_t bass_degree;
+    uint8_t reserved0;
+} lmt_chord_match;
 
 typedef uint8_t lmt_cadence_state;
 enum {
@@ -380,6 +393,10 @@ const char *lmt_spell_note(lmt_pitch_class pc, lmt_key_context key);
 const char *lmt_spell_note_parts(lmt_pitch_class pc, lmt_pitch_class tonic, lmt_key_quality quality);
 
 lmt_pitch_class_set lmt_chord(lmt_chord_type type, lmt_pitch_class root);
+uint32_t lmt_chord_pattern_count(void);
+const char *lmt_chord_pattern_name(uint32_t index);
+const char *lmt_chord_pattern_formula(uint32_t index);
+uint16_t lmt_detect_chord_matches(lmt_pitch_class_set set, lmt_pitch_class bass, bool bass_known, lmt_chord_match *out, uint8_t out_len);
 const char *lmt_chord_name(lmt_pitch_class_set set);
 const char *lmt_roman_numeral(lmt_pitch_class_set chord, lmt_key_context key);
 const char *lmt_roman_numeral_parts(lmt_pitch_class_set chord, lmt_pitch_class tonic, lmt_key_quality quality);

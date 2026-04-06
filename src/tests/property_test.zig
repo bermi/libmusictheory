@@ -6,6 +6,7 @@ const set_class = @import("../set_class.zig");
 const interval_analysis = @import("../interval_analysis.zig");
 const fc_components = @import("../fc_components.zig");
 const pitch = @import("../pitch.zig");
+const chord_detection = @import("../chord_detection.zig");
 const mode = @import("../mode.zig");
 const modal_interchange = @import("../modal_interchange.zig");
 
@@ -116,5 +117,22 @@ test "modal interchange matches always contain the queried pitch class" {
                 try testing.expectEqual(match.degree, mode.degreeOfPitchClass(tonic, match.mode, note_pc).? + 1);
             }
         }
+    }
+}
+
+test "detecting a shipped chord pattern preserves that pattern among exact matches" {
+    for (chord_detection.ALL_PATTERNS) |pattern| {
+        var out: [8]chord_detection.Match = undefined;
+        const total = chord_detection.detectMatches(pattern.pcs, true, pitch.pc.C, out[0..]);
+        try testing.expect(total >= 1);
+
+        var found = false;
+        for (out[0..@min(@as(usize, total), out.len)]) |match| {
+            if (match.root == pitch.pc.C and match.pattern == pattern.id) {
+                found = true;
+                break;
+            }
+        }
+        try testing.expect(found);
     }
 }
