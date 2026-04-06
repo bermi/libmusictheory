@@ -3,7 +3,7 @@
 > Dependencies: contrapunk-theory-integration, 0116, 0117, 0020
 > Follow-up: 0119
 
-Status: In progress
+Status: Completed
 
 ## Summary
 
@@ -27,3 +27,14 @@ An LLM should be able to say: `F# is outside C Ionian, but it belongs to C Lydia
 - degree numbers are present for each match
 - there is no library-imposed borrowing priority
 - `./verify.sh` passes
+
+## Verification Commands
+
+- `./verify.sh`
+- `./zigw build test`
+
+## Implementation History (Point-in-Time)
+
+- `128fa7f` (2026-04-06):
+  - Shipped behavior: added `src/modal_interchange.zig`, pitch-class degree lookup for modes, and the experimental C ABI surface `lmt_find_containing_modes` with structured `(mode, degree)` matches that preserve caller order and do not impose any internal borrowing preference.
+  - Verification: `./verify.sh`, `./zigw build test`
