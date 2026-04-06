@@ -187,6 +187,8 @@ test "suspension machine detects held and resolving voices across history" {
     const held = counterpoint.analyzeSuspensionMachine(&held_history, .species);
     try testing.expect(held.state != .none);
     try testing.expect(held.tracked_voice_id != 255);
+    try testing.expectEqual(@as(u8, 1), held.obligation_count);
+    try testing.expectEqual(@as(u8, 67), held.held_midi);
     try testing.expect(held.candidate_resolution_count > 0);
 
     var resolving_history = counterpoint.VoicedHistoryWindow.init();
@@ -199,6 +201,7 @@ test "suspension machine detects held and resolving voices across history" {
     try testing.expectEqual(@as(u8, 0), resolved.tracked_voice_id);
     try testing.expectEqual(@as(u8, 60), resolved.held_midi);
     try testing.expectEqual(@as(u8, 59), resolved.expected_resolution_midi);
+    try testing.expectEqual(@as(i8, -1), resolved.resolution_direction);
 }
 
 const ManualVoice = struct {

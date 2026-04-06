@@ -267,6 +267,13 @@ typedef enum {
     LMT_COUNTERPOINT_FREE_CONTEMPORARY = 4,
 } lmt_counterpoint_rule_profile;
 
+typedef enum {
+    LMT_VOICE_LEADING_PARALLEL_FIFTH = 0,
+    LMT_VOICE_LEADING_PARALLEL_OCTAVE_OR_UNISON = 1,
+    LMT_VOICE_LEADING_VOICE_CROSSING = 2,
+    LMT_VOICE_LEADING_UPPER_SPACING = 3,
+} lmt_voice_leading_violation_kind;
+
 typedef struct {
     uint8_t voice_id;
     uint8_t from_midi;
@@ -308,6 +315,28 @@ typedef struct {
     uint8_t disallowed_count;
     uint8_t disallowed;
 } lmt_motion_evaluation;
+
+typedef struct {
+    uint8_t kind;
+    uint8_t lower_voice_id;
+    uint8_t upper_voice_id;
+    int8_t previous_interval_semitones;
+    int8_t current_interval_semitones;
+    uint8_t reserved0;
+    uint8_t reserved1;
+    uint8_t reserved2;
+} lmt_voice_pair_violation;
+
+typedef struct {
+    uint8_t collapsed;
+    int8_t direction;
+    uint8_t moving_voice_count;
+    uint8_t stationary_voice_count;
+    uint8_t ascending_count;
+    uint8_t descending_count;
+    uint8_t retained_voice_count;
+    uint8_t reserved0;
+} lmt_motion_independence_summary;
 
 typedef struct {
     int32_t score;
@@ -429,9 +458,13 @@ uint32_t lmt_counterpoint_max_voices(void);
 uint32_t lmt_counterpoint_history_capacity(void);
 uint32_t lmt_counterpoint_rule_profile_count(void);
 const char *lmt_counterpoint_rule_profile_name(uint32_t index);
+uint32_t lmt_voice_leading_violation_kind_count(void);
+const char *lmt_voice_leading_violation_kind_name(uint32_t index);
 uint32_t lmt_sizeof_voiced_state(void);
 uint32_t lmt_sizeof_voiced_history(void);
 uint32_t lmt_sizeof_next_step_suggestion(void);
+uint32_t lmt_sizeof_voice_pair_violation(void);
+uint32_t lmt_sizeof_motion_independence_summary(void);
 uint32_t lmt_cadence_destination_count(void);
 const char *lmt_cadence_destination_name(uint32_t index);
 uint32_t lmt_suspension_state_count(void);
@@ -450,6 +483,10 @@ uint32_t lmt_build_voiced_state(const lmt_midi_note *notes, uint32_t note_count,
 uint32_t lmt_voiced_history_push(lmt_voiced_history *history, const lmt_midi_note *notes, uint32_t note_count, const lmt_midi_note *sustained_notes, uint32_t sustained_count, lmt_pitch_class tonic, lmt_mode_type mode_type, uint8_t beat_in_bar, uint8_t beats_per_bar, uint8_t subdivision, lmt_cadence_state cadence_hint, lmt_voiced_state *out);
 uint32_t lmt_classify_motion(const lmt_voiced_state *previous, const lmt_voiced_state *current, lmt_motion_summary *out);
 uint32_t lmt_evaluate_motion_profile(lmt_counterpoint_rule_profile profile, const lmt_motion_summary *summary, lmt_motion_evaluation *out);
+uint32_t lmt_check_parallel_perfects(const lmt_voiced_state *previous, const lmt_voiced_state *current, lmt_voice_pair_violation *out, uint32_t out_cap);
+uint32_t lmt_check_voice_crossing(const lmt_voiced_state *previous, const lmt_voiced_state *current, lmt_voice_pair_violation *out, uint32_t out_cap);
+uint32_t lmt_check_spacing(const lmt_voiced_state *current, lmt_voice_pair_violation *out, uint32_t out_cap);
+uint32_t lmt_check_motion_independence(const lmt_voiced_state *previous, const lmt_voiced_state *current, lmt_motion_independence_summary *out);
 uint32_t lmt_rank_next_steps(const lmt_voiced_history *history, lmt_counterpoint_rule_profile profile, lmt_next_step_suggestion *out, uint32_t out_cap);
 uint32_t lmt_rank_cadence_destinations(const lmt_voiced_history *history, lmt_counterpoint_rule_profile profile, lmt_cadence_destination_score *out, uint32_t out_cap);
 uint32_t lmt_analyze_suspension_machine(const lmt_voiced_history *history, lmt_counterpoint_rule_profile profile, lmt_suspension_machine_summary *out);

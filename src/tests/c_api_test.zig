@@ -20,6 +20,8 @@ const LmtVoicedState = api.LmtVoicedState;
 const LmtVoicedHistory = api.LmtVoicedHistory;
 const LmtMotionSummary = api.LmtMotionSummary;
 const LmtMotionEvaluation = api.LmtMotionEvaluation;
+const LmtVoicePairViolation = api.LmtVoicePairViolation;
+const LmtMotionIndependenceSummary = api.LmtMotionIndependenceSummary;
 const LmtNextStepSuggestion = api.LmtNextStepSuggestion;
 const LmtCadenceDestinationScore = api.LmtCadenceDestinationScore;
 const LmtSuspensionMachineSummary = api.LmtSuspensionMachineSummary;
@@ -81,9 +83,13 @@ const lmt_counterpoint_max_voices = api.lmt_counterpoint_max_voices;
 const lmt_counterpoint_history_capacity = api.lmt_counterpoint_history_capacity;
 const lmt_counterpoint_rule_profile_count = api.lmt_counterpoint_rule_profile_count;
 const lmt_counterpoint_rule_profile_name = api.lmt_counterpoint_rule_profile_name;
+const lmt_voice_leading_violation_kind_count = api.lmt_voice_leading_violation_kind_count;
+const lmt_voice_leading_violation_kind_name = api.lmt_voice_leading_violation_kind_name;
 const lmt_sizeof_voiced_state = api.lmt_sizeof_voiced_state;
 const lmt_sizeof_voiced_history = api.lmt_sizeof_voiced_history;
 const lmt_sizeof_next_step_suggestion = api.lmt_sizeof_next_step_suggestion;
+const lmt_sizeof_voice_pair_violation = api.lmt_sizeof_voice_pair_violation;
+const lmt_sizeof_motion_independence_summary = api.lmt_sizeof_motion_independence_summary;
 const lmt_cadence_destination_count = api.lmt_cadence_destination_count;
 const lmt_cadence_destination_name = api.lmt_cadence_destination_name;
 const lmt_suspension_state_count = api.lmt_suspension_state_count;
@@ -102,6 +108,10 @@ const lmt_build_voiced_state = api.lmt_build_voiced_state;
 const lmt_voiced_history_push = api.lmt_voiced_history_push;
 const lmt_classify_motion = api.lmt_classify_motion;
 const lmt_evaluate_motion_profile = api.lmt_evaluate_motion_profile;
+const lmt_check_parallel_perfects = api.lmt_check_parallel_perfects;
+const lmt_check_voice_crossing = api.lmt_check_voice_crossing;
+const lmt_check_spacing = api.lmt_check_spacing;
+const lmt_check_motion_independence = api.lmt_check_motion_independence;
 const lmt_rank_next_steps = api.lmt_rank_next_steps;
 const lmt_rank_cadence_destinations = api.lmt_rank_cadence_destinations;
 const lmt_analyze_suspension_machine = api.lmt_analyze_suspension_machine;
@@ -143,6 +153,8 @@ test "c abi header layout and constants" {
     try testing.expectEqual(@as(usize, 8), @sizeOf(c.lmt_voice_motion));
     try testing.expectEqual(@sizeOf(c.lmt_cadence_destination_score), @sizeOf(LmtCadenceDestinationScore));
     try testing.expectEqual(@sizeOf(c.lmt_suspension_machine_summary), @sizeOf(LmtSuspensionMachineSummary));
+    try testing.expectEqual(@sizeOf(c.lmt_voice_pair_violation), @sizeOf(LmtVoicePairViolation));
+    try testing.expectEqual(@sizeOf(c.lmt_motion_independence_summary), @sizeOf(LmtMotionIndependenceSummary));
     try testing.expectEqual(@sizeOf(c.lmt_orbifold_triad_node), @sizeOf(LmtOrbifoldTriadNode));
     try testing.expectEqual(@sizeOf(c.lmt_orbifold_triad_edge), @sizeOf(LmtOrbifoldTriadEdge));
     try testing.expectEqual(@as(usize, 0), @offsetOf(c.lmt_key_context, "tonic"));
@@ -154,6 +166,8 @@ test "c abi header layout and constants" {
     try testing.expectEqual(@as(usize, 6), @offsetOf(c.lmt_context_suggestion, "pitch_class"));
     try testing.expectEqual(@as(usize, 10), @offsetOf(c.lmt_voiced_state, "cadence_state"));
     try testing.expectEqual(@as(usize, 17), @offsetOf(c.lmt_motion_summary, "voice_motions"));
+    try testing.expectEqual(@as(usize, 3), @offsetOf(c.lmt_voice_pair_violation, "previous_interval_semitones"));
+    try testing.expectEqual(@as(usize, 1), @offsetOf(c.lmt_motion_independence_summary, "direction"));
     try testing.expectEqual(@as(c_int, 0), c.LMT_SCALE_DIATONIC);
     try testing.expectEqual(@as(c_int, 28), c.LMT_MODE_NEAPOLITAN_MAJOR);
     try testing.expectEqual(@as(c_int, 3), c.LMT_CHORD_AUGMENTED);
@@ -162,6 +176,8 @@ test "c abi header layout and constants" {
     try testing.expectEqual(@as(u32, @sizeOf(LmtVoicedState)), lmt_sizeof_voiced_state());
     try testing.expectEqual(@as(u32, @sizeOf(LmtVoicedHistory)), lmt_sizeof_voiced_history());
     try testing.expectEqual(@as(u32, @sizeOf(LmtNextStepSuggestion)), lmt_sizeof_next_step_suggestion());
+    try testing.expectEqual(@as(u32, @sizeOf(LmtVoicePairViolation)), lmt_sizeof_voice_pair_violation());
+    try testing.expectEqual(@as(u32, @sizeOf(LmtMotionIndependenceSummary)), lmt_sizeof_motion_independence_summary());
     try testing.expectEqual(@as(u32, @sizeOf(LmtCadenceDestinationScore)), lmt_sizeof_cadence_destination_score());
     try testing.expectEqual(@as(u32, @sizeOf(LmtSuspensionMachineSummary)), lmt_sizeof_suspension_machine_summary());
     try testing.expectEqual(@as(u32, @sizeOf(LmtOrbifoldTriadNode)), lmt_sizeof_orbifold_triad_node());
@@ -376,6 +392,58 @@ test "c abi motion summary and profile evaluation" {
     try testing.expect(evaluation.disallowed == 0);
 }
 
+test "c abi voice-leading rule detectors" {
+    var previous = manualVoicedState(&[_]ManualVoicedVoice{
+        .{ .id = 0, .midi = 60 },
+        .{ .id = 1, .midi = 67 },
+    });
+    var current_parallel = manualVoicedState(&[_]ManualVoicedVoice{
+        .{ .id = 0, .midi = 62 },
+        .{ .id = 1, .midi = 69 },
+    });
+
+    var violations: [8]LmtVoicePairViolation = undefined;
+    const parallel_total = lmt_check_parallel_perfects(@ptrCast(&previous), @ptrCast(&current_parallel), @ptrCast(&violations), violations.len);
+    try testing.expectEqual(@as(u32, 1), parallel_total);
+    try testing.expectEqual(@as(u8, c.LMT_VOICE_LEADING_PARALLEL_FIFTH), violations[0].kind);
+    try testing.expectEqual(@as(i8, 7), violations[0].previous_interval_semitones);
+    try testing.expectEqual(@as(i8, 7), violations[0].current_interval_semitones);
+
+    var previous_cross = manualVoicedState(&[_]ManualVoicedVoice{
+        .{ .id = 0, .midi = 60 },
+        .{ .id = 1, .midi = 64 },
+    });
+    var current_cross = manualVoicedState(&[_]ManualVoicedVoice{
+        .{ .id = 0, .midi = 67 },
+        .{ .id = 1, .midi = 62 },
+    });
+    const crossing_total = lmt_check_voice_crossing(@ptrCast(&previous_cross), @ptrCast(&current_cross), @ptrCast(&violations), violations.len);
+    try testing.expectEqual(@as(u32, 1), crossing_total);
+    try testing.expectEqual(@as(u8, c.LMT_VOICE_LEADING_VOICE_CROSSING), violations[0].kind);
+    try testing.expect(violations[0].current_interval_semitones < 0);
+
+    var spaced = manualVoicedState(&[_]ManualVoicedVoice{
+        .{ .id = 0, .midi = 40 },
+        .{ .id = 1, .midi = 57 },
+        .{ .id = 2, .midi = 74 },
+        .{ .id = 3, .midi = 88 },
+    });
+    const spacing_total = lmt_check_spacing(@ptrCast(&spaced), @ptrCast(&violations), violations.len);
+    try testing.expectEqual(@as(u32, 2), spacing_total);
+    try testing.expectEqual(@as(u8, c.LMT_VOICE_LEADING_UPPER_SPACING), violations[0].kind);
+    try testing.expectEqual(@as(i8, 17), violations[0].current_interval_semitones);
+
+    var current_collapsed = manualVoicedState(&[_]ManualVoicedVoice{
+        .{ .id = 0, .midi = 62 },
+        .{ .id = 1, .midi = 69 },
+    });
+    var independence: LmtMotionIndependenceSummary = undefined;
+    try testing.expectEqual(@as(u32, 1), lmt_check_motion_independence(@ptrCast(&previous), @ptrCast(&current_collapsed), @ptrCast(&independence)));
+    try testing.expectEqual(@as(u8, 1), independence.collapsed);
+    try testing.expectEqual(@as(i8, 1), independence.direction);
+    try testing.expectEqual(@as(u8, 2), independence.moving_voice_count);
+}
+
 test "c abi next step ranker and reason tables" {
     var history: LmtVoicedHistory = undefined;
     var current: LmtVoicedState = undefined;
@@ -457,6 +525,12 @@ test "c abi counterpoint helper metadata" {
     const suspension_name = std.mem.sliceTo(@as([*:0]const u8, @ptrCast(lmt_suspension_state_name(2))), 0);
     try testing.expectEqualStrings("suspension", suspension_name);
     try testing.expect(lmt_suspension_state_name(suspension_state_count) == null);
+
+    const violation_kind_count = lmt_voice_leading_violation_kind_count();
+    try testing.expectEqual(@as(u32, 4), violation_kind_count);
+    const violation_name = std.mem.sliceTo(@as([*:0]const u8, @ptrCast(lmt_voice_leading_violation_kind_name(0))), 0);
+    try testing.expectEqualStrings("parallel-fifth", violation_name);
+    try testing.expect(lmt_voice_leading_violation_kind_name(violation_kind_count) == null);
 }
 
 test "c abi cadence destination and suspension helpers" {
@@ -811,4 +885,35 @@ test "c abi harmonious compatibility surface" {
     const svg_len = lmt_svg_compat_generate(0, 0, @ptrCast(&svg_buf), @intCast(svg_buf.len));
     try testing.expect(svg_len > 0);
     try testing.expect(std.mem.startsWith(u8, svg_buf[0..5], "<svg ") or std.mem.startsWith(u8, svg_buf[0..4], "<svg"));
+}
+
+const ManualVoicedVoice = struct {
+    id: u8,
+    midi: u8,
+};
+
+fn manualVoicedState(voices: []const ManualVoicedVoice) LmtVoicedState {
+    var state = std.mem.zeroes(LmtVoicedState);
+    state.voice_count = @intCast(voices.len);
+    state.tonic = 0;
+    state.mode_type = c.LMT_MODE_IONIAN;
+    state.key_quality = c.LMT_KEY_MAJOR;
+    state.metric = .{ .beat_in_bar = 0, .beats_per_bar = 4, .subdivision = 0, .reserved = 0 };
+    state.cadence_state = c.LMT_CADENCE_STABLE;
+    state.state_index = 0;
+    state.next_voice_id = @intCast(voices.len);
+    for (voices, 0..) |voice, index| {
+        state.voices[index] = .{
+            .id = voice.id,
+            .midi = voice.midi,
+            .octave = @as(i8, @intCast(@as(i16, @intCast(voice.midi / 12)) - 1)),
+            .pitch_class = voice.midi % 12,
+            .sustained = 0,
+            .reserved0 = 0,
+            .reserved1 = 0,
+            .reserved2 = 0,
+        };
+        state.set_value |= @as(u16, 1) << @intCast(voice.midi % 12);
+    }
+    return state;
 }

@@ -204,6 +204,18 @@ if [ -f "$ROOT_DIR/docs/plans/in_progress/0119-structured-chord-detection.md" ] 
     check_cmd "cd '$ROOT_DIR' && test -f src/chord_detection.zig && test -f src/tests/chord_detection_test.zig && rg -n 'chord_detection\\.zig|chord_detection_test\\.zig|lmt_chord_pattern_count|lmt_chord_pattern_name|lmt_chord_pattern_formula|lmt_detect_chord_matches|lmt_chord_match|ALL_PATTERNS|detectMatches' src/root.zig src/chord_detection.zig src/c_api.zig include/libmusictheory.h build.zig scripts/check_wasm_exports.mjs src/tests/chord_detection_test.zig src/tests/c_api_test.zig src/tests/property_test.zig src/tests/reference_data_test.zig >/dev/null" "0119 structured chord detection guardrail (pattern inventory, ABI surface, and focused tests are wired)"
 fi
 
+if [ -f "$ROOT_DIR/docs/plans/in_progress/0120-voice-leading-rule-detectors-and-suspension-audit.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0120-voice-leading-rule-detectors-and-suspension-audit.md" ]; then
+    check_cmd "cd '$ROOT_DIR' && test -f src/voice_leading_rules.zig && test -f src/tests/voice_leading_rules_test.zig && rg -n 'voice_leading_rules\\.zig|voice_leading_rules_test\\.zig|lmt_voice_pair_violation|lmt_motion_independence_summary|lmt_check_parallel_perfects|lmt_check_voice_crossing|lmt_check_spacing|lmt_check_motion_independence|lmt_voice_leading_violation_kind_count|lmt_voice_leading_violation_kind_name' src/root.zig src/voice_leading_rules.zig src/c_api.zig include/libmusictheory.h build.zig scripts/check_wasm_exports.mjs src/tests/voice_leading_rules_test.zig src/tests/c_api_test.zig docs/research/algorithms/voice-leading.md >/dev/null" "0120 voice-leading rule detectors guardrail (module, ABI surface, focused tests, and docs are wired)"
+fi
+
+if [ -f "$ROOT_DIR/docs/plans/in_progress/0121-satb-register-helpers.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0121-satb-register-helpers.md" ]; then
+    check_cmd "cd '$ROOT_DIR' && test -f src/choir.zig && test -f src/tests/choir_test.zig && rg -n 'choir\\.zig|choir_test\\.zig|lmt_satb_voice|lmt_satb_register_violation|lmt_satb_range_contains|lmt_satb_range_low|lmt_satb_range_high|lmt_check_satb_registers' src/root.zig src/choir.zig src/c_api.zig include/libmusictheory.h build.zig scripts/check_wasm_exports.mjs src/tests/choir_test.zig src/tests/c_api_test.zig docs/research/algorithms/voice-leading.md >/dev/null" "0121 SATB register helper guardrail (module, ABI surface, focused tests, and docs are wired)"
+fi
+
+if [ -f "$ROOT_DIR/docs/plans/in_progress/0122-barry-harris-evaluation-gate-and-master-closeout.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0122-barry-harris-evaluation-gate-and-master-closeout.md" ]; then
+    check_cmd "cd '$ROOT_DIR' && rg -n 'barry harris|major sixth diminished|minor sixth diminished|ordered-scale-only|parity' docs/research/algorithms/scale-mode-key.md docs/plans/in_progress/contrapunk-theory-integration.md docs/plans/drafts/0001-coordinator.md >/dev/null && rg -n 'lmt_ordered_scale_pattern_count|lmt_ordered_scale_pattern_name|lmt_ordered_scale_degree_count|lmt_ordered_scale_pitch_class_set|lmt_barry_harris_parity' include/libmusictheory.h src/c_api.zig build.zig scripts/check_wasm_exports.mjs src/tests/c_api_test.zig >/dev/null" "0122 Barry Harris gate guardrail (decision docs and ordered-scale parity ABI are wired)"
+fi
+
 
 
 if [ -f "$ROOT_DIR/docs/plans/in_progress/0088-live-midi-composer-scene.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0088-live-midi-composer-scene.md" ]; then
@@ -574,6 +586,18 @@ fi
 
 if [ -f "$ROOT_DIR/docs/plans/in_progress/0119-structured-chord-detection.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0119-structured-chord-detection.md" ]; then
     check_cmd "cd '$ROOT_DIR' && zig build test 2>&1" "0119 structured chord detection test suite"
+fi
+
+if [ -f "$ROOT_DIR/docs/plans/in_progress/0120-voice-leading-rule-detectors-and-suspension-audit.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0120-voice-leading-rule-detectors-and-suspension-audit.md" ]; then
+    check_cmd "cd '$ROOT_DIR' && zig build test 2>&1" "0120 voice-leading rule detectors and suspension audit test suite"
+fi
+
+if [ -f "$ROOT_DIR/docs/plans/in_progress/0121-satb-register-helpers.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0121-satb-register-helpers.md" ]; then
+    check_cmd "cd '$ROOT_DIR' && zig build test 2>&1" "0121 SATB register helper test suite"
+fi
+
+if [ -f "$ROOT_DIR/docs/plans/in_progress/0122-barry-harris-evaluation-gate-and-master-closeout.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0122-barry-harris-evaluation-gate-and-master-closeout.md" ]; then
+    check_cmd "cd '$ROOT_DIR' && zig build test 2>&1" "0122 Barry Harris evaluation gate test suite"
 fi
 
 if [ -f "$ROOT_DIR/src/tests/keys_signatures_test.zig" ]; then

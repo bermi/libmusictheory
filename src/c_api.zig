@@ -16,6 +16,7 @@ const chord = @import("chord_construction.zig");
 const chord_detection = @import("chord_detection.zig");
 const harmony = @import("harmony.zig");
 const counterpoint = @import("counterpoint.zig");
+const voice_leading_rules = @import("voice_leading_rules.zig");
 const guitar = @import("guitar.zig");
 const keyboard_logic = @import("keyboard.zig");
 const svg_clock = @import("svg/clock.zig");
@@ -164,6 +165,28 @@ pub const LmtMotionEvaluation = extern struct {
     leap_penalty: i16,
     disallowed_count: u8,
     disallowed: u8,
+};
+
+pub const LmtVoicePairViolation = extern struct {
+    kind: u8,
+    lower_voice_id: u8,
+    upper_voice_id: u8,
+    previous_interval_semitones: i8,
+    current_interval_semitones: i8,
+    reserved0: u8,
+    reserved1: u8,
+    reserved2: u8,
+};
+
+pub const LmtMotionIndependenceSummary = extern struct {
+    collapsed: u8,
+    direction: i8,
+    moving_voice_count: u8,
+    stationary_voice_count: u8,
+    ascending_count: u8,
+    descending_count: u8,
+    retained_voice_count: u8,
+    reserved0: u8,
 };
 
 pub const LmtNextStepSuggestion = extern struct {
@@ -599,6 +622,32 @@ fn writeMotionEvaluation(out: *LmtMotionEvaluation, evaluation: counterpoint.Mot
     };
 }
 
+fn writeVoicePairViolation(out: *LmtVoicePairViolation, violation: voice_leading_rules.VoicePairViolation) void {
+    out.* = .{
+        .kind = @intFromEnum(violation.kind),
+        .lower_voice_id = violation.lower_voice_id,
+        .upper_voice_id = violation.upper_voice_id,
+        .previous_interval_semitones = violation.previous_interval_semitones,
+        .current_interval_semitones = violation.current_interval_semitones,
+        .reserved0 = 0,
+        .reserved1 = 0,
+        .reserved2 = 0,
+    };
+}
+
+fn writeMotionIndependenceSummary(out: *LmtMotionIndependenceSummary, summary: voice_leading_rules.MotionIndependenceSummary) void {
+    out.* = .{
+        .collapsed = if (summary.collapsed) 1 else 0,
+        .direction = summary.direction,
+        .moving_voice_count = summary.moving_voice_count,
+        .stationary_voice_count = summary.stationary_voice_count,
+        .ascending_count = summary.ascending_count,
+        .descending_count = summary.descending_count,
+        .retained_voice_count = summary.retained_voice_count,
+        .reserved0 = 0,
+    };
+}
+
 fn writeNextStepSuggestion(out: *LmtNextStepSuggestion, suggestion: counterpoint.NextStepSuggestion) void {
     out.* = .{
         .score = suggestion.score,
@@ -998,6 +1047,16 @@ pub export fn lmt_counterpoint_rule_profile_name(index: u32) callconv(.c) [*c]co
     return writeCString(COUNTERPOINT_RULE_PROFILE_NAMES[idx]);
 }
 
+pub export fn lmt_voice_leading_violation_kind_count() callconv(.c) u32 {
+    return @as(u32, @intCast(voice_leading_rules.VIOLATION_KIND_NAMES.len));
+}
+
+pub export fn lmt_voice_leading_violation_kind_name(index: u32) callconv(.c) [*c]const u8 {
+    const idx = @as(usize, @intCast(index));
+    if (idx >= voice_leading_rules.VIOLATION_KIND_NAMES.len) return null;
+    return writeCString(voice_leading_rules.VIOLATION_KIND_NAMES[idx]);
+}
+
 pub export fn lmt_sizeof_voiced_state() callconv(.c) u32 {
     return @as(u32, @intCast(@sizeOf(LmtVoicedState)));
 }
@@ -1008,6 +1067,14 @@ pub export fn lmt_sizeof_voiced_history() callconv(.c) u32 {
 
 pub export fn lmt_sizeof_next_step_suggestion() callconv(.c) u32 {
     return @as(u32, @intCast(@sizeOf(LmtNextStepSuggestion)));
+}
+
+pub export fn lmt_sizeof_voice_pair_violation() callconv(.c) u32 {
+    return @as(u32, @intCast(@sizeOf(LmtVoicePairViolation)));
+}
+
+pub export fn lmt_sizeof_motion_independence_summary() callconv(.c) u32 {
+    return @as(u32, @intCast(@sizeOf(LmtMotionIndependenceSummary)));
 }
 
 pub export fn lmt_cadence_destination_count() callconv(.c) u32 {
@@ -1223,6 +1290,95 @@ pub export fn lmt_evaluate_motion_profile(profile: u8, summary: [*c]const LmtMot
 
     const evaluation = counterpoint.evaluateMotionProfile(decodeMotionSummary(raw_summary.*), profile_value);
     writeMotionEvaluation(out_evaluation, evaluation);
+    return 1;
+}
+
+pub export fn lmt_check_parallel_perfects(
+    previous: [*c]const LmtVoicedState,
+    current: [*c]const LmtVoicedState,
+    out: [*c]LmtVoicePairViolation,
+    out_cap: u32,
+) callconv(.c) u32 {
+    if (previous == null or current == null) return 0;
+    if (out_cap > 0 and out == null) return 0;
+
+    const previous_state: *const LmtVoicedState = @ptrCast(previous);
+    const current_state: *const LmtVoicedState = @ptrCast(current);
+    const previous_value = decodeVoicedState(previous_state.*);
+    const current_value = decodeVoicedState(current_state.*);
+
+    var violations: [voice_leading_rules.MAX_VOICE_PAIR_VIOLATIONS]voice_leading_rules.VoicePairViolation = undefined;
+    const total = voice_leading_rules.detectParallelPerfects(&previous_value, &current_value, violations[0..]);
+    const write_count = @min(@as(usize, total), @as(usize, @intCast(out_cap)));
+    var index: usize = 0;
+    while (index < write_count) : (index += 1) {
+        const out_violation: *LmtVoicePairViolation = @ptrCast(&out[index]);
+        writeVoicePairViolation(out_violation, violations[index]);
+    }
+    return total;
+}
+
+pub export fn lmt_check_voice_crossing(
+    previous: [*c]const LmtVoicedState,
+    current: [*c]const LmtVoicedState,
+    out: [*c]LmtVoicePairViolation,
+    out_cap: u32,
+) callconv(.c) u32 {
+    if (previous == null or current == null) return 0;
+    if (out_cap > 0 and out == null) return 0;
+
+    const previous_state: *const LmtVoicedState = @ptrCast(previous);
+    const current_state: *const LmtVoicedState = @ptrCast(current);
+    const previous_value = decodeVoicedState(previous_state.*);
+    const current_value = decodeVoicedState(current_state.*);
+
+    var violations: [voice_leading_rules.MAX_VOICE_PAIR_VIOLATIONS]voice_leading_rules.VoicePairViolation = undefined;
+    const total = voice_leading_rules.detectVoiceCrossings(&previous_value, &current_value, violations[0..]);
+    const write_count = @min(@as(usize, total), @as(usize, @intCast(out_cap)));
+    var index: usize = 0;
+    while (index < write_count) : (index += 1) {
+        const out_violation: *LmtVoicePairViolation = @ptrCast(&out[index]);
+        writeVoicePairViolation(out_violation, violations[index]);
+    }
+    return total;
+}
+
+pub export fn lmt_check_spacing(
+    current: [*c]const LmtVoicedState,
+    out: [*c]LmtVoicePairViolation,
+    out_cap: u32,
+) callconv(.c) u32 {
+    if (current == null) return 0;
+    if (out_cap > 0 and out == null) return 0;
+
+    const current_state: *const LmtVoicedState = @ptrCast(current);
+    const current_value = decodeVoicedState(current_state.*);
+
+    var violations: [voice_leading_rules.MAX_VOICE_PAIR_VIOLATIONS]voice_leading_rules.VoicePairViolation = undefined;
+    const total = voice_leading_rules.detectSpacingViolations(&current_value, violations[0..]);
+    const write_count = @min(@as(usize, total), @as(usize, @intCast(out_cap)));
+    var index: usize = 0;
+    while (index < write_count) : (index += 1) {
+        const out_violation: *LmtVoicePairViolation = @ptrCast(&out[index]);
+        writeVoicePairViolation(out_violation, violations[index]);
+    }
+    return total;
+}
+
+pub export fn lmt_check_motion_independence(
+    previous: [*c]const LmtVoicedState,
+    current: [*c]const LmtVoicedState,
+    out: [*c]LmtMotionIndependenceSummary,
+) callconv(.c) u32 {
+    if (previous == null or current == null or out == null) return 0;
+
+    const previous_state: *const LmtVoicedState = @ptrCast(previous);
+    const current_state: *const LmtVoicedState = @ptrCast(current);
+    const out_summary: *LmtMotionIndependenceSummary = @ptrCast(out);
+    const previous_value = decodeVoicedState(previous_state.*);
+    const current_value = decodeVoicedState(current_state.*);
+    const summary = voice_leading_rules.detectMotionIndependence(&previous_value, &current_value);
+    writeMotionIndependenceSummary(out_summary, summary);
     return 1;
 }
 

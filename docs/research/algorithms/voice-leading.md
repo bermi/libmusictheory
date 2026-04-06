@@ -250,6 +250,53 @@ The current profile layer is intentionally lightweight:
 
 This gives the next-step ranker a deterministic, inspectable base that can be reused across CLI, C ABI, WASM, and gallery surfaces.
 
+## Explicit Rule Detectors
+
+The counterpoint engine already classifies motion and scores profiles, but verification and annotation sometimes need a narrower, textbook-facing answer: *which voices violate which rule?*
+
+The standalone library now exposes explicit rule detectors over the same `VoicedState` / persistent-voice model:
+
+- parallel fifths
+- parallel octaves or unisons
+- voice crossing
+- upper-voice spacing violations
+- motion-independence collapse
+
+These detectors intentionally reuse the same voice identities that `VoicedHistoryWindow` and `MotionSummary` already use. They do **not** create a second notion of voice assignment.
+
+Design notes:
+
+- parallel-perfect checks are adjacent-state checks because they depend on how a named lower/upper pair moves from one sonority to the next
+- voice crossing is also adjacent-state, for the same reason
+- spacing is a current-state check and follows the common SATB convention: adjacent upper voices should stay within an octave, while the lowest pair is exempt
+- motion-independence collapse reports whether all retained moving voices travel in the same direction with no stationary voice breaking the texture
+
+That makes the outputs directly explainable:
+
+- "The alto and tenor move from one perfect fifth to another in similar motion."
+- "These two voices cross because the lower voice ends above the upper voice."
+- "The alto and soprano are more than an octave apart."
+- "All retained voices move upward together, so the texture loses motion independence."
+
+## Suspension Audit Outcome
+
+The Contrapunk audit suggested adding suspension mechanics, but the current counterpoint layer already exposes the core explainable state needed for the textbook preparation-suspension-resolution cycle:
+
+- `state`
+- `tracked_voice_id`
+- `held_midi`
+- `expected_resolution_midi`
+- `resolution_direction`
+- `obligation_count`
+- `warning_count`
+- `candidate_resolution_count`
+
+For this lane, the audit result is: keep the existing suspension surface and document it more clearly rather than duplicating it with a second state machine. The current summary is already sufficient for an LLM explanation such as:
+
+- "This is a suspension because the held note from the previous sonority creates extra tension here and the strongest next-step candidates resolve it by step."
+
+If future work adds retardations or stricter species-specific distinctions, that should extend this existing summary rather than replace it.
+
 ## Ranked Next Steps And Reason Codes
 
 On top of `VoicedHistoryWindow`, `MotionSummary`, and `CounterpointRuleProfile`, the library now exposes a `NextStepSuggestion` ranker for short-range counterpoint exploration.
