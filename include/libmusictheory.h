@@ -24,6 +24,7 @@ extern "C" {
  *   lmt_orbifold_triad_node_count, lmt_orbifold_triad_node_at,
  *   lmt_orbifold_triad_edge_count, lmt_orbifold_triad_edge_at,
  *   lmt_find_orbifold_triad_node,
+ *   lmt_mode_type_count, lmt_mode_type_name,
  *   lmt_mode_spelling_quality, lmt_rank_context_suggestions,
  *   lmt_preferred_voicing_n, and the method-specific RGBA bitmap renderers
  *   below.
@@ -75,9 +76,21 @@ enum {
     LMT_MODE_MIXOLYDIAN_B6 = 11,
     LMT_MODE_LOCRIAN_NAT2 = 12,
     LMT_MODE_SUPER_LOCRIAN = 13,
-    LMT_MODE_HALF_WHOLE = 14,
-    LMT_MODE_WHOLE_HALF = 15,
-    LMT_MODE_WHOLE_TONE = 16,
+    LMT_MODE_HARMONIC_MINOR = 14,
+    LMT_MODE_LOCRIAN_NAT6 = 15,
+    LMT_MODE_IONIAN_AUG = 16,
+    LMT_MODE_DORIAN_SHARP4 = 17,
+    LMT_MODE_PHRYGIAN_DOMINANT = 18,
+    LMT_MODE_LYDIAN_SHARP2 = 19,
+    LMT_MODE_SUPER_LOCRIAN_DIM = 20,
+    LMT_MODE_HALF_WHOLE = 21,
+    LMT_MODE_WHOLE_HALF = 22,
+    LMT_MODE_WHOLE_TONE = 23,
+    LMT_MODE_DOUBLE_HARMONIC = 24,
+    LMT_MODE_HUNGARIAN_MINOR = 25,
+    LMT_MODE_ENIGMATIC = 26,
+    LMT_MODE_NEAPOLITAN_MINOR = 27,
+    LMT_MODE_NEAPOLITAN_MAJOR = 28,
 };
 
 typedef uint8_t lmt_chord_type;
@@ -329,6 +342,8 @@ float lmt_evenness_distance(lmt_pitch_class_set set);
 
 lmt_pitch_class_set lmt_scale(lmt_scale_type type, lmt_pitch_class tonic);
 lmt_pitch_class_set lmt_mode(lmt_mode_type type, lmt_pitch_class root);
+uint32_t lmt_mode_type_count(void);
+const char *lmt_mode_type_name(uint32_t index);
 const char *lmt_spell_note(lmt_pitch_class pc, lmt_key_context key);
 const char *lmt_spell_note_parts(lmt_pitch_class pc, lmt_pitch_class tonic, lmt_key_quality quality);
 

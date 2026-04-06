@@ -48,5 +48,5 @@ test "the game counts" {
     try testing.expectEqual(@as(u16, 2048), stats.otc_count);
     try testing.expectEqual(@as(u16, 1969), stats.card_3_to_9_count);
     try testing.expectEqual(@as(u16, 560), stats.cluster_free_count);
-    try testing.expectEqual(@as(u16, 455), stats.mode_subset_count);
+    try testing.expectEqual(@as(u16, 545), stats.mode_subset_count);
 }

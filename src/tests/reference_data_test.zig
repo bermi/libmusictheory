@@ -5,6 +5,7 @@ const forte = @import("../forte.zig");
 const set_class = @import("../set_class.zig");
 const interval_vector = @import("../interval_vector.zig");
 const chord = @import("../chord_construction.zig");
+const mode = @import("../mode.zig");
 const tables = @import("../tables.zig");
 
 test "music21 spot check: major/minor triad set class and interval vector" {
@@ -24,7 +25,7 @@ test "the game spot check: otc and subset counts" {
     const stats = chord.computeGameStats();
     try testing.expectEqual(@as(u16, 2048), stats.otc_count);
     try testing.expectEqual(@as(u16, 560), stats.cluster_free_count);
-    try testing.expectEqual(@as(u16, 455), stats.mode_subset_count);
+    try testing.expectEqual(@as(u16, 545), stats.mode_subset_count);
 }
 
 test "set class cardinality bounds match published domain" {
@@ -43,4 +44,12 @@ test "set class cardinality bounds match published domain" {
         }
     }
     try testing.expect(found);
+}
+
+test "tonal-ts spot check: expanded mode inventory matches textbook interval facts" {
+    try testing.expectEqual(pcs.fromList(&[_]u4{ 0, 2, 3, 5, 7, 8, 11 }), mode.info(.harmonic_minor).pcs);
+    try testing.expectEqual(pcs.fromList(&[_]u4{ 0, 1, 4, 5, 7, 8, 10 }), mode.info(.phrygian_dominant).pcs);
+    try testing.expectEqual(pcs.fromList(&[_]u4{ 0, 1, 4, 5, 7, 8, 11 }), mode.info(.double_harmonic).pcs);
+    try testing.expectEqual(pcs.fromList(&[_]u4{ 0, 2, 3, 6, 7, 8, 11 }), mode.info(.hungarian_minor).pcs);
+    try testing.expectEqual(pcs.fromList(&[_]u4{ 0, 1, 4, 6, 8, 10, 11 }), mode.info(.enigmatic).pcs);
 }

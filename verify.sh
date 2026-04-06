@@ -188,6 +188,10 @@ if [ -f "$ROOT_DIR/docs/plans/in_progress/0115-stable-0.1.0-promotion-and-tag-ha
     check_cmd "cd '$ROOT_DIR' && if rg -n '^[0-9]+\.[0-9]+\.[0-9]+$' VERSION >/dev/null; then rg -n '^0\.1\.0$' VERSION >/dev/null && rg -n '^## \[0\.1\.0\] - [0-9]{4}-[0-9]{2}-[0-9]{2}$' CHANGELOG.md >/dev/null && rg -n '^Target release: \\x600\.1\.0\\x60$' RELEASE_CHECKLIST.md >/dev/null && rg -n '^# Stable Release Reviewer Guide$' docs/release/reviewer-guide.md >/dev/null && rg -n '^Target: \\x600\.1\.0\\x60$' docs/release/reviewer-guide.md >/dev/null && rg -n '^Current stable target:$' docs/release/versioning.md >/dev/null && rg -n '^- \\x600\.1\.0\\x60$' docs/release/versioning.md >/dev/null; else true; fi" "0115 stable handoff guardrail (stable metadata is rewritten consistently when VERSION is stable)"
 fi
 
+if [ -f "$ROOT_DIR/docs/plans/in_progress/0116-ordered-scale-and-mode-expansion-foundation.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0116-ordered-scale-and-mode-expansion-foundation.md" ]; then
+    check_cmd "cd '$ROOT_DIR' && test -f src/ordered_scale.zig && test -f src/tests/ordered_scale_test.zig && rg -n 'ordered_scale\\.zig|ordered_scale_test\\.zig|lmt_mode_type_count|lmt_mode_type_name|MODE_PHRYGIAN_DOMINANT|MODE_NEAPOLITAN_MAJOR' src/root.zig src/mode.zig src/c_api.zig include/libmusictheory.h build.zig scripts/check_wasm_exports.mjs src/tests/scales_modes_test.zig src/tests/c_api_test.zig >/dev/null" "0116 ordered-scale/mode expansion guardrail (foundation module, ABI reflection, exports, and focused tests are wired)"
+fi
+
 
 
 if [ -f "$ROOT_DIR/docs/plans/in_progress/0088-live-midi-composer-scene.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0088-live-midi-composer-scene.md" ]; then
@@ -542,6 +546,10 @@ if [ -f "$ROOT_DIR/src/tests/scales_modes_test.zig" ]; then
     check_cmd "cd '$ROOT_DIR' && zig build test 2>&1" "0007 scales/modes test suite"
 else
     unverified "0007 scales/modes test suite (src/tests/scales_modes_test.zig not yet implemented)"
+fi
+
+if [ -f "$ROOT_DIR/docs/plans/in_progress/0116-ordered-scale-and-mode-expansion-foundation.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0116-ordered-scale-and-mode-expansion-foundation.md" ]; then
+    check_cmd "cd '$ROOT_DIR' && zig build test 2>&1" "0116 ordered scale and mode expansion test suite"
 fi
 
 if [ -f "$ROOT_DIR/src/tests/keys_signatures_test.zig" ]; then

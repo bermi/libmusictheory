@@ -36,6 +36,8 @@ const lmt_is_cluster_free = api.lmt_is_cluster_free;
 const lmt_evenness_distance = api.lmt_evenness_distance;
 const lmt_scale = api.lmt_scale;
 const lmt_mode = api.lmt_mode;
+const lmt_mode_type_count = api.lmt_mode_type_count;
+const lmt_mode_type_name = api.lmt_mode_type_name;
 const lmt_mode_spelling_quality = api.lmt_mode_spelling_quality;
 const lmt_spell_note = api.lmt_spell_note;
 const lmt_chord = api.lmt_chord;
@@ -138,7 +140,7 @@ test "c abi header layout and constants" {
     try testing.expectEqual(@as(usize, 10), @offsetOf(c.lmt_voiced_state, "cadence_state"));
     try testing.expectEqual(@as(usize, 17), @offsetOf(c.lmt_motion_summary, "voice_motions"));
     try testing.expectEqual(@as(c_int, 0), c.LMT_SCALE_DIATONIC);
-    try testing.expectEqual(@as(c_int, 16), c.LMT_MODE_WHOLE_TONE);
+    try testing.expectEqual(@as(c_int, 28), c.LMT_MODE_NEAPOLITAN_MAJOR);
     try testing.expectEqual(@as(c_int, 3), c.LMT_CHORD_AUGMENTED);
     try testing.expectEqual(@as(u32, counterpoint.MAX_VOICES), lmt_counterpoint_max_voices());
     try testing.expectEqual(@as(u32, counterpoint.HISTORY_CAPACITY), lmt_counterpoint_history_capacity());
@@ -190,6 +192,10 @@ test "c abi scales modes and spelling" {
 
     const dorian = lmt_mode(c.LMT_MODE_DORIAN, 0);
     try testing.expectEqual(@as(u16, pcs.fromList(&[_]u4{ 0, 2, 3, 5, 7, 9, 10 })), dorian);
+    const phrygian_dominant = lmt_mode(c.LMT_MODE_PHRYGIAN_DOMINANT, 0);
+    try testing.expectEqual(@as(u16, pcs.fromList(&[_]u4{ 0, 1, 4, 5, 7, 8, 10 })), phrygian_dominant);
+    try testing.expectEqual(@as(u32, 29), lmt_mode_type_count());
+    try testing.expectEqualStrings("Phrygian Dominant", std.mem.sliceTo(@as([*:0]const u8, @ptrCast(lmt_mode_type_name(c.LMT_MODE_PHRYGIAN_DOMINANT))), 0));
     try testing.expectEqual(@as(u8, c.LMT_KEY_MAJOR), lmt_mode_spelling_quality(0, c.LMT_MODE_IONIAN));
     try testing.expectEqual(@as(u8, c.LMT_KEY_MINOR), lmt_mode_spelling_quality(2, c.LMT_MODE_DORIAN));
 

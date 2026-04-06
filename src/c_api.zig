@@ -200,24 +200,6 @@ const SCALE_HARMONIC_MINOR: u8 = 4;
 const SCALE_HARMONIC_MAJOR: u8 = 5;
 const SCALE_DOUBLE_AUGMENTED_HEXATONIC: u8 = 6;
 
-const MODE_IONIAN: u8 = 0;
-const MODE_DORIAN: u8 = 1;
-const MODE_PHRYGIAN: u8 = 2;
-const MODE_LYDIAN: u8 = 3;
-const MODE_MIXOLYDIAN: u8 = 4;
-const MODE_AEOLIAN: u8 = 5;
-const MODE_LOCRIAN: u8 = 6;
-const MODE_MELODIC_MINOR: u8 = 7;
-const MODE_DORIAN_B2: u8 = 8;
-const MODE_LYDIAN_AUG: u8 = 9;
-const MODE_LYDIAN_DOM: u8 = 10;
-const MODE_MIXOLYDIAN_B6: u8 = 11;
-const MODE_LOCRIAN_NAT2: u8 = 12;
-const MODE_SUPER_LOCRIAN: u8 = 13;
-const MODE_HALF_WHOLE: u8 = 14;
-const MODE_WHOLE_HALF: u8 = 15;
-const MODE_WHOLE_TONE: u8 = 16;
-
 const CHORD_MAJOR: u8 = 0;
 const CHORD_MINOR: u8 = 1;
 const CHORD_DIMINISHED: u8 = 2;
@@ -295,33 +277,11 @@ fn decodeScaleType(scale_type: u8) ?scale.ScaleType {
 }
 
 fn decodeModeType(mode_type: u8) ?mode.ModeType {
-    return switch (mode_type) {
-        MODE_IONIAN => .ionian,
-        MODE_DORIAN => .dorian,
-        MODE_PHRYGIAN => .phrygian,
-        MODE_LYDIAN => .lydian,
-        MODE_MIXOLYDIAN => .mixolydian,
-        MODE_AEOLIAN => .aeolian,
-        MODE_LOCRIAN => .locrian,
-        MODE_MELODIC_MINOR => .melodic_minor,
-        MODE_DORIAN_B2 => .dorian_b2,
-        MODE_LYDIAN_AUG => .lydian_aug,
-        MODE_LYDIAN_DOM => .lydian_dom,
-        MODE_MIXOLYDIAN_B6 => .mixolydian_b6,
-        MODE_LOCRIAN_NAT2 => .locrian_nat2,
-        MODE_SUPER_LOCRIAN => .super_locrian,
-        MODE_HALF_WHOLE => .half_whole,
-        MODE_WHOLE_HALF => .whole_half,
-        MODE_WHOLE_TONE => .whole_tone,
-        else => null,
-    };
+    return mode.fromInt(mode_type);
 }
 
 fn modeSet(mode_type: mode.ModeType) pcs.PitchClassSet {
-    for (mode.ALL_MODES) |one| {
-        if (one.id == mode_type) return one.pcs;
-    }
-    return mode.ALL_MODES[0].pcs;
+    return mode.info(mode_type).pcs;
 }
 
 fn chordTemplate(chord_kind: u8) pcs.PitchClassSet {
@@ -843,6 +803,16 @@ pub export fn lmt_mode(mode_type: u8, root: u8) callconv(.c) u16 {
     const base = modeSet(mt);
     const tonic = @as(pitch.PitchClass, @intCast(root % 12));
     return toCSet(pcs.transpose(base, tonic));
+}
+
+pub export fn lmt_mode_type_count() callconv(.c) u32 {
+    return @as(u32, @intCast(mode.count()));
+}
+
+pub export fn lmt_mode_type_name(index: u32) callconv(.c) [*c]const u8 {
+    const idx = @as(usize, @intCast(index));
+    if (idx >= mode.count()) return null;
+    return writeCString(mode.name(@enumFromInt(@as(u8, @intCast(index)))));
 }
 
 pub export fn lmt_counterpoint_max_voices() callconv(.c) u32 {

@@ -1,8 +1,8 @@
 const pitch = @import("pitch.zig");
 const pcs = @import("pitch_class_set.zig");
-const scale = @import("scale.zig");
+const ordered_scale = @import("ordered_scale.zig");
 
-pub const ModeType = enum {
+pub const ModeType = enum(u8) {
     ionian,
     dorian,
     phrygian,
@@ -17,40 +17,66 @@ pub const ModeType = enum {
     mixolydian_b6,
     locrian_nat2,
     super_locrian,
+    harmonic_minor,
+    locrian_nat6,
+    ionian_aug,
+    dorian_sharp4,
+    phrygian_dominant,
+    lydian_sharp2,
+    super_locrian_dim,
     half_whole,
     whole_half,
     whole_tone,
+    double_harmonic,
+    hungarian_minor,
+    enigmatic,
+    neapolitan_minor,
+    neapolitan_major,
 };
 
 pub const ModeInfo = struct {
     id: ModeType,
     name: []const u8,
-    parent_scale: scale.ScaleType,
+    family: ordered_scale.Family,
+    parent_pattern: ordered_scale.PatternId,
     degree: u4,
     pcs: pcs.PitchClassSet,
 };
 
 pub const ALL_MODES = [_]ModeInfo{
-    .{ .id = .ionian, .name = "Ionian", .parent_scale = .diatonic, .degree = 0, .pcs = rootedMode(scale.DIATONIC, 0) },
-    .{ .id = .dorian, .name = "Dorian", .parent_scale = .diatonic, .degree = 1, .pcs = rootedMode(scale.DIATONIC, 1) },
-    .{ .id = .phrygian, .name = "Phrygian", .parent_scale = .diatonic, .degree = 2, .pcs = rootedMode(scale.DIATONIC, 2) },
-    .{ .id = .lydian, .name = "Lydian", .parent_scale = .diatonic, .degree = 3, .pcs = rootedMode(scale.DIATONIC, 3) },
-    .{ .id = .mixolydian, .name = "Mixolydian", .parent_scale = .diatonic, .degree = 4, .pcs = rootedMode(scale.DIATONIC, 4) },
-    .{ .id = .aeolian, .name = "Aeolian", .parent_scale = .diatonic, .degree = 5, .pcs = rootedMode(scale.DIATONIC, 5) },
-    .{ .id = .locrian, .name = "Locrian", .parent_scale = .diatonic, .degree = 6, .pcs = rootedMode(scale.DIATONIC, 6) },
+    makeMode(.ionian, "Ionian", .diatonic, 0),
+    makeMode(.dorian, "Dorian", .diatonic, 1),
+    makeMode(.phrygian, "Phrygian", .diatonic, 2),
+    makeMode(.lydian, "Lydian", .diatonic, 3),
+    makeMode(.mixolydian, "Mixolydian", .diatonic, 4),
+    makeMode(.aeolian, "Aeolian", .diatonic, 5),
+    makeMode(.locrian, "Locrian", .diatonic, 6),
 
-    .{ .id = .melodic_minor, .name = "Melodic Minor", .parent_scale = .acoustic, .degree = 0, .pcs = rootedMode(scale.ACOUSTIC, 0) },
-    .{ .id = .dorian_b2, .name = "Dorian b2", .parent_scale = .acoustic, .degree = 1, .pcs = rootedMode(scale.ACOUSTIC, 1) },
-    .{ .id = .lydian_aug, .name = "Lydian Aug", .parent_scale = .acoustic, .degree = 2, .pcs = rootedMode(scale.ACOUSTIC, 2) },
-    .{ .id = .lydian_dom, .name = "Lydian Dom", .parent_scale = .acoustic, .degree = 3, .pcs = rootedMode(scale.ACOUSTIC, 3) },
-    .{ .id = .mixolydian_b6, .name = "Mixolydian b6", .parent_scale = .acoustic, .degree = 4, .pcs = rootedMode(scale.ACOUSTIC, 4) },
-    .{ .id = .locrian_nat2, .name = "Locrian nat2", .parent_scale = .acoustic, .degree = 5, .pcs = rootedMode(scale.ACOUSTIC, 5) },
-    .{ .id = .super_locrian, .name = "Super Locrian", .parent_scale = .acoustic, .degree = 6, .pcs = rootedMode(scale.ACOUSTIC, 6) },
+    makeMode(.melodic_minor, "Melodic Minor", .melodic_minor, 0),
+    makeMode(.dorian_b2, "Dorian b2", .melodic_minor, 1),
+    makeMode(.lydian_aug, "Lydian Aug", .melodic_minor, 2),
+    makeMode(.lydian_dom, "Lydian Dom", .melodic_minor, 3),
+    makeMode(.mixolydian_b6, "Mixolydian b6", .melodic_minor, 4),
+    makeMode(.locrian_nat2, "Locrian nat2", .melodic_minor, 5),
+    makeMode(.super_locrian, "Super Locrian", .melodic_minor, 6),
 
-    .{ .id = .half_whole, .name = "Half-Whole", .parent_scale = .diminished, .degree = 0, .pcs = rootedMode(scale.DIMINISHED, 0) },
-    .{ .id = .whole_half, .name = "Whole-Half", .parent_scale = .diminished, .degree = 1, .pcs = rootedMode(scale.DIMINISHED, 1) },
+    makeMode(.harmonic_minor, "Harmonic Minor", .harmonic_minor, 0),
+    makeMode(.locrian_nat6, "Locrian nat6", .harmonic_minor, 1),
+    makeMode(.ionian_aug, "Ionian Aug", .harmonic_minor, 2),
+    makeMode(.dorian_sharp4, "Dorian #4", .harmonic_minor, 3),
+    makeMode(.phrygian_dominant, "Phrygian Dominant", .harmonic_minor, 4),
+    makeMode(.lydian_sharp2, "Lydian #2", .harmonic_minor, 5),
+    makeMode(.super_locrian_dim, "Super Locrian Dim", .harmonic_minor, 6),
 
-    .{ .id = .whole_tone, .name = "Whole-Tone", .parent_scale = .whole_tone, .degree = 0, .pcs = rootedMode(scale.WHOLE_TONE, 0) },
+    makeMode(.half_whole, "Half-Whole", .diminished, 0),
+    makeMode(.whole_half, "Whole-Half", .diminished, 1),
+    makeMode(.whole_tone, "Whole-Tone", .whole_tone, 0),
+
+    makeMode(.double_harmonic, "Double Harmonic", .double_harmonic, 0),
+    makeMode(.hungarian_minor, "Hungarian Minor", .hungarian_minor, 0),
+    makeMode(.enigmatic, "Enigmatic", .enigmatic, 0),
+    makeMode(.neapolitan_minor, "Neapolitan Minor", .neapolitan_minor, 0),
+    makeMode(.neapolitan_major, "Neapolitan Major", .neapolitan_major, 0),
 };
 
 pub fn identifyMode(rooted_set: pcs.PitchClassSet) ?ModeType {
@@ -62,9 +88,44 @@ pub fn identifyMode(rooted_set: pcs.PitchClassSet) ?ModeType {
     return null;
 }
 
-fn rootedMode(parent: pcs.PitchClassSet, degree: u4) pcs.PitchClassSet {
-    var list_buf: [12]pitch.PitchClass = undefined;
-    const list = pcs.toList(parent, &list_buf);
-    const root_pc = list[degree];
-    return pcs.transposeDown(parent, root_pc);
+pub fn info(mode_type: ModeType) *const ModeInfo {
+    return &ALL_MODES[@intFromEnum(mode_type)];
+}
+
+pub fn name(mode_type: ModeType) []const u8 {
+    return info(mode_type).name;
+}
+
+pub fn count() usize {
+    return ALL_MODES.len;
+}
+
+pub fn fromInt(raw: u8) ?ModeType {
+    if (@as(usize, @intCast(raw)) >= ALL_MODES.len) return null;
+    return @enumFromInt(raw);
+}
+
+pub fn offsets(mode_type: ModeType, out: *[ordered_scale.MAX_DEGREES]pitch.PitchClass) []pitch.PitchClass {
+    const mode_info = info(mode_type);
+    return ordered_scale.modeOffsets(mode_info.parent_pattern, mode_info.degree, out);
+}
+
+fn makeMode(id: ModeType, name_value: []const u8, parent_pattern: ordered_scale.PatternId, degree: u4) ModeInfo {
+    const pattern = ordered_scale.info(parent_pattern);
+    return .{
+        .id = id,
+        .name = name_value,
+        .family = pattern.family,
+        .parent_pattern = parent_pattern,
+        .degree = degree,
+        .pcs = ordered_scale.modePitchClassSet(parent_pattern, degree),
+    };
+}
+
+comptime {
+    for (ALL_MODES, 0..) |one, index| {
+        if (@intFromEnum(one.id) != index) {
+            @compileError("ModeType enum order must match ALL_MODES order");
+        }
+    }
 }

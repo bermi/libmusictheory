@@ -8,22 +8,24 @@
 
 Algorithms for constructing, identifying, and navigating scales, modes, and keys — the organizational layers above pitch class sets.
 
+As of the Contrapunk integration foundation, `/Users/bermi/code/libmusictheory/src/ordered_scale.zig` is the internal source of truth for rooted parent-pattern offsets used by mode derivation. The repo still keeps `u12` pitch-class sets as the canonical set-operation representation, but ordered offsets now drive mode rotation and future degree-aware note operations.
+
 ## Static Data
 
-### The 4 (+3) Scale Types as Prime Forms
+### The 4 (+3) Scale Types as Rooted Parent Patterns
 
 ```
-DIATONIC       = 0b101010110101  // 7-35 [013568t] = 2741
-ACOUSTIC       = 0b101010110011  // 7-34 [013568a] = 2733 (melodic minor parent)
-DIMINISHED     = 0b011011011011  // 8-28 [0134679t] = 1755
-WHOLE_TONE     = 0b010101010101  // 6-35 [02468t] = 1365
+DIATONIC       = [0, 2, 4, 5, 7, 9, 11]
+ACOUSTIC       = [0, 2, 3, 5, 7, 9, 11]  // melodic minor parent
+DIMINISHED     = [0, 1, 3, 4, 6, 7, 9, 10]
+WHOLE_TONE     = [0, 2, 4, 6, 8, 10]
 
-HARMONIC_MINOR = 0b100110110011  // 7-32 [013468a]
-HARMONIC_MAJOR = 0b101010110011  // 7-32 [013568a] (involution of harm. minor)
-DOUBLE_AUG_HEX = 0b000100110011  // 6-20 [01458a]
+HARMONIC_MINOR = [0, 2, 3, 5, 7, 8, 11]
+HARMONIC_MAJOR = [0, 2, 4, 5, 7, 8, 11]
+DOUBLE_AUG_HEX = [0, 1, 4, 5, 8, 9]
 ```
 
-### The 17 Mode Types
+### The 29 Mode Types
 
 Each mode is a (scale_type, degree) pair. The degree determines which rotation of the parent scale is used.
 
@@ -43,6 +45,15 @@ MODES = [
     (DIMINISHED, 0, "Half-Whole"),   (DIMINISHED, 1, "Whole-Half"),
     // Whole-Tone (1 mode)
     (WHOLE_TONE, 0, "Whole-Tone"),
+    // Harmonic Minor (7 modes)
+    (HARMONIC_MINOR, 0, "Harmonic Minor"),       (HARMONIC_MINOR, 1, "Locrian nat6"),
+    (HARMONIC_MINOR, 2, "Ionian Aug"),           (HARMONIC_MINOR, 3, "Dorian #4"),
+    (HARMONIC_MINOR, 4, "Phrygian Dominant"),    (HARMONIC_MINOR, 5, "Lydian #2"),
+    (HARMONIC_MINOR, 6, "Super Locrian Dim"),
+    // Named exotic rooted scales (5 modes)
+    (DOUBLE_HARMONIC, 0, "Double Harmonic"),     (HUNGARIAN_MINOR, 0, "Hungarian Minor"),
+    (ENIGMATIC, 0, "Enigmatic"),                 (NEAPOLITAN_MINOR, 0, "Neapolitan Minor"),
+    (NEAPOLITAN_MAJOR, 0, "Neapolitan Major"),
 ]
 ```
 
@@ -94,7 +105,7 @@ identify_mode(x):
     return unknown
 ```
 
-**Complexity**: O(12 * 17) = O(1)
+**Complexity**: O(12 * 29) = O(1)
 
 ### 4. Key Signature Generation
 
@@ -235,7 +246,7 @@ For the tessellation map:
 - `ModeType`: struct { scale_type: ScaleType, degree: u4, name: []const u8 }
 - `Key`: struct { tonic: PitchClass, mode: ModeType, signature: KeySignature }
 - `KeySignature`: struct { sharps_or_flats: enum, accidentals: []NoteName }
-- Static tables: 17 mode types, 15 key signatures (expandable to all scale types)
+- Static tables: 29 mode types, 15 key signatures (expandable to all scale types)
 
 ## Dependencies
 

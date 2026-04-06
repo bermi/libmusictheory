@@ -2,6 +2,7 @@ const std = @import("std");
 const pitch = @import("pitch.zig");
 const pcs = @import("pitch_class_set.zig");
 const set_class = @import("set_class.zig");
+const ordered_scale = @import("ordered_scale.zig");
 
 pub const ScaleType = enum {
     diatonic,
@@ -13,13 +14,13 @@ pub const ScaleType = enum {
     double_augmented_hexatonic,
 };
 
-pub const DIATONIC: pcs.PitchClassSet = 0b101010110101;
-pub const ACOUSTIC: pcs.PitchClassSet = 0b101010110011;
-pub const DIMINISHED: pcs.PitchClassSet = 0b011011011011;
-pub const WHOLE_TONE: pcs.PitchClassSet = 0b010101010101;
-pub const HARMONIC_MINOR: pcs.PitchClassSet = 0b100110110011;
-pub const HARMONIC_MAJOR: pcs.PitchClassSet = 0b101010110011;
-pub const DOUBLE_AUGMENTED_HEXATONIC: pcs.PitchClassSet = 0b000100110011;
+pub const DIATONIC: pcs.PitchClassSet = ordered_scale.info(.diatonic).pcs;
+pub const ACOUSTIC: pcs.PitchClassSet = ordered_scale.info(.melodic_minor).pcs;
+pub const DIMINISHED: pcs.PitchClassSet = ordered_scale.info(.diminished).pcs;
+pub const WHOLE_TONE: pcs.PitchClassSet = ordered_scale.info(.whole_tone).pcs;
+pub const HARMONIC_MINOR: pcs.PitchClassSet = ordered_scale.info(.harmonic_minor).pcs;
+pub const HARMONIC_MAJOR: pcs.PitchClassSet = pcs.fromList(&[_]pitch.PitchClass{ 0, 2, 4, 5, 7, 8, 11 });
+pub const DOUBLE_AUGMENTED_HEXATONIC: pcs.PitchClassSet = pcs.fromList(&[_]pitch.PitchClass{ 0, 1, 4, 5, 8, 9 });
 
 pub const Scale = struct {
     scale_type: ScaleType,

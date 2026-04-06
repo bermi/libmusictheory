@@ -5,13 +5,14 @@ const pcs = @import("../pitch_class_set.zig");
 const scale = @import("../scale.zig");
 const mode = @import("../mode.zig");
 
-test "all 17 modes are defined and identifiable" {
-    try testing.expectEqual(@as(usize, 17), mode.ALL_MODES.len);
+test "all 29 modes are defined and identifiable" {
+    try testing.expectEqual(@as(usize, 29), mode.ALL_MODES.len);
 
-    for (mode.ALL_MODES) |m| {
+    for (mode.ALL_MODES, 0..) |m, index| {
         const identified = mode.identifyMode(m.pcs);
         try testing.expect(identified != null);
         try testing.expectEqual(m.id, identified.?);
+        try testing.expectEqual(@as(u8, @intCast(index)), @intFromEnum(m.id));
     }
 }
 
@@ -52,4 +53,18 @@ test "isScaley heuristic" {
     try testing.expect(scale.isScaley(scale.DIATONIC));
     try testing.expect(scale.isScaley(scale.WHOLE_TONE));
     try testing.expect(!scale.isScaley(pcs.C_MAJOR_TRIAD));
+}
+
+test "harmonic minor family and exotic modes are identifiable" {
+    try testing.expectEqual(mode.ModeType.harmonic_minor, mode.identifyMode(mode.info(.harmonic_minor).pcs).?);
+    try testing.expectEqual(mode.ModeType.phrygian_dominant, mode.identifyMode(mode.info(.phrygian_dominant).pcs).?);
+    try testing.expectEqual(mode.ModeType.lydian_sharp2, mode.identifyMode(mode.info(.lydian_sharp2).pcs).?);
+    try testing.expectEqual(mode.ModeType.double_harmonic, mode.identifyMode(mode.info(.double_harmonic).pcs).?);
+    try testing.expectEqual(mode.ModeType.neapolitan_major, mode.identifyMode(mode.info(.neapolitan_major).pcs).?);
+}
+
+test "rooted scale families use explainable parent offsets" {
+    try testing.expectEqual(pcs.fromList(&[_]pitch.PitchClass{ 0, 2, 3, 5, 7, 9, 11 }), scale.ACOUSTIC);
+    try testing.expectEqual(pcs.fromList(&[_]pitch.PitchClass{ 0, 2, 3, 5, 7, 8, 11 }), scale.HARMONIC_MINOR);
+    try testing.expectEqual(pcs.fromList(&[_]pitch.PitchClass{ 0, 2, 4, 5, 7, 8, 11 }), scale.HARMONIC_MAJOR);
 }
