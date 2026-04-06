@@ -3,7 +3,7 @@
 > Dependencies: contrapunk-theory-integration, 0008, 0009, 0116, 0020
 > Follow-up: 0120
 
-Status: In progress
+Status: Completed
 
 ## Summary
 
@@ -28,3 +28,14 @@ An LLM should be able to say: `These notes form Cmaj7 because, measured from C, 
 - tied interpretations stay visible in the API output
 - slash/bass information is preserved explicitly
 - `./verify.sh` passes
+
+## Verification Commands
+
+- `./verify.sh`
+- `./zigw build test`
+
+## Implementation History (Point-in-Time)
+
+- `f2bf312` (2026-04-06):
+  - Shipped behavior: added `src/chord_detection.zig` with an honest 37-pattern exact-match vocabulary, structured match output that preserves tied interpretations across candidate roots, and experimental C ABI reflection/detection helpers `lmt_chord_pattern_count`, `lmt_chord_pattern_name`, `lmt_chord_pattern_formula`, and `lmt_detect_chord_matches`.
+  - Verification: `./verify.sh`, `./zigw build test`
