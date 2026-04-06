@@ -27,6 +27,7 @@ extern "C" {
  *   lmt_mode_type_count, lmt_mode_type_name,
  *   lmt_scale_degree, lmt_transpose_diatonic,
  *   lmt_nearest_scale_tones, lmt_snap_to_scale,
+ *   lmt_find_containing_modes,
  *   lmt_mode_spelling_quality, lmt_rank_context_suggestions,
  *   lmt_preferred_voicing_n, and the method-specific RGBA bitmap renderers
  *   below.
@@ -152,6 +153,13 @@ typedef struct {
     uint8_t lower_distance;
     uint8_t upper_distance;
 } lmt_scale_snap_candidates;
+
+typedef struct {
+    uint8_t mode;
+    uint8_t degree;
+    uint8_t reserved0;
+    uint8_t reserved1;
+} lmt_containing_mode_match;
 
 typedef uint8_t lmt_cadence_state;
 enum {
@@ -367,6 +375,7 @@ uint8_t lmt_scale_degree(lmt_pitch_class tonic, lmt_mode_type mode, lmt_midi_not
 uint32_t lmt_transpose_diatonic(lmt_pitch_class tonic, lmt_mode_type mode, lmt_midi_note note, int8_t degrees, lmt_midi_note *out);
 uint32_t lmt_nearest_scale_tones(lmt_pitch_class tonic, lmt_mode_type mode, lmt_midi_note note, lmt_scale_snap_candidates *out);
 uint32_t lmt_snap_to_scale(lmt_pitch_class tonic, lmt_mode_type mode, lmt_midi_note note, lmt_snap_tie_policy policy, lmt_midi_note *out);
+uint8_t lmt_find_containing_modes(lmt_pitch_class note_pc, lmt_pitch_class tonic, const lmt_mode_type *modes, uint8_t mode_count, lmt_containing_mode_match *out, uint8_t out_len);
 const char *lmt_spell_note(lmt_pitch_class pc, lmt_key_context key);
 const char *lmt_spell_note_parts(lmt_pitch_class pc, lmt_pitch_class tonic, lmt_key_quality quality);
 

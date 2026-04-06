@@ -7,6 +7,7 @@ const interval_analysis = @import("../interval_analysis.zig");
 const fc_components = @import("../fc_components.zig");
 const pitch = @import("../pitch.zig");
 const mode = @import("../mode.zig");
+const modal_interchange = @import("../modal_interchange.zig");
 
 test "properties hold for all 4096 pitch-class sets" {
     var dec: u16 = 0;
@@ -93,6 +94,26 @@ test "nearest scale neighbors always stay inside the mode when present" {
                 if (neighbors.has_upper) {
                     try testing.expect(mode.degreeOfNote(tonic, mode_info.id, neighbors.upper) != null);
                 }
+            }
+        }
+    }
+}
+
+test "modal interchange matches always contain the queried pitch class" {
+    var mode_buf: [mode.ALL_MODES.len]mode.ModeType = undefined;
+    for (mode.ALL_MODES, 0..) |mode_info, index| {
+        mode_buf[index] = mode_info.id;
+    }
+
+    var out: [modal_interchange.MAX_MATCHES]modal_interchange.ContainingModeMatch = undefined;
+    var tonic: u4 = 0;
+    while (tonic < 12) : (tonic += 1) {
+        var note_pc: u4 = 0;
+        while (note_pc < 12) : (note_pc += 1) {
+            const total = modal_interchange.findContainingModes(note_pc, tonic, mode_buf[0..], out[0..]);
+            for (out[0..total]) |match| {
+                try testing.expect(mode.degreeOfPitchClass(tonic, match.mode, note_pc) != null);
+                try testing.expectEqual(match.degree, mode.degreeOfPitchClass(tonic, match.mode, note_pc).? + 1);
             }
         }
     }

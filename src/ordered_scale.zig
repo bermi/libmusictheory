@@ -96,7 +96,11 @@ pub fn modeOffsets(id: PatternId, degree: u4, out: *[MAX_DEGREES]pitch.PitchClas
 }
 
 pub fn degreeIndexForOffsets(offsets: []const pitch.PitchClass, tonic: pitch.PitchClass, note: pitch.MidiNote) ?u8 {
-    const relative = pitch.wrapPitchClass(@as(i16, @intCast(pitch.midiToPC(note))) - @as(i16, @intCast(tonic)));
+    return degreeIndexForPitchClass(offsets, tonic, pitch.midiToPC(note));
+}
+
+pub fn degreeIndexForPitchClass(offsets: []const pitch.PitchClass, tonic: pitch.PitchClass, note_pc: pitch.PitchClass) ?u8 {
+    const relative = pitch.wrapPitchClass(@as(i16, @intCast(note_pc)) - @as(i16, @intCast(tonic)));
     for (offsets, 0..) |offset, index| {
         if (offset == relative) return @as(u8, @intCast(index));
     }

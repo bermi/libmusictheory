@@ -8,6 +8,7 @@ const evenness = @import("evenness.zig");
 const scale = @import("scale.zig");
 const mode = @import("mode.zig");
 const ordered_scale = @import("ordered_scale.zig");
+const modal_interchange = @import("modal_interchange.zig");
 const key = @import("key.zig");
 const note_spelling = @import("note_spelling.zig");
 const chord_type = @import("chord_type.zig");
@@ -62,6 +63,13 @@ pub const LmtScaleSnapCandidates = extern struct {
     upper: u8,
     lower_distance: u8,
     upper_distance: u8,
+};
+
+pub const LmtContainingModeMatch = extern struct {
+    mode: u8,
+    degree: u8,
+    reserved0: u8,
+    reserved1: u8,
 };
 
 pub const LmtMetricPosition = extern struct {
@@ -876,6 +884,39 @@ pub export fn lmt_snap_to_scale(tonic: u8, mode_type: u8, note: u8, policy: u8, 
     const snapped = mode.snapToScale(tonic_pc, mt, midi_note, decodeSnapTiePolicy(policy)) orelse return 0;
     out[0] = snapped;
     return 1;
+}
+
+pub export fn lmt_find_containing_modes(
+    note_pc: u8,
+    tonic: u8,
+    modes_ptr: [*c]const u8,
+    mode_count: u8,
+    out: [*c]LmtContainingModeMatch,
+    out_len: u8,
+) callconv(.c) u8 {
+    if (mode_count > 0 and modes_ptr == null) return 0;
+    if (out_len > 0 and out == null) return 0;
+
+    var mode_buf: [modal_interchange.MAX_MATCHES]mode.ModeType = undefined;
+    const requested = mode_buf[0..mode_count];
+    for (requested, 0..) |*slot, index| {
+        slot.* = decodeModeType(modes_ptr[index]) orelse return 0;
+    }
+
+    var matches_buf: [modal_interchange.MAX_MATCHES]modal_interchange.ContainingModeMatch = undefined;
+    const tonic_pc = @as(pitch.PitchClass, @intCast(tonic % 12));
+    const total = modal_interchange.findContainingModes(@as(pitch.PitchClass, @intCast(note_pc % 12)), tonic_pc, requested, matches_buf[0..]);
+    const write_count = @min(@as(usize, total), @as(usize, out_len));
+    var index: usize = 0;
+    while (index < write_count) : (index += 1) {
+        out[index] = .{
+            .mode = @intFromEnum(matches_buf[index].mode),
+            .degree = matches_buf[index].degree,
+            .reserved0 = 0,
+            .reserved1 = 0,
+        };
+    }
+    return total;
 }
 
 pub export fn lmt_counterpoint_max_voices() callconv(.c) u32 {

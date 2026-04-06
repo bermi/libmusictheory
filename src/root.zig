@@ -19,6 +19,7 @@ pub const even_compat_model = @import("even_compat_model.zig");
 pub const ordered_scale = @import("ordered_scale.zig");
 pub const scale = @import("scale.zig");
 pub const mode = @import("mode.zig");
+pub const modal_interchange = @import("modal_interchange.zig");
 pub const key_signature = @import("key_signature.zig");
 pub const key = @import("key.zig");
 pub const note_spelling = @import("note_spelling.zig");
@@ -64,6 +65,7 @@ test {
     _ = @import("tests/even_compat_model_test.zig");
     _ = @import("tests/ordered_scale_test.zig");
     _ = @import("tests/diatonic_test.zig");
+    _ = @import("tests/modal_interchange_test.zig");
     _ = @import("tests/scales_modes_test.zig");
     _ = @import("tests/keys_signatures_test.zig");
     _ = @import("tests/chord_construction_test.zig");

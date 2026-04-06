@@ -196,6 +196,10 @@ if [ -f "$ROOT_DIR/docs/plans/in_progress/0117-degree-aware-note-primitives.md" 
     check_cmd "cd '$ROOT_DIR' && test -f src/tests/diatonic_test.zig && rg -n 'tests/diatonic_test\\.zig|lmt_scale_degree|lmt_transpose_diatonic|lmt_nearest_scale_tones|lmt_snap_to_scale|LMT_SNAP_TIE_|lmt_scale_snap_candidates|degreeOfNote|transposeDiatonic|nearestScaleNeighbors|snapToScale' src/root.zig src/ordered_scale.zig src/mode.zig src/c_api.zig include/libmusictheory.h build.zig scripts/check_wasm_exports.mjs src/tests/diatonic_test.zig src/tests/c_api_test.zig src/tests/property_test.zig >/dev/null" "0117 degree-aware note primitives guardrail (ordered-scale note APIs, ABI surface, and focused tests are wired)"
 fi
 
+if [ -f "$ROOT_DIR/docs/plans/in_progress/0118-modal-interchange-containment.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0118-modal-interchange-containment.md" ]; then
+    check_cmd "cd '$ROOT_DIR' && test -f src/modal_interchange.zig && test -f src/tests/modal_interchange_test.zig && rg -n 'modal_interchange\\.zig|modal_interchange_test\\.zig|lmt_find_containing_modes|lmt_containing_mode_match|degreeOfPitchClass|findContainingModes' src/root.zig src/modal_interchange.zig src/mode.zig src/ordered_scale.zig src/c_api.zig include/libmusictheory.h build.zig scripts/check_wasm_exports.mjs src/tests/modal_interchange_test.zig src/tests/c_api_test.zig src/tests/property_test.zig >/dev/null" "0118 modal interchange containment guardrail (module, ABI surface, and focused tests are wired)"
+fi
+
 
 
 if [ -f "$ROOT_DIR/docs/plans/in_progress/0088-live-midi-composer-scene.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0088-live-midi-composer-scene.md" ]; then
@@ -558,6 +562,10 @@ fi
 
 if [ -f "$ROOT_DIR/docs/plans/in_progress/0117-degree-aware-note-primitives.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0117-degree-aware-note-primitives.md" ]; then
     check_cmd "cd '$ROOT_DIR' && zig build test 2>&1" "0117 degree-aware note primitives test suite"
+fi
+
+if [ -f "$ROOT_DIR/docs/plans/in_progress/0118-modal-interchange-containment.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0118-modal-interchange-containment.md" ]; then
+    check_cmd "cd '$ROOT_DIR' && zig build test 2>&1" "0118 modal interchange containment test suite"
 fi
 
 if [ -f "$ROOT_DIR/src/tests/keys_signatures_test.zig" ]; then

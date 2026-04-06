@@ -14,6 +14,7 @@ const LmtKeyContext = api.LmtKeyContext;
 const LmtFretPos = api.LmtFretPos;
 const LmtGuideDot = api.LmtGuideDot;
 const LmtScaleSnapCandidates = api.LmtScaleSnapCandidates;
+const LmtContainingModeMatch = api.LmtContainingModeMatch;
 const LmtVoicedState = api.LmtVoicedState;
 const LmtVoicedHistory = api.LmtVoicedHistory;
 const LmtMotionSummary = api.LmtMotionSummary;
@@ -43,6 +44,7 @@ const lmt_scale_degree = api.lmt_scale_degree;
 const lmt_transpose_diatonic = api.lmt_transpose_diatonic;
 const lmt_nearest_scale_tones = api.lmt_nearest_scale_tones;
 const lmt_snap_to_scale = api.lmt_snap_to_scale;
+const lmt_find_containing_modes = api.lmt_find_containing_modes;
 const lmt_mode_spelling_quality = api.lmt_mode_spelling_quality;
 const lmt_spell_note = api.lmt_spell_note;
 const lmt_chord = api.lmt_chord;
@@ -128,6 +130,7 @@ test "c abi header layout and constants" {
     try testing.expectEqual(@as(usize, 2), @sizeOf(c.lmt_key_context));
     try testing.expectEqual(@as(usize, 8), @sizeOf(c.lmt_guide_dot));
     try testing.expectEqual(@sizeOf(c.lmt_scale_snap_candidates), @sizeOf(LmtScaleSnapCandidates));
+    try testing.expectEqual(@sizeOf(c.lmt_containing_mode_match), @sizeOf(LmtContainingModeMatch));
     try testing.expectEqual(@as(usize, 12), @sizeOf(c.lmt_context_suggestion));
     try testing.expectEqual(@as(usize, 4), @sizeOf(c.lmt_metric_position));
     try testing.expectEqual(@as(usize, 8), @sizeOf(c.lmt_voice));
@@ -221,6 +224,12 @@ test "c abi scales modes and spelling" {
     try testing.expectEqual(@as(u8, 65), snapped);
     try testing.expectEqual(@as(u32, 1), lmt_snap_to_scale(0, c.LMT_MODE_IONIAN, 66, c.LMT_SNAP_TIE_HIGHER, @ptrCast(&snapped)));
     try testing.expectEqual(@as(u8, 67), snapped);
+    const borrowed_modes = [_]u8{ c.LMT_MODE_IONIAN, c.LMT_MODE_LYDIAN, c.LMT_MODE_MIXOLYDIAN };
+    var matches: [4]c.lmt_containing_mode_match = undefined;
+    const match_total = lmt_find_containing_modes(6, 0, @ptrCast(&borrowed_modes), borrowed_modes.len, @ptrCast(&matches), matches.len);
+    try testing.expectEqual(@as(u8, 1), match_total);
+    try testing.expectEqual(@as(u8, c.LMT_MODE_LYDIAN), matches[0].mode);
+    try testing.expectEqual(@as(u8, 4), matches[0].degree);
     try testing.expectEqual(@as(u8, c.LMT_KEY_MAJOR), lmt_mode_spelling_quality(0, c.LMT_MODE_IONIAN));
     try testing.expectEqual(@as(u8, c.LMT_KEY_MINOR), lmt_mode_spelling_quality(2, c.LMT_MODE_DORIAN));
 

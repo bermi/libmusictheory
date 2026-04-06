@@ -115,6 +115,11 @@ pub fn degreeOfNote(tonic: pitch.PitchClass, mode_type: ModeType, note: pitch.Mi
     return ordered_scale.degreeIndexForOffsets(offsets(mode_type, &offsets_buf), tonic, note);
 }
 
+pub fn degreeOfPitchClass(tonic: pitch.PitchClass, mode_type: ModeType, note_pc: pitch.PitchClass) ?u8 {
+    var offsets_buf: [ordered_scale.MAX_DEGREES]pitch.PitchClass = undefined;
+    return ordered_scale.degreeIndexForPitchClass(offsets(mode_type, &offsets_buf), tonic, note_pc);
+}
+
 pub fn transposeDiatonic(tonic: pitch.PitchClass, mode_type: ModeType, note: pitch.MidiNote, degrees: i8) ?pitch.MidiNote {
     var offsets_buf: [ordered_scale.MAX_DEGREES]pitch.PitchClass = undefined;
     return ordered_scale.transposeMidiByDegrees(offsets(mode_type, &offsets_buf), tonic, note, degrees);

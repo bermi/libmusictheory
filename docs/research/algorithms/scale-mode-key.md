@@ -10,6 +10,8 @@ Algorithms for constructing, identifying, and navigating scales, modes, and keys
 
 As of the Contrapunk integration foundation, `/Users/bermi/code/libmusictheory/src/ordered_scale.zig` is the internal source of truth for rooted parent-pattern offsets used by mode derivation. The repo still keeps `u12` pitch-class sets as the canonical set-operation representation, but ordered offsets now drive mode rotation plus degree-aware note primitives such as scale-degree lookup, diatonic transposition, and explicit nearest-scale-tone search.
 
+The next explainable layer built on top of that foundation is modal containment: given a tonic and a candidate pitch class, the library can report every caller-requested parallel mode that actually contains that pitch class, along with its 1-based degree number in each match. That keeps modal interchange factual and policy-free: the core library reports membership facts, and callers decide which borrowing interpretation matters musically.
+
 ## Static Data
 
 ### The 4 (+3) Scale Types as Rooted Parent Patterns
