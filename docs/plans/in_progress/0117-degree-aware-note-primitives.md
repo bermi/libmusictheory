@@ -3,7 +3,7 @@
 > Dependencies: contrapunk-theory-integration, 0116, 0008, 0020
 > Follow-up: 0118, 0122
 
-Status: Draft
+Status: In progress
 
 ## Summary
 

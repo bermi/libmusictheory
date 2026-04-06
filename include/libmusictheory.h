@@ -25,6 +25,8 @@ extern "C" {
  *   lmt_orbifold_triad_edge_count, lmt_orbifold_triad_edge_at,
  *   lmt_find_orbifold_triad_node,
  *   lmt_mode_type_count, lmt_mode_type_name,
+ *   lmt_scale_degree, lmt_transpose_diatonic,
+ *   lmt_nearest_scale_tones, lmt_snap_to_scale,
  *   lmt_mode_spelling_quality, lmt_rank_context_suggestions,
  *   lmt_preferred_voicing_n, and the method-specific RGBA bitmap renderers
  *   below.
@@ -93,6 +95,12 @@ enum {
     LMT_MODE_NEAPOLITAN_MAJOR = 28,
 };
 
+typedef uint8_t lmt_snap_tie_policy;
+enum {
+    LMT_SNAP_TIE_LOWER = 0,
+    LMT_SNAP_TIE_HIGHER = 1,
+};
+
 typedef uint8_t lmt_chord_type;
 enum {
     LMT_CHORD_MAJOR = 0,
@@ -133,6 +141,17 @@ typedef struct {
     uint8_t cluster_free;
     uint8_t reads_as_named_chord;
 } lmt_context_suggestion;
+
+typedef struct {
+    uint8_t in_scale;
+    uint8_t has_lower;
+    uint8_t has_upper;
+    uint8_t reserved0;
+    lmt_midi_note lower;
+    lmt_midi_note upper;
+    uint8_t lower_distance;
+    uint8_t upper_distance;
+} lmt_scale_snap_candidates;
 
 typedef uint8_t lmt_cadence_state;
 enum {
@@ -344,6 +363,10 @@ lmt_pitch_class_set lmt_scale(lmt_scale_type type, lmt_pitch_class tonic);
 lmt_pitch_class_set lmt_mode(lmt_mode_type type, lmt_pitch_class root);
 uint32_t lmt_mode_type_count(void);
 const char *lmt_mode_type_name(uint32_t index);
+uint8_t lmt_scale_degree(lmt_pitch_class tonic, lmt_mode_type mode, lmt_midi_note note);
+uint32_t lmt_transpose_diatonic(lmt_pitch_class tonic, lmt_mode_type mode, lmt_midi_note note, int8_t degrees, lmt_midi_note *out);
+uint32_t lmt_nearest_scale_tones(lmt_pitch_class tonic, lmt_mode_type mode, lmt_midi_note note, lmt_scale_snap_candidates *out);
+uint32_t lmt_snap_to_scale(lmt_pitch_class tonic, lmt_mode_type mode, lmt_midi_note note, lmt_snap_tie_policy policy, lmt_midi_note *out);
 const char *lmt_spell_note(lmt_pitch_class pc, lmt_key_context key);
 const char *lmt_spell_note_parts(lmt_pitch_class pc, lmt_pitch_class tonic, lmt_key_quality quality);
 

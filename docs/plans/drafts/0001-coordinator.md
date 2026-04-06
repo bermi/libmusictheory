@@ -10,12 +10,18 @@ Build `libmusictheory`, a Zig library exposing a C ABI that implements the compl
 ## Lifecycle Status
 
 - Draft: 0001
-- In progress: contrapunk-theory-integration
+- In progress: contrapunk-theory-integration, 0117-degree-aware-note-primitives
 ## Current Remaining Work
 
 The stable-release execution lane is complete. A new post-`0.1.0` explainable-theory expansion lane is now open.
 
 - `contrapunk-theory-integration` — critically evaluate and sequence explainable Contrapunk-derived primitives that fit `libmusictheory`'s goals: ordered-scale operations, missing named modes, structured chord detection, modal interchange containment, voice-leading rule checks, a suspension overlap audit, optional SATB helpers, and a gated Barry Harris evaluation.
+- `0117-degree-aware-note-primitives` — add scale-degree lookup, diatonic transposition, and explicit nearest-scale-tone helpers with no hidden tie policy.
+- `0118-modal-interchange-containment` — report all parallel-mode containments for an outside pitch class, including degree information and no internal borrowing priority.
+- `0119-structured-chord-detection` — add an explainable 39-pattern chord detection surface that returns structured matches before display formatting.
+- `0120-voice-leading-rule-detectors-and-suspension-audit` — add narrow textbook rule detectors and document or extend existing suspension coverage without duplicating the counterpoint engine.
+- `0121-satb-register-helpers` — add experimental choir-specific range helpers without turning them into global validity rules.
+- `0122-barry-harris-evaluation-gate-and-master-closeout` — decide whether Barry Harris belongs in the current ordered-scale semantics and close the Contrapunk master lane honestly.
 - Completed: 0002, 0003, 0004, 0005, 0006, 0007, 0008, 0009, 0010, 0011, 0012, 0013, 0014, 0015, 0016, 0017, 0018, 0019, 0020, 0021, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0032, 0033, 0034, 0035, 0036, 0037, 0038, 0039, 0040, 0041, 0042, 0043, 0044, 0045, 0046, 0047, 0048, 0049, 0050, 0051, 0052, 0053, 0054, 0055, 0056, 0057, 0058, 0059, 0060, 0061, 0062, 0063, 0064, 0065, 0066, 0067, 0068, 0069, 0070, 0071, 0072, 0073, 0074, 0075, 0076, 0077, 0078, 0079, 0080, 0081, 0082, 0083, 0084, 0085, 0086, 0088, 0089, 0090, 0091, 0092, 0093, 0094, 0095, 0096, 0097, 0098, 0099, 0100, 0101, 0102, 0103, 0104, 0105, 0106, 0107, 0108, 0109, 0110, 0111, 0112, 0113, 0114, 0115, 0116
 
 ## Plan Dependencies (Execute in Order)

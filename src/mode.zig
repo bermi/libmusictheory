@@ -110,6 +110,26 @@ pub fn offsets(mode_type: ModeType, out: *[ordered_scale.MAX_DEGREES]pitch.Pitch
     return ordered_scale.modeOffsets(mode_info.parent_pattern, mode_info.degree, out);
 }
 
+pub fn degreeOfNote(tonic: pitch.PitchClass, mode_type: ModeType, note: pitch.MidiNote) ?u8 {
+    var offsets_buf: [ordered_scale.MAX_DEGREES]pitch.PitchClass = undefined;
+    return ordered_scale.degreeIndexForOffsets(offsets(mode_type, &offsets_buf), tonic, note);
+}
+
+pub fn transposeDiatonic(tonic: pitch.PitchClass, mode_type: ModeType, note: pitch.MidiNote, degrees: i8) ?pitch.MidiNote {
+    var offsets_buf: [ordered_scale.MAX_DEGREES]pitch.PitchClass = undefined;
+    return ordered_scale.transposeMidiByDegrees(offsets(mode_type, &offsets_buf), tonic, note, degrees);
+}
+
+pub fn nearestScaleNeighbors(tonic: pitch.PitchClass, mode_type: ModeType, note: pitch.MidiNote) ordered_scale.ScaleNeighborTones {
+    var offsets_buf: [ordered_scale.MAX_DEGREES]pitch.PitchClass = undefined;
+    return ordered_scale.nearestScaleNeighbors(offsets(mode_type, &offsets_buf), tonic, note);
+}
+
+pub fn snapToScale(tonic: pitch.PitchClass, mode_type: ModeType, note: pitch.MidiNote, policy: ordered_scale.SnapTiePolicy) ?pitch.MidiNote {
+    var offsets_buf: [ordered_scale.MAX_DEGREES]pitch.PitchClass = undefined;
+    return ordered_scale.snapToScale(offsets(mode_type, &offsets_buf), tonic, note, policy);
+}
+
 fn makeMode(id: ModeType, name_value: []const u8, parent_pattern: ordered_scale.PatternId, degree: u4) ModeInfo {
     const pattern = ordered_scale.info(parent_pattern);
     return .{

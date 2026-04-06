@@ -5,6 +5,8 @@ const pcs = @import("../pitch_class_set.zig");
 const set_class = @import("../set_class.zig");
 const interval_analysis = @import("../interval_analysis.zig");
 const fc_components = @import("../fc_components.zig");
+const pitch = @import("../pitch.zig");
+const mode = @import("../mode.zig");
 
 test "properties hold for all 4096 pitch-class sets" {
     var dec: u16 = 0;
@@ -55,5 +57,43 @@ test "fuzzed random inputs do not panic and preserve invariants" {
         const t = @as(u4, @intCast(random.int(u8) % 12));
         const transformed = pcs.invert(pcs.transpose(set, t));
         try testing.expectEqual(pcs.cardinality(set), pcs.cardinality(transformed));
+    }
+}
+
+test "diatonic transposition round-trips across supported modes" {
+    for (mode.ALL_MODES) |mode_info| {
+        var offsets_buf: [8]u4 = undefined;
+        const offsets = mode.offsets(mode_info.id, &offsets_buf);
+        var tonic: u4 = 0;
+        while (tonic < 12) : (tonic += 1) {
+            for (offsets) |offset| {
+                const note_pc = @as(u4, @intCast((@as(u8, tonic) + @as(u8, offset)) % 12));
+                const note = pitch.pcToMidi(note_pc, 4);
+                var degrees: i8 = -6;
+                while (degrees <= 6) : (degrees += 1) {
+                    const up = mode.transposeDiatonic(tonic, mode_info.id, note, degrees) orelse continue;
+                    const back = mode.transposeDiatonic(tonic, mode_info.id, up, -degrees) orelse continue;
+                    try testing.expectEqual(note, back);
+                }
+            }
+        }
+    }
+}
+
+test "nearest scale neighbors always stay inside the mode when present" {
+    for (mode.ALL_MODES) |mode_info| {
+        var tonic: u4 = 0;
+        while (tonic < 12) : (tonic += 1) {
+            var midi: u8 = 0;
+            while (midi < 127) : (midi += 1) {
+                const neighbors = mode.nearestScaleNeighbors(tonic, mode_info.id, @as(pitch.MidiNote, @intCast(midi)));
+                if (neighbors.has_lower) {
+                    try testing.expect(mode.degreeOfNote(tonic, mode_info.id, neighbors.lower) != null);
+                }
+                if (neighbors.has_upper) {
+                    try testing.expect(mode.degreeOfNote(tonic, mode_info.id, neighbors.upper) != null);
+                }
+            }
+        }
     }
 }

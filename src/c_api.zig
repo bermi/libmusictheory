@@ -7,6 +7,7 @@ const cluster = @import("cluster.zig");
 const evenness = @import("evenness.zig");
 const scale = @import("scale.zig");
 const mode = @import("mode.zig");
+const ordered_scale = @import("ordered_scale.zig");
 const key = @import("key.zig");
 const note_spelling = @import("note_spelling.zig");
 const chord_type = @import("chord_type.zig");
@@ -50,6 +51,17 @@ pub const LmtContextSuggestion = extern struct {
     in_context: u8,
     cluster_free: u8,
     reads_as_named_chord: u8,
+};
+
+pub const LmtScaleSnapCandidates = extern struct {
+    in_scale: u8,
+    has_lower: u8,
+    has_upper: u8,
+    reserved0: u8,
+    lower: u8,
+    upper: u8,
+    lower_distance: u8,
+    upper_distance: u8,
 };
 
 pub const LmtMetricPosition = extern struct {
@@ -278,6 +290,10 @@ fn decodeScaleType(scale_type: u8) ?scale.ScaleType {
 
 fn decodeModeType(mode_type: u8) ?mode.ModeType {
     return mode.fromInt(mode_type);
+}
+
+fn decodeSnapTiePolicy(raw: u8) ordered_scale.SnapTiePolicy {
+    return if (raw == 1) .higher else .lower;
 }
 
 fn modeSet(mode_type: mode.ModeType) pcs.PitchClassSet {
@@ -813,6 +829,53 @@ pub export fn lmt_mode_type_name(index: u32) callconv(.c) [*c]const u8 {
     const idx = @as(usize, @intCast(index));
     if (idx >= mode.count()) return null;
     return writeCString(mode.name(@enumFromInt(@as(u8, @intCast(index)))));
+}
+
+pub export fn lmt_scale_degree(tonic: u8, mode_type: u8, note: u8) callconv(.c) u8 {
+    const mt = decodeModeType(mode_type) orelse return 0;
+    const tonic_pc = @as(pitch.PitchClass, @intCast(tonic % 12));
+    const midi_note = @as(pitch.MidiNote, @intCast(@min(note, @as(u8, 127))));
+    const degree = mode.degreeOfNote(tonic_pc, mt, midi_note) orelse return 0;
+    return degree + 1;
+}
+
+pub export fn lmt_transpose_diatonic(tonic: u8, mode_type: u8, note: u8, degrees: i8, out: [*c]u8) callconv(.c) u32 {
+    if (out == null) return 0;
+    const mt = decodeModeType(mode_type) orelse return 0;
+    const tonic_pc = @as(pitch.PitchClass, @intCast(tonic % 12));
+    const midi_note = @as(pitch.MidiNote, @intCast(@min(note, @as(u8, 127))));
+    const transposed = mode.transposeDiatonic(tonic_pc, mt, midi_note, degrees) orelse return 0;
+    out[0] = transposed;
+    return 1;
+}
+
+pub export fn lmt_nearest_scale_tones(tonic: u8, mode_type: u8, note: u8, out: [*c]LmtScaleSnapCandidates) callconv(.c) u32 {
+    if (out == null) return 0;
+    const mt = decodeModeType(mode_type) orelse return 0;
+    const tonic_pc = @as(pitch.PitchClass, @intCast(tonic % 12));
+    const midi_note = @as(pitch.MidiNote, @intCast(@min(note, @as(u8, 127))));
+    const neighbors = mode.nearestScaleNeighbors(tonic_pc, mt, midi_note);
+    out[0] = .{
+        .in_scale = @intFromBool(neighbors.in_scale),
+        .has_lower = @intFromBool(neighbors.has_lower),
+        .has_upper = @intFromBool(neighbors.has_upper),
+        .reserved0 = 0,
+        .lower = neighbors.lower,
+        .upper = neighbors.upper,
+        .lower_distance = neighbors.lower_distance,
+        .upper_distance = neighbors.upper_distance,
+    };
+    return 1;
+}
+
+pub export fn lmt_snap_to_scale(tonic: u8, mode_type: u8, note: u8, policy: u8, out: [*c]u8) callconv(.c) u32 {
+    if (out == null) return 0;
+    const mt = decodeModeType(mode_type) orelse return 0;
+    const tonic_pc = @as(pitch.PitchClass, @intCast(tonic % 12));
+    const midi_note = @as(pitch.MidiNote, @intCast(@min(note, @as(u8, 127))));
+    const snapped = mode.snapToScale(tonic_pc, mt, midi_note, decodeSnapTiePolicy(policy)) orelse return 0;
+    out[0] = snapped;
+    return 1;
 }
 
 pub export fn lmt_counterpoint_max_voices() callconv(.c) u32 {
