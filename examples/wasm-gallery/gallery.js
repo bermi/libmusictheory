@@ -915,6 +915,56 @@ function keyboardRangeForNotes(notes, fallbackLow = 48, fallbackHigh = 84) {
   return { low, high };
 }
 
+function keyboardMiniRangeForNotes(notes, fallbackLow = 60, fallbackHigh = 72) {
+  if (!Array.isArray(notes) || notes.length === 0) {
+    return { low: fallbackLow, high: fallbackHigh, span: fallbackHigh - fallbackLow };
+  }
+
+  const minNote = clamp(Math.min(...notes), 21, 108);
+  const maxNote = clamp(Math.max(...notes), 21, 108);
+  let low = Math.max(21, minNote - 1);
+  let high = Math.min(108, maxNote + 1);
+  const minSpan = 13;
+
+  if (high - low < minSpan) {
+    const deficit = minSpan - (high - low);
+    const growLow = Math.floor(deficit / 2);
+    const growHigh = deficit - growLow;
+    low = Math.max(21, low - growLow);
+    high = Math.min(108, high + growHigh);
+    if (high - low < minSpan) {
+      if (low === 21) {
+        high = Math.min(108, low + minSpan);
+      } else if (high === 108) {
+        low = Math.max(21, high - minSpan);
+      }
+    }
+  }
+
+  if (high <= low) {
+    return { low: fallbackLow, high: fallbackHigh, span: fallbackHigh - fallbackLow };
+  }
+
+  return { low, high, span: high - low };
+}
+
+function clearMiniInstrumentRangeMetadata(host) {
+  delete host.dataset.miniRangeLow;
+  delete host.dataset.miniRangeHigh;
+  delete host.dataset.miniRangeSpan;
+}
+
+function readMiniInstrumentPreviewMetrics(host) {
+  const low = Number.parseInt(host?.dataset?.miniRangeLow || "", 10);
+  const high = Number.parseInt(host?.dataset?.miniRangeHigh || "", 10);
+  const span = Number.parseInt(host?.dataset?.miniRangeSpan || "", 10);
+  return {
+    miniRangeLow: Number.isFinite(low) ? low : null,
+    miniRangeHigh: Number.isFinite(high) ? high : null,
+    miniRangeSpan: Number.isFinite(span) ? span : null,
+  };
+}
+
 function svgString(arena, renderFn, ...args) {
   const required = renderFn(...args, 0, 0);
   const bufPtr = arena.alloc(required + 1, 1);
@@ -5000,6 +5050,7 @@ function renderMiniInstrumentPreview(arena, host, spec, alt, options = {}) {
   if (!host) return false;
   const mode = options.modeOverride || miniInstrumentMode();
   host.dataset.miniInstrument = mode;
+  clearMiniInstrumentRangeMetadata(host);
 
   if (mode === MINI_INSTRUMENT_OFF) {
     host.innerHTML = `<div class="output-block">Mini instrument off.</div>`;
@@ -5015,7 +5066,10 @@ function renderMiniInstrumentPreview(arena, host, spec, alt, options = {}) {
       host.innerHTML = `<div class="output-block">No note material for piano mini view.</div>`;
       return false;
     }
-    const range = keyboardRangeForNotes(notes, spec.fallbackLow ?? 36, spec.fallbackHigh ?? 96);
+    const range = keyboardMiniRangeForNotes(notes, spec.fallbackLow ?? 60, spec.fallbackHigh ?? 72);
+    host.dataset.miniRangeLow = String(range.low);
+    host.dataset.miniRangeHigh = String(range.high);
+    host.dataset.miniRangeSpan = String(range.span);
     renderPreviewSvgOrBitmap(host, {
       svgMarkup: svgString(arena, wasm.lmt_svg_keyboard, writeU8Array(arena, notes), notes.length, range.low, range.high),
       bitmapRenderer: {
@@ -6447,6 +6501,7 @@ function renderSetScene() {
       primeHex: `0x${prime.toString(16).padStart(3, "0")}`,
       miniInstrumentMode: miniInstrumentMode(),
       miniRendered,
+      ...readMiniInstrumentPreviewMetrics(setMiniEl),
       setOpticKFeatures,
       setEvennessFeatures,
     });
@@ -6516,6 +6571,7 @@ function renderKeyScene() {
       degrees: degreeCards.length,
       miniInstrumentMode: miniInstrumentMode(),
       miniRendered,
+      ...readMiniInstrumentPreviewMetrics(keyMiniEl),
       keyStaffFeatures,
       keyboardFeatures,
     });
@@ -6586,6 +6642,7 @@ function renderChordScene() {
       inKey,
       miniInstrumentMode: miniInstrumentMode(),
       miniRendered,
+      ...readMiniInstrumentPreviewMetrics(chordMiniEl),
       staffFeatures,
     });
   } finally {
@@ -6660,6 +6717,7 @@ function renderProgressionScene() {
       strongestLink,
       miniInstrumentMode: miniInstrumentMode(),
       miniRendered,
+      ...readMiniInstrumentPreviewMetrics(progressionMiniEl),
     });
   } finally {
     arena.release();
@@ -6736,6 +6794,7 @@ function renderCompareScene() {
       inversionMatch: relation.inversionMatch,
       miniInstrumentMode: miniInstrumentMode(),
       miniRendered,
+      ...readMiniInstrumentPreviewMetrics(compareMiniEl),
     });
   } finally {
     arena.release();
@@ -6881,6 +6940,7 @@ function renderFretScene() {
       url: fretUrl,
       miniInstrumentMode: miniInstrumentMode(),
       miniRendered,
+      ...readMiniInstrumentPreviewMetrics(fretMiniEl),
     });
   } finally {
     arena.release();

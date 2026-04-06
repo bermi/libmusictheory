@@ -671,10 +671,15 @@ async function main() {
           && (midi?.midiRepairFutureFeatures?.futureMiniCount || 0) >= 1
           && summary?.scenes?.set?.miniInstrumentMode === "piano"
           && summary?.scenes?.set?.miniRendered === true
+          && (summary?.scenes?.set?.miniRangeSpan || 99) <= 15
           && summary?.scenes?.key?.miniRendered === true
+          && (summary?.scenes?.key?.miniRangeSpan || 99) <= 15
           && summary?.scenes?.chord?.miniRendered === true
+          && (summary?.scenes?.chord?.miniRangeSpan || 99) <= 15
           && summary?.scenes?.progression?.miniRendered === true
+          && (summary?.scenes?.progression?.miniRangeSpan || 99) <= 15
           && summary?.scenes?.compare?.miniRendered === true
+          && (summary?.scenes?.compare?.miniRangeSpan || 99) <= 15
           && summary?.scenes?.fret?.miniRendered === true;
       }, { timeout: 30000 }).then((handle) => handle.jsonValue());
       const pianoMiniHosts = await page.evaluate(() => {
