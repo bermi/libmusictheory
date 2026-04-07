@@ -1,6 +1,6 @@
 # 0124 - Instrument Topology And Biomechanical State
 
-Status: In Progress
+Status: Completed
 
 ## Summary
 
@@ -82,3 +82,19 @@ L
 - C ABI layout tests for new structs
 - no-allocation audit for core assessment helpers
 - `./verify.sh`
+
+## Verification Commands
+
+- `./zigw build test`
+- `./verify.sh`
+
+## Implementation History (Point-in-Time)
+
+- `6fff49e` - `2026-04-07`
+- Shipped the first experimental `playability` foundation:
+  - new `/Users/bermi/code/libmusictheory/src/playability/` module family for shared hand/load state plus fretboard and keyboard topology helpers
+  - new experimental C ABI structs and helpers for playability reasons, warnings, hand profiles, temporal load state, fret candidate windows, keyboard geometry, and play-state summaries
+  - new root wiring, wasm export checks, `./verify.sh` guardrails, C ABI tests, focused topology tests, and a research note at `/Users/bermi/code/libmusictheory/docs/research/algorithms/playability.md`
+- Completion gates:
+  - `./zigw build test`
+  - `./verify.sh`
