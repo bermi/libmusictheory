@@ -1,6 +1,6 @@
 # 0126 - Keyboard Fingering And Hand-Span Models
 
-Status: Draft
+Status: In Progress
 
 ## Summary
 

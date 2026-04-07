@@ -212,6 +212,42 @@ The live MIDI scene also shows compact `EADGBE` previews for the current soundin
 
 This keeps the preview policy consistent across the browser gallery and any future embedded host that needs the same “best compact fretboard” suggestion without running JS.
 
+### 11. Explainable Keyboard Playability Assessment
+
+The keyboard playability layer is intentionally local and explainable. It does not expose opaque HMM state ids or claim to solve full polyphonic piano fingering globally. Instead it turns the strongest paper-backed local facts into explicit assessment rows:
+
+- reachable versus blocked one-hand shapes
+- comfortable versus hard span limits
+- thumb on black key under stretch
+- awkward thumb crossing
+- repeated weak adjacent-finger sequences
+- fluency degradation from recent motion
+
+This matches the direction of the piano fingering literature without pretending to reproduce an entire merged-output HMM or Variable Neighborhood Search solver at the ABI boundary. The public helpers answer questions that an app or LLM can explain directly:
+
+- `lmt_assess_keyboard_realization_n`
+- `lmt_assess_keyboard_transition_n`
+- `lmt_rank_keyboard_fingerings_n`
+
+The implementation uses a bounded local ranking model:
+
+- static one-hand note groups are sorted and matched against monotonic finger assignments
+- the ranking compares keyboard-distance gaps to finger-gap distribution so wide note gaps prefer wider finger coverage while compact clusters prefer compact assignments
+- monophonic transitions check whether the chosen finger order follows the natural hand direction or requires a thumb crossing
+- recent motion is carried through the temporal load state so repeated large shifts can trigger a fluency warning instead of being judged in isolation
+
+This is the same product stance described in the cited piano papers:
+
+- HMM and Viterbi models are useful internally, but public results still need named reasons rather than hidden state numbers
+- Variable Neighborhood Search highlights that vertical span, thumb use on black keys, and weak-finger stress are meaningful local constraints
+- Checklist Models emphasize recent-context fluency, which is why the temporal load state remains part of the playability surface
+
+In practice, `libmusictheory` should be able to say:
+
+- "This right-hand chord exceeds the configured comfortable span."
+- "This fingering keeps the thumb off the black key in the stretched version of the shape."
+- "This move is theoretically valid, but it keeps adding large shifts to an already strained recent history."
+
 ## Data Structures Used
 
 - `KeyboardState`: struct { selected_notes: bounded set of MIDI notes, accid_pref: AccidentalPreference }

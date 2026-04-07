@@ -230,6 +230,13 @@ if [ -f "$ROOT_DIR/docs/plans/in_progress/0125-fretted-instrument-playability-an
     check_cmd "cd '$ROOT_DIR' && rg -n 'Explainable Fret Playability Assessment|bottleneck|open-string relief' docs/research/algorithms/guitar-voicing.md >/dev/null" "0125 fret playability research guardrail (voicing research notes document the new bottleneck and relief semantics)"
 fi
 
+if [ -f "$ROOT_DIR/docs/plans/in_progress/0126-keyboard-fingering-and-hand-span-models.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0126-keyboard-fingering-and-hand-span-models.md" ]; then
+    check_cmd "cd '$ROOT_DIR' && test -f src/playability/keyboard_assessment.zig && test -f src/tests/keyboard_playability_test.zig && rg -n 'pub const keyboard_assessment|tests/keyboard_playability_test\\.zig' src/playability.zig src/root.zig >/dev/null" "0126 keyboard playability foundation guardrail (assessment module and focused tests are wired)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'HandRole|BlockerKind|assessRealization|assessTransition|rankFingerings|thumb_on_black_under_stretch|awkward_thumb_crossing|repeated_weak_adjacent_finger_sequence|fluency_degradation_from_recent_motion' src/playability/keyboard_assessment.zig src/tests/keyboard_playability_test.zig src/playability/types.zig >/dev/null" "0126 keyboard playability algorithm guardrail (hand roles, local assessment, fingering ranking, and keyboard warnings are implemented)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'lmt_keyboard_hand|lmt_keyboard_playability_blocker|lmt_keyboard_realization_assessment|lmt_keyboard_transition_assessment|lmt_ranked_keyboard_fingering|lmt_assess_keyboard_realization_n|lmt_assess_keyboard_transition_n|lmt_rank_keyboard_fingerings_n' include/libmusictheory.h src/c_api.zig build.zig scripts/check_wasm_exports.mjs src/tests/c_api_test.zig >/dev/null" "0126 keyboard playability ABI guardrail (keyboard assessment structs and exports are wired)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'keyboard playability|thumb on black|awkward thumb crossing|local fingering assessment|HMM|Viterbi|Checklist Models|Variable Neighborhood Search' docs/research/algorithms/keyboard-interaction.md >/dev/null" "0126 keyboard playability research guardrail (keyboard research notes document the explainable assessment model)"
+fi
+
 
 
 if [ -f "$ROOT_DIR/docs/plans/in_progress/0088-live-midi-composer-scene.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0088-live-midi-composer-scene.md" ]; then

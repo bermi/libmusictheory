@@ -31,6 +31,10 @@ pub const WarningKind = enum(u8) {
     repeated_maximal_stretch = 5,
     weak_finger_stress = 6,
     unsupported_extension = 7,
+    thumb_on_black_under_stretch = 8,
+    awkward_thumb_crossing = 9,
+    repeated_weak_adjacent_finger_sequence = 10,
+    fluency_degradation_from_recent_motion = 11,
 };
 
 pub const WARNING_NAMES = [_][]const u8{
@@ -42,6 +46,10 @@ pub const WARNING_NAMES = [_][]const u8{
     "repeated maximal stretch",
     "weak finger stress",
     "unsupported extension",
+    "thumb on black under stretch",
+    "awkward thumb crossing",
+    "repeated weak adjacent-finger sequence",
+    "fluency degradation from recent motion",
 };
 
 pub const HandProfile = struct {

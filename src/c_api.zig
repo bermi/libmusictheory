@@ -194,6 +194,49 @@ pub const LmtKeyboardPlayState = extern struct {
     load: LmtTemporalLoadState,
 };
 
+pub const LmtKeyboardRealizationAssessment = extern struct {
+    state: LmtKeyboardPlayState,
+    hand: u8,
+    note_count: u8,
+    outer_black_count: u8,
+    reserved0: u8,
+    bottleneck_cost: u16,
+    cumulative_cost: u16,
+    blocker_bits: u32,
+    warning_bits: u32,
+    reason_bits: u32,
+    recommended_fingers: [playability.keyboard_assessment.MAX_FINGERING_NOTES]u8,
+};
+
+pub const LmtKeyboardTransitionAssessment = extern struct {
+    from_state: LmtKeyboardPlayState,
+    to_state: LmtKeyboardPlayState,
+    hand: u8,
+    note_count: u8,
+    anchor_delta_semitones: u8,
+    reserved0: u8,
+    bottleneck_cost: u16,
+    cumulative_cost: u16,
+    blocker_bits: u32,
+    warning_bits: u32,
+    reason_bits: u32,
+    from_fingers: [playability.keyboard_assessment.MAX_FINGERING_NOTES]u8,
+    to_fingers: [playability.keyboard_assessment.MAX_FINGERING_NOTES]u8,
+};
+
+pub const LmtRankedKeyboardFingering = extern struct {
+    hand: u8,
+    note_count: u8,
+    reserved0: u8,
+    reserved1: u8,
+    bottleneck_cost: u16,
+    cumulative_cost: u16,
+    blocker_bits: u32,
+    warning_bits: u32,
+    reason_bits: u32,
+    fingers: [playability.keyboard_assessment.MAX_FINGERING_NOTES]u8,
+};
+
 pub const LmtMetricPosition = extern struct {
     beat_in_bar: u8,
     beats_per_bar: u8,
@@ -553,6 +596,11 @@ fn decodeHandProfile(raw: LmtHandProfile) playability.types.HandProfile {
 fn decodeFretTechniqueProfile(raw: u32) ?playability.fret_assessment.TechniqueProfile {
     if (raw > std.math.maxInt(u8)) return null;
     return playability.fret_assessment.fromInt(@as(u8, @intCast(raw)));
+}
+
+fn decodeKeyboardHand(raw: u32) ?playability.keyboard_assessment.HandRole {
+    if (raw > std.math.maxInt(u8)) return null;
+    return playability.keyboard_assessment.fromInt(@as(u8, @intCast(raw)));
 }
 
 fn writeHandProfile(out: *LmtHandProfile, profile: playability.types.HandProfile) void {
@@ -1034,6 +1082,67 @@ fn writeKeyboardPlayState(out: *LmtKeyboardPlayState, state: playability.keyboar
     writeTemporalLoadState(&out.load, state.load);
 }
 
+fn writeKeyboardRealizationAssessment(
+    out: *LmtKeyboardRealizationAssessment,
+    assessment: playability.keyboard_assessment.RealizationAssessment,
+) void {
+    out.* = .{
+        .state = undefined,
+        .hand = @intFromEnum(assessment.hand),
+        .note_count = assessment.note_count,
+        .outer_black_count = assessment.outer_black_count,
+        .reserved0 = 0,
+        .bottleneck_cost = assessment.bottleneck_cost,
+        .cumulative_cost = assessment.cumulative_cost,
+        .blocker_bits = assessment.blocker_bits,
+        .warning_bits = assessment.warning_bits,
+        .reason_bits = assessment.reason_bits,
+        .recommended_fingers = assessment.recommended_fingers,
+    };
+    writeKeyboardPlayState(&out.state, assessment.state);
+}
+
+fn writeKeyboardTransitionAssessment(
+    out: *LmtKeyboardTransitionAssessment,
+    assessment: playability.keyboard_assessment.TransitionAssessment,
+) void {
+    out.* = .{
+        .from_state = undefined,
+        .to_state = undefined,
+        .hand = @intFromEnum(assessment.hand),
+        .note_count = assessment.note_count,
+        .anchor_delta_semitones = assessment.anchor_delta_semitones,
+        .reserved0 = 0,
+        .bottleneck_cost = assessment.bottleneck_cost,
+        .cumulative_cost = assessment.cumulative_cost,
+        .blocker_bits = assessment.blocker_bits,
+        .warning_bits = assessment.warning_bits,
+        .reason_bits = assessment.reason_bits,
+        .from_fingers = assessment.from_fingers,
+        .to_fingers = assessment.to_fingers,
+    };
+    writeKeyboardPlayState(&out.from_state, assessment.from_state);
+    writeKeyboardPlayState(&out.to_state, assessment.to_state);
+}
+
+fn writeRankedKeyboardFingering(
+    out: *LmtRankedKeyboardFingering,
+    row: playability.keyboard_assessment.RankedFingering,
+) void {
+    out.* = .{
+        .hand = @intFromEnum(row.hand),
+        .note_count = row.note_count,
+        .reserved0 = 0,
+        .reserved1 = 0,
+        .bottleneck_cost = row.bottleneck_cost,
+        .cumulative_cost = row.cumulative_cost,
+        .blocker_bits = row.blocker_bits,
+        .warning_bits = row.warning_bits,
+        .reason_bits = row.reason_bits,
+        .fingers = row.fingers,
+    };
+}
+
 fn isSelectedGuidePosition(selected_ptr: [*c]const LmtFretPos, selected_count: usize, string: usize, fret: u8) bool {
     if (selected_ptr == null) return false;
 
@@ -1284,6 +1393,26 @@ pub export fn lmt_fret_technique_profile_name(index: u32) callconv(.c) [*c]const
     return writeCString(playability.fret_assessment.PROFILE_NAMES[idx]);
 }
 
+pub export fn lmt_keyboard_hand_count() callconv(.c) u32 {
+    return @as(u32, @intCast(playability.keyboard_assessment.HAND_ROLE_NAMES.len));
+}
+
+pub export fn lmt_keyboard_hand_name(index: u32) callconv(.c) [*c]const u8 {
+    const idx = @as(usize, @intCast(index));
+    if (idx >= playability.keyboard_assessment.HAND_ROLE_NAMES.len) return null;
+    return writeCString(playability.keyboard_assessment.HAND_ROLE_NAMES[idx]);
+}
+
+pub export fn lmt_keyboard_playability_blocker_count() callconv(.c) u32 {
+    return @as(u32, @intCast(playability.keyboard_assessment.BLOCKER_NAMES.len));
+}
+
+pub export fn lmt_keyboard_playability_blocker_name(index: u32) callconv(.c) [*c]const u8 {
+    const idx = @as(usize, @intCast(index));
+    if (idx >= playability.keyboard_assessment.BLOCKER_NAMES.len) return null;
+    return writeCString(playability.keyboard_assessment.BLOCKER_NAMES[idx]);
+}
+
 pub export fn lmt_scale_degree(tonic: u8, mode_type: u8, note: u8) callconv(.c) u8 {
     const mt = decodeModeType(mode_type) orelse return 0;
     const tonic_pc = @as(pitch.PitchClass, @intCast(tonic % 12));
@@ -1485,6 +1614,18 @@ pub export fn lmt_sizeof_keybed_key_coord() callconv(.c) u32 {
 
 pub export fn lmt_sizeof_keyboard_play_state() callconv(.c) u32 {
     return @as(u32, @intCast(@sizeOf(LmtKeyboardPlayState)));
+}
+
+pub export fn lmt_sizeof_keyboard_realization_assessment() callconv(.c) u32 {
+    return @as(u32, @intCast(@sizeOf(LmtKeyboardRealizationAssessment)));
+}
+
+pub export fn lmt_sizeof_keyboard_transition_assessment() callconv(.c) u32 {
+    return @as(u32, @intCast(@sizeOf(LmtKeyboardTransitionAssessment)));
+}
+
+pub export fn lmt_sizeof_ranked_keyboard_fingering() callconv(.c) u32 {
+    return @as(u32, @intCast(@sizeOf(LmtRankedKeyboardFingering)));
 }
 
 pub export fn lmt_sizeof_voiced_state() callconv(.c) u32 {
@@ -2471,6 +2612,96 @@ pub export fn lmt_describe_keyboard_play_state(
     const out_state: *LmtKeyboardPlayState = @ptrCast(out);
     writeKeyboardPlayState(out_state, state);
     return 1;
+}
+
+pub export fn lmt_assess_keyboard_realization_n(
+    notes_ptr: [*c]const u8,
+    note_count: u32,
+    hand_raw: u32,
+    profile_ptr: [*c]const LmtHandProfile,
+    previous_load_ptr: [*c]const LmtTemporalLoadState,
+    out: [*c]LmtKeyboardRealizationAssessment,
+) callconv(.c) u32 {
+    if (out == null) return 0;
+
+    var notes_buf: [MAX_KEYBOARD_RENDER_NOTES]pitch.MidiNote = undefined;
+    const notes = decodeMidiNotes(notes_ptr, note_count, &notes_buf);
+    const hand = decodeKeyboardHand(hand_raw) orelse return 0;
+    const profile = if (profile_ptr != null)
+        decodeHandProfile(profile_ptr[0])
+    else
+        playability.keyboard_topology.defaultHandProfile();
+    const previous_load: ?playability.types.TemporalLoadState = if (previous_load_ptr != null)
+        decodeTemporalLoadState(previous_load_ptr[0])
+    else
+        null;
+
+    const assessment = playability.keyboard_assessment.assessRealization(notes, hand, profile, previous_load);
+    const out_assessment: *LmtKeyboardRealizationAssessment = @ptrCast(out);
+    writeKeyboardRealizationAssessment(out_assessment, assessment);
+    return 1;
+}
+
+pub export fn lmt_assess_keyboard_transition_n(
+    from_notes_ptr: [*c]const u8,
+    from_count: u32,
+    to_notes_ptr: [*c]const u8,
+    to_count: u32,
+    hand_raw: u32,
+    profile_ptr: [*c]const LmtHandProfile,
+    previous_load_ptr: [*c]const LmtTemporalLoadState,
+    out: [*c]LmtKeyboardTransitionAssessment,
+) callconv(.c) u32 {
+    if (out == null) return 0;
+
+    var from_notes_buf: [MAX_KEYBOARD_RENDER_NOTES]pitch.MidiNote = undefined;
+    var to_notes_buf: [MAX_KEYBOARD_RENDER_NOTES]pitch.MidiNote = undefined;
+    const from_notes = decodeMidiNotes(from_notes_ptr, from_count, &from_notes_buf);
+    const to_notes = decodeMidiNotes(to_notes_ptr, to_count, &to_notes_buf);
+    const hand = decodeKeyboardHand(hand_raw) orelse return 0;
+    const profile = if (profile_ptr != null)
+        decodeHandProfile(profile_ptr[0])
+    else
+        playability.keyboard_topology.defaultHandProfile();
+    const previous_load: ?playability.types.TemporalLoadState = if (previous_load_ptr != null)
+        decodeTemporalLoadState(previous_load_ptr[0])
+    else
+        null;
+
+    const assessment = playability.keyboard_assessment.assessTransition(from_notes, to_notes, hand, profile, previous_load);
+    const out_assessment: *LmtKeyboardTransitionAssessment = @ptrCast(out);
+    writeKeyboardTransitionAssessment(out_assessment, assessment);
+    return 1;
+}
+
+pub export fn lmt_rank_keyboard_fingerings_n(
+    notes_ptr: [*c]const u8,
+    note_count: u32,
+    hand_raw: u32,
+    profile_ptr: [*c]const LmtHandProfile,
+    out: [*c]LmtRankedKeyboardFingering,
+    out_cap: u32,
+) callconv(.c) u32 {
+    var notes_buf: [MAX_KEYBOARD_RENDER_NOTES]pitch.MidiNote = undefined;
+    const notes = decodeMidiNotes(notes_ptr, note_count, &notes_buf);
+    const hand = decodeKeyboardHand(hand_raw) orelse return 0;
+    const profile = if (profile_ptr != null)
+        decodeHandProfile(profile_ptr[0])
+    else
+        playability.keyboard_topology.defaultHandProfile();
+
+    var ranked_buf: [playability.keyboard_assessment.MAX_RANKED_FINGERINGS]playability.keyboard_assessment.RankedFingering = undefined;
+    const ranked = playability.keyboard_assessment.rankFingerings(notes, hand, profile, ranked_buf[0..]);
+
+    if (out != null) {
+        const write_len = @min(ranked.len, @as(usize, @intCast(out_cap)));
+        for (ranked[0..write_len], 0..) |row, index| {
+            const out_row: *LmtRankedKeyboardFingering = @ptrCast(&out[index]);
+            writeRankedKeyboardFingering(out_row, row);
+        }
+    }
+
+    return @as(u32, @intCast(ranked.len));
 }
 
 pub export fn lmt_svg_clock_optc(set: u16, buf: [*c]u8, buf_size: u32) callconv(.c) u32 {
