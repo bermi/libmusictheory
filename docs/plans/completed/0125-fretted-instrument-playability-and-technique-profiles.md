@@ -1,6 +1,6 @@
 # 0125 - Fretted Instrument Playability And Technique Profiles
 
-Status: In Progress
+Status: Completed
 
 ## Summary
 
@@ -91,3 +91,16 @@ L
 - bottleneck-versus-cumulative test cases
 - profile-scoped warnings only when the profile is active
 - `./verify.sh`
+
+## Verification Commands
+
+- `./zigw build test`
+- `./verify.sh`
+
+## Implementation History (Point-in-Time)
+
+- `5410443b8d55a18de952934d063d0e3c4cbd7221` - `2026-04-07`
+  - added `/Users/bermi/code/libmusictheory/src/playability/fret_assessment.zig` with explainable fret realization, transition, and note-location ranking helpers for arbitrary tunings
+  - exposed experimental C ABI helpers for technique profiles, realization assessment, transition assessment, ranked realizations, and reflection metadata through `/Users/bermi/code/libmusictheory/include/libmusictheory.h` and `/Users/bermi/code/libmusictheory/src/c_api.zig`
+  - expanded playability reason and warning vocabularies, added focused Zig and C ABI tests, and documented the fret playability model in `/Users/bermi/code/libmusictheory/docs/research/algorithms/guitar-voicing.md`
+  - verification gates: `./zigw build test`, `./verify.sh`
