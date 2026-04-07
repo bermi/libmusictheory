@@ -3,10 +3,12 @@ const testing = std.testing;
 const types = @import("../playability/types.zig");
 
 test "playability reason and warning names stay aligned with enums" {
-    try testing.expectEqual(@as(usize, 4), types.REASON_NAMES.len);
-    try testing.expectEqual(@as(usize, 4), types.WARNING_NAMES.len);
+    try testing.expectEqual(@as(usize, 8), types.REASON_NAMES.len);
+    try testing.expectEqual(@as(usize, 8), types.WARNING_NAMES.len);
     try testing.expectEqualStrings("reachable in current window", types.REASON_NAMES[@intFromEnum(types.ReasonKind.reachable_in_current_window)]);
+    try testing.expectEqualStrings("reduced bottleneck", types.REASON_NAMES[@intFromEnum(types.ReasonKind.bottleneck_reduced)]);
     try testing.expectEqualStrings("hard limit exceeded", types.WARNING_NAMES[@intFromEnum(types.WarningKind.hard_limit_exceeded)]);
+    try testing.expectEqualStrings("unsupported extension", types.WARNING_NAMES[@intFromEnum(types.WarningKind.unsupported_extension)]);
 }
 
 test "hand profile init preserves explicit parameters" {

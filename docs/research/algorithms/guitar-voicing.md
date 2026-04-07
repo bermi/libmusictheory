@@ -315,3 +315,23 @@ frets_to_midi(frets, tuning=STANDARD):
 ## Dependencies
 
 - [Pitch Class Set Operations](pitch-class-set-operations.md)
+
+## 9. Explainable Fret Playability Assessment
+
+The voicing and guide algorithms above answer whether a pitch or chord can be mapped to the fretboard. The `0125` playability layer adds a second question: how awkward is that mapping from the current hand window?
+
+The public model is intentionally not "one true fingering". It exposes explainable physical facts:
+
+- fret span across the current realization
+- longitudinal shift required from the current anchor fret
+- string-span width across the active strings
+- open-string relief when the realization removes fretting load
+- profile-scoped warnings such as low-position Simandl extension or low-position OFPF fourth-finger stress
+
+The bottleneck metric is the maximum of:
+
+- local fret span
+- required anchor shift
+- active string-span width
+
+This follows the paper-backed minimax intuition: a phrase fails at its hardest move, not at its average move. The cumulative metric remains available as the simple sum of those local burdens so callers can compare smoother versus more abrupt realizations without hiding the underlying reasons.

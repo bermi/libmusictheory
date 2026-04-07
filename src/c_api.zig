@@ -131,6 +131,46 @@ pub const LmtFretPlayState = extern struct {
     load: LmtTemporalLoadState,
 };
 
+pub const LmtFretRealizationAssessment = extern struct {
+    state: LmtFretPlayState,
+    string_span_steps: u8,
+    profile: u8,
+    bottleneck_cost: u16,
+    cumulative_cost: u16,
+    blocker_bits: u32,
+    warning_bits: u32,
+    reason_bits: u32,
+    recommended_fingers: [guitar.MAX_GENERIC_STRINGS]u8,
+};
+
+pub const LmtFretTransitionAssessment = extern struct {
+    from_state: LmtFretPlayState,
+    to_state: LmtFretPlayState,
+    anchor_delta_steps: u8,
+    changed_string_count: u8,
+    profile: u8,
+    reserved0: u8,
+    bottleneck_cost: u16,
+    cumulative_cost: u16,
+    blocker_bits: u32,
+    warning_bits: u32,
+    reason_bits: u32,
+    recommended_fingers: [guitar.MAX_GENERIC_STRINGS]u8,
+};
+
+pub const LmtRankedFretRealization = extern struct {
+    location: LmtFretCandidateLocation,
+    bottleneck_cost: u16,
+    cumulative_cost: u16,
+    blocker_bits: u32,
+    warning_bits: u32,
+    reason_bits: u32,
+    recommended_finger: u8,
+    profile: u8,
+    reserved0: u8,
+    reserved1: u8,
+};
+
 pub const LmtKeybedKeyCoord = extern struct {
     midi: u8,
     is_black: u8,
@@ -508,6 +548,11 @@ fn decodeHandProfile(raw: LmtHandProfile) playability.types.HandProfile {
         raw.limit_shift_steps,
         raw.prefers_low_tension != 0,
     );
+}
+
+fn decodeFretTechniqueProfile(raw: u32) ?playability.fret_assessment.TechniqueProfile {
+    if (raw > std.math.maxInt(u8)) return null;
+    return playability.fret_assessment.fromInt(@as(u8, @intCast(raw)));
 }
 
 fn writeHandProfile(out: *LmtHandProfile, profile: playability.types.HandProfile) void {
@@ -913,6 +958,65 @@ fn writeKeybedKeyCoord(out: *LmtKeybedKeyCoord, coord: playability.keyboard_topo
     };
 }
 
+fn writeFretRealizationAssessment(
+    out: *LmtFretRealizationAssessment,
+    assessment: playability.fret_assessment.RealizationAssessment,
+) void {
+    out.* = .{
+        .state = undefined,
+        .string_span_steps = assessment.string_span_steps,
+        .profile = @intFromEnum(assessment.profile),
+        .bottleneck_cost = assessment.bottleneck_cost,
+        .cumulative_cost = assessment.cumulative_cost,
+        .blocker_bits = assessment.blocker_bits,
+        .warning_bits = assessment.warning_bits,
+        .reason_bits = assessment.reason_bits,
+        .recommended_fingers = assessment.recommended_fingers,
+    };
+    writeFretPlayState(&out.state, assessment.state);
+}
+
+fn writeFretTransitionAssessment(
+    out: *LmtFretTransitionAssessment,
+    assessment: playability.fret_assessment.TransitionAssessment,
+) void {
+    out.* = .{
+        .from_state = undefined,
+        .to_state = undefined,
+        .anchor_delta_steps = assessment.anchor_delta_steps,
+        .changed_string_count = assessment.changed_string_count,
+        .profile = @intFromEnum(assessment.profile),
+        .reserved0 = 0,
+        .bottleneck_cost = assessment.bottleneck_cost,
+        .cumulative_cost = assessment.cumulative_cost,
+        .blocker_bits = assessment.blocker_bits,
+        .warning_bits = assessment.warning_bits,
+        .reason_bits = assessment.reason_bits,
+        .recommended_fingers = assessment.recommended_fingers,
+    };
+    writeFretPlayState(&out.from_state, assessment.from_state);
+    writeFretPlayState(&out.to_state, assessment.to_state);
+}
+
+fn writeRankedFretRealization(
+    out: *LmtRankedFretRealization,
+    assessment: playability.fret_assessment.RankedLocation,
+) void {
+    out.* = .{
+        .location = undefined,
+        .bottleneck_cost = assessment.bottleneck_cost,
+        .cumulative_cost = assessment.cumulative_cost,
+        .blocker_bits = assessment.blocker_bits,
+        .warning_bits = assessment.warning_bits,
+        .reason_bits = assessment.reason_bits,
+        .recommended_finger = assessment.recommended_finger,
+        .profile = @intFromEnum(assessment.profile),
+        .reserved0 = 0,
+        .reserved1 = 0,
+    };
+    writeFretCandidateLocation(&out.location, assessment.location);
+}
+
 fn writeKeyboardPlayState(out: *LmtKeyboardPlayState, state: playability.keyboard_topology.PlayState) void {
     out.* = .{
         .anchor_midi = state.anchor_midi,
@@ -1160,6 +1264,26 @@ pub export fn lmt_playability_warning_name(index: u32) callconv(.c) [*c]const u8
     return writeCString(playability.types.WARNING_NAMES[idx]);
 }
 
+pub export fn lmt_fret_playability_blocker_count() callconv(.c) u32 {
+    return @as(u32, @intCast(playability.fret_assessment.BLOCKER_NAMES.len));
+}
+
+pub export fn lmt_fret_playability_blocker_name(index: u32) callconv(.c) [*c]const u8 {
+    const idx = @as(usize, @intCast(index));
+    if (idx >= playability.fret_assessment.BLOCKER_NAMES.len) return null;
+    return writeCString(playability.fret_assessment.BLOCKER_NAMES[idx]);
+}
+
+pub export fn lmt_fret_technique_profile_count() callconv(.c) u32 {
+    return @as(u32, @intCast(playability.fret_assessment.PROFILE_NAMES.len));
+}
+
+pub export fn lmt_fret_technique_profile_name(index: u32) callconv(.c) [*c]const u8 {
+    const idx = @as(usize, @intCast(index));
+    if (idx >= playability.fret_assessment.PROFILE_NAMES.len) return null;
+    return writeCString(playability.fret_assessment.PROFILE_NAMES[idx]);
+}
+
 pub export fn lmt_scale_degree(tonic: u8, mode_type: u8, note: u8) callconv(.c) u8 {
     const mt = decodeModeType(mode_type) orelse return 0;
     const tonic_pc = @as(pitch.PitchClass, @intCast(tonic % 12));
@@ -1343,6 +1467,18 @@ pub export fn lmt_sizeof_fret_play_state() callconv(.c) u32 {
     return @as(u32, @intCast(@sizeOf(LmtFretPlayState)));
 }
 
+pub export fn lmt_sizeof_fret_realization_assessment() callconv(.c) u32 {
+    return @as(u32, @intCast(@sizeOf(LmtFretRealizationAssessment)));
+}
+
+pub export fn lmt_sizeof_fret_transition_assessment() callconv(.c) u32 {
+    return @as(u32, @intCast(@sizeOf(LmtFretTransitionAssessment)));
+}
+
+pub export fn lmt_sizeof_ranked_fret_realization() callconv(.c) u32 {
+    return @as(u32, @intCast(@sizeOf(LmtRankedFretRealization)));
+}
+
 pub export fn lmt_sizeof_keybed_key_coord() callconv(.c) u32 {
     return @as(u32, @intCast(@sizeOf(LmtKeybedKeyCoord)));
 }
@@ -1469,6 +1605,14 @@ pub export fn lmt_default_fret_hand_profile(out: [*c]LmtHandProfile) callconv(.c
     if (out == null) return 0;
     const out_profile: *LmtHandProfile = @ptrCast(out);
     writeHandProfile(out_profile, playability.fret_topology.defaultHandProfile());
+    return 1;
+}
+
+pub export fn lmt_default_fret_hand_profile_for_technique(profile_raw: u32, out: [*c]LmtHandProfile) callconv(.c) u32 {
+    if (out == null) return 0;
+    const profile = decodeFretTechniqueProfile(profile_raw) orelse return 0;
+    const out_profile: *LmtHandProfile = @ptrCast(out);
+    writeHandProfile(out_profile, playability.fret_assessment.defaultHandProfile(profile));
     return 1;
 }
 
@@ -2170,6 +2314,128 @@ pub export fn lmt_windowed_fret_positions_n(
     }
 
     return @as(u32, @intCast(locations.len));
+}
+
+pub export fn lmt_assess_fret_realization_n(
+    frets_ptr: [*c]const i8,
+    fret_count: u32,
+    tuning_ptr: [*c]const u8,
+    tuning_count: u32,
+    profile_raw: u32,
+    hand_profile_ptr: [*c]const LmtHandProfile,
+    previous_load_ptr: [*c]const LmtTemporalLoadState,
+    out: [*c]LmtFretRealizationAssessment,
+) callconv(.c) u32 {
+    if (out == null) return 0;
+
+    const count = @as(usize, @intCast(fret_count));
+    if (count > 0 and frets_ptr == null) return 0;
+    if (count > guitar.MAX_GENERIC_STRINGS) return 0;
+
+    var tuning_buf: [MAX_PARAMETRIC_FRET_STRINGS]pitch.MidiNote = undefined;
+    const tuning = decodeTuningGeneric(tuning_ptr, tuning_count, &tuning_buf);
+    if (tuning.len == 0 or count > tuning.len) return 0;
+
+    const profile = decodeFretTechniqueProfile(profile_raw) orelse return 0;
+    const hand_profile: ?playability.types.HandProfile = if (hand_profile_ptr != null)
+        decodeHandProfile(hand_profile_ptr[0])
+    else
+        null;
+    const previous_load: ?playability.types.TemporalLoadState = if (previous_load_ptr != null)
+        decodeTemporalLoadState(previous_load_ptr[0])
+    else
+        null;
+    const frets = if (count == 0) &[_]i8{} else frets_ptr[0..count];
+    const assessment = playability.fret_assessment.assessRealization(
+        frets,
+        tuning,
+        profile,
+        hand_profile,
+        previous_load,
+    );
+    const out_assessment: *LmtFretRealizationAssessment = @ptrCast(out);
+    writeFretRealizationAssessment(out_assessment, assessment);
+    return 1;
+}
+
+pub export fn lmt_assess_fret_transition_n(
+    from_frets_ptr: [*c]const i8,
+    to_frets_ptr: [*c]const i8,
+    fret_count: u32,
+    tuning_ptr: [*c]const u8,
+    tuning_count: u32,
+    profile_raw: u32,
+    hand_profile_ptr: [*c]const LmtHandProfile,
+    out: [*c]LmtFretTransitionAssessment,
+) callconv(.c) u32 {
+    if (out == null) return 0;
+
+    const count = @as(usize, @intCast(fret_count));
+    if (count > 0 and (from_frets_ptr == null or to_frets_ptr == null)) return 0;
+    if (count > guitar.MAX_GENERIC_STRINGS) return 0;
+
+    var tuning_buf: [MAX_PARAMETRIC_FRET_STRINGS]pitch.MidiNote = undefined;
+    const tuning = decodeTuningGeneric(tuning_ptr, tuning_count, &tuning_buf);
+    if (tuning.len == 0 or count > tuning.len) return 0;
+
+    const profile = decodeFretTechniqueProfile(profile_raw) orelse return 0;
+    const hand_profile: ?playability.types.HandProfile = if (hand_profile_ptr != null)
+        decodeHandProfile(hand_profile_ptr[0])
+    else
+        null;
+    const from_frets = if (count == 0) &[_]i8{} else from_frets_ptr[0..count];
+    const to_frets = if (count == 0) &[_]i8{} else to_frets_ptr[0..count];
+    const assessment = playability.fret_assessment.assessTransition(
+        from_frets,
+        to_frets,
+        tuning,
+        profile,
+        hand_profile,
+    );
+    const out_assessment: *LmtFretTransitionAssessment = @ptrCast(out);
+    writeFretTransitionAssessment(out_assessment, assessment);
+    return 1;
+}
+
+pub export fn lmt_rank_fret_realizations_n(
+    note: u8,
+    tuning_ptr: [*c]const u8,
+    tuning_count: u32,
+    anchor_fret: u8,
+    profile_raw: u32,
+    hand_profile_ptr: [*c]const LmtHandProfile,
+    out: [*c]LmtRankedFretRealization,
+    out_cap: u32,
+) callconv(.c) u32 {
+    var tuning_buf: [MAX_PARAMETRIC_FRET_STRINGS]pitch.MidiNote = undefined;
+    const tuning = decodeTuningGeneric(tuning_ptr, tuning_count, &tuning_buf);
+    if (tuning.len == 0) return 0;
+
+    const profile = decodeFretTechniqueProfile(profile_raw) orelse return 0;
+    const hand_profile: ?playability.types.HandProfile = if (hand_profile_ptr != null)
+        decodeHandProfile(hand_profile_ptr[0])
+    else
+        null;
+
+    var ranked_buf: [playability.fret_assessment.MAX_RANKED_LOCATIONS]playability.fret_assessment.RankedLocation = undefined;
+    const ranked = playability.fret_assessment.rankLocationsForMidi(
+        @as(pitch.MidiNote, @intCast(@min(note, @as(u8, 127)))),
+        tuning,
+        anchor_fret,
+        profile,
+        hand_profile,
+        ranked_buf[0..],
+    );
+
+    if (out != null) {
+        const write_len = @min(ranked.len, @as(usize, @intCast(out_cap)));
+        for (ranked[0..write_len], 0..) |row, index| {
+            const out_row: *LmtRankedFretRealization = @ptrCast(&out[index]);
+            writeRankedFretRealization(out_row, row);
+        }
+    }
+
+    return @as(u32, @intCast(ranked.len));
 }
 
 pub export fn lmt_keyboard_key_coord(note: u8, out: [*c]LmtKeybedKeyCoord) callconv(.c) u32 {

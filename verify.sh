@@ -223,6 +223,13 @@ if [ -f "$ROOT_DIR/docs/plans/in_progress/0124-instrument-topology-and-biomechan
     check_cmd "cd '$ROOT_DIR' && rg -n 'TemporalLoadState|defaultHandProfile|windowedLocationsForMidi|describeState|keyCoord' src/playability/types.zig src/playability/fret_topology.zig src/playability/keyboard_topology.zig src/tests/playability_types_test.zig src/tests/playability_topology_test.zig >/dev/null" "0124 playability topology guardrail (stateful topology helpers and focused tests are present)"
 fi
 
+if [ -f "$ROOT_DIR/docs/plans/in_progress/0125-fretted-instrument-playability-and-technique-profiles.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0125-fretted-instrument-playability-and-technique-profiles.md" ]; then
+    check_cmd "cd '$ROOT_DIR' && test -f src/playability/fret_assessment.zig && test -f src/tests/fret_playability_test.zig && rg -n 'pub const fret_assessment|tests/fret_playability_test\\.zig' src/playability.zig src/root.zig >/dev/null" "0125 fret playability foundation guardrail (assessment module and focused tests are wired)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'TechniqueProfile|BlockerKind|assessRealization|assessTransition|rankLocationsForMidi' src/playability/fret_assessment.zig src/tests/fret_playability_test.zig >/dev/null" "0125 fret playability algorithm guardrail (realization, transition, and ranking helpers are implemented)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'lmt_fret_playability_blocker|lmt_fret_technique_profile|lmt_fret_realization_assessment|lmt_fret_transition_assessment|lmt_ranked_fret_realization|lmt_default_fret_hand_profile_for_technique|lmt_assess_fret_realization_n|lmt_assess_fret_transition_n|lmt_rank_fret_realizations_n' include/libmusictheory.h src/c_api.zig build.zig scripts/check_wasm_exports.mjs src/tests/c_api_test.zig >/dev/null" "0125 fret playability ABI guardrail (profile reflection, assessment structs, and exports are wired)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'Explainable Fret Playability Assessment|bottleneck|open-string relief' docs/research/algorithms/guitar-voicing.md >/dev/null" "0125 fret playability research guardrail (voicing research notes document the new bottleneck and relief semantics)"
+fi
+
 
 
 if [ -f "$ROOT_DIR/docs/plans/in_progress/0088-live-midi-composer-scene.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0088-live-midi-composer-scene.md" ]; then

@@ -1,6 +1,6 @@
 # 0125 - Fretted Instrument Playability And Technique Profiles
 
-Status: Draft
+Status: In Progress
 
 ## Summary
 

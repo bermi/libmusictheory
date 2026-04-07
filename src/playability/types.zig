@@ -5,6 +5,10 @@ pub const ReasonKind = enum(u8) {
     reachable_in_current_window = 1,
     multiple_locations_available = 2,
     expands_current_window = 3,
+    open_string_relief = 4,
+    reuses_current_anchor = 5,
+    bottleneck_reduced = 6,
+    technique_profile_applied = 7,
 };
 
 pub const REASON_NAMES = [_][]const u8{
@@ -12,6 +16,10 @@ pub const REASON_NAMES = [_][]const u8{
     "reachable in current window",
     "multiple locations available",
     "expands current window",
+    "open-string relief",
+    "reuses current anchor",
+    "reduced bottleneck",
+    "technique profile applied",
 };
 
 pub const WarningKind = enum(u8) {
@@ -19,6 +27,10 @@ pub const WarningKind = enum(u8) {
     comfort_window_exceeded = 1,
     hard_limit_exceeded = 2,
     ambiguous_hand_assignment = 3,
+    excessive_longitudinal_shift = 4,
+    repeated_maximal_stretch = 5,
+    weak_finger_stress = 6,
+    unsupported_extension = 7,
 };
 
 pub const WARNING_NAMES = [_][]const u8{
@@ -26,6 +38,10 @@ pub const WARNING_NAMES = [_][]const u8{
     "comfort window exceeded",
     "hard limit exceeded",
     "ambiguous hand assignment",
+    "excessive longitudinal shift",
+    "repeated maximal stretch",
+    "weak finger stress",
+    "unsupported extension",
 };
 
 pub const HandProfile = struct {
