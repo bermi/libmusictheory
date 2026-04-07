@@ -9,11 +9,20 @@ Build `libmusictheory`, a Zig library exposing a C ABI that implements the compl
 
 ## Lifecycle Status
 
-- Draft: 0001
+- Draft: 0001, 0123, 0124, 0125, 0126, 0127, 0128, 0129
 - In progress: none
 ## Current Remaining Work
 
-The stable-release execution lane and the post-`0.1.0` explainable-theory Contrapunk lane are both complete. There are no active plan slices at the moment.
+The stable-release execution lane and the post-`0.1.0` explainable-theory Contrapunk lane are complete. The next roadmap is a new experimental playability lane for biomechanical hints, fingering-aware filtering, and optional overlays for fretboards and keyboard views.
+
+Next planned execution order:
+- 0123 - biomechanical-playability-and-fingering-master
+- 0124 - instrument-topology-and-biomechanical-state
+- 0125 - fretted-instrument-playability-and-technique-profiles
+- 0126 - keyboard-fingering-and-hand-span-models
+- 0127 - playability-reason-codes-and-next-step-filtering
+- 0128 - gallery-overlays-and-hand-outline-visualizations
+- 0129 - personalized-profiles-and-practice-feedback
 
 - Completed: 0002, 0003, 0004, 0005, 0006, 0007, 0008, 0009, 0010, 0011, 0012, 0013, 0014, 0015, 0016, 0017, 0018, 0019, 0020, 0021, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0032, 0033, 0034, 0035, 0036, 0037, 0038, 0039, 0040, 0041, 0042, 0043, 0044, 0045, 0046, 0047, 0048, 0049, 0050, 0051, 0052, 0053, 0054, 0055, 0056, 0057, 0058, 0059, 0060, 0061, 0062, 0063, 0064, 0065, 0066, 0067, 0068, 0069, 0070, 0071, 0072, 0073, 0074, 0075, 0076, 0077, 0078, 0079, 0080, 0081, 0082, 0083, 0084, 0085, 0086, 0087, 0088, 0089, 0090, 0091, 0092, 0093, 0094, 0095, 0096, 0097, 0098, 0099, 0100, 0101, 0102, 0103, 0104, 0105, 0106, 0107, 0108, 0109, 0110, 0111, 0112, 0113, 0114, 0115, 0116, 0117, 0118, 0119, 0120, 0121, 0122, contrapunk-theory-integration
 
@@ -440,6 +449,27 @@ Add a first-class interactive gallery scene that listens to all browser MIDI inp
 Stabilize the composer-facing behavior of `Live MIDI Compass` by replacing auto-fit key guessing with explicit tonic/mode context controls. The selected context must drive spelling, suggestion ranking, and saved snapshot recall so the scene behaves predictably during composition.
 
 **Deliverable**: a Playwright-verified live MIDI scene whose selected tonic/mode changes the rendered interpretation and whose snapshots recall both notes and context.
+
+## Phase 0123-0129 (Planned): Playability, Fingering, And Biomechanical Hints
+
+The next roadmap turns `libmusictheory` into an instrument-aware playability engine for hosts that need more than harmonic correctness. This lane is about explainable physical viability, not black-box fingering magic. It should let callers evaluate whether a realization is reachable, strained, or blocked; optionally filter or rerank next-step candidates when an explicit instrument context is active; and visualize those facts in the gallery as overlays on fretboards and keyboard views.
+
+The plan is deliberately critical about the research:
+- adopt topology-aware string/fret mapping, span windows, stateful motion memory, bottleneck difficulty, and explicit playability reasons
+- keep theory and playability composable so existing ranking APIs remain theory-first unless a caller opts into playability-aware evaluation
+- treat bass technique presets, right-hand slap/pop mechanics, and 7-string thumb rules as experimental profile layers, not universal correctness rules
+- avoid opaque learned scores, medical claims, and decorative hand art that is not grounded in computed geometry
+
+Planned execution order:
+- `0123` master roadmap and critical review
+- `0124` instrument topology and playability state
+- `0125` fretted-instrument playability and technique profiles
+- `0126` keyboard fingering and hand-span models
+- `0127` playability reason codes and next-step filtering
+- `0128` gallery overlays and algorithmic hand-outline visualizations
+- `0129` personalized profiles and practice feedback
+
+**Deliverable**: an experimental `playability` API family plus optional gallery overlays that can explain why a passage or next move is comfortable, strained, or blocked on a chosen instrument without weakening the existing theory-first contract.
 
 ## Research Documents Index
 
