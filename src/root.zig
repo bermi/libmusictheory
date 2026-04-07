@@ -31,6 +31,7 @@ pub const voice_leading = @import("voice_leading.zig");
 pub const voice_leading_rules = @import("voice_leading_rules.zig");
 pub const counterpoint = @import("counterpoint.zig");
 pub const choir = @import("choir.zig");
+pub const playability = @import("playability.zig");
 pub const guitar = @import("guitar.zig");
 pub const keyboard = @import("keyboard.zig");
 pub const slider = @import("slider.zig");
@@ -79,6 +80,8 @@ test {
     _ = @import("tests/voice_leading_rules_test.zig");
     _ = @import("tests/counterpoint_test.zig");
     _ = @import("tests/choir_test.zig");
+    _ = @import("tests/playability_types_test.zig");
+    _ = @import("tests/playability_topology_test.zig");
     _ = @import("tests/guitar_test.zig");
     _ = @import("tests/keyboard_test.zig");
     _ = @import("tests/svg_clock_test.zig");

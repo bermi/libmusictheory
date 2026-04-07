@@ -3,6 +3,7 @@ const testing = std.testing;
 
 const pcs = @import("../pitch_class_set.zig");
 const counterpoint = @import("../counterpoint.zig");
+const playability = @import("../playability.zig");
 
 const c = @cImport({
     @cInclude("libmusictheory.h");
@@ -16,6 +17,12 @@ const LmtGuideDot = api.LmtGuideDot;
 const LmtScaleSnapCandidates = api.LmtScaleSnapCandidates;
 const LmtContainingModeMatch = api.LmtContainingModeMatch;
 const LmtChordMatch = api.LmtChordMatch;
+const LmtHandProfile = api.LmtHandProfile;
+const LmtTemporalLoadState = api.LmtTemporalLoadState;
+const LmtFretCandidateLocation = api.LmtFretCandidateLocation;
+const LmtFretPlayState = api.LmtFretPlayState;
+const LmtKeybedKeyCoord = api.LmtKeybedKeyCoord;
+const LmtKeyboardPlayState = api.LmtKeyboardPlayState;
 const LmtVoicedState = api.LmtVoicedState;
 const LmtVoicedHistory = api.LmtVoicedHistory;
 const LmtMotionSummary = api.LmtMotionSummary;
@@ -49,6 +56,10 @@ const lmt_ordered_scale_pattern_name = api.lmt_ordered_scale_pattern_name;
 const lmt_ordered_scale_degree_count = api.lmt_ordered_scale_degree_count;
 const lmt_ordered_scale_pitch_class_set = api.lmt_ordered_scale_pitch_class_set;
 const lmt_barry_harris_parity = api.lmt_barry_harris_parity;
+const lmt_playability_reason_count = api.lmt_playability_reason_count;
+const lmt_playability_reason_name = api.lmt_playability_reason_name;
+const lmt_playability_warning_count = api.lmt_playability_warning_count;
+const lmt_playability_warning_name = api.lmt_playability_warning_name;
 const lmt_scale_degree = api.lmt_scale_degree;
 const lmt_transpose_diatonic = api.lmt_transpose_diatonic;
 const lmt_nearest_scale_tones = api.lmt_nearest_scale_tones;
@@ -93,6 +104,12 @@ const lmt_voice_leading_violation_kind_count = api.lmt_voice_leading_violation_k
 const lmt_voice_leading_violation_kind_name = api.lmt_voice_leading_violation_kind_name;
 const lmt_satb_voice_count = api.lmt_satb_voice_count;
 const lmt_satb_voice_name = api.lmt_satb_voice_name;
+const lmt_sizeof_hand_profile = api.lmt_sizeof_hand_profile;
+const lmt_sizeof_temporal_load_state = api.lmt_sizeof_temporal_load_state;
+const lmt_sizeof_fret_candidate_location = api.lmt_sizeof_fret_candidate_location;
+const lmt_sizeof_fret_play_state = api.lmt_sizeof_fret_play_state;
+const lmt_sizeof_keybed_key_coord = api.lmt_sizeof_keybed_key_coord;
+const lmt_sizeof_keyboard_play_state = api.lmt_sizeof_keyboard_play_state;
 const lmt_sizeof_voiced_state = api.lmt_sizeof_voiced_state;
 const lmt_sizeof_voiced_history = api.lmt_sizeof_voiced_history;
 const lmt_sizeof_next_step_suggestion = api.lmt_sizeof_next_step_suggestion;
@@ -112,6 +129,12 @@ const lmt_find_orbifold_triad_node = api.lmt_find_orbifold_triad_node;
 const lmt_orbifold_triad_edge_count = api.lmt_orbifold_triad_edge_count;
 const lmt_sizeof_orbifold_triad_edge = api.lmt_sizeof_orbifold_triad_edge;
 const lmt_orbifold_triad_edge_at = api.lmt_orbifold_triad_edge_at;
+const lmt_default_fret_hand_profile = api.lmt_default_fret_hand_profile;
+const lmt_default_keyboard_hand_profile = api.lmt_default_keyboard_hand_profile;
+const lmt_describe_fret_play_state = api.lmt_describe_fret_play_state;
+const lmt_windowed_fret_positions_n = api.lmt_windowed_fret_positions_n;
+const lmt_keyboard_key_coord = api.lmt_keyboard_key_coord;
+const lmt_describe_keyboard_play_state = api.lmt_describe_keyboard_play_state;
 const lmt_voiced_history_reset = api.lmt_voiced_history_reset;
 const lmt_build_voiced_state = api.lmt_build_voiced_state;
 const lmt_voiced_history_push = api.lmt_voiced_history_push;
@@ -160,6 +183,12 @@ test "c abi header layout and constants" {
     try testing.expectEqual(@sizeOf(c.lmt_scale_snap_candidates), @sizeOf(LmtScaleSnapCandidates));
     try testing.expectEqual(@sizeOf(c.lmt_containing_mode_match), @sizeOf(LmtContainingModeMatch));
     try testing.expectEqual(@sizeOf(c.lmt_chord_match), @sizeOf(LmtChordMatch));
+    try testing.expectEqual(@sizeOf(c.lmt_hand_profile), @sizeOf(LmtHandProfile));
+    try testing.expectEqual(@sizeOf(c.lmt_temporal_load_state), @sizeOf(LmtTemporalLoadState));
+    try testing.expectEqual(@sizeOf(c.lmt_fret_candidate_location), @sizeOf(LmtFretCandidateLocation));
+    try testing.expectEqual(@sizeOf(c.lmt_fret_play_state), @sizeOf(LmtFretPlayState));
+    try testing.expectEqual(@sizeOf(c.lmt_keybed_key_coord), @sizeOf(LmtKeybedKeyCoord));
+    try testing.expectEqual(@sizeOf(c.lmt_keyboard_play_state), @sizeOf(LmtKeyboardPlayState));
     try testing.expectEqual(@as(usize, 12), @sizeOf(c.lmt_context_suggestion));
     try testing.expectEqual(@as(usize, 4), @sizeOf(c.lmt_metric_position));
     try testing.expectEqual(@as(usize, 8), @sizeOf(c.lmt_voice));
@@ -176,6 +205,12 @@ test "c abi header layout and constants" {
     try testing.expectEqual(@as(usize, 0), @offsetOf(c.lmt_guide_dot, "position"));
     try testing.expectEqual(@as(usize, 2), @offsetOf(c.lmt_guide_dot, "pitch_class"));
     try testing.expectEqual(@as(usize, 4), @offsetOf(c.lmt_guide_dot, "opacity"));
+    try testing.expectEqual(@as(usize, 0), @offsetOf(c.lmt_hand_profile, "finger_count"));
+    try testing.expectEqual(@as(usize, 6), @offsetOf(c.lmt_hand_profile, "reserved0"));
+    try testing.expectEqual(@as(usize, 6), @offsetOf(c.lmt_temporal_load_state, "cumulative_span_steps"));
+    try testing.expectEqual(@as(usize, 12), @offsetOf(c.lmt_fret_play_state, "load"));
+    try testing.expectEqual(@as(usize, 4), @offsetOf(c.lmt_keybed_key_coord, "x"));
+    try testing.expectEqual(@as(usize, 10), @offsetOf(c.lmt_keyboard_play_state, "load"));
     try testing.expectEqual(@as(usize, 4), @offsetOf(c.lmt_context_suggestion, "expanded_set"));
     try testing.expectEqual(@as(usize, 6), @offsetOf(c.lmt_context_suggestion, "pitch_class"));
     try testing.expectEqual(@as(usize, 10), @offsetOf(c.lmt_voiced_state, "cadence_state"));
@@ -185,6 +220,18 @@ test "c abi header layout and constants" {
     try testing.expectEqual(@as(c_int, 0), c.LMT_SCALE_DIATONIC);
     try testing.expectEqual(@as(c_int, 28), c.LMT_MODE_NEAPOLITAN_MAJOR);
     try testing.expectEqual(@as(c_int, 3), c.LMT_CHORD_AUGMENTED);
+    try testing.expectEqual(@as(c_int, 3), c.LMT_PLAYABILITY_REASON_EXPANDS_CURRENT_WINDOW);
+    try testing.expectEqual(@as(c_int, 2), c.LMT_PLAYABILITY_WARNING_HARD_LIMIT_EXCEEDED);
+    try testing.expectEqual(@as(u32, playability.types.REASON_NAMES.len), lmt_playability_reason_count());
+    try testing.expectEqual(@as(u32, playability.types.WARNING_NAMES.len), lmt_playability_warning_count());
+    try testing.expectEqualStrings("reachable in current window", std.mem.sliceTo(@as([*:0]const u8, @ptrCast(lmt_playability_reason_name(c.LMT_PLAYABILITY_REASON_REACHABLE_IN_CURRENT_WINDOW))), 0));
+    try testing.expectEqualStrings("hard limit exceeded", std.mem.sliceTo(@as([*:0]const u8, @ptrCast(lmt_playability_warning_name(c.LMT_PLAYABILITY_WARNING_HARD_LIMIT_EXCEEDED))), 0));
+    try testing.expectEqual(@as(u32, @sizeOf(LmtHandProfile)), lmt_sizeof_hand_profile());
+    try testing.expectEqual(@as(u32, @sizeOf(LmtTemporalLoadState)), lmt_sizeof_temporal_load_state());
+    try testing.expectEqual(@as(u32, @sizeOf(LmtFretCandidateLocation)), lmt_sizeof_fret_candidate_location());
+    try testing.expectEqual(@as(u32, @sizeOf(LmtFretPlayState)), lmt_sizeof_fret_play_state());
+    try testing.expectEqual(@as(u32, @sizeOf(LmtKeybedKeyCoord)), lmt_sizeof_keybed_key_coord());
+    try testing.expectEqual(@as(u32, @sizeOf(LmtKeyboardPlayState)), lmt_sizeof_keyboard_play_state());
     try testing.expectEqual(@as(u32, counterpoint.MAX_VOICES), lmt_counterpoint_max_voices());
     try testing.expectEqual(@as(u32, counterpoint.HISTORY_CAPACITY), lmt_counterpoint_history_capacity());
     try testing.expectEqual(@as(u32, @sizeOf(LmtVoicedState)), lmt_sizeof_voiced_state());
@@ -699,6 +746,69 @@ test "c abi chords and roman numerals" {
     const key_ctx = LmtKeyContext{ .tonic = 0, .quality = c.LMT_KEY_MAJOR };
     const roman = std.mem.sliceTo(@as([*:0]const u8, @ptrCast(lmt_roman_numeral(c_major, key_ctx))), 0);
     try testing.expectEqualStrings("I", roman);
+}
+
+test "c abi playability foundation helpers" {
+    var fret_profile: LmtHandProfile = undefined;
+    try testing.expectEqual(@as(u32, 1), lmt_default_fret_hand_profile(@ptrCast(&fret_profile)));
+    try testing.expectEqual(@as(u8, 4), fret_profile.finger_count);
+    try testing.expectEqual(@as(u8, 4), fret_profile.comfort_span_steps);
+    try testing.expectEqual(@as(u8, 5), fret_profile.limit_span_steps);
+    try testing.expectEqual(@as(u8, 1), fret_profile.prefers_low_tension);
+
+    var keyboard_profile: LmtHandProfile = undefined;
+    try testing.expectEqual(@as(u32, 1), lmt_default_keyboard_hand_profile(@ptrCast(&keyboard_profile)));
+    try testing.expectEqual(@as(u8, 5), keyboard_profile.finger_count);
+    try testing.expectEqual(@as(u8, 12), keyboard_profile.comfort_span_steps);
+
+    const frets = [_]i8{ -1, 3, 2, 0, 1, 0 };
+    var fret_state: LmtFretPlayState = undefined;
+    try testing.expectEqual(@as(u32, 1), lmt_describe_fret_play_state(@ptrCast(&frets), frets.len, @ptrCast(&fret_profile), null, @ptrCast(&fret_state)));
+    try testing.expectEqual(@as(u8, 1), fret_state.anchor_fret);
+    try testing.expectEqual(@as(u8, 5), fret_state.active_string_count);
+    try testing.expectEqual(@as(u8, 3), fret_state.fretted_note_count);
+    try testing.expectEqual(@as(u8, 2), fret_state.open_string_count);
+    try testing.expectEqual(@as(u8, 2), fret_state.span_steps);
+    try testing.expectEqual(@as(u8, 1), fret_state.comfort_fit);
+    try testing.expectEqual(@as(u8, 1), fret_state.limit_fit);
+    try testing.expectEqual(@as(u8, 1), fret_state.load.event_count);
+    try testing.expectEqual(@as(u8, 1), fret_state.load.last_anchor_step);
+
+    const tuning = [_]u8{ 40, 45, 50, 55, 59, 64 };
+    var locations: [8]LmtFretCandidateLocation = undefined;
+    const location_count = lmt_windowed_fret_positions_n(60, @ptrCast(&tuning), tuning.len, 7, @ptrCast(&fret_profile), @ptrCast(&locations), locations.len);
+    try testing.expectEqual(@as(u32, 5), location_count);
+    try testing.expectEqual(@as(u8, 1), locations[1].position.string);
+    try testing.expectEqual(@as(u8, 15), locations[1].position.fret);
+    try testing.expectEqual(@as(u8, 0), locations[1].in_window);
+    try testing.expectEqual(@as(u8, 4), locations[1].shift_steps);
+    try testing.expectEqual(@as(u8, 1), locations[2].in_window);
+
+    var coord: LmtKeybedKeyCoord = undefined;
+    try testing.expectEqual(@as(u32, 1), lmt_keyboard_key_coord(61, @ptrCast(&coord)));
+    try testing.expectEqual(@as(u8, 61), coord.midi);
+    try testing.expectEqual(@as(u8, 1), coord.is_black);
+    try testing.expectApproxEqAbs(@as(f32, 35.65), coord.x, 0.0001);
+
+    const notes = [_]u8{ 60, 64, 67 };
+    var load: LmtTemporalLoadState = .{
+        .event_count = 1,
+        .last_anchor_step = 60,
+        .last_span_steps = 4,
+        .last_shift_steps = 0,
+        .peak_span_steps = 4,
+        .peak_shift_steps = 0,
+        .cumulative_span_steps = 4,
+        .cumulative_shift_steps = 0,
+    };
+    var keyboard_state: LmtKeyboardPlayState = undefined;
+    try testing.expectEqual(@as(u32, 1), lmt_describe_keyboard_play_state(@ptrCast(&notes), notes.len, @ptrCast(&keyboard_profile), @ptrCast(&load), @ptrCast(&keyboard_state)));
+    try testing.expectEqual(@as(u8, 63), keyboard_state.anchor_midi);
+    try testing.expectEqual(@as(u8, 7), keyboard_state.span_semitones);
+    try testing.expectEqual(@as(u8, 0), keyboard_state.black_key_count);
+    try testing.expectEqual(@as(u8, 3), keyboard_state.white_key_count);
+    try testing.expectEqual(@as(u8, 2), keyboard_state.load.event_count);
+    try testing.expectEqual(@as(u8, 3), keyboard_state.load.last_shift_steps);
 }
 
 test "c abi guitar functions" {

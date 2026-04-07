@@ -18,6 +18,7 @@ const harmony = @import("harmony.zig");
 const counterpoint = @import("counterpoint.zig");
 const voice_leading_rules = @import("voice_leading_rules.zig");
 const choir = @import("choir.zig");
+const playability = @import("playability.zig");
 const guitar = @import("guitar.zig");
 const keyboard_logic = @import("keyboard.zig");
 const svg_clock = @import("svg/clock.zig");
@@ -84,6 +85,73 @@ pub const LmtChordMatch = extern struct {
     root_is_bass: u8,
     bass_degree: u8,
     reserved0: u8,
+};
+
+pub const LmtHandProfile = extern struct {
+    finger_count: u8,
+    comfort_span_steps: u8,
+    limit_span_steps: u8,
+    comfort_shift_steps: u8,
+    limit_shift_steps: u8,
+    prefers_low_tension: u8,
+    reserved0: u8,
+    reserved1: u8,
+};
+
+pub const LmtTemporalLoadState = extern struct {
+    event_count: u8,
+    last_anchor_step: u8,
+    last_span_steps: u8,
+    last_shift_steps: u8,
+    peak_span_steps: u8,
+    peak_shift_steps: u8,
+    cumulative_span_steps: u16,
+    cumulative_shift_steps: u16,
+};
+
+pub const LmtFretCandidateLocation = extern struct {
+    position: LmtFretPos,
+    in_window: u8,
+    shift_steps: u8,
+};
+
+pub const LmtFretPlayState = extern struct {
+    anchor_fret: u8,
+    window_start: u8,
+    window_end: u8,
+    lowest_string: u8,
+    highest_string: u8,
+    active_string_count: u8,
+    fretted_note_count: u8,
+    open_string_count: u8,
+    span_steps: u8,
+    comfort_fit: u8,
+    limit_fit: u8,
+    reserved0: u8,
+    load: LmtTemporalLoadState,
+};
+
+pub const LmtKeybedKeyCoord = extern struct {
+    midi: u8,
+    is_black: u8,
+    octave: u8,
+    degree_in_octave: u8,
+    x: f32,
+    y: f32,
+};
+
+pub const LmtKeyboardPlayState = extern struct {
+    anchor_midi: u8,
+    low_midi: u8,
+    high_midi: u8,
+    active_note_count: u8,
+    black_key_count: u8,
+    white_key_count: u8,
+    span_semitones: u8,
+    comfort_fit: u8,
+    limit_fit: u8,
+    reserved0: u8,
+    load: LmtTemporalLoadState,
 };
 
 pub const LmtMetricPosition = extern struct {
@@ -431,6 +499,56 @@ fn decodeMidiNotes(ptr: [*c]const u8, note_count: u32, out: *[MAX_KEYBOARD_RENDE
     return out[0..len];
 }
 
+fn decodeHandProfile(raw: LmtHandProfile) playability.types.HandProfile {
+    return playability.types.HandProfile.init(
+        raw.finger_count,
+        raw.comfort_span_steps,
+        raw.limit_span_steps,
+        raw.comfort_shift_steps,
+        raw.limit_shift_steps,
+        raw.prefers_low_tension != 0,
+    );
+}
+
+fn writeHandProfile(out: *LmtHandProfile, profile: playability.types.HandProfile) void {
+    out.* = .{
+        .finger_count = profile.finger_count,
+        .comfort_span_steps = profile.comfort_span_steps,
+        .limit_span_steps = profile.limit_span_steps,
+        .comfort_shift_steps = profile.comfort_shift_steps,
+        .limit_shift_steps = profile.limit_shift_steps,
+        .prefers_low_tension = if (profile.prefers_low_tension) 1 else 0,
+        .reserved0 = 0,
+        .reserved1 = 0,
+    };
+}
+
+fn decodeTemporalLoadState(raw: LmtTemporalLoadState) playability.types.TemporalLoadState {
+    return .{
+        .event_count = raw.event_count,
+        .last_anchor_step = raw.last_anchor_step,
+        .last_span_steps = raw.last_span_steps,
+        .last_shift_steps = raw.last_shift_steps,
+        .peak_span_steps = raw.peak_span_steps,
+        .peak_shift_steps = raw.peak_shift_steps,
+        .cumulative_span_steps = raw.cumulative_span_steps,
+        .cumulative_shift_steps = raw.cumulative_shift_steps,
+    };
+}
+
+fn writeTemporalLoadState(out: *LmtTemporalLoadState, state: playability.types.TemporalLoadState) void {
+    out.* = .{
+        .event_count = state.event_count,
+        .last_anchor_step = state.last_anchor_step,
+        .last_span_steps = state.last_span_steps,
+        .last_shift_steps = state.last_shift_steps,
+        .peak_span_steps = state.peak_span_steps,
+        .peak_shift_steps = state.peak_shift_steps,
+        .cumulative_span_steps = state.cumulative_span_steps,
+        .cumulative_shift_steps = state.cumulative_shift_steps,
+    };
+}
+
 const KeyboardRange = struct {
     low: pitch.MidiNote,
     high: pitch.MidiNote,
@@ -754,6 +872,64 @@ fn writeOrbifoldTriadEdge(out: *LmtOrbifoldTriadEdge, edge: svg_orbifold.Edge) v
     };
 }
 
+fn writeFretCandidateLocation(out: *LmtFretCandidateLocation, location: playability.fret_topology.WindowedLocation) void {
+    out.* = .{
+        .position = .{
+            .string = @as(u8, @intCast(location.position.string)),
+            .fret = location.position.fret,
+        },
+        .in_window = if (location.in_window) 1 else 0,
+        .shift_steps = location.shift_steps,
+    };
+}
+
+fn writeFretPlayState(out: *LmtFretPlayState, state: playability.fret_topology.PlayState) void {
+    out.* = .{
+        .anchor_fret = state.anchor_fret,
+        .window_start = state.window_start,
+        .window_end = state.window_end,
+        .lowest_string = state.lowest_string,
+        .highest_string = state.highest_string,
+        .active_string_count = state.active_string_count,
+        .fretted_note_count = state.fretted_note_count,
+        .open_string_count = state.open_string_count,
+        .span_steps = state.span_steps,
+        .comfort_fit = if (state.comfort_fit) 1 else 0,
+        .limit_fit = if (state.limit_fit) 1 else 0,
+        .reserved0 = 0,
+        .load = undefined,
+    };
+    writeTemporalLoadState(&out.load, state.load);
+}
+
+fn writeKeybedKeyCoord(out: *LmtKeybedKeyCoord, coord: playability.keyboard_topology.KeyCoord) void {
+    out.* = .{
+        .midi = coord.midi,
+        .is_black = if (coord.is_black) 1 else 0,
+        .octave = coord.octave,
+        .degree_in_octave = coord.degree_in_octave,
+        .x = coord.x,
+        .y = coord.y,
+    };
+}
+
+fn writeKeyboardPlayState(out: *LmtKeyboardPlayState, state: playability.keyboard_topology.PlayState) void {
+    out.* = .{
+        .anchor_midi = state.anchor_midi,
+        .low_midi = state.low_midi,
+        .high_midi = state.high_midi,
+        .active_note_count = state.active_note_count,
+        .black_key_count = state.black_key_count,
+        .white_key_count = state.white_key_count,
+        .span_semitones = state.span_semitones,
+        .comfort_fit = if (state.comfort_fit) 1 else 0,
+        .limit_fit = if (state.limit_fit) 1 else 0,
+        .reserved0 = 0,
+        .load = undefined,
+    };
+    writeTemporalLoadState(&out.load, state.load);
+}
+
 fn isSelectedGuidePosition(selected_ptr: [*c]const LmtFretPos, selected_count: usize, string: usize, fret: u8) bool {
     if (selected_ptr == null) return false;
 
@@ -964,6 +1140,26 @@ pub export fn lmt_barry_harris_parity(index: u32, tonic: u8, note: u8, out_degre
     };
 }
 
+pub export fn lmt_playability_reason_count() callconv(.c) u32 {
+    return @as(u32, @intCast(playability.types.REASON_NAMES.len));
+}
+
+pub export fn lmt_playability_reason_name(index: u32) callconv(.c) [*c]const u8 {
+    const idx = @as(usize, @intCast(index));
+    if (idx >= playability.types.REASON_NAMES.len) return null;
+    return writeCString(playability.types.REASON_NAMES[idx]);
+}
+
+pub export fn lmt_playability_warning_count() callconv(.c) u32 {
+    return @as(u32, @intCast(playability.types.WARNING_NAMES.len));
+}
+
+pub export fn lmt_playability_warning_name(index: u32) callconv(.c) [*c]const u8 {
+    const idx = @as(usize, @intCast(index));
+    if (idx >= playability.types.WARNING_NAMES.len) return null;
+    return writeCString(playability.types.WARNING_NAMES[idx]);
+}
+
 pub export fn lmt_scale_degree(tonic: u8, mode_type: u8, note: u8) callconv(.c) u8 {
     const mt = decodeModeType(mode_type) orelse return 0;
     const tonic_pc = @as(pitch.PitchClass, @intCast(tonic % 12));
@@ -1131,6 +1327,30 @@ pub export fn lmt_satb_voice_name(index: u32) callconv(.c) [*c]const u8 {
     return writeCString(choir.SATB_VOICE_NAMES[idx]);
 }
 
+pub export fn lmt_sizeof_hand_profile() callconv(.c) u32 {
+    return @as(u32, @intCast(@sizeOf(LmtHandProfile)));
+}
+
+pub export fn lmt_sizeof_temporal_load_state() callconv(.c) u32 {
+    return @as(u32, @intCast(@sizeOf(LmtTemporalLoadState)));
+}
+
+pub export fn lmt_sizeof_fret_candidate_location() callconv(.c) u32 {
+    return @as(u32, @intCast(@sizeOf(LmtFretCandidateLocation)));
+}
+
+pub export fn lmt_sizeof_fret_play_state() callconv(.c) u32 {
+    return @as(u32, @intCast(@sizeOf(LmtFretPlayState)));
+}
+
+pub export fn lmt_sizeof_keybed_key_coord() callconv(.c) u32 {
+    return @as(u32, @intCast(@sizeOf(LmtKeybedKeyCoord)));
+}
+
+pub export fn lmt_sizeof_keyboard_play_state() callconv(.c) u32 {
+    return @as(u32, @intCast(@sizeOf(LmtKeyboardPlayState)));
+}
+
 pub export fn lmt_sizeof_voiced_state() callconv(.c) u32 {
     return @as(u32, @intCast(@sizeOf(LmtVoicedState)));
 }
@@ -1243,6 +1463,20 @@ pub export fn lmt_orbifold_triad_edge_count() callconv(.c) u32 {
 
 pub export fn lmt_sizeof_orbifold_triad_edge() callconv(.c) u32 {
     return @as(u32, @intCast(@sizeOf(LmtOrbifoldTriadEdge)));
+}
+
+pub export fn lmt_default_fret_hand_profile(out: [*c]LmtHandProfile) callconv(.c) u32 {
+    if (out == null) return 0;
+    const out_profile: *LmtHandProfile = @ptrCast(out);
+    writeHandProfile(out_profile, playability.fret_topology.defaultHandProfile());
+    return 1;
+}
+
+pub export fn lmt_default_keyboard_hand_profile(out: [*c]LmtHandProfile) callconv(.c) u32 {
+    if (out == null) return 0;
+    const out_profile: *LmtHandProfile = @ptrCast(out);
+    writeHandProfile(out_profile, playability.keyboard_topology.defaultHandProfile());
+    return 1;
 }
 
 pub export fn lmt_orbifold_triad_edge_at(index: u32, out: [*c]LmtOrbifoldTriadEdge) callconv(.c) u32 {
@@ -1869,6 +2103,108 @@ pub export fn lmt_url_to_frets_n(url_ptr: [*c]const u8, out: [*c]i8, out_cap: u3
     }
 
     return @as(u32, @intCast(count));
+}
+
+pub export fn lmt_describe_fret_play_state(
+    frets_ptr: [*c]const i8,
+    fret_count: u32,
+    profile_ptr: [*c]const LmtHandProfile,
+    previous_load_ptr: [*c]const LmtTemporalLoadState,
+    out: [*c]LmtFretPlayState,
+) callconv(.c) u32 {
+    if (out == null) return 0;
+
+    const count = @as(usize, @intCast(fret_count));
+    if (count > 0 and frets_ptr == null) return 0;
+    if (count > guitar.MAX_GENERIC_STRINGS) return 0;
+
+    const profile = if (profile_ptr != null)
+        decodeHandProfile(profile_ptr[0])
+    else
+        playability.fret_topology.defaultHandProfile();
+    const previous_load: ?playability.types.TemporalLoadState = if (previous_load_ptr != null)
+        decodeTemporalLoadState(previous_load_ptr[0])
+    else
+        null;
+
+    const frets = if (count == 0) &[_]i8{} else frets_ptr[0..count];
+    const state = playability.fret_topology.describeState(frets, profile, previous_load);
+    const out_state: *LmtFretPlayState = @ptrCast(out);
+    writeFretPlayState(out_state, state);
+    return 1;
+}
+
+pub export fn lmt_windowed_fret_positions_n(
+    note: u8,
+    tuning_ptr: [*c]const u8,
+    tuning_count: u32,
+    anchor_fret: u8,
+    profile_ptr: [*c]const LmtHandProfile,
+    out: [*c]LmtFretCandidateLocation,
+    out_cap: u32,
+) callconv(.c) u32 {
+    var tuning_buf: [MAX_PARAMETRIC_FRET_STRINGS]pitch.MidiNote = undefined;
+    const tuning = decodeTuningGeneric(tuning_ptr, tuning_count, &tuning_buf);
+    if (tuning.len == 0) return 0;
+
+    const profile = if (profile_ptr != null)
+        decodeHandProfile(profile_ptr[0])
+    else
+        playability.fret_topology.defaultHandProfile();
+
+    var locations_buf: [playability.fret_topology.MAX_WINDOWED_LOCATIONS]playability.fret_topology.WindowedLocation = undefined;
+    const locations = playability.fret_topology.windowedLocationsForMidi(
+        @as(pitch.MidiNote, @intCast(@min(note, @as(u8, 127)))),
+        tuning,
+        anchor_fret,
+        profile,
+        locations_buf[0..],
+    );
+
+    if (out != null) {
+        const write_len = @min(locations.len, @as(usize, @intCast(out_cap)));
+        for (locations[0..write_len], 0..) |location, index| {
+            const out_location: *LmtFretCandidateLocation = @ptrCast(&out[index]);
+            writeFretCandidateLocation(out_location, location);
+        }
+    }
+
+    return @as(u32, @intCast(locations.len));
+}
+
+pub export fn lmt_keyboard_key_coord(note: u8, out: [*c]LmtKeybedKeyCoord) callconv(.c) u32 {
+    if (out == null) return 0;
+    const coord = playability.keyboard_topology.keyCoord(@as(pitch.MidiNote, @intCast(@min(note, @as(u8, 127)))));
+    const out_coord: *LmtKeybedKeyCoord = @ptrCast(out);
+    writeKeybedKeyCoord(out_coord, coord);
+    return 1;
+}
+
+pub export fn lmt_describe_keyboard_play_state(
+    notes_ptr: [*c]const u8,
+    note_count: u32,
+    profile_ptr: [*c]const LmtHandProfile,
+    previous_load_ptr: [*c]const LmtTemporalLoadState,
+    out: [*c]LmtKeyboardPlayState,
+) callconv(.c) u32 {
+    if (out == null) return 0;
+
+    var notes_buf: [MAX_KEYBOARD_RENDER_NOTES]pitch.MidiNote = undefined;
+    const notes = decodeMidiNotes(notes_ptr, note_count, &notes_buf);
+
+    const profile = if (profile_ptr != null)
+        decodeHandProfile(profile_ptr[0])
+    else
+        playability.keyboard_topology.defaultHandProfile();
+    const previous_load: ?playability.types.TemporalLoadState = if (previous_load_ptr != null)
+        decodeTemporalLoadState(previous_load_ptr[0])
+    else
+        null;
+
+    const state = playability.keyboard_topology.describeState(notes, profile, previous_load);
+    const out_state: *LmtKeyboardPlayState = @ptrCast(out);
+    writeKeyboardPlayState(out_state, state);
+    return 1;
 }
 
 pub export fn lmt_svg_clock_optc(set: u16, buf: [*c]u8, buf_size: u32) callconv(.c) u32 {

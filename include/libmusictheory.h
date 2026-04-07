@@ -21,6 +21,14 @@ extern "C" {
  *   lmt_counterpoint_max_voices, lmt_build_voiced_state,
  *   lmt_classify_motion, lmt_rank_next_steps,
  *   lmt_rank_cadence_destinations, lmt_analyze_suspension_machine,
+ *   lmt_playability_reason_count, lmt_playability_reason_name,
+ *   lmt_playability_warning_count, lmt_playability_warning_name,
+ *   lmt_sizeof_hand_profile, lmt_sizeof_temporal_load_state,
+ *   lmt_sizeof_fret_candidate_location, lmt_sizeof_fret_play_state,
+ *   lmt_sizeof_keybed_key_coord, lmt_sizeof_keyboard_play_state,
+ *   lmt_default_fret_hand_profile, lmt_default_keyboard_hand_profile,
+ *   lmt_describe_fret_play_state, lmt_windowed_fret_positions_n,
+ *   lmt_keyboard_key_coord, lmt_describe_keyboard_play_state,
  *   lmt_satb_voice_count, lmt_satb_voice_name,
  *   lmt_sizeof_satb_register_violation,
  *   lmt_satb_range_low, lmt_satb_range_high,
@@ -187,6 +195,89 @@ typedef struct {
     uint8_t bass_degree;
     uint8_t reserved0;
 } lmt_chord_match;
+
+typedef uint8_t lmt_playability_reason;
+enum {
+    LMT_PLAYABILITY_REASON_REACHABLE_LOCATION = 0,
+    LMT_PLAYABILITY_REASON_REACHABLE_IN_CURRENT_WINDOW = 1,
+    LMT_PLAYABILITY_REASON_MULTIPLE_LOCATIONS_AVAILABLE = 2,
+    LMT_PLAYABILITY_REASON_EXPANDS_CURRENT_WINDOW = 3,
+};
+
+typedef uint8_t lmt_playability_warning;
+enum {
+    LMT_PLAYABILITY_WARNING_SHIFT_REQUIRED = 0,
+    LMT_PLAYABILITY_WARNING_COMFORT_WINDOW_EXCEEDED = 1,
+    LMT_PLAYABILITY_WARNING_HARD_LIMIT_EXCEEDED = 2,
+    LMT_PLAYABILITY_WARNING_AMBIGUOUS_HAND_ASSIGNMENT = 3,
+};
+
+typedef struct {
+    uint8_t finger_count;
+    uint8_t comfort_span_steps;
+    uint8_t limit_span_steps;
+    uint8_t comfort_shift_steps;
+    uint8_t limit_shift_steps;
+    uint8_t prefers_low_tension;
+    uint8_t reserved0;
+    uint8_t reserved1;
+} lmt_hand_profile;
+
+typedef struct {
+    uint8_t event_count;
+    uint8_t last_anchor_step;
+    uint8_t last_span_steps;
+    uint8_t last_shift_steps;
+    uint8_t peak_span_steps;
+    uint8_t peak_shift_steps;
+    uint16_t cumulative_span_steps;
+    uint16_t cumulative_shift_steps;
+} lmt_temporal_load_state;
+
+typedef struct {
+    lmt_fret_pos position;
+    uint8_t in_window;
+    uint8_t shift_steps;
+} lmt_fret_candidate_location;
+
+typedef struct {
+    uint8_t anchor_fret;
+    uint8_t window_start;
+    uint8_t window_end;
+    uint8_t lowest_string;
+    uint8_t highest_string;
+    uint8_t active_string_count;
+    uint8_t fretted_note_count;
+    uint8_t open_string_count;
+    uint8_t span_steps;
+    uint8_t comfort_fit;
+    uint8_t limit_fit;
+    uint8_t reserved0;
+    lmt_temporal_load_state load;
+} lmt_fret_play_state;
+
+typedef struct {
+    uint8_t midi;
+    uint8_t is_black;
+    uint8_t octave;
+    uint8_t degree_in_octave;
+    float x;
+    float y;
+} lmt_keybed_key_coord;
+
+typedef struct {
+    uint8_t anchor_midi;
+    uint8_t low_midi;
+    uint8_t high_midi;
+    uint8_t active_note_count;
+    uint8_t black_key_count;
+    uint8_t white_key_count;
+    uint8_t span_semitones;
+    uint8_t comfort_fit;
+    uint8_t limit_fit;
+    uint8_t reserved0;
+    lmt_temporal_load_state load;
+} lmt_keyboard_play_state;
 
 typedef uint8_t lmt_cadence_state;
 enum {
@@ -498,6 +589,22 @@ const char *lmt_ordered_scale_pattern_name(uint32_t index);
 uint8_t lmt_ordered_scale_degree_count(uint32_t index);
 lmt_pitch_class_set lmt_ordered_scale_pitch_class_set(uint32_t index, lmt_pitch_class tonic);
 uint8_t lmt_barry_harris_parity(uint32_t index, lmt_pitch_class tonic, lmt_midi_note note, uint8_t *out_degree);
+uint32_t lmt_playability_reason_count(void);
+const char *lmt_playability_reason_name(uint32_t index);
+uint32_t lmt_playability_warning_count(void);
+const char *lmt_playability_warning_name(uint32_t index);
+uint32_t lmt_sizeof_hand_profile(void);
+uint32_t lmt_sizeof_temporal_load_state(void);
+uint32_t lmt_sizeof_fret_candidate_location(void);
+uint32_t lmt_sizeof_fret_play_state(void);
+uint32_t lmt_sizeof_keybed_key_coord(void);
+uint32_t lmt_sizeof_keyboard_play_state(void);
+uint32_t lmt_default_fret_hand_profile(lmt_hand_profile *out);
+uint32_t lmt_default_keyboard_hand_profile(lmt_hand_profile *out);
+uint32_t lmt_describe_fret_play_state(const int8_t *frets, uint32_t fret_count, const lmt_hand_profile *profile, const lmt_temporal_load_state *previous_load, lmt_fret_play_state *out);
+uint32_t lmt_windowed_fret_positions_n(lmt_midi_note note, const uint8_t *tuning, uint32_t tuning_count, uint8_t anchor_fret, const lmt_hand_profile *profile, lmt_fret_candidate_location *out, uint32_t out_cap);
+uint32_t lmt_keyboard_key_coord(lmt_midi_note note, lmt_keybed_key_coord *out);
+uint32_t lmt_describe_keyboard_play_state(const lmt_midi_note *notes, uint32_t note_count, const lmt_hand_profile *profile, const lmt_temporal_load_state *previous_load, lmt_keyboard_play_state *out);
 uint32_t lmt_satb_voice_count(void);
 const char *lmt_satb_voice_name(uint32_t index);
 uint32_t lmt_sizeof_voiced_state(void);

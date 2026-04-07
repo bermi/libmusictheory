@@ -1,6 +1,6 @@
 # 0124 - Instrument Topology And Biomechanical State
 
-Status: Draft
+Status: In Progress
 
 ## Summary
 
