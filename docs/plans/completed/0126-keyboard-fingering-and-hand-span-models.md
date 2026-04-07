@@ -1,6 +1,6 @@
 # 0126 - Keyboard Fingering And Hand-Span Models
 
-Status: In Progress
+Status: Completed
 
 ## Summary
 
@@ -79,3 +79,16 @@ L
 - transition fluency tests using recent-history windows
 - no hidden behavior changes to existing keyboard APIs
 - `./verify.sh`
+
+## Verification Commands
+
+- `./zigw build test`
+- `./verify.sh`
+
+## Implementation History (Point-in-Time)
+
+- `2cf4befbaecef4782bcb1c524b2884a6a7220d35` - `2026-04-07`
+  - added `/Users/bermi/code/libmusictheory/src/playability/keyboard_assessment.zig` with explainable one-hand keyboard realization, transition, and local fingering-ranking helpers backed by explicit hand-role and blocker semantics
+  - exposed experimental keyboard playability C ABI structs, reflection helpers, and assessment exports through `/Users/bermi/code/libmusictheory/include/libmusictheory.h`, `/Users/bermi/code/libmusictheory/src/c_api.zig`, and the wasm export manifests
+  - expanded shared playability warning vocabulary, added focused Zig and C ABI tests, updated `./verify.sh` guardrails, and documented the explainable keyboard assessment model in `/Users/bermi/code/libmusictheory/docs/research/algorithms/keyboard-interaction.md`
+  - verification gates: `./zigw build test`, `./verify.sh`
