@@ -161,6 +161,8 @@ async function main() {
       const midiActiveRepairFutureFeatures = midiActive.summary?.midiRepairFutureFeatures ?? midiActive.midiRepairFutureFeatures;
       if (
         midiActive.summary?.currentMiniMode !== "off"
+        || midiActive.summary?.playabilityOverlayMode !== "off"
+        || midiActive.galleryPlayabilityOverlayMode !== "off"
         || midiActive.summary?.currentMiniRendered !== false
         || midiActive.summary?.focusedMiniRendered !== false
         || (midiActive.summary?.suggestionMiniCount || 0) !== 0
@@ -410,6 +412,44 @@ async function main() {
         || midiActiveCadenceGardenFeatures.cadenceLabels.length < 1
       ) {
         throw new Error(`live midi scene did not render cadence garden correctly: ${JSON.stringify({ cadenceGarden: midiActiveCadenceGardenFeatures, summary: midiActive.summary })}`);
+      }
+      traceStep("enable-overlay-basic");
+      await page.selectOption("#mini-instrument-mode", "piano");
+      await page.selectOption("#playability-overlay-mode", "basic");
+      const basicOverlaySnapshot = await page.waitForFunction(() => {
+        const gallery = window.__lmtGallerySummary;
+        const midi = gallery?.scenes?.midi;
+        const set = gallery?.scenes?.set;
+        return gallery?.playabilityOverlayMode === "basic"
+          && midi?.currentMiniMode === "piano"
+          && midi?.playabilityOverlayMode === "basic"
+          && midi?.currentMiniOverlay?.overlayRendered === true
+          && midi?.focusedMiniOverlay?.overlayRendered === true
+          && (midi?.suggestionOverlayCount || 0) >= 1
+          && set?.overlayRendered === true
+          && document.querySelectorAll(".playability-overlay").length >= 3
+          && document.querySelectorAll(".playability-finger-marker").length >= 2
+          && document.querySelectorAll("#midi-suggestions .suggestion-playability-row .status-pill, #midi-suggestions .suggestion-playability-row .pill, #midi-suggestions .suggestion-playability-row .chip").length >= 2;
+      }, { timeout: 30000 }).then((handle) => handle.jsonValue());
+      traceStep("enable-overlay-detailed");
+      await page.selectOption("#mini-instrument-mode", "fret");
+      await page.selectOption("#playability-overlay-mode", "detailed");
+      const detailedOverlaySnapshot = await page.waitForFunction(() => {
+        const gallery = window.__lmtGallerySummary;
+        const midi = gallery?.scenes?.midi;
+        const fret = gallery?.scenes?.fret;
+        return gallery?.playabilityOverlayMode === "detailed"
+          && midi?.currentMiniMode === "fret"
+          && midi?.playabilityOverlayMode === "detailed"
+          && midi?.currentMiniOverlay?.overlayRendered === true
+          && midi?.focusedMiniOverlay?.overlayRendered === true
+          && fret?.overlayRendered === true
+          && document.querySelectorAll(".playability-overlay.is-detailed").length >= 3
+          && document.querySelectorAll(".playability-hand-box").length >= 1
+          && document.querySelectorAll(".playability-overlay-detail").length >= 1;
+      }, { timeout: 30000 }).then((handle) => handle.jsonValue());
+      if (!basicOverlaySnapshot || !detailedOverlaySnapshot) {
+        throw new Error("playability overlay toggles did not settle");
       }
       traceStep("hover-candidate");
       const hoverCandidateIndex = Math.min(1, Math.max(0, (midiActive.summary?.suggestionCount || 1) - 1));

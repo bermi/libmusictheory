@@ -234,8 +234,10 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
     const snapshot = await page.evaluate(() => ({
       summary: window.__lmtGallerySummary?.scenes?.midi || null,
       galleryPreviewMode: window.__lmtGallerySummary?.previewMode || "",
+      galleryPlayabilityOverlayMode: window.__lmtGallerySummary?.playabilityOverlayMode || "",
       snapshotButtons: document.querySelectorAll("#midi-snapshots [data-midi-snapshot]").length,
       suggestionCards: document.querySelectorAll("#midi-suggestions .suggestion-card").length,
+      suggestionPlayabilityRows: document.querySelectorAll("#midi-suggestions .suggestion-playability-row").length,
       noteChips: document.querySelectorAll("#midi-notes .chip").length,
       clockSvg: document.querySelector("#midi-clock svg")?.outerHTML || "",
       opticKSvg: document.querySelector("#midi-optic-k svg")?.outerHTML || "",
@@ -244,6 +246,9 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
       keyboardImg: document.querySelector("#midi-keyboard img")?.getAttribute("src") || "",
       currentFretHtml: document.querySelector("#midi-current-fret")?.innerHTML || "",
       staffHtml: document.querySelector("#midi-staff")?.innerHTML || "",
+      currentMiniOverlayCount: document.querySelectorAll("#midi-current-fret .playability-overlay").length,
+      focusedMiniOverlayCount: document.querySelectorAll("#midi-focused-mini .playability-overlay").length,
+      suggestionMiniOverlayCount: document.querySelectorAll("#midi-suggestions [data-suggestion-mini] .playability-overlay").length,
       keyboardFeaturesFallback: (() => {
         const svg = document.querySelector("#midi-keyboard svg");
         if (!svg) return { selectedKeyCount: 0, echoKeyCount: 0, blackEchoSelectedCount: 0 };
@@ -1004,9 +1009,11 @@ export async function waitForGalleryReady(page, expectedPreviewMode = null) {
       sceneCardCount: document.querySelectorAll(".scene-card").length,
       presetSelectCount: document.querySelectorAll("select[id$='-preset']").length,
       miniInstrumentMode: document.getElementById("mini-instrument-mode")?.value || "",
+      playabilityOverlayMode: document.getElementById("playability-overlay-mode")?.value || "",
       midiProfileValue: document.getElementById("midi-profile")?.value || "",
+      playabilityOverlayCount: document.querySelectorAll(".playability-overlay").length,
       previewMetrics: Array.from(
-        document.querySelectorAll("#midi-clock :is(svg,img), #midi-optic-k :is(svg,img), #midi-evenness :is(svg,img), #midi-keyboard :is(svg,img), #midi-staff :is(svg,img), #midi-current-fret :is(svg,img), #set-clock :is(svg,img), #set-optic-k :is(svg,img), #set-evenness :is(svg,img), #set-mini :is(svg,img), #key-clock :is(svg,img), #key-staff :is(svg,img), #key-keyboard :is(svg,img), #key-mini :is(svg,img), #chord-clock :is(svg,img), #chord-staff :is(svg,img), #chord-mini :is(svg,img), #progression-clock :is(svg,img), #progression-mini :is(svg,img), #compare-left-clock :is(svg,img), #compare-overlap-clock :is(svg,img), #compare-right-clock :is(svg,img), #compare-mini :is(svg,img), #fret-svg :is(svg,img), #fret-mini :is(svg,img)"),
+        document.querySelectorAll("#midi-clock :is(svg,img)[data-preview-normalized='1'], #midi-optic-k :is(svg,img)[data-preview-normalized='1'], #midi-evenness :is(svg,img)[data-preview-normalized='1'], #midi-keyboard :is(svg,img)[data-preview-normalized='1'], #midi-staff :is(svg,img)[data-preview-normalized='1'], #midi-current-fret :is(svg,img)[data-preview-normalized='1'], #set-clock :is(svg,img)[data-preview-normalized='1'], #set-optic-k :is(svg,img)[data-preview-normalized='1'], #set-evenness :is(svg,img)[data-preview-normalized='1'], #set-mini :is(svg,img)[data-preview-normalized='1'], #key-clock :is(svg,img)[data-preview-normalized='1'], #key-staff :is(svg,img)[data-preview-normalized='1'], #key-keyboard :is(svg,img)[data-preview-normalized='1'], #key-mini :is(svg,img)[data-preview-normalized='1'], #chord-clock :is(svg,img)[data-preview-normalized='1'], #chord-staff :is(svg,img)[data-preview-normalized='1'], #chord-mini :is(svg,img)[data-preview-normalized='1'], #progression-clock :is(svg,img)[data-preview-normalized='1'], #progression-mini :is(svg,img)[data-preview-normalized='1'], #compare-left-clock :is(svg,img)[data-preview-normalized='1'], #compare-overlap-clock :is(svg,img)[data-preview-normalized='1'], #compare-right-clock :is(svg,img)[data-preview-normalized='1'], #compare-mini :is(svg,img)[data-preview-normalized='1'], #fret-svg :is(svg,img)[data-preview-normalized='1'], #fret-mini :is(svg,img)[data-preview-normalized='1']"),
         (node) => {
           const rect = node.getBoundingClientRect();
           return {

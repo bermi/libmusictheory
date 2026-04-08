@@ -430,6 +430,136 @@ select {
   max-height: 440px;
 }
 
+.playability-overlay-host {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.playability-overlay-host > img {
+  position: relative;
+  z-index: 0;
+}
+
+.playability-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.playability-overlay-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.playability-overlay-badge,
+.playability-overlay-detail,
+.playability-overlay-chips {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.playability-overlay-badge,
+.playability-overlay-detail {
+  width: fit-content;
+  right: auto;
+  max-width: calc(100% - 24px);
+  padding: 5px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(24, 36, 47, 0.16);
+  background: rgba(255, 251, 245, 0.92);
+  color: var(--ink);
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+}
+
+.playability-overlay-badge {
+  top: 10px;
+}
+
+.playability-overlay-detail {
+  top: 40px;
+  color: var(--muted);
+}
+
+.playability-overlay-chips {
+  bottom: 10px;
+}
+
+.playability-chip {
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(24, 36, 47, 0.12);
+  background: rgba(255, 251, 245, 0.92);
+  color: var(--ink);
+  font-size: 0.7rem;
+  line-height: 1.1;
+}
+
+.playability-chip.is-warning {
+  background: rgba(161, 22, 102, 0.12);
+}
+
+.playability-finger-marker {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  min-width: 24px;
+  min-height: 24px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.92);
+  background: var(--playability-marker-color, var(--teal));
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  box-shadow: 0 8px 18px rgba(24, 36, 47, 0.16);
+}
+
+.playability-hand-box {
+  fill: rgba(31, 125, 134, 0.08);
+  stroke: rgba(31, 125, 134, 0.86);
+  stroke-width: 1.6;
+  stroke-dasharray: 4 3;
+}
+
+.playability-hand-box.is-strained {
+  fill: rgba(161, 22, 102, 0.08);
+  stroke: rgba(161, 22, 102, 0.86);
+}
+
+.playability-shift-arrow {
+  stroke: rgba(219, 106, 56, 0.92);
+  stroke-width: 2.2;
+  fill: none;
+}
+
+.playability-overlay.is-blocked .playability-overlay-badge {
+  background: rgba(161, 22, 102, 0.18);
+}
+
+.playability-overlay.is-warning .playability-overlay-badge {
+  background: rgba(219, 106, 56, 0.16);
+}
+
+.playability-overlay.is-basic .playability-overlay-detail {
+  display: none;
+}
+
+.playability-overlay.is-basic .playability-overlay-svg {
+  display: none;
+}
+
 .staff-frame svg,
 .staff-frame img {
   max-height: 320px;
@@ -1245,6 +1375,10 @@ select {
 
 .suggestion-reasons,
 .suggestion-warnings {
+  margin-top: 0;
+}
+
+.suggestion-playability-row {
   margin-top: 0;
 }
 

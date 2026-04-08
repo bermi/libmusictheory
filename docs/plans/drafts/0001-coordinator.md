@@ -9,14 +9,14 @@ Build `libmusictheory`, a Zig library exposing a C ABI that implements the compl
 
 ## Lifecycle Status
 
-- Draft: 0001, 0123, 0128, 0129
-- In progress: none
+- Draft: 0001, 0123, 0129
+- In progress: 0128
 ## Current Remaining Work
 
 The stable-release execution lane and the post-`0.1.0` explainable-theory Contrapunk lane are complete. The next roadmap is a new experimental playability lane for biomechanical hints, fingering-aware filtering, and optional overlays for fretboards and keyboard views.
 
 Active implementation:
-- none
+- 0128 - gallery-overlays-and-hand-outline-visualizations
 
 Next planned execution order:
 - 0123 - biomechanical-playability-and-fingering-master

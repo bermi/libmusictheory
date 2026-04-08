@@ -10,6 +10,7 @@ const captureMode = new URLSearchParams(window.location.search).get("capture") =
 const MIDI_SNAPSHOT_STORAGE_KEY = "lmt.gallery.midi.snapshots";
 const GALLERY_PREVIEW_MODE_STORAGE_KEY = "lmt.gallery.preview.mode";
 const GALLERY_MINI_INSTRUMENT_STORAGE_KEY = "lmt.gallery.mini.instrument";
+const GALLERY_PLAYABILITY_OVERLAY_STORAGE_KEY = "lmt.gallery.playability.overlay";
 const MIDI_SCENE_TITLE = "Live MIDI Compass";
 const MIDI_DEFAULT_TONIC = 0;
 const MIDI_DEFAULT_MODE = 0;
@@ -19,8 +20,29 @@ const PREVIEW_MODE_BITMAP = "bitmap";
 const MINI_INSTRUMENT_OFF = "off";
 const MINI_INSTRUMENT_PIANO = "piano";
 const MINI_INSTRUMENT_FRET = "fret";
+const PLAYABILITY_OVERLAY_OFF = "off";
+const PLAYABILITY_OVERLAY_BASIC = "basic";
+const PLAYABILITY_OVERLAY_DETAILED = "detailed";
 const STANDARD_GUITAR_TUNING = Object.freeze([40, 45, 50, 55, 59, 64]);
 const STANDARD_GUITAR_LABEL = "EADGBE";
+const KEYBOARD_HAND_LEFT = 0;
+const KEYBOARD_HAND_RIGHT = 1;
+const FRET_TECHNIQUE_GENERIC_GUITAR = 0;
+const FRET_TECHNIQUE_BASS_SIMANDL = 1;
+const FRET_TECHNIQUE_BASS_OFPF = 2;
+const FRET_TECHNIQUE_EXTENDED_RANGE_CLASSICAL_THUMB = 3;
+const KEYBOARD_MARGIN_X = 16;
+const KEYBOARD_MARGIN_Y = 16;
+const KEYBOARD_WHITE_KEY_WIDTH = 24;
+const KEYBOARD_WHITE_KEY_HEIGHT = 124;
+const KEYBOARD_BLACK_KEY_WIDTH = 14;
+const KEYBOARD_BLACK_KEY_HEIGHT = 76;
+const FRET_GRID_LEFT = 20;
+const FRET_GRID_TOP = 20;
+const FRET_GRID_WIDTH = 60;
+const FRET_FRET_SPACING = 15;
+const FRET_MARKER_Y = 10;
+const FRET_DEFAULT_VISIBLE_FRETS = 4;
 const MIDI_FRET_MAX_FRET = 12;
 const MIDI_FRET_MAX_SPAN = 4;
 const MIDI_FRET_ROW_CAP = 48;
@@ -168,6 +190,26 @@ const REQUIRED_EXPORTS = [
   "lmt_generate_voicings_n",
   "lmt_rank_context_suggestions",
   "lmt_preferred_voicing_n",
+  "lmt_playability_reason_count",
+  "lmt_playability_reason_name",
+  "lmt_playability_warning_count",
+  "lmt_playability_warning_name",
+  "lmt_sizeof_hand_profile",
+  "lmt_sizeof_temporal_load_state",
+  "lmt_sizeof_fret_play_state",
+  "lmt_sizeof_fret_realization_assessment",
+  "lmt_sizeof_fret_transition_assessment",
+  "lmt_sizeof_keybed_key_coord",
+  "lmt_sizeof_keyboard_play_state",
+  "lmt_sizeof_keyboard_realization_assessment",
+  "lmt_sizeof_keyboard_transition_assessment",
+  "lmt_default_fret_hand_profile_for_technique",
+  "lmt_default_keyboard_hand_profile",
+  "lmt_assess_fret_realization_n",
+  "lmt_assess_fret_transition_n",
+  "lmt_keyboard_key_coord",
+  "lmt_assess_keyboard_realization_n",
+  "lmt_assess_keyboard_transition_n",
   "lmt_pitch_class_guide_n",
   "lmt_frets_to_url_n",
   "lmt_url_to_frets_n",
@@ -199,6 +241,7 @@ const statusEl = document.getElementById("status");
 const previewModeSvgEl = document.getElementById("preview-mode-svg");
 const previewModeBitmapEl = document.getElementById("preview-mode-bitmap");
 const miniInstrumentModeEl = document.getElementById("mini-instrument-mode");
+const playabilityOverlayModeEl = document.getElementById("playability-overlay-mode");
 const pcsToggleGrid = document.getElementById("pcs-toggle-grid");
 const midiCaptionEl = document.getElementById("midi-caption");
 const midiStatusPillsEl = document.getElementById("midi-status-pills");
@@ -320,6 +363,19 @@ let counterpointWarningNames = [];
 let counterpointProfileNames = DEFAULT_COUNTERPOINT_PROFILE_NAMES.slice();
 let counterpointCadenceDestinationNames = DEFAULT_CADENCE_DESTINATION_NAMES.slice();
 let counterpointSuspensionStateNames = DEFAULT_SUSPENSION_STATE_NAMES.slice();
+let playabilityReasonNames = [];
+let playabilityWarningNames = [];
+let playabilityStructSizes = {
+  handProfile: 0,
+  temporalLoadState: 0,
+  fretPlayState: 0,
+  fretRealizationAssessment: 0,
+  fretTransitionAssessment: 0,
+  keybedKeyCoord: 0,
+  keyboardPlayState: 0,
+  keyboardRealizationAssessment: 0,
+  keyboardTransitionAssessment: 0,
+};
 let counterpointStructSizes = {
   voicedState: 0,
   voicedHistory: 0,
@@ -336,6 +392,7 @@ let orbifoldTriadEdges = [];
 const galleryUiState = {
   previewMode: PREVIEW_MODE_SVG,
   miniInstrument: MINI_INSTRUMENT_OFF,
+  playabilityOverlay: PLAYABILITY_OVERLAY_OFF,
 };
 
 const gallerySummary = {
@@ -343,6 +400,7 @@ const gallerySummary = {
   manifestLoaded: false,
   sceneCount: 0,
   previewMode: PREVIEW_MODE_SVG,
+  playabilityOverlayMode: PLAYABILITY_OVERLAY_OFF,
   errors: [],
   scenes: {
     midi: {},
@@ -415,6 +473,24 @@ function persistMiniInstrument(mode) {
   }
 }
 
+function loadPlayabilityOverlayPreference() {
+  try {
+    const raw = window.localStorage?.getItem(GALLERY_PLAYABILITY_OVERLAY_STORAGE_KEY);
+    if (raw === PLAYABILITY_OVERLAY_BASIC || raw === PLAYABILITY_OVERLAY_DETAILED || raw === PLAYABILITY_OVERLAY_OFF) return raw;
+  } catch (_error) {
+    // Ignore storage failures.
+  }
+  return PLAYABILITY_OVERLAY_OFF;
+}
+
+function persistPlayabilityOverlay(mode) {
+  try {
+    window.localStorage?.setItem(GALLERY_PLAYABILITY_OVERLAY_STORAGE_KEY, mode);
+  } catch (_error) {
+    // Ignore storage failures.
+  }
+}
+
 function updatePreviewModeUi() {
   const isBitmap = galleryUiState.previewMode === PREVIEW_MODE_BITMAP;
   previewModeSvgEl.classList.toggle("is-active", !isBitmap);
@@ -448,6 +524,22 @@ function setMiniInstrumentMode(mode, { persist = true, rerender = true } = {}) {
 
 function miniInstrumentMode() {
   return galleryUiState.miniInstrument;
+}
+
+function setPlayabilityOverlayMode(mode, { persist = true, rerender = true } = {}) {
+  if (mode !== PLAYABILITY_OVERLAY_BASIC && mode !== PLAYABILITY_OVERLAY_DETAILED) {
+    galleryUiState.playabilityOverlay = PLAYABILITY_OVERLAY_OFF;
+  } else {
+    galleryUiState.playabilityOverlay = mode;
+  }
+  playabilityOverlayModeEl.value = galleryUiState.playabilityOverlay;
+  gallerySummary.playabilityOverlayMode = galleryUiState.playabilityOverlay;
+  if (persist) persistPlayabilityOverlay(galleryUiState.playabilityOverlay);
+  if (rerender && wasm && memory) renderAll();
+}
+
+function playabilityOverlayMode() {
+  return galleryUiState.playabilityOverlay;
 }
 
 class ScratchArena {
@@ -655,6 +747,26 @@ function loadCounterpointMetadata() {
   } finally {
     arena.release();
   }
+}
+
+function loadPlayabilityMetadata() {
+  const reasonCount = wasm.lmt_playability_reason_count();
+  playabilityReasonNames = Array.from({ length: reasonCount }, (_unused, index) =>
+    readCStringPtr(wasm.lmt_playability_reason_name(index)));
+  const warningCount = wasm.lmt_playability_warning_count();
+  playabilityWarningNames = Array.from({ length: warningCount }, (_unused, index) =>
+    readCStringPtr(wasm.lmt_playability_warning_name(index)));
+  playabilityStructSizes = {
+    handProfile: wasm.lmt_sizeof_hand_profile(),
+    temporalLoadState: wasm.lmt_sizeof_temporal_load_state(),
+    fretPlayState: wasm.lmt_sizeof_fret_play_state(),
+    fretRealizationAssessment: wasm.lmt_sizeof_fret_realization_assessment(),
+    fretTransitionAssessment: wasm.lmt_sizeof_fret_transition_assessment(),
+    keybedKeyCoord: wasm.lmt_sizeof_keybed_key_coord(),
+    keyboardPlayState: wasm.lmt_sizeof_keyboard_play_state(),
+    keyboardRealizationAssessment: wasm.lmt_sizeof_keyboard_realization_assessment(),
+    keyboardTransitionAssessment: wasm.lmt_sizeof_keyboard_transition_assessment(),
+  };
 }
 
 function modeSet(tonic, modeType) {
@@ -963,6 +1075,596 @@ function readMiniInstrumentPreviewMetrics(host) {
     miniRangeHigh: Number.isFinite(high) ? high : null,
     miniRangeSpan: Number.isFinite(span) ? span : null,
   };
+}
+
+function clearPlayabilityOverlayMetadata(host) {
+  if (!host) return;
+  delete host.dataset.playabilityOverlayMode;
+  delete host.dataset.playabilityStatus;
+  delete host.dataset.playabilityKind;
+  delete host.dataset.playabilityMarkerCount;
+  delete host.dataset.playabilityBlocked;
+  delete host.dataset.playabilityReasonCount;
+  delete host.dataset.playabilityWarningCount;
+  host.__lmtPlayabilityOverlayState = null;
+  host.querySelector(".playability-overlay")?.remove();
+}
+
+function readPlayabilityOverlayMetrics(host) {
+  const markerCount = Number.parseInt(host?.dataset?.playabilityMarkerCount || "", 10);
+  const reasonCount = Number.parseInt(host?.dataset?.playabilityReasonCount || "", 10);
+  const warningCount = Number.parseInt(host?.dataset?.playabilityWarningCount || "", 10);
+  return {
+    overlayMode: host?.dataset?.playabilityOverlayMode || PLAYABILITY_OVERLAY_OFF,
+    overlayStatus: host?.dataset?.playabilityStatus || "",
+    overlayKind: host?.dataset?.playabilityKind || "",
+    overlayRendered: host?.querySelector(".playability-overlay") != null,
+    overlayBlocked: host?.dataset?.playabilityBlocked === "1",
+    markerCount: Number.isFinite(markerCount) ? markerCount : 0,
+    reasonCount: Number.isFinite(reasonCount) ? reasonCount : 0,
+    warningCount: Number.isFinite(warningCount) ? warningCount : 0,
+  };
+}
+
+function midiIsBlackKey(note) {
+  return [1, 3, 6, 8, 10].includes(((note % 12) + 12) % 12);
+}
+
+function keyboardWhiteIndexBefore(rangeLow, midi) {
+  let total = 0;
+  for (let note = rangeLow; note < midi; note += 1) {
+    if (!midiIsBlackKey(note)) total += 1;
+  }
+  return total;
+}
+
+function keyboardKeyCenter(rangeLow, midi) {
+  const whiteBefore = keyboardWhiteIndexBefore(rangeLow, midi);
+  if (midiIsBlackKey(midi)) {
+    return {
+      x: KEYBOARD_MARGIN_X + whiteBefore * KEYBOARD_WHITE_KEY_WIDTH,
+      y: KEYBOARD_MARGIN_Y + KEYBOARD_BLACK_KEY_HEIGHT * 0.52,
+    };
+  }
+  return {
+    x: KEYBOARD_MARGIN_X + whiteBefore * KEYBOARD_WHITE_KEY_WIDTH + KEYBOARD_WHITE_KEY_WIDTH / 2,
+    y: KEYBOARD_MARGIN_Y + KEYBOARD_WHITE_KEY_HEIGHT * 0.72,
+  };
+}
+
+function readPreviewViewMetrics(host) {
+  const image = host?.querySelector("img");
+  if (!image) return null;
+  const previewMinX = Number.parseFloat(image.dataset.previewMinX || image.dataset.originalMinX || "0");
+  const previewMinY = Number.parseFloat(image.dataset.previewMinY || image.dataset.originalMinY || "0");
+  const previewWidth = Number.parseFloat(image.dataset.previewWidth || image.dataset.originalWidth || "0");
+  const previewHeight = Number.parseFloat(image.dataset.previewHeight || image.dataset.originalHeight || "0");
+  if (![previewMinX, previewMinY, previewWidth, previewHeight].every(Number.isFinite) || previewWidth <= 0 || previewHeight <= 0) {
+    return null;
+  }
+  return { previewMinX, previewMinY, previewWidth, previewHeight };
+}
+
+function overlayPointForSvgPoint(host, x, y) {
+  const view = readPreviewViewMetrics(host);
+  if (!view) return null;
+  return {
+    x: clamp(((x - view.previewMinX) / view.previewWidth) * 100, 0, 100),
+    y: clamp(((y - view.previewMinY) / view.previewHeight) * 100, 0, 100),
+  };
+}
+
+function overlayRectForSvgRect(host, x, y, width, height) {
+  const start = overlayPointForSvgPoint(host, x, y);
+  const end = overlayPointForSvgPoint(host, x + width, y + height);
+  if (!start || !end) return null;
+  return {
+    x: Math.min(start.x, end.x),
+    y: Math.min(start.y, end.y),
+    width: Math.abs(end.x - start.x),
+    height: Math.abs(end.y - start.y),
+  };
+}
+
+function fretStringCenter(stringIndex, stringCount) {
+  if (stringCount <= 1) return FRET_GRID_LEFT + FRET_GRID_WIDTH / 2;
+  return FRET_GRID_LEFT + (stringIndex * (FRET_GRID_WIDTH / (stringCount - 1)));
+}
+
+function fretDotCenter(fret, windowStart) {
+  return FRET_GRID_TOP + ((fret - windowStart) - 0.5) * FRET_FRET_SPACING;
+}
+
+function decodeTemporalLoadStateFromView(view, base = 0) {
+  return {
+    eventCount: view.getUint8(base + 0),
+    lastAnchorStep: view.getUint8(base + 1),
+    lastSpanSteps: view.getUint8(base + 2),
+    lastShiftSteps: view.getUint8(base + 3),
+    peakSpanSteps: view.getUint8(base + 4),
+    peakShiftSteps: view.getUint8(base + 5),
+    cumulativeSpanSteps: view.getUint16(base + 6, true),
+    cumulativeShiftSteps: view.getUint16(base + 8, true),
+  };
+}
+
+function decodeHandProfileFromView(view, base = 0) {
+  return {
+    fingerCount: view.getUint8(base + 0),
+    comfortSpanSteps: view.getUint8(base + 1),
+    limitSpanSteps: view.getUint8(base + 2),
+    comfortShiftSteps: view.getUint8(base + 3),
+    limitShiftSteps: view.getUint8(base + 4),
+    prefersLowTension: view.getUint8(base + 5) !== 0,
+  };
+}
+
+function assertDataViewReadable(view, offset, width, label) {
+  if ((offset + width) > view.byteLength) {
+    throw new RangeError(`${label} offset ${offset} width ${width} exceeds DataView length ${view.byteLength}`);
+  }
+}
+
+function decodeFretPlayStateFromView(view, base = 0) {
+  return {
+    anchorFret: view.getUint8(base + 0),
+    windowStart: view.getUint8(base + 1),
+    windowEnd: view.getUint8(base + 2),
+    lowestString: view.getUint8(base + 3),
+    highestString: view.getUint8(base + 4),
+    activeStringCount: view.getUint8(base + 5),
+    frettedNoteCount: view.getUint8(base + 6),
+    openStringCount: view.getUint8(base + 7),
+    spanSteps: view.getUint8(base + 8),
+    comfortFit: view.getUint8(base + 9) !== 0,
+    limitFit: view.getUint8(base + 10) !== 0,
+    load: decodeTemporalLoadStateFromView(view, base + 12),
+  };
+}
+
+function decodeFretRealizationAssessmentFromPointer(ptr) {
+  if (!ptr) return null;
+  const rowBytes = playabilityStructSizes.fretRealizationAssessment || 56;
+  const stateBytes = playabilityStructSizes.fretPlayState || 22;
+  const view = new DataView(memory.buffer, ptr, rowBytes);
+  const blockerOffset = stateBytes + 6;
+  const warningOffset = stateBytes + 10;
+  const reasonOffset = stateBytes + 14;
+  const fingerOffset = stateBytes + 18;
+  assertDataViewReadable(view, fingerOffset + 15, 1, "fretRealizationAssessment.recommendedFingers[15]");
+  return {
+    state: decodeFretPlayStateFromView(view, 0),
+    stringSpanSteps: view.getUint8(stateBytes + 0),
+    profile: view.getUint8(stateBytes + 1),
+    bottleneckCost: view.getUint16(stateBytes + 2, true),
+    cumulativeCost: view.getUint16(stateBytes + 4, true),
+    blockerBits: view.getUint32(blockerOffset, true),
+    warningBits: view.getUint32(warningOffset, true),
+    reasonBits: view.getUint32(reasonOffset, true),
+    recommendedFingers: Array.from({ length: 16 }, (_unused, index) => view.getUint8(fingerOffset + index)),
+  };
+}
+
+function decodeFretTransitionAssessmentFromPointer(ptr) {
+  if (!ptr) return null;
+  const rowBytes = playabilityStructSizes.fretTransitionAssessment || 80;
+  const stateBytes = playabilityStructSizes.fretPlayState || 22;
+  const view = new DataView(memory.buffer, ptr, rowBytes);
+  const afterStates = stateBytes * 2;
+  const blockerOffset = afterStates + 8;
+  const warningOffset = afterStates + 12;
+  const reasonOffset = afterStates + 16;
+  const fingerOffset = afterStates + 20;
+  assertDataViewReadable(view, fingerOffset + 15, 1, "fretTransitionAssessment.recommendedFingers[15]");
+  return {
+    fromState: decodeFretPlayStateFromView(view, 0),
+    toState: decodeFretPlayStateFromView(view, stateBytes),
+    anchorDeltaSteps: view.getUint8(afterStates + 0),
+    changedStringCount: view.getUint8(afterStates + 1),
+    profile: view.getUint8(afterStates + 2),
+    bottleneckCost: view.getUint16(afterStates + 4, true),
+    cumulativeCost: view.getUint16(afterStates + 6, true),
+    blockerBits: view.getUint32(blockerOffset, true),
+    warningBits: view.getUint32(warningOffset, true),
+    reasonBits: view.getUint32(reasonOffset, true),
+    recommendedFingers: Array.from({ length: 16 }, (_unused, index) => view.getUint8(fingerOffset + index)),
+  };
+}
+
+function decodeKeyboardPlayStateFromView(view, base = 0) {
+  return {
+    anchorMidi: view.getUint8(base + 0),
+    lowMidi: view.getUint8(base + 1),
+    highMidi: view.getUint8(base + 2),
+    activeNoteCount: view.getUint8(base + 3),
+    blackKeyCount: view.getUint8(base + 4),
+    whiteKeyCount: view.getUint8(base + 5),
+    spanSemitones: view.getUint8(base + 6),
+    comfortFit: view.getUint8(base + 7) !== 0,
+    limitFit: view.getUint8(base + 8) !== 0,
+    load: decodeTemporalLoadStateFromView(view, base + 10),
+  };
+}
+
+function decodeKeyboardRealizationAssessmentFromPointer(ptr) {
+  if (!ptr) return null;
+  const rowBytes = playabilityStructSizes.keyboardRealizationAssessment || 48;
+  const stateBytes = playabilityStructSizes.keyboardPlayState || 20;
+  const view = new DataView(memory.buffer, ptr, rowBytes);
+  return {
+    state: decodeKeyboardPlayStateFromView(view, 0),
+    hand: view.getUint8(stateBytes + 0),
+    noteCount: view.getUint8(stateBytes + 1),
+    outerBlackCount: view.getUint8(stateBytes + 2),
+    bottleneckCost: view.getUint16(stateBytes + 4, true),
+    cumulativeCost: view.getUint16(stateBytes + 6, true),
+    blockerBits: view.getUint32(stateBytes + 8, true),
+    warningBits: view.getUint32(stateBytes + 12, true),
+    reasonBits: view.getUint32(stateBytes + 16, true),
+    recommendedFingers: Array.from({ length: 5 }, (_unused, index) => view.getUint8(stateBytes + 20 + index)),
+  };
+}
+
+function decodeKeyboardTransitionAssessmentFromPointer(ptr) {
+  if (!ptr) return null;
+  const rowBytes = playabilityStructSizes.keyboardTransitionAssessment || 72;
+  const stateBytes = playabilityStructSizes.keyboardPlayState || 20;
+  const view = new DataView(memory.buffer, ptr, rowBytes);
+  const afterStates = stateBytes * 2;
+  return {
+    fromState: decodeKeyboardPlayStateFromView(view, 0),
+    toState: decodeKeyboardPlayStateFromView(view, stateBytes),
+    hand: view.getUint8(afterStates + 0),
+    noteCount: view.getUint8(afterStates + 1),
+    anchorDeltaSemitones: view.getUint8(afterStates + 2),
+    bottleneckCost: view.getUint16(afterStates + 4, true),
+    cumulativeCost: view.getUint16(afterStates + 6, true),
+    blockerBits: view.getUint32(afterStates + 8, true),
+    warningBits: view.getUint32(afterStates + 12, true),
+    reasonBits: view.getUint32(afterStates + 16, true),
+    fromFingers: Array.from({ length: 5 }, (_unused, index) => view.getUint8(afterStates + 20 + index)),
+    toFingers: Array.from({ length: 5 }, (_unused, index) => view.getUint8(afterStates + 25 + index)),
+  };
+}
+
+function keyboardHandLabel(hand) {
+  return hand === KEYBOARD_HAND_LEFT ? "LH" : "RH";
+}
+
+function fretTechniqueLabel(profile) {
+  switch (profile) {
+    case FRET_TECHNIQUE_BASS_SIMANDL:
+      return "Simandl";
+    case FRET_TECHNIQUE_BASS_OFPF:
+      return "OFPF";
+    case FRET_TECHNIQUE_EXTENDED_RANGE_CLASSICAL_THUMB:
+      return "classical-thumb";
+    default:
+      return "generic";
+  }
+}
+
+function uniqueNames(...lists) {
+  return Array.from(new Set(lists.flatMap((one) => Array.isArray(one) ? one : [])));
+}
+
+function isBlockedPlayability(bits, state) {
+  return (bits >>> 0) !== 0 || state?.limitFit === false;
+}
+
+function comparePlayabilityCandidates(left, right, noteCenter = 60) {
+  if (!left) return right;
+  if (!right) return left;
+  const leftBlocked = isBlockedPlayability(left.blockerBits, left.state || left.toState);
+  const rightBlocked = isBlockedPlayability(right.blockerBits, right.state || right.toState);
+  if (leftBlocked !== rightBlocked) return leftBlocked ? right : left;
+  if ((left.bottleneckCost || 0) !== (right.bottleneckCost || 0)) {
+    return (left.bottleneckCost || 0) < (right.bottleneckCost || 0) ? left : right;
+  }
+  if ((left.cumulativeCost || 0) !== (right.cumulativeCost || 0)) {
+    return (left.cumulativeCost || 0) < (right.cumulativeCost || 0) ? left : right;
+  }
+  if ((left.warningBits || 0) !== (right.warningBits || 0)) {
+    return (left.warningBits || 0) < (right.warningBits || 0) ? left : right;
+  }
+  if (Number.isInteger(left.hand) && Number.isInteger(right.hand)) {
+    return noteCenter >= 60
+      ? (left.hand === KEYBOARD_HAND_RIGHT ? left : right)
+      : (left.hand === KEYBOARD_HAND_LEFT ? left : right);
+  }
+  return left;
+}
+
+function defaultKeyboardProfile(arena) {
+  const ptr = arena.alloc(playabilityStructSizes.handProfile || 8, 4);
+  if (!wasm.lmt_default_keyboard_hand_profile(ptr)) return null;
+  return {
+    ptr,
+    profile: decodeHandProfileFromView(new DataView(memory.buffer, ptr, playabilityStructSizes.handProfile || 8), 0),
+  };
+}
+
+function defaultFretProfile(arena, profileRaw) {
+  const ptr = arena.alloc(playabilityStructSizes.handProfile || 8, 4);
+  if (!wasm.lmt_default_fret_hand_profile_for_technique(profileRaw, ptr)) return null;
+  return {
+    ptr,
+    profile: decodeHandProfileFromView(new DataView(memory.buffer, ptr, playabilityStructSizes.handProfile || 8), 0),
+  };
+}
+
+function keyboardAssessmentMarkerState(host, notes, rangeLow, fingers) {
+  return notes.map((note, index) => {
+    const finger = fingers[index] || 0;
+    if (finger <= 0) return null;
+    const center = keyboardKeyCenter(rangeLow, note);
+    const point = overlayPointForSvgPoint(host, center.x, center.y);
+    if (!point) return null;
+    return {
+      label: String(finger),
+      color: pitchClassColor(note % 12),
+      left: point.x,
+      top: point.y,
+    };
+  }).filter(Boolean);
+}
+
+function fretAssessmentMarkerState(host, voicing, fingers) {
+  return voicing.frets.map((fret, stringIndex) => {
+    const finger = fingers[stringIndex] || 0;
+    if (fret <= 0 || finger <= 0) return null;
+    const point = overlayPointForSvgPoint(
+      host,
+      fretStringCenter(stringIndex, voicing.frets.length),
+      fretDotCenter(fret, voicing.windowStart),
+    );
+    if (!point) return null;
+    const midi = (voicing.tuning?.[stringIndex] ?? 0) + fret;
+    return {
+      label: String(finger),
+      color: pitchClassColor(midi % 12),
+      left: point.x,
+      top: point.y,
+    };
+  }).filter(Boolean);
+}
+
+function assessKeyboardOverlay(arena, notes, { previousNotes = [] } = {}) {
+  if (!Array.isArray(notes) || notes.length === 0) return null;
+  const defaultProfile = defaultKeyboardProfile(arena);
+  if (!defaultProfile) return null;
+  const notesPtr = writeU8Array(arena, notes);
+  const previousPtr = writeU8Array(arena, previousNotes);
+  const noteCenter = notes.reduce((sum, note) => sum + note, 0) / notes.length;
+  const candidates = [KEYBOARD_HAND_LEFT, KEYBOARD_HAND_RIGHT].map((hand) => {
+    const realizationPtr = arena.alloc(playabilityStructSizes.keyboardRealizationAssessment || 48, 4);
+    const wroteRealization = wasm.lmt_assess_keyboard_realization_n(
+      notesPtr,
+      notes.length,
+      hand,
+      defaultProfile.ptr,
+      0,
+      realizationPtr,
+    );
+    if (!wroteRealization) return null;
+    const realization = decodeKeyboardRealizationAssessmentFromPointer(realizationPtr);
+    let transition = null;
+    if (previousNotes.length > 0) {
+      const transitionPtr = arena.alloc(playabilityStructSizes.keyboardTransitionAssessment || 72, 4);
+      const wroteTransition = wasm.lmt_assess_keyboard_transition_n(
+        previousPtr,
+        previousNotes.length,
+        notesPtr,
+        notes.length,
+        hand,
+        defaultProfile.ptr,
+        0,
+        transitionPtr,
+      );
+      if (wroteTransition) transition = decodeKeyboardTransitionAssessmentFromPointer(transitionPtr);
+    }
+    return {
+      hand,
+      profile: defaultProfile.profile,
+      state: realization.state,
+      bottleneckCost: Math.max(realization.bottleneckCost, transition?.bottleneckCost || 0),
+      cumulativeCost: Math.max(realization.cumulativeCost, transition?.cumulativeCost || 0),
+      blockerBits: (realization.blockerBits || 0) | (transition?.blockerBits || 0),
+      warningBits: (realization.warningBits || 0) | (transition?.warningBits || 0),
+      reasonBits: (realization.reasonBits || 0) | (transition?.reasonBits || 0),
+      realization,
+      transition,
+    };
+  }).filter(Boolean);
+  const chosen = candidates.reduce((best, candidate) => comparePlayabilityCandidates(best, candidate, noteCenter), null);
+  if (!chosen) return null;
+  return {
+    kind: MINI_INSTRUMENT_PIANO,
+    hand: chosen.hand,
+    handLabel: keyboardHandLabel(chosen.hand),
+    profile: chosen.profile,
+    profileLabel: "default",
+    blocked: isBlockedPlayability(chosen.blockerBits, chosen.realization.state),
+    blockerBits: chosen.blockerBits,
+    warningBits: chosen.warningBits,
+    reasonBits: chosen.reasonBits,
+    warningNames: namesFromMask(chosen.warningBits, playabilityWarningNames),
+    reasonNames: namesFromMask(chosen.reasonBits, playabilityReasonNames),
+    realization: chosen.realization,
+    transition: chosen.transition,
+    markerFingers: chosen.transition?.toFingers || chosen.realization.recommendedFingers,
+  };
+}
+
+function fretTechniqueCandidatesForVoicing(voicing) {
+  const stringCount = voicing?.frets?.length || 0;
+  if (stringCount <= 4) return [FRET_TECHNIQUE_BASS_SIMANDL, FRET_TECHNIQUE_BASS_OFPF];
+  if (stringCount >= 7) return [FRET_TECHNIQUE_EXTENDED_RANGE_CLASSICAL_THUMB, FRET_TECHNIQUE_GENERIC_GUITAR];
+  return [FRET_TECHNIQUE_GENERIC_GUITAR];
+}
+
+function assessFretOverlay(arena, voicing, { previousVoicing = null } = {}) {
+  if (!voicing || !Array.isArray(voicing.frets) || voicing.frets.length === 0 || !Array.isArray(voicing.tuning)) return null;
+  const fretsPtr = writeI8Array(arena, voicing.frets);
+  const tuningPtr = writeU8Array(arena, voicing.tuning);
+  const previousFretsPtr = previousVoicing?.frets?.length === voicing.frets.length ? writeI8Array(arena, previousVoicing.frets) : 0;
+  const candidates = fretTechniqueCandidatesForVoicing(voicing).map((profileRaw) => {
+    const defaultProfile = defaultFretProfile(arena, profileRaw);
+    if (!defaultProfile) return null;
+    const realizationPtr = arena.alloc(playabilityStructSizes.fretRealizationAssessment || 56, 4);
+    const wroteRealization = wasm.lmt_assess_fret_realization_n(
+      fretsPtr,
+      voicing.frets.length,
+      tuningPtr,
+      voicing.tuning.length,
+      profileRaw,
+      defaultProfile.ptr,
+      0,
+      realizationPtr,
+    );
+    if (!wroteRealization) return null;
+    const realization = decodeFretRealizationAssessmentFromPointer(realizationPtr);
+    let transition = null;
+    if (previousFretsPtr && previousVoicing?.tuning?.length === voicing.tuning.length) {
+      const transitionPtr = arena.alloc(playabilityStructSizes.fretTransitionAssessment || 80, 4);
+      const wroteTransition = wasm.lmt_assess_fret_transition_n(
+        previousFretsPtr,
+        fretsPtr,
+        voicing.frets.length,
+        tuningPtr,
+        voicing.tuning.length,
+        profileRaw,
+        defaultProfile.ptr,
+        transitionPtr,
+      );
+      if (wroteTransition) transition = decodeFretTransitionAssessmentFromPointer(transitionPtr);
+    }
+    return {
+      profileRaw,
+      profile: defaultProfile.profile,
+      state: realization.state,
+      bottleneckCost: Math.max(realization.bottleneckCost, transition?.bottleneckCost || 0),
+      cumulativeCost: Math.max(realization.cumulativeCost, transition?.cumulativeCost || 0),
+      blockerBits: (realization.blockerBits || 0) | (transition?.blockerBits || 0),
+      warningBits: (realization.warningBits || 0) | (transition?.warningBits || 0),
+      reasonBits: (realization.reasonBits || 0) | (transition?.reasonBits || 0),
+      realization,
+      transition,
+    };
+  }).filter(Boolean);
+  const chosen = candidates.reduce((best, candidate) => comparePlayabilityCandidates(best, candidate, 0), null);
+  if (!chosen) return null;
+  return {
+    kind: MINI_INSTRUMENT_FRET,
+    profileRaw: chosen.profileRaw,
+    profile: chosen.profile,
+    profileLabel: fretTechniqueLabel(chosen.profileRaw),
+    blocked: isBlockedPlayability(chosen.blockerBits, chosen.realization.state),
+    blockerBits: chosen.blockerBits,
+    warningBits: chosen.warningBits,
+    reasonBits: chosen.reasonBits,
+    warningNames: namesFromMask(chosen.warningBits, playabilityWarningNames),
+    reasonNames: namesFromMask(chosen.reasonBits, playabilityReasonNames),
+    realization: chosen.realization,
+    transition: chosen.transition,
+    markerFingers: chosen.transition?.recommendedFingers || chosen.realization.recommendedFingers,
+  };
+}
+
+function playabilityStatus(overlayState) {
+  if (!overlayState) return "none";
+  if (overlayState.blocked) return "blocked";
+  if ((overlayState.warningNames || []).length > 0) return "warning";
+  return "playable";
+}
+
+function renderPlayabilityOverlay(host, overlayState) {
+  clearPlayabilityOverlayMetadata(host);
+  if (!host || !overlayState || playabilityOverlayMode() === PLAYABILITY_OVERLAY_OFF) return;
+
+  const markers = overlayState.kind === MINI_INSTRUMENT_PIANO
+    ? keyboardAssessmentMarkerState(host, overlayState.notes, overlayState.rangeLow, overlayState.markerFingers)
+    : fretAssessmentMarkerState(host, overlayState.voicing, overlayState.markerFingers);
+  const status = playabilityStatus(overlayState);
+  const overlay = document.createElement("div");
+  overlay.className = `playability-overlay is-${playabilityOverlayMode()} is-${status} is-${overlayState.kind}`;
+  const badge = overlayState.kind === MINI_INSTRUMENT_PIANO
+    ? `${overlayState.handLabel} · ${status}`
+    : `${overlayState.profileLabel} · ${status}`;
+  const reasons = (overlayState.reasonNames || []).slice(0, 2);
+  const warnings = (overlayState.warningNames || []).slice(0, 2);
+
+  let boxRect = null;
+  let shiftLine = null;
+  if (playabilityOverlayMode() === PLAYABILITY_OVERLAY_DETAILED) {
+    if (overlayState.kind === MINI_INSTRUMENT_PIANO) {
+      const state = overlayState.realization?.state;
+      if (state?.activeNoteCount > 0) {
+        const leftCenter = keyboardKeyCenter(overlayState.rangeLow, state.lowMidi);
+        const rightCenter = keyboardKeyCenter(overlayState.rangeLow, state.highMidi);
+        boxRect = overlayRectForSvgRect(host, leftCenter.x - 10, KEYBOARD_MARGIN_Y + 6, (rightCenter.x - leftCenter.x) + 20, KEYBOARD_WHITE_KEY_HEIGHT - 12);
+      }
+      if (overlayState.transition?.anchorDeltaSemitones > 0) {
+        const fromCenter = keyboardKeyCenter(overlayState.rangeLow, overlayState.transition.fromState.anchorMidi);
+        const toCenter = keyboardKeyCenter(overlayState.rangeLow, overlayState.transition.toState.anchorMidi);
+        const start = overlayPointForSvgPoint(host, fromCenter.x, KEYBOARD_MARGIN_Y + 10);
+        const end = overlayPointForSvgPoint(host, toCenter.x, KEYBOARD_MARGIN_Y + 10);
+        if (start && end) shiftLine = { start, end };
+      }
+    } else {
+      const state = overlayState.realization?.state;
+      if (state?.activeStringCount > 0) {
+        const leftX = fretStringCenter(state.lowestString, overlayState.voicing.frets.length) - 8;
+        const rightX = fretStringCenter(state.highestString, overlayState.voicing.frets.length) + 8;
+        const visibleStart = overlayState.voicing.windowStart;
+        const visibleEnd = overlayState.voicing.windowStart + (overlayState.voicing.visibleFrets || FRET_DEFAULT_VISIBLE_FRETS);
+        const startFret = Math.max(visibleStart, state.windowStart);
+        const endFret = Math.max(startFret, Math.min(visibleEnd, state.windowEnd));
+        boxRect = overlayRectForSvgRect(host, leftX, FRET_GRID_TOP + Math.max(0, startFret - visibleStart) * FRET_FRET_SPACING, rightX - leftX, Math.max(FRET_FRET_SPACING, (endFret - startFret + 1) * FRET_FRET_SPACING));
+      }
+      if (overlayState.transition?.anchorDeltaSteps > 0) {
+        const start = overlayPointForSvgPoint(host, 10, fretDotCenter(Math.max(overlayState.transition.fromState.anchorFret, overlayState.voicing.windowStart + 1), overlayState.voicing.windowStart));
+        const end = overlayPointForSvgPoint(host, 10, fretDotCenter(Math.max(overlayState.transition.toState.anchorFret, overlayState.voicing.windowStart + 1), overlayState.voicing.windowStart));
+        if (start && end) shiftLine = { start, end };
+      }
+    }
+  }
+
+  const markerMarkup = markers.map((marker) =>
+    `<span class="playability-finger-marker" style="left:${marker.left.toFixed(2)}%;top:${marker.top.toFixed(2)}%;--playability-marker-color:${marker.color};">${escapeHtml(marker.label)}</span>`).join("");
+  const chips = [
+    ...reasons.map((reason) => `<span class="playability-chip">${escapeHtml(reason)}</span>`),
+    ...warnings.map((warning) => `<span class="playability-chip is-warning">${escapeHtml(warning)}</span>`),
+  ].join("");
+  const detailedSvg = (boxRect || shiftLine)
+    ? `<svg class="playability-overlay-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+        <defs>
+          <marker id="playability-arrowhead" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
+            <polygon points="0 0, 7 3.5, 0 7" fill="currentColor"></polygon>
+          </marker>
+        </defs>
+        ${boxRect ? `<rect class="playability-hand-box${overlayState.blocked || overlayState.realization?.state?.comfortFit === false ? " is-strained" : ""}" x="${boxRect.x.toFixed(2)}" y="${boxRect.y.toFixed(2)}" width="${boxRect.width.toFixed(2)}" height="${boxRect.height.toFixed(2)}" rx="4"></rect>` : ""}
+        ${shiftLine ? `<line class="playability-shift-arrow" x1="${shiftLine.start.x.toFixed(2)}" y1="${shiftLine.start.y.toFixed(2)}" x2="${shiftLine.end.x.toFixed(2)}" y2="${shiftLine.end.y.toFixed(2)}" marker-end="url(#playability-arrowhead)"></line>` : ""}
+      </svg>`
+    : "";
+
+  overlay.innerHTML = `
+    ${detailedSvg}
+    <div class="playability-overlay-badge">${escapeHtml(badge)}</div>
+    ${playabilityOverlayMode() === PLAYABILITY_OVERLAY_DETAILED ? `<div class="playability-overlay-detail">${escapeHtml(`bottleneck ${overlayState.transition?.bottleneckCost || overlayState.realization?.bottleneckCost || 0}`)}</div>` : ""}
+    ${markerMarkup}
+    ${chips ? `<div class="playability-overlay-chips">${chips}</div>` : ""}
+  `;
+  host.classList.add("playability-overlay-host");
+  host.appendChild(overlay);
+  host.dataset.playabilityOverlayMode = playabilityOverlayMode();
+  host.dataset.playabilityStatus = status;
+  host.dataset.playabilityKind = overlayState.kind;
+  host.dataset.playabilityMarkerCount = String(markers.length);
+  host.dataset.playabilityBlocked = overlayState.blocked ? "1" : "0";
+  host.dataset.playabilityReasonCount = String((overlayState.reasonNames || []).length);
+  host.dataset.playabilityWarningCount = String((overlayState.warningNames || []).length);
+  host.__lmtPlayabilityOverlayState = { ...overlayState, status, markerCount: markers.length };
 }
 
 function svgString(arena, renderFn, ...args) {
@@ -5051,6 +5753,7 @@ function renderMiniInstrumentPreview(arena, host, spec, alt, options = {}) {
   const mode = options.modeOverride || miniInstrumentMode();
   host.dataset.miniInstrument = mode;
   clearMiniInstrumentRangeMetadata(host);
+  clearPlayabilityOverlayMetadata(host);
 
   if (mode === MINI_INSTRUMENT_OFF) {
     host.innerHTML = `<div class="output-block">Mini instrument off.</div>`;
@@ -5078,6 +5781,13 @@ function renderMiniInstrumentPreview(arena, host, spec, alt, options = {}) {
       alt,
       options: previewOptions,
     });
+    const overlayState = assessKeyboardOverlay(arena, notes, { previousNotes: spec.previousMidiNotes || [] });
+    renderPlayabilityOverlay(host, overlayState ? {
+      ...overlayState,
+      notes,
+      rangeLow: range.low,
+      rangeHigh: range.high,
+    } : null);
     return true;
   }
 
@@ -5091,7 +5801,15 @@ function renderMiniInstrumentPreview(arena, host, spec, alt, options = {}) {
   const voicing = spec.fretVoicing
     || preferredFretVoicing(arena, setValue, { preferredBassPc })
     || genericFretVoicingForNotes(midiNotes, "Generic fret");
-  return renderFretVoicingPreview(arena, host, voicing, alt, previewOptions);
+  const rendered = renderFretVoicingPreview(arena, host, voicing, alt, previewOptions);
+  if (rendered) {
+    const overlayState = assessFretOverlay(arena, voicing, { previousVoicing: spec.previousFretVoicing || null });
+    renderPlayabilityOverlay(host, overlayState ? {
+      ...overlayState,
+      voicing,
+    } : null);
+  }
+  return rendered;
 }
 
 function buildCounterpointHistory(arena, frames, context) {
@@ -5855,6 +6573,7 @@ function renderMidiScene() {
   statusPills.push(`<span class="status-pill is-live">${escapeHtml(context.label)}</span>`);
   statusPills.push(`<span class="status-pill is-live">${escapeHtml(profileLabel)}</span>`);
   statusPills.push(`<span class="status-pill ${miniInstrumentMode() === MINI_INSTRUMENT_OFF ? "is-muted" : "is-live"}">mini ${escapeHtml(miniInstrumentMode())}</span>`);
+  statusPills.push(`<span class="status-pill ${playabilityOverlayMode() === PLAYABILITY_OVERLAY_OFF ? "is-muted" : "is-live"}">overlay ${escapeHtml(playabilityOverlayMode())}</span>`);
   midiStatusPillsEl.innerHTML = statusPills.join("");
   midiDevicesEl.innerHTML = Array.from(midiState.inputs.values()).map((input) =>
     `<span class="pill">${escapeHtml(input.name || input.manufacturer || input.id || "MIDI input")}</span>`).join("")
@@ -5926,7 +6645,9 @@ function renderMidiScene() {
     const clockSvg = svgString(arena, wasm.lmt_svg_clock_optc, setValue);
     const opticKSvg = svgString(arena, wasm.lmt_svg_optic_k_group, setValue);
     const evennessFieldSvg = svgString(arena, wasm.lmt_svg_evenness_field, setValue);
-    const staffSvg = displayNotes.length > 0 ? svgString(arena, wasm.lmt_svg_piano_staff, writeU8Array(arena, displayNotes), displayNotes.length, context.tonic, context.quality) : "";
+    const staffSvg = displayNotes.length > 0
+      ? svgString(arena, wasm.lmt_svg_piano_staff, writeU8Array(arena, displayNotes), displayNotes.length, context.tonic, context.quality)
+      : svgString(arena, wasm.lmt_svg_key_staff, context.tonic, context.quality);
 
     midiSummaryEl.textContent = [
       `mode: ${viewingSnapshot ? "snapshot preview" : "live input"}`,
@@ -6136,18 +6857,22 @@ function renderMidiScene() {
       options: { maxHeight: 260, squareWidth: 780, mediumWidth: 920, wideWidth: 1040, ultraWideWidth: 1160, padXRatio: 0.02, padYRatio: 0.08 },
     });
 
-    if (displayNotes.length > 0) {
-      renderPreviewSvgOrBitmap(midiStaffEl, {
-        svgMarkup: staffSvg,
-        bitmapRenderer: {
-          renderRgba: (width, height) => pianoStaffBitmapRgba(arena, displayNotes, context.tonic, context.quality, width, height),
-        },
-        alt: "Live piano staff bitmap preview",
-        options: { maxHeight: 420, squareWidth: 700, mediumWidth: 840, wideWidth: 980, ultraWideWidth: 1120, padXRatio: 0.05, padYRatio: 0.12 },
-      });
-    } else {
-      midiStaffEl.innerHTML = `<div class="output-block">Play notes across the keyboard to paint treble, bass, or grand staff directly from the live MIDI state.</div>`;
-    }
+    renderPreviewSvgOrBitmap(midiStaffEl, {
+      svgMarkup: staffSvg,
+      bitmapRenderer: {
+        renderRgba: (width, height) => (displayNotes.length > 0
+          ? pianoStaffBitmapRgba(arena, displayNotes, context.tonic, context.quality, width, height)
+          : keyStaffBitmapRgba(arena, context.tonic, context.quality, width, height)),
+      },
+      alt: displayNotes.length > 0 ? "Live piano staff bitmap preview" : "Live context staff bitmap preview",
+      options: { maxHeight: 420, squareWidth: 700, mediumWidth: 840, wideWidth: 980, ultraWideWidth: 1120, padXRatio: 0.05, padYRatio: 0.12 },
+    });
+
+    const currentDisplayFretVoicing = displayNotes.length > 0
+      ? (preferredFretVoicing(arena, setValue, {
+        preferredBassPc: displayNotes.length > 0 ? Math.min(...displayNotes) % 12 : null,
+      }) || genericFretVoicingForNotes(displayNotes, "Current selection fret"))
+      : null;
 
     const currentMiniRendered = displayNotes.length > 0
       ? renderMiniInstrumentPreview(
@@ -6158,6 +6883,7 @@ function renderMidiScene() {
           setValue,
           tonic: context.tonic,
           preferredBassPc: displayNotes.length > 0 ? Math.min(...displayNotes) % 12 : null,
+          fretVoicing: currentDisplayFretVoicing,
         },
         "Current selection mini preview",
         {
@@ -6185,6 +6911,8 @@ function renderMidiScene() {
           tonic: context.tonic,
           preferredBassPc: focusedSuggestion.notes.length > 0 ? Math.min(...focusedSuggestion.notes) % 12 : null,
           fretVoicing: focusedSuggestion.fretPreview,
+          previousMidiNotes: displayNotes,
+          previousFretVoicing: currentDisplayFretVoicing,
         },
         "Focused next move mini preview",
         {
@@ -6211,6 +6939,7 @@ function renderMidiScene() {
           <p>${escapeHtml(suggestion.chordLabel)}</p>
           <p>score ${escapeHtml(String(suggestion.score))} · cadence ${escapeHtml(suggestion.cadenceLabel)} · tension ${escapeHtml(suggestion.tensionDelta >= 0 ? `+${suggestion.tensionDelta}` : String(suggestion.tensionDelta))}</p>
           <div class="chip-row suggestion-pin-row">${pinnedSuggestionIndex === index ? `<span class="status-pill is-snapshot">Pinned</span>` : `<span class="status-pill is-muted">Click to pin</span>`}</div>
+          <div class="chip-row suggestion-playability-row" data-suggestion-playability="${index}"></div>
           <div class="chip-row suggestion-reasons">${suggestion.reasonNames.map((reason) => `<span class="pill">${escapeHtml(reason)}</span>`).join("") || `<span class="pill">no dominant reason</span>`}</div>
           <div class="chip-row suggestion-warnings">${suggestion.warningNames.map((warning) => `<span class="chip warning-chip">${escapeHtml(warning)}</span>`).join("") || `<span class="chip safe-chip">clean motion</span>`}</div>
           <div class="suggestion-art-grid">
@@ -6243,6 +6972,8 @@ function renderMidiScene() {
               tonic: context.tonic,
               preferredBassPc: suggestion.notes.length > 0 ? Math.min(...suggestion.notes) % 12 : null,
               fretVoicing: suggestion.fretPreview,
+              previousMidiNotes: displayNotes,
+              previousFretVoicing: currentDisplayFretVoicing,
             },
             `${suggestion.noteNames.join(" ")} mini preview`,
             {
@@ -6255,6 +6986,27 @@ function renderMidiScene() {
               padYRatio: 0.14,
             },
           );
+          const overlayMetrics = readPlayabilityOverlayMetrics(miniHost);
+          const playabilityRow = midiSuggestionsEl.querySelector(`[data-suggestion-playability="${index}"]`);
+          if (playabilityRow) {
+            const overlayState = miniHost.__lmtPlayabilityOverlayState;
+            const chips = [];
+            if (overlayMetrics.overlayStatus) {
+              chips.push(`<span class="status-pill ${overlayMetrics.overlayBlocked ? "is-snapshot" : overlayMetrics.warningCount > 0 ? "is-muted" : "is-live"}">${escapeHtml(overlayMetrics.overlayStatus)}</span>`);
+            }
+            if (overlayState?.handLabel) {
+              chips.push(`<span class="status-pill is-muted">${escapeHtml(overlayState.handLabel)}</span>`);
+            } else if (overlayState?.profileLabel) {
+              chips.push(`<span class="status-pill is-muted">${escapeHtml(overlayState.profileLabel)}</span>`);
+            }
+            if (overlayState?.reasonNames?.[0]) {
+              chips.push(`<span class="pill">${escapeHtml(overlayState.reasonNames[0])}</span>`);
+            }
+            if (overlayState?.warningNames?.[0]) {
+              chips.push(`<span class="chip warning-chip">${escapeHtml(overlayState.warningNames[0])}</span>`);
+            }
+            playabilityRow.innerHTML = chips.join("") || `<span class="status-pill is-muted">overlay off</span>`;
+          }
         }
       });
     }
@@ -6290,9 +7042,14 @@ function renderMidiScene() {
       focusedCandidateIndex: focusedSuggestionIndex == null ? -1 : focusedSuggestionIndex,
       pinnedCandidateIndex: pinnedSuggestionIndex == null ? -1 : pinnedSuggestionIndex,
       currentMiniMode: miniInstrumentMode(),
+      playabilityOverlayMode: playabilityOverlayMode(),
       currentMiniRendered,
       focusedMiniRendered,
       suggestionMiniCount: miniInstrumentMode() === MINI_INSTRUMENT_OFF ? 0 : suggestions.length,
+      currentMiniOverlay: readPlayabilityOverlayMetrics(midiCurrentFretEl),
+      focusedMiniOverlay: readPlayabilityOverlayMetrics(midiFocusedMiniEl),
+      suggestionOverlayCount: Array.from(midiSuggestionsEl.querySelectorAll("[data-suggestion-mini]")).filter((host) => host.querySelector(".playability-overlay")).length,
+      blockedSuggestionOverlayCount: Array.from(midiSuggestionsEl.querySelectorAll("[data-suggestion-mini]")).filter((host) => host.dataset.playabilityBlocked === "1").length,
       focusedSuggestionName: focusedSuggestion?.noteNames?.join(" · ") || "",
       midiInspectorFeatures,
       midiConsensusAtlasFeatures,
@@ -6500,8 +7257,10 @@ function renderSetScene() {
       chordName,
       primeHex: `0x${prime.toString(16).padStart(3, "0")}`,
       miniInstrumentMode: miniInstrumentMode(),
+      playabilityOverlayMode: playabilityOverlayMode(),
       miniRendered,
       ...readMiniInstrumentPreviewMetrics(setMiniEl),
+      ...readPlayabilityOverlayMetrics(setMiniEl),
       setOpticKFeatures,
       setEvennessFeatures,
     });
@@ -6570,8 +7329,10 @@ function renderKeyScene() {
       noteCount: orbit.ordered.length,
       degrees: degreeCards.length,
       miniInstrumentMode: miniInstrumentMode(),
+      playabilityOverlayMode: playabilityOverlayMode(),
       miniRendered,
       ...readMiniInstrumentPreviewMetrics(keyMiniEl),
+      ...readPlayabilityOverlayMetrics(keyMiniEl),
       keyStaffFeatures,
       keyboardFeatures,
     });
@@ -6641,8 +7402,10 @@ function renderChordScene() {
       roman,
       inKey,
       miniInstrumentMode: miniInstrumentMode(),
+      playabilityOverlayMode: playabilityOverlayMode(),
       miniRendered,
       ...readMiniInstrumentPreviewMetrics(chordMiniEl),
+      ...readPlayabilityOverlayMetrics(chordMiniEl),
       staffFeatures,
     });
   } finally {
@@ -6716,8 +7479,10 @@ function renderProgressionScene() {
       unionCardinality: wasm.lmt_pcs_cardinality(unionSet),
       strongestLink,
       miniInstrumentMode: miniInstrumentMode(),
+      playabilityOverlayMode: playabilityOverlayMode(),
       miniRendered,
       ...readMiniInstrumentPreviewMetrics(progressionMiniEl),
+      ...readPlayabilityOverlayMetrics(progressionMiniEl),
     });
   } finally {
     arena.release();
@@ -6793,8 +7558,10 @@ function renderCompareScene() {
       transposeMatch: relation.transposeMatch,
       inversionMatch: relation.inversionMatch,
       miniInstrumentMode: miniInstrumentMode(),
+      playabilityOverlayMode: playabilityOverlayMode(),
       miniRendered,
       ...readMiniInstrumentPreviewMetrics(compareMiniEl),
+      ...readPlayabilityOverlayMetrics(compareMiniEl),
     });
   } finally {
     arena.release();
@@ -6939,8 +7706,10 @@ function renderFretScene() {
       voicingCount: rowCount,
       url: fretUrl,
       miniInstrumentMode: miniInstrumentMode(),
+      playabilityOverlayMode: playabilityOverlayMode(),
       miniRendered,
       ...readMiniInstrumentPreviewMetrics(fretMiniEl),
+      ...readPlayabilityOverlayMetrics(fretMiniEl),
     });
   } finally {
     arena.release();
@@ -6992,6 +7761,10 @@ function wireSceneEvents() {
   miniInstrumentModeEl.addEventListener("change", () => {
     setMiniInstrumentMode(miniInstrumentModeEl.value);
     setStatus(`Mini instrument set to ${galleryUiState.miniInstrument}.`);
+  });
+  playabilityOverlayModeEl.addEventListener("change", () => {
+    setPlayabilityOverlayMode(playabilityOverlayModeEl.value);
+    setStatus(`Playability overlay set to ${galleryUiState.playabilityOverlay}.`);
   });
   connectMidiEl.addEventListener("click", async () => {
     await connectMidi();
@@ -7226,6 +7999,7 @@ function initializeUi() {
   midiProfileEl.value = String(MIDI_DEFAULT_PROFILE);
   setPreviewMode(loadPreviewModePreference(), { persist: false, rerender: false });
   setMiniInstrumentMode(loadMiniInstrumentPreference(), { persist: false, rerender: false });
+  setPlayabilityOverlayMode(loadPlayabilityOverlayPreference(), { persist: false, rerender: false });
   midiCaptionEl.textContent = "Connect MIDI to listen to every browser MIDI input, sustain pedal, and middle-pedal snapshots.";
   populatePresetSelect(setPresetEl, manifestList("setPresets"));
   populatePresetSelect(keyPresetEl, manifestList("keyPresets"));
@@ -7253,6 +8027,7 @@ async function main() {
     wasm = instance.exports;
     memory = wasm.memory;
     loadCounterpointMetadata();
+    loadPlayabilityMetadata();
     populateCounterpointProfileSelect(midiProfileEl);
     midiProfileEl.value = String(MIDI_DEFAULT_PROFILE);
     renderAll();

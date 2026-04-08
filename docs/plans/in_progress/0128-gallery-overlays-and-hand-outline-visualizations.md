@@ -1,6 +1,6 @@
 # 0128 - Gallery Overlays And Hand Outline Visualizations
 
-Status: Draft
+Status: In Progress
 
 ## Summary
 

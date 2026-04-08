@@ -244,6 +244,11 @@ if [ -f "$ROOT_DIR/docs/plans/in_progress/0127-playability-reason-codes-and-next
     check_cmd "cd '$ROOT_DIR' && rg -n 'balanced|minimax bottleneck|cumulative strain|opt-in playability-aware reranking|filtering' docs/research/algorithms/playability.md >/dev/null" "0127 playability ranking research guardrail (policy semantics and opt-in reranking are documented)"
 fi
 
+if [ -f "$ROOT_DIR/docs/plans/in_progress/0128-gallery-overlays-and-hand-outline-visualizations.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0128-gallery-overlays-and-hand-outline-visualizations.md" ]; then
+    check_cmd "cd '$ROOT_DIR' && rg -n 'playability-overlay-mode|Playability Overlay|playability-overlay' examples/wasm-gallery/index.html examples/wasm-gallery/styles.css examples/wasm-gallery/gallery.js scripts/lib/wasm_gallery_playwright_common.mjs scripts/validate_wasm_gallery_playwright.mjs >/dev/null" "0128 gallery overlay guardrail (gallery UI, styles, runtime, and playwright wiring expose playability overlays)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'lmt_playability_reason_count|lmt_playability_warning_count|lmt_default_keyboard_hand_profile|lmt_default_fret_hand_profile_for_technique|lmt_assess_keyboard_realization_n|lmt_assess_keyboard_transition_n|lmt_assess_fret_realization_n|lmt_assess_fret_transition_n|lmt_keyboard_key_coord' examples/wasm-gallery/gallery.js >/dev/null" "0128 gallery overlay guardrail (overlay runtime stays downstream of exported playability assessments and geometry helpers)"
+fi
+
 
 
 if [ -f "$ROOT_DIR/docs/plans/in_progress/0088-live-midi-composer-scene.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0088-live-midi-composer-scene.md" ]; then
