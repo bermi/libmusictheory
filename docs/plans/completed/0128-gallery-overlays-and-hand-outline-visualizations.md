@@ -1,6 +1,6 @@
 # 0128 - Gallery Overlays And Hand Outline Visualizations
 
-Status: In Progress
+Status: Completed
 
 ## Summary
 
@@ -64,3 +64,15 @@ M
 - Playwright coverage for overlay toggles and next-step statuses
 - no JS-only playability facts
 - `./verify.sh`
+
+## Verification Commands
+
+- `node /Users/bermi/code/libmusictheory/scripts/validate_wasm_gallery_playwright.mjs`
+- `./verify.sh`
+
+## Implementation History (Point-in-Time)
+
+- `0dcc8e4` - 2026-04-08
+  - Shipped the gallery-side playability overlay system with global `off` / `basic` / `detailed` modes, keyboard and fret mini-preview overlays, reason and warning chips, hand-box and finger-marker rendering, and synchronized next-step playability rows in the live MIDI scene.
+  - Tightened gallery validation and readiness logic so overlay SVGs do not pollute preview normalization checks, and fixed the live staff fallback path so the post-snapshot SVG readiness seam remains valid when the live note set is empty.
+  - Completion gates: `node /Users/bermi/code/libmusictheory/scripts/validate_wasm_gallery_playwright.mjs`, `./verify.sh`
