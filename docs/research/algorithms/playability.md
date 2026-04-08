@@ -55,3 +55,56 @@ Every surfaced result from this slice should support a direct explanation, for e
 - "This triad spans seven semitones, which fits inside the current keyboard comfort span."
 
 Later slices may rank or filter candidates, but they should build on these explicit facts rather than invent hidden weights.
+
+## 0127 - Opt-In Playability-Aware Reranking
+
+`0127` adds an explicit policy layer on top of the existing theory-first candidate generators.
+
+The important constraint is semantic separation:
+
+- `lmt_rank_next_steps` and `lmt_rank_context_suggestions` stay theory-first
+- playability-aware filtering and reranking are opt-in wrapper calls
+- the wrapper returns both the original theory candidate and the playability transition facts used to accept, block, or reorder it
+
+This keeps the API explainable for downstream tools and LLMs:
+
+- "This continuation remains first under the balanced policy because it has the strongest harmonic score and no playability blocker."
+- "This continuation drops under the minimax bottleneck policy because it creates the hardest single move in the local phrase."
+- "This context suggestion is filtered out because it exceeds the configured keyboard shift limit from the current anchor."
+
+### Named Policies
+
+The public policy vocabulary is intentionally small and explicit:
+
+- `balanced`
+  preserve theory priority among playable candidates, then break ties with fewer playability warnings and lower strain
+- `minimax bottleneck`
+  minimize the hardest local move first, reflecting the guitar-fingering minimax literature
+- `cumulative strain`
+  minimize the running total of span and shift burden first
+
+These policies are not hidden weights. They are fixed comparison orders over already-exposed facts:
+
+- blocker presence
+- theory score
+- warning count
+- bottleneck cost
+- cumulative cost
+
+### Research Connection
+
+- Hori and Sagayama, *Minimax Viterbi Algorithm for HMM-Based Guitar Fingering Decision*:
+  motivates exposing a minimax bottleneck policy instead of only cumulative difficulty.
+- Balliauw, Herremans, and Sørensen, *A Variable Neighborhood Search Algorithm to Generate Piano Fingerings for Polyphonic Sheet Music*:
+  supports using explicit local span/shift burdens and warning counts as ranking facts.
+- Moulton et al., *Checklist Models for Improved Output Fluency in Piano Fingering Prediction*:
+  supports carrying recent-motion load forward so reranking can account for fluency degradation from recent motion.
+
+### Current Scope
+
+`0127` applies the wrapper layer to keyboard playability first:
+
+- counterpoint next-step suggestions can be reranked or filtered by keyboard playability
+- keyboard context suggestions can be reranked with an explicit realized-note choice near the current anchor register
+
+Fret-specific candidate reranking and multi-instrument consensus can layer on the same policy vocabulary later without changing the theory-first base APIs.

@@ -1,6 +1,6 @@
 # 0127 - Playability Reason Codes And Next-Step Filtering
 
-Status: Draft
+Status: Completed
 
 ## Summary
 
@@ -68,4 +68,20 @@ M
 - opt-in only behavior changes
 - stable ordering for ties under each named policy
 - gallery and C ABI smoke coverage once implemented
-- `./verify.sh`
+- `/Users/bermi/code/libmusictheory/./verify.sh`
+
+## Verification Commands
+
+- `/Users/bermi/code/libmusictheory/./zigw build test`
+- `/Users/bermi/code/libmusictheory/./verify.sh`
+
+## Implementation History (Point-in-Time)
+
+- `562318e` - 2026-04-08
+  - Shipped `/Users/bermi/code/libmusictheory/src/playability/ranking.zig` with explicit opt-in keyboard playability reranking policies: `balanced`, `minimax-bottleneck`, and `cumulative-strain`.
+  - Added filtering and ranking helpers that preserve theory-first semantics unless the caller explicitly asks for playability-aware evaluation.
+  - Exported experimental C ABI helpers for playability policy reflection plus ranked/filtering wrappers in `/Users/bermi/code/libmusictheory/src/c_api.zig` and `/Users/bermi/code/libmusictheory/include/libmusictheory.h`.
+  - Added focused regression coverage in `/Users/bermi/code/libmusictheory/src/tests/playability_ranking_test.zig` and `/Users/bermi/code/libmusictheory/src/tests/c_api_test.zig`.
+  - Completion gates:
+    - `/Users/bermi/code/libmusictheory/./zigw build test`
+    - `/Users/bermi/code/libmusictheory/./verify.sh`

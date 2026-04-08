@@ -237,6 +237,13 @@ if [ -f "$ROOT_DIR/docs/plans/in_progress/0126-keyboard-fingering-and-hand-span-
     check_cmd "cd '$ROOT_DIR' && rg -n 'keyboard playability|thumb on black|awkward thumb crossing|local fingering assessment|HMM|Viterbi|Checklist Models|Variable Neighborhood Search' docs/research/algorithms/keyboard-interaction.md >/dev/null" "0126 keyboard playability research guardrail (keyboard research notes document the explainable assessment model)"
 fi
 
+if [ -f "$ROOT_DIR/docs/plans/in_progress/0127-playability-reason-codes-and-next-step-filtering.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0127-playability-reason-codes-and-next-step-filtering.md" ]; then
+    check_cmd "cd '$ROOT_DIR' && test -f src/playability/ranking.zig && test -f src/tests/playability_ranking_test.zig && rg -n 'pub const ranking|tests/playability_ranking_test\\.zig' src/playability.zig src/root.zig >/dev/null" "0127 playability ranking foundation guardrail (ranking module and focused tests are wired)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'PlayabilityPolicy|rankKeyboardNextSteps|rankKeyboardContextSuggestions|balanced|minimax_bottleneck|cumulative_strain' src/playability/ranking.zig src/tests/playability_ranking_test.zig >/dev/null" "0127 playability ranking algorithm guardrail (named policies and keyboard reranking helpers are implemented)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'lmt_playability_policy|lmt_playability_policy_count|lmt_playability_policy_name|lmt_ranked_keyboard_next_step|lmt_ranked_keyboard_context_suggestion|lmt_filter_next_steps_by_playability|lmt_rank_keyboard_next_steps_by_playability|lmt_rank_keyboard_context_suggestions_by_playability' include/libmusictheory.h src/c_api.zig build.zig scripts/check_wasm_exports.mjs src/tests/c_api_test.zig >/dev/null" "0127 playability ranking ABI guardrail (policies, structs, and exports are wired)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'balanced|minimax bottleneck|cumulative strain|opt-in playability-aware reranking|filtering' docs/research/algorithms/playability.md >/dev/null" "0127 playability ranking research guardrail (policy semantics and opt-in reranking are documented)"
+fi
+
 
 
 if [ -f "$ROOT_DIR/docs/plans/in_progress/0088-live-midi-composer-scene.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0088-live-midi-composer-scene.md" ]; then

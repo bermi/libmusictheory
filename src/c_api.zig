@@ -367,6 +367,26 @@ pub const LmtNextStepSuggestion = extern struct {
     evaluation: LmtMotionEvaluation,
 };
 
+pub const LmtRankedKeyboardContextSuggestion = extern struct {
+    candidate: LmtContextSuggestion,
+    transition: LmtKeyboardTransitionAssessment,
+    realized_note: u8,
+    candidate_index: u8,
+    hand: u8,
+    policy: u8,
+    accepted: u8,
+    reserved0: u8,
+};
+
+pub const LmtRankedKeyboardNextStep = extern struct {
+    candidate: LmtNextStepSuggestion,
+    transition: LmtKeyboardTransitionAssessment,
+    candidate_index: u8,
+    hand: u8,
+    policy: u8,
+    accepted: u8,
+};
+
 pub const LmtCadenceDestinationScore = extern struct {
     score: i32,
     destination: u8,
@@ -601,6 +621,11 @@ fn decodeFretTechniqueProfile(raw: u32) ?playability.fret_assessment.TechniquePr
 fn decodeKeyboardHand(raw: u32) ?playability.keyboard_assessment.HandRole {
     if (raw > std.math.maxInt(u8)) return null;
     return playability.keyboard_assessment.fromInt(@as(u8, @intCast(raw)));
+}
+
+fn decodePlayabilityPolicy(raw: u32) ?playability.ranking.PlayabilityPolicy {
+    if (raw > std.math.maxInt(u8)) return null;
+    return playability.ranking.fromInt(@as(u8, @intCast(raw)));
 }
 
 fn writeHandProfile(out: *LmtHandProfile, profile: playability.types.HandProfile) void {
@@ -909,6 +934,19 @@ fn writeNextStepSuggestion(out: *LmtNextStepSuggestion, suggestion: counterpoint
     writeMotionEvaluation(&out.evaluation, suggestion.evaluation);
 }
 
+fn writeContextSuggestion(out: *LmtContextSuggestion, row: keyboard_logic.ContextSuggestion) void {
+    out.* = .{
+        .score = row.score,
+        .expanded_set = toCSet(row.expanded_set),
+        .pitch_class = row.pitch_class,
+        .overlap = row.overlap,
+        .outside_count = row.outside_count,
+        .in_context = if (row.in_context) 1 else 0,
+        .cluster_free = if (row.cluster_free) 1 else 0,
+        .reads_as_named_chord = if (row.reads_as_named_chord) 1 else 0,
+    };
+}
+
 fn writeCadenceDestinationScore(out: *LmtCadenceDestinationScore, score: counterpoint.CadenceDestinationScore) void {
     out.* = .{
         .score = score.score,
@@ -1141,6 +1179,40 @@ fn writeRankedKeyboardFingering(
         .reason_bits = row.reason_bits,
         .fingers = row.fingers,
     };
+}
+
+fn writeRankedKeyboardContextSuggestion(
+    out: *LmtRankedKeyboardContextSuggestion,
+    row: playability.ranking.RankedKeyboardContextSuggestion,
+) void {
+    out.* = .{
+        .candidate = undefined,
+        .transition = undefined,
+        .realized_note = row.realized_note,
+        .candidate_index = row.candidate_index,
+        .hand = @intFromEnum(row.hand),
+        .policy = @intFromEnum(row.policy),
+        .accepted = if (row.accepted) 1 else 0,
+        .reserved0 = 0,
+    };
+    writeContextSuggestion(&out.candidate, row.candidate);
+    writeKeyboardTransitionAssessment(&out.transition, row.transition);
+}
+
+fn writeRankedKeyboardNextStep(
+    out: *LmtRankedKeyboardNextStep,
+    row: playability.ranking.RankedKeyboardNextStep,
+) void {
+    out.* = .{
+        .candidate = undefined,
+        .transition = undefined,
+        .candidate_index = row.candidate_index,
+        .hand = @intFromEnum(row.hand),
+        .policy = @intFromEnum(row.policy),
+        .accepted = if (row.accepted) 1 else 0,
+    };
+    writeNextStepSuggestion(&out.candidate, row.candidate);
+    writeKeyboardTransitionAssessment(&out.transition, row.transition);
 }
 
 fn isSelectedGuidePosition(selected_ptr: [*c]const LmtFretPos, selected_count: usize, string: usize, fret: u8) bool {
@@ -1413,6 +1485,16 @@ pub export fn lmt_keyboard_playability_blocker_name(index: u32) callconv(.c) [*c
     return writeCString(playability.keyboard_assessment.BLOCKER_NAMES[idx]);
 }
 
+pub export fn lmt_playability_policy_count() callconv(.c) u32 {
+    return @as(u32, @intCast(playability.ranking.POLICY_NAMES.len));
+}
+
+pub export fn lmt_playability_policy_name(index: u32) callconv(.c) [*c]const u8 {
+    const idx = @as(usize, @intCast(index));
+    if (idx >= playability.ranking.POLICY_NAMES.len) return null;
+    return writeCString(playability.ranking.POLICY_NAMES[idx]);
+}
+
 pub export fn lmt_scale_degree(tonic: u8, mode_type: u8, note: u8) callconv(.c) u8 {
     const mt = decodeModeType(mode_type) orelse return 0;
     const tonic_pc = @as(pitch.PitchClass, @intCast(tonic % 12));
@@ -1626,6 +1708,14 @@ pub export fn lmt_sizeof_keyboard_transition_assessment() callconv(.c) u32 {
 
 pub export fn lmt_sizeof_ranked_keyboard_fingering() callconv(.c) u32 {
     return @as(u32, @intCast(@sizeOf(LmtRankedKeyboardFingering)));
+}
+
+pub export fn lmt_sizeof_ranked_keyboard_context_suggestion() callconv(.c) u32 {
+    return @as(u32, @intCast(@sizeOf(LmtRankedKeyboardContextSuggestion)));
+}
+
+pub export fn lmt_sizeof_ranked_keyboard_next_step() callconv(.c) u32 {
+    return @as(u32, @intCast(@sizeOf(LmtRankedKeyboardNextStep)));
 }
 
 pub export fn lmt_sizeof_voiced_state() callconv(.c) u32 {
@@ -2045,6 +2135,92 @@ pub export fn lmt_rank_next_steps(history: [*c]const LmtVoicedHistory, profile: 
     return @as(u32, @intCast(ranked.len));
 }
 
+pub export fn lmt_filter_next_steps_by_playability(
+    history: [*c]const LmtVoicedHistory,
+    profile_raw: u32,
+    hand_raw: u32,
+    hand_profile_ptr: [*c]const LmtHandProfile,
+    policy_raw: u32,
+    out: [*c]LmtNextStepSuggestion,
+    out_cap: u32,
+) callconv(.c) u32 {
+    if (history == null) return 0;
+    if (profile_raw > std.math.maxInt(u8)) return 0;
+
+    const profile_value = decodeCounterpointRuleProfile(@as(u8, @intCast(profile_raw))) orelse return 0;
+    const hand = decodeKeyboardHand(hand_raw) orelse return 0;
+    const hand_profile = if (hand_profile_ptr != null)
+        decodeHandProfile(hand_profile_ptr[0])
+    else
+        playability.keyboard_topology.defaultHandProfile();
+    const policy = decodePlayabilityPolicy(policy_raw) orelse return 0;
+
+    const raw_history: *const LmtVoicedHistory = @ptrCast(history);
+    var decoded_history = decodeVoicedHistory(raw_history.*);
+    var filtered_buf: [counterpoint.MAX_NEXT_STEP_SUGGESTIONS]counterpoint.NextStepSuggestion = undefined;
+    const filtered = playability.ranking.filterNextStepsByPlayability(
+        &decoded_history,
+        profile_value,
+        hand,
+        hand_profile,
+        policy,
+        filtered_buf[0..],
+    );
+
+    if (out != null) {
+        const write_len = @min(filtered.len, @as(usize, @intCast(out_cap)));
+        for (filtered[0..write_len], 0..) |row, index| {
+            const out_row: *LmtNextStepSuggestion = @ptrCast(&out[index]);
+            writeNextStepSuggestion(out_row, row);
+        }
+    }
+
+    return @as(u32, @intCast(filtered.len));
+}
+
+pub export fn lmt_rank_keyboard_next_steps_by_playability(
+    history: [*c]const LmtVoicedHistory,
+    profile_raw: u32,
+    hand_raw: u32,
+    hand_profile_ptr: [*c]const LmtHandProfile,
+    policy_raw: u32,
+    out: [*c]LmtRankedKeyboardNextStep,
+    out_cap: u32,
+) callconv(.c) u32 {
+    if (history == null) return 0;
+    if (profile_raw > std.math.maxInt(u8)) return 0;
+
+    const profile_value = decodeCounterpointRuleProfile(@as(u8, @intCast(profile_raw))) orelse return 0;
+    const hand = decodeKeyboardHand(hand_raw) orelse return 0;
+    const hand_profile = if (hand_profile_ptr != null)
+        decodeHandProfile(hand_profile_ptr[0])
+    else
+        playability.keyboard_topology.defaultHandProfile();
+    const policy = decodePlayabilityPolicy(policy_raw) orelse return 0;
+
+    const raw_history: *const LmtVoicedHistory = @ptrCast(history);
+    var decoded_history = decodeVoicedHistory(raw_history.*);
+    var ranked_buf: [counterpoint.MAX_NEXT_STEP_SUGGESTIONS]playability.ranking.RankedKeyboardNextStep = undefined;
+    const ranked = playability.ranking.rankKeyboardNextSteps(
+        &decoded_history,
+        profile_value,
+        hand,
+        hand_profile,
+        policy,
+        ranked_buf[0..],
+    );
+
+    if (out != null) {
+        const write_len = @min(ranked.len, @as(usize, @intCast(out_cap)));
+        for (ranked[0..write_len], 0..) |row, index| {
+            const out_row: *LmtRankedKeyboardNextStep = @ptrCast(&out[index]);
+            writeRankedKeyboardNextStep(out_row, row);
+        }
+    }
+
+    return @as(u32, @intCast(ranked.len));
+}
+
 pub export fn lmt_rank_cadence_destinations(
     history: [*c]const LmtVoicedHistory,
     profile: u8,
@@ -2280,20 +2456,65 @@ pub export fn lmt_rank_context_suggestions(set: u16, midi_notes_ptr: [*c]const u
     const write_len = @min(total, @as(usize, @intCast(out_cap)));
     if (out != null) {
         for (ranked[0..write_len], 0..) |row, index| {
-            out[index] = .{
-                .score = row.score,
-                .expanded_set = toCSet(row.expanded_set),
-                .pitch_class = row.pitch_class,
-                .overlap = row.overlap,
-                .outside_count = row.outside_count,
-                .in_context = if (row.in_context) 1 else 0,
-                .cluster_free = if (row.cluster_free) 1 else 0,
-                .reads_as_named_chord = if (row.reads_as_named_chord) 1 else 0,
-            };
+            const out_row: *LmtContextSuggestion = @ptrCast(&out[index]);
+            writeContextSuggestion(out_row, row);
         }
     }
 
     return @as(u32, @intCast(total));
+}
+
+pub export fn lmt_rank_keyboard_context_suggestions_by_playability(
+    set: u16,
+    midi_notes_ptr: [*c]const u8,
+    note_count: u32,
+    tonic: u8,
+    mode_type: u8,
+    hand_raw: u32,
+    hand_profile_ptr: [*c]const LmtHandProfile,
+    previous_load_ptr: [*c]const LmtTemporalLoadState,
+    policy_raw: u32,
+    out: [*c]LmtRankedKeyboardContextSuggestion,
+    out_cap: u32,
+) callconv(.c) u32 {
+    const mt = decodeModeType(mode_type) orelse return 0;
+    const tonic_pc = @as(pitch.PitchClass, @intCast(tonic % 12));
+    const hand = decodeKeyboardHand(hand_raw) orelse return 0;
+    const hand_profile = if (hand_profile_ptr != null)
+        decodeHandProfile(hand_profile_ptr[0])
+    else
+        playability.keyboard_topology.defaultHandProfile();
+    const previous_load: ?playability.types.TemporalLoadState = if (previous_load_ptr != null)
+        decodeTemporalLoadState(previous_load_ptr[0])
+    else
+        null;
+    const policy = decodePlayabilityPolicy(policy_raw) orelse return 0;
+
+    var notes_buf: [MAX_KEYBOARD_RENDER_NOTES]pitch.MidiNote = undefined;
+    const notes = decodeMidiNotes(midi_notes_ptr, note_count, &notes_buf);
+
+    var ranked_buf: [keyboard_logic.MAX_CONTEXT_SUGGESTIONS]playability.ranking.RankedKeyboardContextSuggestion = undefined;
+    const ranked = playability.ranking.rankKeyboardContextSuggestions(
+        maskPitchClassSet(set),
+        notes,
+        tonic_pc,
+        mt,
+        hand,
+        hand_profile,
+        previous_load,
+        policy,
+        ranked_buf[0..],
+    );
+
+    if (out != null) {
+        const write_len = @min(ranked.len, @as(usize, @intCast(out_cap)));
+        for (ranked[0..write_len], 0..) |row, index| {
+            const out_row: *LmtRankedKeyboardContextSuggestion = @ptrCast(&out[index]);
+            writeRankedKeyboardContextSuggestion(out_row, row);
+        }
+    }
+
+    return @as(u32, @intCast(ranked.len));
 }
 
 pub export fn lmt_pitch_class_guide_n(selected_ptr: [*c]const LmtFretPos, selected_count: u32, min_fret: u8, max_fret: u8, tuning_ptr: [*c]const u8, tuning_count: u32, out: [*c]LmtGuideDot, out_cap: u32) callconv(.c) u32 {
