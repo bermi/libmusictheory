@@ -1,6 +1,6 @@
 # 0123 - Biomechanical Playability And Fingering Master
 
-Status: Draft
+Status: Completed
 
 ## Summary
 
@@ -321,9 +321,15 @@ Add parameterized hand-size and comfort windows, plus practice-facing feedback t
 5. Every surfaced playability claim can be explained in concrete physical terms.
 6. `./verify.sh` remains the gate for each implementation slice.
 
+## Verification Commands
+
+- `./zigw build test`
+- `./verify.sh`
+
 ## Implementation History (Point-in-Time)
 
-_To be filled when the roadmap is executed._
-- `<commit-hash>` (<date>):
-  - Shipped behavior: ...
-  - Verification: `./verify.sh`, `./zigw build verify`.
+- `c012bda4090557998b29bb59775dfbe7fd0ca9f2` - `2026-04-09T04:52:57+02:00`
+  - completed the experimental playability lane across `/Users/bermi/code/libmusictheory/src/playability/` by shipping shared state and profile types, fret and keyboard assessment engines, playability reason-code ranking/filtering, gallery overlays, and personalized practice-feedback helpers
+  - finished the corresponding experimental C ABI and documentation lane through `/Users/bermi/code/libmusictheory/include/libmusictheory.h`, `/Users/bermi/code/libmusictheory/src/c_api.zig`, `/Users/bermi/code/libmusictheory/docs/research/algorithms/playability.md`, and `/Users/bermi/code/libmusictheory/docs/release/stability-matrix.md`
+  - left the repo with an explainable, opt-in playability surface that can annotate realizations, constrain next-step ranking, and drive fret/keyboard overlays without making medical or one-true-fingering claims
+  - verification gates: `./zigw build test`, `./verify.sh`

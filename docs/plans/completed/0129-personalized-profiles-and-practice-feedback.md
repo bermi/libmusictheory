@@ -1,6 +1,6 @@
 # 0129 - Personalized Profiles And Practice Feedback
 
-Status: Draft
+Status: Completed
 
 ## Summary
 
@@ -67,3 +67,16 @@ M
 - profile parameter round-trip tests
 - easier-alternative suggestions must preserve the requested musical target where possible
 - `./verify.sh`
+
+## Verification Commands
+
+- `./zigw build test`
+- `./verify.sh`
+
+## Implementation History (Point-in-Time)
+
+- `c012bda4090557998b29bb59775dfbe7fd0ca9f2` - `2026-04-09T04:52:57+02:00`
+  - added `/Users/bermi/code/libmusictheory/src/playability/profile.zig` with experimental profile presets, difficulty summaries for fret and keyboard realizations/transitions, and practice-facing helpers that suggest easier realizations and safer keyboard next steps without changing theory-first behavior by default
+  - exposed the new playability profile and difficulty-summary surface through `/Users/bermi/code/libmusictheory/include/libmusictheory.h`, `/Users/bermi/code/libmusictheory/src/c_api.zig`, `/Users/bermi/code/libmusictheory/build.zig`, and `/Users/bermi/code/libmusictheory/scripts/check_wasm_exports.mjs`
+  - added focused Zig and C ABI coverage in `/Users/bermi/code/libmusictheory/src/tests/playability_profile_test.zig` and `/Users/bermi/code/libmusictheory/src/tests/c_api_test.zig`, then hardened `/Users/bermi/code/libmusictheory/verify.sh` and the playability docs so the new personalization lane is programmatically and narratively enforced
+  - verification gates: `./zigw build test`, `./verify.sh`
