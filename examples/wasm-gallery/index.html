@@ -14,11 +14,12 @@
           <p class="eyebrow">Standalone Gallery</p>
           <h1>libmusictheory as a creative instrument.</h1>
           <p class="hero-text">
-            Seven curated scenes built on the stable public API only. No Harmonious compatibility
-            helpers, no verification shims, no corpus mirroring.
+            Seven curated scenes built on the public API surface, including selected experimental
+            counterpoint and playability helpers. No Harmonious compatibility helpers, no
+            verification shims, no corpus mirroring.
           </p>
           <div class="hero-badges" aria-label="Gallery qualities">
-            <span class="hero-badge">Public API only</span>
+            <span class="hero-badge">Public API surface</span>
             <span class="hero-badge">Parametric rendering</span>
             <span class="hero-badge">Reproducible screenshots</span>
           </div>
@@ -90,6 +91,14 @@
               <span>Counterpoint Profile</span>
               <select id="midi-profile"></select>
             </label>
+            <label>
+              <span>Playability Profile</span>
+              <select id="midi-playability-preset"></select>
+            </label>
+            <label>
+              <span>Difficulty Lens</span>
+              <select id="midi-playability-policy"></select>
+            </label>
           </div>
           <div class="scene-meta-row">
             <div class="pill-list" id="midi-status-pills"></div>
@@ -111,6 +120,10 @@
                 <button id="midi-clear-pin" class="ghost-button" type="button" disabled>Clear Pin</button>
               </div>
               <div id="midi-inspector" class="inspector-panel"></div>
+            </div>
+            <div class="note-card">
+              <h3>Practice Feedback</h3>
+              <div id="midi-practice-feedback" class="inspector-panel practice-feedback-panel"></div>
             </div>
             <div class="art-card art-card-double">
               <h3>Consensus Atlas</h3>

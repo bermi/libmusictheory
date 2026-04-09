@@ -451,6 +451,29 @@ async function main() {
       if (!basicOverlaySnapshot || !detailedOverlaySnapshot) {
         throw new Error("playability overlay toggles did not settle");
       }
+      traceStep("switch-playability-profile-and-policy");
+      await page.selectOption("#midi-playability-preset", "0");
+      await page.selectOption("#midi-playability-policy", "1");
+      const practiceFeedbackSnapshot = await page.waitForFunction(() => {
+        const midi = window.__lmtGallerySummary?.scenes?.midi;
+        const host = document.querySelector("#midi-practice-feedback");
+        return midi?.playabilityPresetId === 0
+          && midi?.playabilityPolicyId === 1
+          && midi?.playabilityPreset === "compact-beginner"
+          && midi?.playabilityPolicy === "minimax-bottleneck"
+          && (midi?.midiPracticeFeedbackFeatures?.cardCount || 0) >= 1
+          && (midi?.midiPracticeFeedbackFeatures?.sectionCount || 0) >= 1
+          && (midi?.midiPracticeFeedbackFeatures?.topNextCount || 0) >= 1
+          && (midi?.midiPracticeFeedbackFeatures?.topContextCount || 0) >= 1
+          && (midi?.midiPracticeFeedbackFeatures?.saferSuggestionSignature || "").length > 0
+          && (midi?.midiPracticeFeedbackFeatures?.keyboardRealizationStatus || "").length > 0
+          && (midi?.midiPracticeFeedbackFeatures?.keyboardTransitionStatus || "").length > 0
+          && (host?.textContent || "").includes("compact-beginner")
+          && (host?.textContent || "").includes("minimax-bottleneck");
+      }, { timeout: 30000 }).then((handle) => handle.jsonValue());
+      if (!practiceFeedbackSnapshot) {
+        throw new Error("playability practice feedback controls did not settle");
+      }
       traceStep("hover-candidate");
       const hoverCandidateIndex = Math.min(1, Math.max(0, (midiActive.summary?.suggestionCount || 1) - 1));
       await page.locator(`#midi-suggestions [data-suggestion-index="${hoverCandidateIndex}"]`).hover();

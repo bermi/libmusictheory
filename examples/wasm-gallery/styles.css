@@ -1464,6 +1464,44 @@ select {
   min-height: 220px;
 }
 
+.practice-feedback-panel {
+  align-content: start;
+}
+
+.practice-feedback-card {
+  display: grid;
+  gap: 12px;
+}
+
+.practice-feedback-section,
+.practice-feedback-list {
+  display: grid;
+  gap: 10px;
+}
+
+.practice-feedback-section {
+  padding-top: 4px;
+  border-top: 1px solid rgba(24, 36, 47, 0.08);
+}
+
+.practice-feedback-head,
+.practice-feedback-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+
+.practice-feedback-head span,
+.practice-feedback-line span {
+  color: var(--muted);
+}
+
+.practice-feedback-line strong {
+  font-size: 0.96rem;
+}
+
 .continuation-ladder-frame {
   min-height: 380px;
   display: grid;

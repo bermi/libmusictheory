@@ -246,6 +246,8 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
       keyboardImg: document.querySelector("#midi-keyboard img")?.getAttribute("src") || "",
       currentFretHtml: document.querySelector("#midi-current-fret")?.innerHTML || "",
       staffHtml: document.querySelector("#midi-staff")?.innerHTML || "",
+      midiPlayabilityPresetValue: document.getElementById("midi-playability-preset")?.value || "",
+      midiPlayabilityPolicyValue: document.getElementById("midi-playability-policy")?.value || "",
       currentMiniOverlayCount: document.querySelectorAll("#midi-current-fret .playability-overlay").length,
       focusedMiniOverlayCount: document.querySelectorAll("#midi-focused-mini .playability-overlay").length,
       suggestionMiniOverlayCount: document.querySelectorAll("#midi-suggestions [data-suggestion-mini] .playability-overlay").length,
@@ -461,6 +463,27 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
           candidateNoteCount: (host.textContent || "").split("·").length,
           pinned: /Pinned/i.test(host.textContent || ""),
           narrativeReady: (host.querySelector(".inspector-narrative")?.textContent || "").trim().length > 0,
+        };
+      })(),
+      midiPracticeFeedbackFeatures: (() => {
+        const host = document.querySelector("#midi-practice-feedback");
+        if (!host) {
+          return {
+            cardCount: 0,
+            sectionCount: 0,
+            chipCount: 0,
+            metricCount: 0,
+            lineCount: 0,
+            textReady: false,
+          };
+        }
+        return {
+          cardCount: host.querySelectorAll(".practice-feedback-card").length,
+          sectionCount: host.querySelectorAll(".practice-feedback-section").length,
+          chipCount: host.querySelectorAll(".practice-feedback-chip-row .pill, .practice-feedback-chip-row .chip, .practice-feedback-chip-row .status-pill").length,
+          metricCount: host.querySelectorAll(".inspector-metric").length,
+          lineCount: host.querySelectorAll(".practice-feedback-line").length,
+          textReady: (host.textContent || "").trim().length > 40,
         };
       })(),
       midiContinuationLadderFeatures: (() => {
@@ -816,6 +839,7 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
     const midiOrbifoldRibbonFeatures = snapshot.summary?.midiOrbifoldRibbonFeatures ?? snapshot.midiOrbifoldRibbonFeatures;
     const midiCommonToneConstellationFeatures = snapshot.summary?.midiCommonToneConstellationFeatures ?? snapshot.midiCommonToneConstellationFeatures;
     const midiInspectorFeatures = snapshot.summary?.midiInspectorFeatures ?? snapshot.midiInspectorFeatures;
+    const midiPracticeFeedbackFeatures = snapshot.summary?.midiPracticeFeedbackFeatures ?? snapshot.midiPracticeFeedbackFeatures;
     const midiContinuationLadderFeatures = snapshot.summary?.midiContinuationLadderFeatures ?? snapshot.midiContinuationLadderFeatures;
     const midiPathWeaverFeatures = snapshot.summary?.midiPathWeaverFeatures ?? snapshot.midiPathWeaverFeatures;
     const midiCadenceGardenFeatures = snapshot.summary?.midiCadenceGardenFeatures ?? snapshot.midiCadenceGardenFeatures;
@@ -839,8 +863,12 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
       && snapshot.summary?.displayCount >= 4
       && snapshot.summary?.snapshotCount >= 1
       && snapshot.summary?.suggestionCount >= 1
+      && snapshot.summary?.playabilityPresetId >= 0
+      && snapshot.summary?.playabilityPolicyId >= 0
       && snapshot.noteChips >= 4
       && snapshot.suggestionCards >= 1
+      && snapshot.midiPlayabilityPresetValue !== ""
+      && snapshot.midiPlayabilityPolicyValue !== ""
       && (snapshot.summary?.currentMiniMode || "off") !== ""
       && (snapshot.summary?.currentMiniRendered === true || snapshot.summary?.currentMiniMode === "off")
       && ((snapshot.summary?.suggestionMiniCount || 0) >= 1 || snapshot.summary?.currentMiniMode === "off")
@@ -852,6 +880,11 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
       && ((snapshot.previewKinds["midi-current-fret"] ?? "none") !== "none" || snapshot.summary?.currentMiniMode === "off")
       && ((snapshot.previewKinds["midi-focused-mini"] ?? "none") !== "none" || snapshot.summary?.currentMiniMode === "off")
       && midiInspectorFeatures.narrativeReady === true
+      && midiPracticeFeedbackFeatures.cardCount >= 1
+      && midiPracticeFeedbackFeatures.sectionCount >= 1
+      && midiPracticeFeedbackFeatures.metricCount >= 4
+      && midiPracticeFeedbackFeatures.lineCount >= 4
+      && midiPracticeFeedbackFeatures.textReady === true
       && midiContinuationLadderFeatures.rootLabel.length > 0
       && midiContinuationLadderFeatures.continuationCount >= 1
       && midiContinuationLadderFeatures.continuationClockCount >= 1
@@ -1011,6 +1044,8 @@ export async function waitForGalleryReady(page, expectedPreviewMode = null) {
       miniInstrumentMode: document.getElementById("mini-instrument-mode")?.value || "",
       playabilityOverlayMode: document.getElementById("playability-overlay-mode")?.value || "",
       midiProfileValue: document.getElementById("midi-profile")?.value || "",
+      midiPlayabilityPresetValue: document.getElementById("midi-playability-preset")?.value || "",
+      midiPlayabilityPolicyValue: document.getElementById("midi-playability-policy")?.value || "",
       playabilityOverlayCount: document.querySelectorAll(".playability-overlay").length,
       previewMetrics: Array.from(
         document.querySelectorAll("#midi-clock :is(svg,img)[data-preview-normalized='1'], #midi-optic-k :is(svg,img)[data-preview-normalized='1'], #midi-evenness :is(svg,img)[data-preview-normalized='1'], #midi-keyboard :is(svg,img)[data-preview-normalized='1'], #midi-staff :is(svg,img)[data-preview-normalized='1'], #midi-current-fret :is(svg,img)[data-preview-normalized='1'], #set-clock :is(svg,img)[data-preview-normalized='1'], #set-optic-k :is(svg,img)[data-preview-normalized='1'], #set-evenness :is(svg,img)[data-preview-normalized='1'], #set-mini :is(svg,img)[data-preview-normalized='1'], #key-clock :is(svg,img)[data-preview-normalized='1'], #key-staff :is(svg,img)[data-preview-normalized='1'], #key-keyboard :is(svg,img)[data-preview-normalized='1'], #key-mini :is(svg,img)[data-preview-normalized='1'], #chord-clock :is(svg,img)[data-preview-normalized='1'], #chord-staff :is(svg,img)[data-preview-normalized='1'], #chord-mini :is(svg,img)[data-preview-normalized='1'], #progression-clock :is(svg,img)[data-preview-normalized='1'], #progression-mini :is(svg,img)[data-preview-normalized='1'], #compare-left-clock :is(svg,img)[data-preview-normalized='1'], #compare-overlap-clock :is(svg,img)[data-preview-normalized='1'], #compare-right-clock :is(svg,img)[data-preview-normalized='1'], #compare-mini :is(svg,img)[data-preview-normalized='1'], #fret-svg :is(svg,img)[data-preview-normalized='1'], #fret-mini :is(svg,img)[data-preview-normalized='1']"),
@@ -1241,6 +1276,8 @@ export async function waitForGalleryReady(page, expectedPreviewMode = null) {
       snapshot.presetSelectCount >= 6 &&
       snapshot.miniInstrumentMode !== "" &&
       snapshot.midiProfileValue !== "" &&
+      snapshot.midiPlayabilityPresetValue !== "" &&
+      snapshot.midiPlayabilityPolicyValue !== "" &&
       snapshot.previewMetrics.length >= 17 &&
       snapshot.previewMetrics.every((metric) => metric.normalized === "1") &&
       snapshot.previewMetrics.find((metric) => metric.host === "midi-clock")?.width >= 260 &&
