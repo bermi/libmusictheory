@@ -98,6 +98,25 @@ pub const LmtHandProfile = extern struct {
     reserved1: u8,
 };
 
+pub const LmtPlayabilityDifficultySummary = extern struct {
+    accepted: u8,
+    blocker_count: u8,
+    warning_count: u8,
+    reason_count: u8,
+    bottleneck_cost: u16,
+    cumulative_cost: u16,
+    span_steps: u8,
+    shift_steps: u8,
+    load_event_count: u8,
+    peak_recent_span_steps: u8,
+    peak_recent_shift_steps: u8,
+    reserved0: u8,
+    comfort_span_margin: i16,
+    limit_span_margin: i16,
+    comfort_shift_margin: i16,
+    limit_shift_margin: i16,
+};
+
 pub const LmtTemporalLoadState = extern struct {
     event_count: u8,
     last_anchor_step: u8,
@@ -628,6 +647,11 @@ fn decodePlayabilityPolicy(raw: u32) ?playability.ranking.PlayabilityPolicy {
     return playability.ranking.fromInt(@as(u8, @intCast(raw)));
 }
 
+fn decodePlayabilityProfilePreset(raw: u32) ?playability.profile.ProfilePreset {
+    if (raw > std.math.maxInt(u8)) return null;
+    return playability.profile.fromInt(@as(u8, @intCast(raw)));
+}
+
 fn writeHandProfile(out: *LmtHandProfile, profile: playability.types.HandProfile) void {
     out.* = .{
         .finger_count = profile.finger_count,
@@ -638,6 +662,30 @@ fn writeHandProfile(out: *LmtHandProfile, profile: playability.types.HandProfile
         .prefers_low_tension = if (profile.prefers_low_tension) 1 else 0,
         .reserved0 = 0,
         .reserved1 = 0,
+    };
+}
+
+fn writePlayabilityDifficultySummary(
+    out: *LmtPlayabilityDifficultySummary,
+    summary: playability.profile.DifficultySummary,
+) void {
+    out.* = .{
+        .accepted = if (summary.accepted) 1 else 0,
+        .blocker_count = summary.blocker_count,
+        .warning_count = summary.warning_count,
+        .reason_count = summary.reason_count,
+        .bottleneck_cost = summary.bottleneck_cost,
+        .cumulative_cost = summary.cumulative_cost,
+        .span_steps = summary.span_steps,
+        .shift_steps = summary.shift_steps,
+        .load_event_count = summary.load_event_count,
+        .peak_recent_span_steps = summary.peak_recent_span_steps,
+        .peak_recent_shift_steps = summary.peak_recent_shift_steps,
+        .reserved0 = 0,
+        .comfort_span_margin = summary.comfort_span_margin,
+        .limit_span_margin = summary.limit_span_margin,
+        .comfort_shift_margin = summary.comfort_shift_margin,
+        .limit_shift_margin = summary.limit_shift_margin,
     };
 }
 
@@ -1495,6 +1543,28 @@ pub export fn lmt_playability_policy_name(index: u32) callconv(.c) [*c]const u8 
     return writeCString(playability.ranking.POLICY_NAMES[idx]);
 }
 
+pub export fn lmt_playability_profile_preset_count() callconv(.c) u32 {
+    return @as(u32, @intCast(playability.profile.PRESET_NAMES.len));
+}
+
+pub export fn lmt_playability_profile_preset_name(index: u32) callconv(.c) [*c]const u8 {
+    const idx = @as(usize, @intCast(index));
+    if (idx >= playability.profile.PRESET_NAMES.len) return null;
+    return writeCString(playability.profile.PRESET_NAMES[idx]);
+}
+
+pub export fn lmt_playability_profile_from_preset(
+    preset_raw: u32,
+    base_profile_ptr: [*c]const LmtHandProfile,
+    out: [*c]LmtHandProfile,
+) callconv(.c) u32 {
+    if (base_profile_ptr == null or out == null) return 0;
+    const preset = decodePlayabilityProfilePreset(preset_raw) orelse return 0;
+    const resolved = playability.profile.applyPreset(decodeHandProfile(base_profile_ptr[0]), preset);
+    writeHandProfile(@ptrCast(out), resolved);
+    return 1;
+}
+
 pub export fn lmt_scale_degree(tonic: u8, mode_type: u8, note: u8) callconv(.c) u8 {
     const mt = decodeModeType(mode_type) orelse return 0;
     const tonic_pc = @as(pitch.PitchClass, @intCast(tonic % 12));
@@ -1716,6 +1786,10 @@ pub export fn lmt_sizeof_ranked_keyboard_context_suggestion() callconv(.c) u32 {
 
 pub export fn lmt_sizeof_ranked_keyboard_next_step() callconv(.c) u32 {
     return @as(u32, @intCast(@sizeOf(LmtRankedKeyboardNextStep)));
+}
+
+pub export fn lmt_sizeof_playability_difficulty_summary() callconv(.c) u32 {
+    return @as(u32, @intCast(@sizeOf(LmtPlayabilityDifficultySummary)));
 }
 
 pub export fn lmt_sizeof_voiced_state() callconv(.c) u32 {
@@ -2219,6 +2293,37 @@ pub export fn lmt_rank_keyboard_next_steps_by_playability(
     }
 
     return @as(u32, @intCast(ranked.len));
+}
+
+pub export fn lmt_suggest_safer_keyboard_next_step_by_playability(
+    history: [*c]const LmtVoicedHistory,
+    profile_raw: u32,
+    hand_raw: u32,
+    hand_profile_ptr: [*c]const LmtHandProfile,
+    policy_raw: u32,
+    out: [*c]LmtRankedKeyboardNextStep,
+) callconv(.c) u32 {
+    if (history == null or out == null) return 0;
+    if (profile_raw > std.math.maxInt(u8)) return 0;
+
+    const profile_value = decodeCounterpointRuleProfile(@as(u8, @intCast(profile_raw))) orelse return 0;
+    const hand = decodeKeyboardHand(hand_raw) orelse return 0;
+    const hand_profile = if (hand_profile_ptr != null)
+        decodeHandProfile(hand_profile_ptr[0])
+    else
+        playability.keyboard_topology.defaultHandProfile();
+    const policy = decodePlayabilityPolicy(policy_raw) orelse return 0;
+
+    var decoded_history = decodeVoicedHistory((@as(*const LmtVoicedHistory, @ptrCast(history))).*);
+    const ranked = playability.profile.suggestSaferKeyboardNextStep(
+        &decoded_history,
+        profile_value,
+        hand,
+        hand_profile,
+        policy,
+    ) orelse return 0;
+    writeRankedKeyboardNextStep(@ptrCast(out), ranked);
+    return 1;
 }
 
 pub export fn lmt_rank_cadence_destinations(
@@ -2759,6 +2864,87 @@ pub export fn lmt_assess_fret_transition_n(
     return 1;
 }
 
+pub export fn lmt_summarize_fret_realization_difficulty_n(
+    frets_ptr: [*c]const i8,
+    fret_count: u32,
+    tuning_ptr: [*c]const u8,
+    tuning_count: u32,
+    profile_raw: u32,
+    hand_profile_ptr: [*c]const LmtHandProfile,
+    previous_load_ptr: [*c]const LmtTemporalLoadState,
+    out: [*c]LmtPlayabilityDifficultySummary,
+) callconv(.c) u32 {
+    if (out == null) return 0;
+
+    const count = @as(usize, @intCast(fret_count));
+    if (count > 0 and frets_ptr == null) return 0;
+    if (count > guitar.MAX_GENERIC_STRINGS) return 0;
+
+    var tuning_buf: [MAX_PARAMETRIC_FRET_STRINGS]pitch.MidiNote = undefined;
+    const tuning = decodeTuningGeneric(tuning_ptr, tuning_count, &tuning_buf);
+    if (tuning.len == 0 or count > tuning.len) return 0;
+
+    const technique = decodeFretTechniqueProfile(profile_raw) orelse return 0;
+    const hand_profile: ?playability.types.HandProfile = if (hand_profile_ptr != null)
+        decodeHandProfile(hand_profile_ptr[0])
+    else
+        null;
+    const previous_load: ?playability.types.TemporalLoadState = if (previous_load_ptr != null)
+        decodeTemporalLoadState(previous_load_ptr[0])
+    else
+        null;
+    const resolved_hand = hand_profile orelse playability.fret_assessment.defaultHandProfile(technique);
+    const frets = if (count == 0) &[_]i8{} else frets_ptr[0..count];
+    const assessment = playability.fret_assessment.assessRealization(
+        frets,
+        tuning,
+        technique,
+        hand_profile,
+        previous_load,
+    );
+    writePlayabilityDifficultySummary(@ptrCast(out), playability.profile.summarizeFretRealization(assessment, resolved_hand));
+    return 1;
+}
+
+pub export fn lmt_summarize_fret_transition_difficulty_n(
+    from_frets_ptr: [*c]const i8,
+    to_frets_ptr: [*c]const i8,
+    fret_count: u32,
+    tuning_ptr: [*c]const u8,
+    tuning_count: u32,
+    profile_raw: u32,
+    hand_profile_ptr: [*c]const LmtHandProfile,
+    out: [*c]LmtPlayabilityDifficultySummary,
+) callconv(.c) u32 {
+    if (out == null) return 0;
+
+    const count = @as(usize, @intCast(fret_count));
+    if (count > 0 and (from_frets_ptr == null or to_frets_ptr == null)) return 0;
+    if (count > guitar.MAX_GENERIC_STRINGS) return 0;
+
+    var tuning_buf: [MAX_PARAMETRIC_FRET_STRINGS]pitch.MidiNote = undefined;
+    const tuning = decodeTuningGeneric(tuning_ptr, tuning_count, &tuning_buf);
+    if (tuning.len == 0 or count > tuning.len) return 0;
+
+    const technique = decodeFretTechniqueProfile(profile_raw) orelse return 0;
+    const hand_profile: ?playability.types.HandProfile = if (hand_profile_ptr != null)
+        decodeHandProfile(hand_profile_ptr[0])
+    else
+        null;
+    const resolved_hand = hand_profile orelse playability.fret_assessment.defaultHandProfile(technique);
+    const from_frets = if (count == 0) &[_]i8{} else from_frets_ptr[0..count];
+    const to_frets = if (count == 0) &[_]i8{} else to_frets_ptr[0..count];
+    const assessment = playability.fret_assessment.assessTransition(
+        from_frets,
+        to_frets,
+        tuning,
+        technique,
+        hand_profile,
+    );
+    writePlayabilityDifficultySummary(@ptrCast(out), playability.profile.summarizeFretTransition(assessment, resolved_hand));
+    return 1;
+}
+
 pub export fn lmt_rank_fret_realizations_n(
     note: u8,
     tuning_ptr: [*c]const u8,
@@ -2798,6 +2984,39 @@ pub export fn lmt_rank_fret_realizations_n(
     }
 
     return @as(u32, @intCast(ranked.len));
+}
+
+pub export fn lmt_suggest_easier_fret_realization_n(
+    note: u8,
+    tuning_ptr: [*c]const u8,
+    tuning_count: u32,
+    anchor_fret: u8,
+    profile_raw: u32,
+    hand_profile_ptr: [*c]const LmtHandProfile,
+    out: [*c]LmtRankedFretRealization,
+) callconv(.c) u32 {
+    if (out == null) return 0;
+
+    var tuning_buf: [MAX_PARAMETRIC_FRET_STRINGS]pitch.MidiNote = undefined;
+    const tuning = decodeTuningGeneric(tuning_ptr, tuning_count, &tuning_buf);
+    if (tuning.len == 0) return 0;
+
+    const technique = decodeFretTechniqueProfile(profile_raw) orelse return 0;
+    const hand_profile: ?playability.types.HandProfile = if (hand_profile_ptr != null)
+        decodeHandProfile(hand_profile_ptr[0])
+    else
+        null;
+
+    const ranked = playability.profile.suggestEasierFretRealization(
+        @as(pitch.MidiNote, @intCast(@min(note, @as(u8, 127)))),
+        tuning,
+        anchor_fret,
+        technique,
+        hand_profile,
+    ) orelse return 0;
+
+    writeRankedFretRealization(@ptrCast(out), ranked);
+    return 1;
 }
 
 pub export fn lmt_keyboard_key_coord(note: u8, out: [*c]LmtKeybedKeyCoord) callconv(.c) u32 {
@@ -2895,6 +3114,64 @@ pub export fn lmt_assess_keyboard_transition_n(
     return 1;
 }
 
+pub export fn lmt_summarize_keyboard_realization_difficulty_n(
+    notes_ptr: [*c]const u8,
+    note_count: u32,
+    hand_raw: u32,
+    profile_ptr: [*c]const LmtHandProfile,
+    previous_load_ptr: [*c]const LmtTemporalLoadState,
+    out: [*c]LmtPlayabilityDifficultySummary,
+) callconv(.c) u32 {
+    if (out == null) return 0;
+
+    var notes_buf: [MAX_KEYBOARD_RENDER_NOTES]pitch.MidiNote = undefined;
+    const notes = decodeMidiNotes(notes_ptr, note_count, &notes_buf);
+    const hand = decodeKeyboardHand(hand_raw) orelse return 0;
+    const profile = if (profile_ptr != null)
+        decodeHandProfile(profile_ptr[0])
+    else
+        playability.keyboard_topology.defaultHandProfile();
+    const previous_load: ?playability.types.TemporalLoadState = if (previous_load_ptr != null)
+        decodeTemporalLoadState(previous_load_ptr[0])
+    else
+        null;
+
+    const assessment = playability.keyboard_assessment.assessRealization(notes, hand, profile, previous_load);
+    writePlayabilityDifficultySummary(@ptrCast(out), playability.profile.summarizeKeyboardRealization(assessment, profile));
+    return 1;
+}
+
+pub export fn lmt_summarize_keyboard_transition_difficulty_n(
+    from_notes_ptr: [*c]const u8,
+    from_count: u32,
+    to_notes_ptr: [*c]const u8,
+    to_count: u32,
+    hand_raw: u32,
+    profile_ptr: [*c]const LmtHandProfile,
+    previous_load_ptr: [*c]const LmtTemporalLoadState,
+    out: [*c]LmtPlayabilityDifficultySummary,
+) callconv(.c) u32 {
+    if (out == null) return 0;
+
+    var from_notes_buf: [MAX_KEYBOARD_RENDER_NOTES]pitch.MidiNote = undefined;
+    var to_notes_buf: [MAX_KEYBOARD_RENDER_NOTES]pitch.MidiNote = undefined;
+    const from_notes = decodeMidiNotes(from_notes_ptr, from_count, &from_notes_buf);
+    const to_notes = decodeMidiNotes(to_notes_ptr, to_count, &to_notes_buf);
+    const hand = decodeKeyboardHand(hand_raw) orelse return 0;
+    const profile = if (profile_ptr != null)
+        decodeHandProfile(profile_ptr[0])
+    else
+        playability.keyboard_topology.defaultHandProfile();
+    const previous_load: ?playability.types.TemporalLoadState = if (previous_load_ptr != null)
+        decodeTemporalLoadState(previous_load_ptr[0])
+    else
+        null;
+
+    const assessment = playability.keyboard_assessment.assessTransition(from_notes, to_notes, hand, profile, previous_load);
+    writePlayabilityDifficultySummary(@ptrCast(out), playability.profile.summarizeKeyboardTransition(assessment, profile));
+    return 1;
+}
+
 pub export fn lmt_rank_keyboard_fingerings_n(
     notes_ptr: [*c]const u8,
     note_count: u32,
@@ -2923,6 +3200,28 @@ pub export fn lmt_rank_keyboard_fingerings_n(
     }
 
     return @as(u32, @intCast(ranked.len));
+}
+
+pub export fn lmt_suggest_easier_keyboard_fingering_n(
+    notes_ptr: [*c]const u8,
+    note_count: u32,
+    hand_raw: u32,
+    profile_ptr: [*c]const LmtHandProfile,
+    out: [*c]LmtRankedKeyboardFingering,
+) callconv(.c) u32 {
+    if (out == null) return 0;
+
+    var notes_buf: [MAX_KEYBOARD_RENDER_NOTES]pitch.MidiNote = undefined;
+    const notes = decodeMidiNotes(notes_ptr, note_count, &notes_buf);
+    const hand = decodeKeyboardHand(hand_raw) orelse return 0;
+    const profile = if (profile_ptr != null)
+        decodeHandProfile(profile_ptr[0])
+    else
+        playability.keyboard_topology.defaultHandProfile();
+
+    const ranked = playability.profile.suggestEasierKeyboardFingering(notes, hand, profile) orelse return 0;
+    writeRankedKeyboardFingering(@ptrCast(out), ranked);
+    return 1;
 }
 
 pub export fn lmt_svg_clock_optc(set: u16, buf: [*c]u8, buf_size: u32) callconv(.c) u32 {

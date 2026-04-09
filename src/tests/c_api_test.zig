@@ -19,6 +19,7 @@ const LmtScaleSnapCandidates = api.LmtScaleSnapCandidates;
 const LmtContainingModeMatch = api.LmtContainingModeMatch;
 const LmtChordMatch = api.LmtChordMatch;
 const LmtHandProfile = api.LmtHandProfile;
+const LmtPlayabilityDifficultySummary = api.LmtPlayabilityDifficultySummary;
 const LmtTemporalLoadState = api.LmtTemporalLoadState;
 const LmtFretCandidateLocation = api.LmtFretCandidateLocation;
 const LmtFretPlayState = api.LmtFretPlayState;
@@ -71,6 +72,9 @@ const lmt_playability_warning_count = api.lmt_playability_warning_count;
 const lmt_playability_warning_name = api.lmt_playability_warning_name;
 const lmt_playability_policy_count = api.lmt_playability_policy_count;
 const lmt_playability_policy_name = api.lmt_playability_policy_name;
+const lmt_playability_profile_preset_count = api.lmt_playability_profile_preset_count;
+const lmt_playability_profile_preset_name = api.lmt_playability_profile_preset_name;
+const lmt_playability_profile_from_preset = api.lmt_playability_profile_from_preset;
 const lmt_fret_playability_blocker_count = api.lmt_fret_playability_blocker_count;
 const lmt_fret_playability_blocker_name = api.lmt_fret_playability_blocker_name;
 const lmt_fret_technique_profile_count = api.lmt_fret_technique_profile_count;
@@ -137,6 +141,7 @@ const lmt_sizeof_keyboard_transition_assessment = api.lmt_sizeof_keyboard_transi
 const lmt_sizeof_ranked_keyboard_fingering = api.lmt_sizeof_ranked_keyboard_fingering;
 const lmt_sizeof_ranked_keyboard_context_suggestion = api.lmt_sizeof_ranked_keyboard_context_suggestion;
 const lmt_sizeof_ranked_keyboard_next_step = api.lmt_sizeof_ranked_keyboard_next_step;
+const lmt_sizeof_playability_difficulty_summary = api.lmt_sizeof_playability_difficulty_summary;
 const lmt_sizeof_voiced_state = api.lmt_sizeof_voiced_state;
 const lmt_sizeof_voiced_history = api.lmt_sizeof_voiced_history;
 const lmt_sizeof_next_step_suggestion = api.lmt_sizeof_next_step_suggestion;
@@ -163,14 +168,21 @@ const lmt_describe_fret_play_state = api.lmt_describe_fret_play_state;
 const lmt_windowed_fret_positions_n = api.lmt_windowed_fret_positions_n;
 const lmt_assess_fret_realization_n = api.lmt_assess_fret_realization_n;
 const lmt_assess_fret_transition_n = api.lmt_assess_fret_transition_n;
+const lmt_summarize_fret_realization_difficulty_n = api.lmt_summarize_fret_realization_difficulty_n;
+const lmt_summarize_fret_transition_difficulty_n = api.lmt_summarize_fret_transition_difficulty_n;
 const lmt_rank_fret_realizations_n = api.lmt_rank_fret_realizations_n;
+const lmt_suggest_easier_fret_realization_n = api.lmt_suggest_easier_fret_realization_n;
 const lmt_keyboard_key_coord = api.lmt_keyboard_key_coord;
 const lmt_describe_keyboard_play_state = api.lmt_describe_keyboard_play_state;
 const lmt_assess_keyboard_realization_n = api.lmt_assess_keyboard_realization_n;
 const lmt_assess_keyboard_transition_n = api.lmt_assess_keyboard_transition_n;
+const lmt_summarize_keyboard_realization_difficulty_n = api.lmt_summarize_keyboard_realization_difficulty_n;
+const lmt_summarize_keyboard_transition_difficulty_n = api.lmt_summarize_keyboard_transition_difficulty_n;
 const lmt_rank_keyboard_fingerings_n = api.lmt_rank_keyboard_fingerings_n;
+const lmt_suggest_easier_keyboard_fingering_n = api.lmt_suggest_easier_keyboard_fingering_n;
 const lmt_filter_next_steps_by_playability = api.lmt_filter_next_steps_by_playability;
 const lmt_rank_keyboard_next_steps_by_playability = api.lmt_rank_keyboard_next_steps_by_playability;
+const lmt_suggest_safer_keyboard_next_step_by_playability = api.lmt_suggest_safer_keyboard_next_step_by_playability;
 const lmt_voiced_history_reset = api.lmt_voiced_history_reset;
 const lmt_build_voiced_state = api.lmt_build_voiced_state;
 const lmt_voiced_history_push = api.lmt_voiced_history_push;
@@ -221,6 +233,7 @@ test "c abi header layout and constants" {
     try testing.expectEqual(@sizeOf(c.lmt_containing_mode_match), @sizeOf(LmtContainingModeMatch));
     try testing.expectEqual(@sizeOf(c.lmt_chord_match), @sizeOf(LmtChordMatch));
     try testing.expectEqual(@sizeOf(c.lmt_hand_profile), @sizeOf(LmtHandProfile));
+    try testing.expectEqual(@sizeOf(c.lmt_playability_difficulty_summary), @sizeOf(LmtPlayabilityDifficultySummary));
     try testing.expectEqual(@sizeOf(c.lmt_temporal_load_state), @sizeOf(LmtTemporalLoadState));
     try testing.expectEqual(@sizeOf(c.lmt_fret_candidate_location), @sizeOf(LmtFretCandidateLocation));
     try testing.expectEqual(@sizeOf(c.lmt_fret_play_state), @sizeOf(LmtFretPlayState));
@@ -282,9 +295,11 @@ test "c abi header layout and constants" {
     try testing.expectEqual(@as(c_int, 1), c.LMT_KEYBOARD_HAND_RIGHT);
     try testing.expectEqual(@as(c_int, 3), c.LMT_KEYBOARD_PLAYABILITY_BLOCKER_IMPOSSIBLE_THUMB_CROSSING);
     try testing.expectEqual(@as(c_int, 1), c.LMT_PLAYABILITY_POLICY_MINIMAX_BOTTLENECK);
+    try testing.expectEqual(@as(c_int, 2), c.LMT_PLAYABILITY_PROFILE_SPAN_TOLERANT);
     try testing.expectEqual(@as(u32, playability.types.REASON_NAMES.len), lmt_playability_reason_count());
     try testing.expectEqual(@as(u32, playability.types.WARNING_NAMES.len), lmt_playability_warning_count());
     try testing.expectEqual(@as(u32, playability.ranking.POLICY_NAMES.len), lmt_playability_policy_count());
+    try testing.expectEqual(@as(u32, playability.profile.PRESET_NAMES.len), lmt_playability_profile_preset_count());
     try testing.expectEqual(@as(u32, playability.fret_assessment.BLOCKER_NAMES.len), lmt_fret_playability_blocker_count());
     try testing.expectEqual(@as(u32, playability.fret_assessment.PROFILE_NAMES.len), lmt_fret_technique_profile_count());
     try testing.expectEqual(@as(u32, playability.keyboard_assessment.HAND_ROLE_NAMES.len), lmt_keyboard_hand_count());
@@ -292,6 +307,7 @@ test "c abi header layout and constants" {
     try testing.expectEqualStrings("reachable in current window", std.mem.sliceTo(@as([*:0]const u8, @ptrCast(lmt_playability_reason_name(c.LMT_PLAYABILITY_REASON_REACHABLE_IN_CURRENT_WINDOW))), 0));
     try testing.expectEqualStrings("hard limit exceeded", std.mem.sliceTo(@as([*:0]const u8, @ptrCast(lmt_playability_warning_name(c.LMT_PLAYABILITY_WARNING_HARD_LIMIT_EXCEEDED))), 0));
     try testing.expectEqualStrings("minimax-bottleneck", std.mem.sliceTo(@as([*:0]const u8, @ptrCast(lmt_playability_policy_name(c.LMT_PLAYABILITY_POLICY_MINIMAX_BOTTLENECK))), 0));
+    try testing.expectEqualStrings("span-tolerant", std.mem.sliceTo(@as([*:0]const u8, @ptrCast(lmt_playability_profile_preset_name(c.LMT_PLAYABILITY_PROFILE_SPAN_TOLERANT))), 0));
     try testing.expectEqualStrings("unsupported extension", std.mem.sliceTo(@as([*:0]const u8, @ptrCast(lmt_fret_playability_blocker_name(c.LMT_FRET_PLAYABILITY_BLOCKER_UNSUPPORTED_EXTENSION))), 0));
     try testing.expectEqualStrings("bass simandl", std.mem.sliceTo(@as([*:0]const u8, @ptrCast(lmt_fret_technique_profile_name(c.LMT_FRET_TECHNIQUE_BASS_SIMANDL))), 0));
     try testing.expectEqualStrings("right hand", std.mem.sliceTo(@as([*:0]const u8, @ptrCast(lmt_keyboard_hand_name(c.LMT_KEYBOARD_HAND_RIGHT))), 0));
@@ -310,6 +326,7 @@ test "c abi header layout and constants" {
     try testing.expectEqual(@as(u32, @sizeOf(LmtRankedKeyboardFingering)), lmt_sizeof_ranked_keyboard_fingering());
     try testing.expectEqual(@as(u32, @sizeOf(LmtRankedKeyboardContextSuggestion)), lmt_sizeof_ranked_keyboard_context_suggestion());
     try testing.expectEqual(@as(u32, @sizeOf(LmtRankedKeyboardNextStep)), lmt_sizeof_ranked_keyboard_next_step());
+    try testing.expectEqual(@as(u32, @sizeOf(LmtPlayabilityDifficultySummary)), lmt_sizeof_playability_difficulty_summary());
     try testing.expectEqual(@as(u32, counterpoint.MAX_VOICES), lmt_counterpoint_max_voices());
     try testing.expectEqual(@as(u32, counterpoint.HISTORY_CAPACITY), lmt_counterpoint_history_capacity());
     try testing.expectEqual(@as(u32, @sizeOf(LmtVoicedState)), lmt_sizeof_voiced_state());
@@ -889,6 +906,39 @@ test "c abi playability foundation helpers" {
     try testing.expectEqual(@as(u8, 3), keyboard_state.load.last_shift_steps);
 }
 
+test "c abi playability profile presets and summaries" {
+    var keyboard_profile: LmtHandProfile = undefined;
+    try testing.expectEqual(@as(u32, 1), lmt_default_keyboard_hand_profile(@ptrCast(&keyboard_profile)));
+
+    var compact_profile: LmtHandProfile = undefined;
+    try testing.expectEqual(@as(u32, 1), lmt_playability_profile_from_preset(
+        c.LMT_PLAYABILITY_PROFILE_COMPACT_BEGINNER,
+        @ptrCast(&keyboard_profile),
+        @ptrCast(&compact_profile),
+    ));
+    try testing.expectEqual(keyboard_profile.finger_count, compact_profile.finger_count);
+    try testing.expect(compact_profile.comfort_span_steps < keyboard_profile.comfort_span_steps);
+    try testing.expect(compact_profile.comfort_shift_steps < keyboard_profile.comfort_shift_steps);
+
+    const from_notes = [_]u8{60};
+    const to_notes = [_]u8{72};
+    var summary: LmtPlayabilityDifficultySummary = undefined;
+    try testing.expectEqual(@as(u32, 1), lmt_summarize_keyboard_transition_difficulty_n(
+        @ptrCast(&from_notes),
+        from_notes.len,
+        @ptrCast(&to_notes),
+        to_notes.len,
+        c.LMT_KEYBOARD_HAND_RIGHT,
+        @ptrCast(&compact_profile),
+        null,
+        @ptrCast(&summary),
+    ));
+    try testing.expectEqual(@as(u8, 0), summary.accepted);
+    try testing.expect(summary.blocker_count > 0);
+    try testing.expect(summary.limit_shift_margin < 0);
+    try testing.expectEqual(@as(u8, 12), summary.shift_steps);
+}
+
 test "c abi fret playability assessment helpers" {
     var simandl_profile: LmtHandProfile = undefined;
     try testing.expectEqual(@as(u32, 1), lmt_default_fret_hand_profile_for_technique(c.LMT_FRET_TECHNIQUE_BASS_SIMANDL, @ptrCast(&simandl_profile)));
@@ -945,6 +995,33 @@ test "c abi fret playability assessment helpers" {
     try testing.expectEqual(@as(u8, 2), ranked[0].location.position.string);
     try testing.expectEqual(@as(u8, 10), ranked[0].location.position.fret);
     try testing.expectEqual(@as(u8, 4), ranked[0].recommended_finger);
+
+    var summary: LmtPlayabilityDifficultySummary = undefined;
+    try testing.expectEqual(@as(u32, 1), lmt_summarize_fret_transition_difficulty_n(
+        @ptrCast(&frets),
+        @ptrCast(&to_frets),
+        frets.len,
+        @ptrCast(&tuning),
+        tuning.len,
+        c.LMT_FRET_TECHNIQUE_BASS_SIMANDL,
+        @ptrCast(&simandl_profile),
+        @ptrCast(&summary),
+    ));
+    try testing.expect(summary.warning_count > 0);
+    try testing.expect(summary.shift_steps >= transition.anchor_delta_steps);
+
+    var easier: LmtRankedFretRealization = undefined;
+    try testing.expectEqual(@as(u32, 1), lmt_suggest_easier_fret_realization_n(
+        64,
+        @ptrCast(&[_]u8{ 40, 45, 50, 55, 59, 64 }),
+        6,
+        0,
+        c.LMT_FRET_TECHNIQUE_GENERIC_GUITAR,
+        null,
+        @ptrCast(&easier),
+    ));
+    try testing.expectEqual(@as(u8, 5), easier.location.position.string);
+    try testing.expectEqual(@as(u8, 0), easier.location.position.fret);
 }
 
 test "c abi keyboard playability assessment helpers" {
@@ -1007,6 +1084,29 @@ test "c abi keyboard playability assessment helpers" {
     );
     try testing.expectEqual(@as(u32, 5), ranked_total);
     try testing.expectEqual(@as(u8, 2), ranked[0].fingers[0]);
+
+    var summary: LmtPlayabilityDifficultySummary = undefined;
+    try testing.expectEqual(@as(u32, 1), lmt_summarize_keyboard_realization_difficulty_n(
+        @ptrCast(&notes),
+        notes.len,
+        c.LMT_KEYBOARD_HAND_RIGHT,
+        @ptrCast(&keyboard_profile),
+        null,
+        @ptrCast(&summary),
+    ));
+    try testing.expectEqual(@as(u8, 1), summary.accepted);
+    try testing.expectEqual(@as(u8, 7), summary.span_steps);
+    try testing.expect(summary.comfort_span_margin >= 0);
+
+    var easier: LmtRankedKeyboardFingering = undefined;
+    try testing.expectEqual(@as(u32, 1), lmt_suggest_easier_keyboard_fingering_n(
+        @ptrCast(&notes),
+        notes.len,
+        c.LMT_KEYBOARD_HAND_RIGHT,
+        @ptrCast(&keyboard_profile),
+        @ptrCast(&easier),
+    ));
+    try testing.expectEqual(@as(u8, 1), easier.fingers[0]);
 }
 
 test "c abi playability-aware next-step wrappers" {
@@ -1069,6 +1169,18 @@ test "c abi playability-aware next-step wrappers" {
     try testing.expectEqual(@as(u8, c.LMT_KEYBOARD_HAND_RIGHT), ranked[0].hand);
     try testing.expectEqual(@as(u8, c.LMT_PLAYABILITY_POLICY_BALANCED), ranked[0].policy);
     try testing.expectEqual(@as(u32, 0), ranked[0].transition.blocker_bits);
+
+    var safer: LmtRankedKeyboardNextStep = undefined;
+    try testing.expectEqual(@as(u32, 1), lmt_suggest_safer_keyboard_next_step_by_playability(
+        @ptrCast(&history),
+        c.LMT_COUNTERPOINT_SPECIES,
+        c.LMT_KEYBOARD_HAND_RIGHT,
+        @ptrCast(&strict_profile),
+        c.LMT_PLAYABILITY_POLICY_BALANCED,
+        @ptrCast(&safer),
+    ));
+    try testing.expectEqual(@as(u8, 1), safer.accepted);
+    try testing.expectEqual(ranked[0].candidate_index, safer.candidate_index);
 }
 
 test "c abi playability-aware context suggestion wrapper" {

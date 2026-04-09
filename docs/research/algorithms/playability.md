@@ -108,3 +108,52 @@ These policies are not hidden weights. They are fixed comparison orders over alr
 - keyboard context suggestions can be reranked with an explicit realized-note choice near the current anchor register
 
 Fret-specific candidate reranking and multi-instrument consensus can layer on the same policy vocabulary later without changing the theory-first base APIs.
+
+## 0129 - Personalized Profiles And Practice Feedback
+
+`0129` adds a thin personalization layer without changing the underlying assessment facts.
+
+The key API decision is that presets are not universal hand models. They are explicit adjustments applied to a caller-selected base profile:
+
+- `compact-beginner`
+  narrows span and shift comfort windows and forces low-tension preference
+- `balanced-standard`
+  preserves the base profile exactly
+- `span-tolerant`
+  widens span windows while keeping shift semantics unchanged
+- `shift-tolerant`
+  widens shift windows while keeping span semantics unchanged
+
+This keeps the surface explainable:
+
+- "Under the compact-beginner preset, the same keyboard hand keeps five fingers, but the comfort span and shift windows are narrower."
+- "Under the span-tolerant preset, this voicing is still the same harmonic target; the profile simply allows a wider comfort span before warning."
+
+### Why Presets Are Delta-Based
+
+The same raw `HandProfile` type is shared by keyboard and fret playability. A universal preset that overwrote `finger_count` would be misleading across instruments.
+
+So the preset API applies deltas to a caller-supplied base profile instead:
+
+- keyboard hosts can start from the default keyboard hand profile
+- fret hosts can start from the default profile for the selected technique
+- advanced callers can still bypass presets and provide raw parameters directly
+
+### Difficulty Summaries
+
+`0129` also adds explicit difficulty summaries for practice and generation tools.
+
+These summaries do not replace the detailed assessments. They compress the same facts into a compact report:
+
+- accepted or blocked
+- blocker, warning, and reason counts
+- bottleneck and cumulative cost
+- current span and shift burden
+- recent peak load
+- remaining comfort and hard-limit headroom
+
+That lets downstream tools say:
+
+- "This realization is blocked because the shift margin is negative."
+- "This option is playable, but it has only one semitone of comfort-span headroom left."
+- "This alternative keeps the musical target but lowers the bottleneck cost."

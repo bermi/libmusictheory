@@ -249,6 +249,13 @@ if [ -f "$ROOT_DIR/docs/plans/in_progress/0128-gallery-overlays-and-hand-outline
     check_cmd "cd '$ROOT_DIR' && rg -n 'lmt_playability_reason_count|lmt_playability_warning_count|lmt_default_keyboard_hand_profile|lmt_default_fret_hand_profile_for_technique|lmt_assess_keyboard_realization_n|lmt_assess_keyboard_transition_n|lmt_assess_fret_realization_n|lmt_assess_fret_transition_n|lmt_keyboard_key_coord' examples/wasm-gallery/gallery.js >/dev/null" "0128 gallery overlay guardrail (overlay runtime stays downstream of exported playability assessments and geometry helpers)"
 fi
 
+if [ -f "$ROOT_DIR/docs/plans/in_progress/0129-personalized-profiles-and-practice-feedback.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0129-personalized-profiles-and-practice-feedback.md" ]; then
+    check_cmd "cd '$ROOT_DIR' && test -f src/playability/profile.zig && test -f src/tests/playability_profile_test.zig && rg -n 'pub const profile|tests/playability_profile_test\\.zig' src/playability.zig src/root.zig >/dev/null" "0129 playability profile foundation guardrail (profile module and focused tests are wired)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'ProfilePreset|PRESET_NAMES|applyPreset|DifficultySummary|suggestEasierFretRealization|suggestEasierKeyboardFingering|suggestSaferKeyboardNextStep' src/playability/profile.zig src/tests/playability_profile_test.zig >/dev/null" "0129 playability profile algorithm guardrail (preset application, summaries, and practice helpers are implemented)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'lmt_playability_profile_preset|lmt_playability_profile_from_preset|lmt_sizeof_playability_difficulty_summary|lmt_summarize_keyboard_realization_difficulty_n|lmt_summarize_keyboard_transition_difficulty_n|lmt_summarize_fret_realization_difficulty_n|lmt_summarize_fret_transition_difficulty_n|lmt_suggest_easier_keyboard_fingering_n|lmt_suggest_easier_fret_realization_n|lmt_suggest_safer_keyboard_next_step_by_playability' include/libmusictheory.h src/c_api.zig build.zig scripts/check_wasm_exports.mjs src/tests/c_api_test.zig >/dev/null" "0129 playability profile ABI guardrail (preset reflection, summaries, and practice wrappers are wired)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'compact-beginner|balanced-standard|span-tolerant|shift-tolerant|base profile|difficulty summary|practice feedback' docs/research/algorithms/playability.md docs/release/stability-matrix.md >/dev/null" "0129 playability profile docs guardrail (preset semantics and summary surface are documented)"
+fi
+
 
 
 if [ -f "$ROOT_DIR/docs/plans/in_progress/0088-live-midi-composer-scene.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0088-live-midi-composer-scene.md" ]; then

@@ -54,6 +54,12 @@ These helpers are intentionally public and reviewed, but they are not part of th
 - ordered-scale pedagogy helpers:
   - `lmt_ordered_scale_*`
   - `lmt_barry_harris_parity`
+- playability profile and practice-feedback helpers:
+  - `lmt_playability_profile_preset_*`
+  - `lmt_playability_profile_from_preset`
+  - `lmt_summarize_*_playability_difficulty_*`
+  - `lmt_suggest_easier_*`
+  - `lmt_suggest_safer_keyboard_next_step_by_playability`
 - direct RGBA bitmap renderers:
   - all `lmt_bitmap_*_rgba` methods
 
