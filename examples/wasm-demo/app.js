@@ -5,6 +5,7 @@ const outClassification = document.getElementById("out-classification");
 const outScaleMode = document.getElementById("out-scale-mode");
 const outChord = document.getElementById("out-chord");
 const outGuitar = document.getElementById("out-guitar");
+const outPlayability = document.getElementById("out-playability");
 const outSvgMeta = document.getElementById("out-svg-meta");
 
 const svgClockHost = document.getElementById("svg-clock");
@@ -51,6 +52,25 @@ const REQUIRED_EXPORTS = [
   "lmt_pitch_class_guide_n",
   "lmt_frets_to_url_n",
   "lmt_url_to_frets_n",
+  "lmt_sizeof_hand_profile",
+  "lmt_sizeof_voiced_history",
+  "lmt_sizeof_voiced_state",
+  "lmt_sizeof_ranked_keyboard_fingering",
+  "lmt_sizeof_ranked_keyboard_next_step",
+  "lmt_sizeof_playability_difficulty_summary",
+  "lmt_sizeof_next_step_suggestion",
+  "lmt_sizeof_keyboard_play_state",
+  "lmt_sizeof_keyboard_transition_assessment",
+  "lmt_default_keyboard_hand_profile",
+  "lmt_playability_profile_from_preset",
+  "lmt_summarize_keyboard_realization_difficulty_n",
+  "lmt_summarize_keyboard_transition_difficulty_n",
+  "lmt_suggest_easier_keyboard_fingering_n",
+  "lmt_filter_next_steps_by_playability",
+  "lmt_rank_keyboard_next_steps_by_playability",
+  "lmt_suggest_safer_keyboard_next_step_by_playability",
+  "lmt_voiced_history_reset",
+  "lmt_voiced_history_push",
   "lmt_svg_clock_optc",
   "lmt_svg_optic_k_group",
   "lmt_svg_evenness_chart",
@@ -220,6 +240,101 @@ function getSelectValue(id) {
 
 function setToHex(setValue) {
   return `0x${setValue.toString(16).padStart(3, "0")}`;
+}
+
+function formatMidiList(notes) {
+  return `[${notes.join(", ")}]`;
+}
+
+function decodeHandProfile(ptr) {
+  const view = new DataView(memory.buffer, ptr, wasm.lmt_sizeof_hand_profile());
+  return {
+    fingerCount: view.getUint8(0),
+    comfortSpanSteps: view.getUint8(1),
+    limitSpanSteps: view.getUint8(2),
+    comfortShiftSteps: view.getUint8(3),
+    limitShiftSteps: view.getUint8(4),
+    prefersLowTension: view.getUint8(5) === 1,
+  };
+}
+
+function decodePlayabilityDifficultySummary(ptr) {
+  const view = new DataView(memory.buffer, ptr, wasm.lmt_sizeof_playability_difficulty_summary());
+  return {
+    accepted: view.getUint8(0) === 1,
+    blockerCount: view.getUint8(1),
+    warningCount: view.getUint8(2),
+    reasonCount: view.getUint8(3),
+    bottleneckCost: view.getUint16(4, true),
+    cumulativeCost: view.getUint16(6, true),
+    spanSteps: view.getUint8(8),
+    shiftSteps: view.getUint8(9),
+    loadEventCount: view.getUint8(10),
+    peakRecentSpanSteps: view.getUint8(11),
+    peakRecentShiftSteps: view.getUint8(12),
+    comfortSpanMargin: view.getInt16(14, true),
+    limitSpanMargin: view.getInt16(16, true),
+    comfortShiftMargin: view.getInt16(18, true),
+    limitShiftMargin: view.getInt16(20, true),
+  };
+}
+
+function decodeRankedKeyboardFingering(ptr) {
+  const view = new DataView(memory.buffer, ptr, wasm.lmt_sizeof_ranked_keyboard_fingering());
+  const noteCount = view.getUint8(1);
+  return {
+    hand: view.getUint8(0),
+    noteCount,
+    bottleneckCost: view.getUint16(4, true),
+    cumulativeCost: view.getUint16(6, true),
+    blockerBits: view.getUint32(8, true),
+    warningBits: view.getUint32(12, true),
+    reasonBits: view.getUint32(16, true),
+    fingers: Array.from({ length: noteCount }, (_unused, index) => view.getUint8(20 + index)),
+  };
+}
+
+function decodeRankedKeyboardNextStep(ptr) {
+  const nextStepBytes = wasm.lmt_sizeof_next_step_suggestion();
+  const transitionBytes = wasm.lmt_sizeof_keyboard_transition_assessment();
+  const view = new DataView(memory.buffer, ptr, wasm.lmt_sizeof_ranked_keyboard_next_step());
+  const noteCount = view.getUint8(14);
+  const notes = Array.from({ length: noteCount }, (_unused, index) => view.getUint8(20 + index));
+  const metaBase = nextStepBytes + transitionBytes;
+  const transitionBase = nextStepBytes + (wasm.lmt_sizeof_keyboard_play_state() * 2);
+  return {
+    notes,
+    candidateIndex: view.getUint8(metaBase + 0),
+    hand: view.getUint8(metaBase + 1),
+    policy: view.getUint8(metaBase + 2),
+    accepted: view.getUint8(metaBase + 3) === 1,
+    bottleneckCost: view.getUint16(transitionBase + 4, true),
+    cumulativeCost: view.getUint16(transitionBase + 6, true),
+  };
+}
+
+function formatHandProfile(profile) {
+  return `fingers=${profile.fingerCount}, comfort_span=${profile.comfortSpanSteps}, limit_span=${profile.limitSpanSteps}, comfort_shift=${profile.comfortShiftSteps}, limit_shift=${profile.limitShiftSteps}, prefers_low_tension=${profile.prefersLowTension}`;
+}
+
+function formatDifficultySummary(summary) {
+  if (!summary) return "unavailable";
+  return [
+    summary.accepted ? "accepted" : "blocked",
+    `blockers=${summary.blockerCount}`,
+    `warnings=${summary.warningCount}`,
+    `bottleneck=${summary.bottleneckCost}`,
+    `strain=${summary.cumulativeCost}`,
+    `span=${summary.spanSteps}`,
+    `shift=${summary.shiftSteps}`,
+    `span_margin=${summary.comfortSpanMargin}/${summary.limitSpanMargin}`,
+    `shift_margin=${summary.comfortShiftMargin}/${summary.limitShiftMargin}`,
+  ].join(", ");
+}
+
+function formatFingerAssignment(fingering) {
+  if (!fingering) return "none";
+  return `[${fingering.fingers.join(", ")}] bottleneck=${fingering.bottleneckCost} strain=${fingering.cumulativeCost}`;
 }
 
 function packKeyContext(tonic, quality) {
@@ -478,6 +593,183 @@ function runGuitarApis() {
   }
 }
 
+function runPlayabilityApis() {
+  ensureWasmLoaded();
+  const arena = new ScratchArena();
+  try {
+    const notes = parseCsvIntegers(document.getElementById("playability-notes").value, 0, 127);
+    if (notes.length === 0) {
+      throw new Error("Playability notes must include at least one MIDI note");
+    }
+    const previousNotes = parseCsvIntegers(document.getElementById("playability-prev-notes").value, 0, 127);
+    const hand = getSelectValue("playability-hand");
+    const preset = getSelectValue("playability-preset");
+    const policy = getSelectValue("playability-policy");
+    const counterpointProfile = getSelectValue("playability-counterpoint-profile");
+    const tonic = getNumberInput("playability-tonic");
+    const modeType = getSelectValue("playability-mode");
+
+    const baseProfilePtr = arena.alloc(wasm.lmt_sizeof_hand_profile(), 4);
+    if (!wasm.lmt_default_keyboard_hand_profile(baseProfilePtr)) {
+      throw new Error("lmt_default_keyboard_hand_profile failed");
+    }
+    const tunedProfilePtr = arena.alloc(wasm.lmt_sizeof_hand_profile(), 4);
+    if (!wasm.lmt_playability_profile_from_preset(preset, baseProfilePtr, tunedProfilePtr)) {
+      throw new Error("lmt_playability_profile_from_preset failed");
+    }
+
+    const notesPtr = writeU8Array(arena, notes);
+    const previousNotesPtr = previousNotes.length > 0 ? writeU8Array(arena, previousNotes) : 0;
+
+    const realizationPtr = arena.alloc(wasm.lmt_sizeof_playability_difficulty_summary(), 4);
+    const wroteRealization = wasm.lmt_summarize_keyboard_realization_difficulty_n(
+      notesPtr,
+      notes.length,
+      hand,
+      tunedProfilePtr,
+      0,
+      realizationPtr,
+    );
+    const realization = wroteRealization ? decodePlayabilityDifficultySummary(realizationPtr) : null;
+
+    const transitionPtr = arena.alloc(wasm.lmt_sizeof_playability_difficulty_summary(), 4);
+    const wroteTransition = previousNotes.length > 0
+      ? wasm.lmt_summarize_keyboard_transition_difficulty_n(
+        previousNotesPtr,
+        previousNotes.length,
+        notesPtr,
+        notes.length,
+        hand,
+        tunedProfilePtr,
+        0,
+        transitionPtr,
+      )
+      : 0;
+    const transition = wroteTransition ? decodePlayabilityDifficultySummary(transitionPtr) : null;
+
+    const fingeringPtr = arena.alloc(wasm.lmt_sizeof_ranked_keyboard_fingering(), 4);
+    const wroteFingering = wasm.lmt_suggest_easier_keyboard_fingering_n(
+      notesPtr,
+      notes.length,
+      hand,
+      tunedProfilePtr,
+      fingeringPtr,
+    );
+    const easierFingering = wroteFingering ? decodeRankedKeyboardFingering(fingeringPtr) : null;
+
+    const historyPtr = arena.alloc(wasm.lmt_sizeof_voiced_history(), 4);
+    wasm.lmt_voiced_history_reset(historyPtr);
+    const statePtr = arena.alloc(wasm.lmt_sizeof_voiced_state(), 4);
+    if (previousNotes.length > 0) {
+      wasm.lmt_voiced_history_push(
+        historyPtr,
+        previousNotesPtr,
+        previousNotes.length,
+        0,
+        0,
+        tonic,
+        modeType,
+        0,
+        4,
+        0,
+        0,
+        statePtr,
+      );
+    }
+    if (!wasm.lmt_voiced_history_push(
+      historyPtr,
+      notesPtr,
+      notes.length,
+      0,
+      0,
+      tonic,
+      modeType,
+      1,
+      4,
+      0,
+      0,
+      statePtr,
+    )) {
+      throw new Error("lmt_voiced_history_push failed for current notes");
+    }
+
+    const filteredCap = 8;
+    const filteredPtr = arena.alloc(wasm.lmt_sizeof_next_step_suggestion() * filteredCap, 4);
+    const filteredCount = wasm.lmt_filter_next_steps_by_playability(
+      historyPtr,
+      counterpointProfile,
+      hand,
+      tunedProfilePtr,
+      policy,
+      filteredPtr,
+      filteredCap,
+    );
+
+    const rankedPtr = arena.alloc(wasm.lmt_sizeof_ranked_keyboard_next_step() * filteredCap, 4);
+    const rankedCount = wasm.lmt_rank_keyboard_next_steps_by_playability(
+      historyPtr,
+      counterpointProfile,
+      hand,
+      tunedProfilePtr,
+      policy,
+      rankedPtr,
+      filteredCap,
+    );
+    const topRanked = rankedCount > 0 ? decodeRankedKeyboardNextStep(rankedPtr) : null;
+
+    const saferPtr = arena.alloc(wasm.lmt_sizeof_ranked_keyboard_next_step(), 4);
+    const wroteSafer = wasm.lmt_suggest_safer_keyboard_next_step_by_playability(
+      historyPtr,
+      counterpointProfile,
+      hand,
+      tunedProfilePtr,
+      policy,
+      saferPtr,
+    );
+    const safer = wroteSafer ? decodeRankedKeyboardNextStep(saferPtr) : null;
+
+    const saferSummaryPtr = arena.alloc(wasm.lmt_sizeof_playability_difficulty_summary(), 4);
+    const saferNotesPtr = safer ? writeU8Array(arena, safer.notes) : 0;
+    const wroteSaferSummary = safer
+      ? wasm.lmt_summarize_keyboard_transition_difficulty_n(
+        notesPtr,
+        notes.length,
+        saferNotesPtr,
+        safer.notes.length,
+        hand,
+        tunedProfilePtr,
+        0,
+        saferSummaryPtr,
+      )
+      : 0;
+    const saferSummary = wroteSaferSummary ? decodePlayabilityDifficultySummary(saferSummaryPtr) : null;
+
+    const baseProfile = decodeHandProfile(baseProfilePtr);
+    const tunedProfile = decodeHandProfile(tunedProfilePtr);
+
+    outPlayability.textContent = [
+      `lmt_default_keyboard_hand_profile: ${formatHandProfile(baseProfile)}`,
+      `lmt_playability_profile_from_preset(preset=${preset}): ${formatHandProfile(tunedProfile)}`,
+      `current notes: ${formatMidiList(notes)}`,
+      `previous notes: ${formatMidiList(previousNotes)}`,
+      `lmt_summarize_keyboard_realization_difficulty_n: ${formatDifficultySummary(realization)}`,
+      `lmt_summarize_keyboard_transition_difficulty_n: ${formatDifficultySummary(transition)}`,
+      `lmt_suggest_easier_keyboard_fingering_n: ${formatFingerAssignment(easierFingering)}`,
+      `lmt_filter_next_steps_by_playability: accepted=${filteredCount}`,
+      topRanked
+        ? `lmt_rank_keyboard_next_steps_by_playability: top notes=${formatMidiList(topRanked.notes)} accepted=${topRanked.accepted} bottleneck=${topRanked.bottleneckCost} strain=${topRanked.cumulativeCost}`
+        : "lmt_rank_keyboard_next_steps_by_playability: none",
+      safer
+        ? `lmt_suggest_safer_keyboard_next_step_by_playability: notes=${formatMidiList(safer.notes)} accepted=${safer.accepted} candidate_index=${safer.candidateIndex}`
+        : "lmt_suggest_safer_keyboard_next_step_by_playability: none",
+      `safer transition summary: ${formatDifficultySummary(saferSummary)}`,
+      "LLM framing: explain the preset as a hand-span assumption, the summary as blocker/warning evidence, and the safer step as an opt-in playable continuation rather than a hidden preference.",
+    ].join("\n");
+  } finally {
+    arena.release();
+  }
+}
+
 function runSvgApis() {
   ensureWasmLoaded();
   const arena = new ScratchArena();
@@ -678,6 +970,7 @@ function runAll() {
     ["Scale/Mode APIs", runScaleModeApis, (err) => renderSectionError("Scale/Mode APIs", outScaleMode, err)],
     ["Chord APIs", runChordApis, (err) => renderSectionError("Chord APIs", outChord, err)],
     ["Guitar APIs", runGuitarApis, (err) => renderSectionError("Guitar APIs", outGuitar, err)],
+    ["Playability APIs", runPlayabilityApis, (err) => renderSectionError("Playability APIs", outPlayability, err)],
     ["SVG APIs", runSvgApis, (err) => {
       renderSectionError("SVG APIs", outSvgMeta, err);
       clearSvgHosts();
@@ -732,6 +1025,7 @@ function wireUi() {
   document.getElementById("run-scale-mode").addEventListener("click", () => runSafe("Scale/Mode APIs", runScaleModeApis, (err) => renderSectionError("Scale/Mode APIs", outScaleMode, err)));
   document.getElementById("run-chord").addEventListener("click", () => runSafe("Chord APIs", runChordApis, (err) => renderSectionError("Chord APIs", outChord, err)));
   document.getElementById("run-guitar").addEventListener("click", () => runSafe("Guitar APIs", runGuitarApis, (err) => renderSectionError("Guitar APIs", outGuitar, err)));
+  document.getElementById("run-playability").addEventListener("click", () => runSafe("Playability APIs", runPlayabilityApis, (err) => renderSectionError("Playability APIs", outPlayability, err)));
   document.getElementById("run-svg").addEventListener("click", () => runSafe("SVG APIs", runSvgApis, (err) => {
     renderSectionError("SVG APIs", outSvgMeta, err);
     clearSvgHosts();

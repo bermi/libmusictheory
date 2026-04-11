@@ -145,6 +145,18 @@ label span,
   margin-bottom: 8px;
 }
 
+.control-hint {
+  display: block;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.hero-control-hint {
+  max-width: 28ch;
+}
+
 .preview-toggle {
   display: inline-flex;
   gap: 8px;
@@ -362,6 +374,43 @@ select {
   gap: 12px;
   grid-template-columns: minmax(280px, 1.1fr) minmax(320px, 0.9fr);
   margin-bottom: 18px;
+}
+
+.playability-guide {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.playability-guide-card {
+  border-radius: 18px;
+  border: 1px solid rgba(24, 36, 47, 0.1);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(248, 242, 234, 0.9));
+  padding: 14px 16px;
+  display: grid;
+  gap: 8px;
+}
+
+.playability-guide-card h3,
+.playability-guide-card p {
+  margin: 0;
+}
+
+.playability-guide-card h3 {
+  font-size: 0.98rem;
+}
+
+.playability-guide-card p {
+  color: var(--muted);
+  line-height: 1.5;
+  font-size: 0.92rem;
+}
+
+.playability-guide-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .art-card-wide {
@@ -1471,6 +1520,12 @@ select {
 .practice-feedback-card {
   display: grid;
   gap: 12px;
+}
+
+.practice-feedback-summary {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
 }
 
 .practice-feedback-section,

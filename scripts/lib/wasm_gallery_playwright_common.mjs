@@ -248,6 +248,8 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
       staffHtml: document.querySelector("#midi-staff")?.innerHTML || "",
       midiPlayabilityPresetValue: document.getElementById("midi-playability-preset")?.value || "",
       midiPlayabilityPolicyValue: document.getElementById("midi-playability-policy")?.value || "",
+      playabilityOverlayHelpText: document.getElementById("playability-overlay-help")?.textContent || "",
+      midiPlayabilityGuideText: document.getElementById("midi-playability-guide")?.textContent || "",
       currentMiniOverlayCount: document.querySelectorAll("#midi-current-fret .playability-overlay").length,
       focusedMiniOverlayCount: document.querySelectorAll("#midi-focused-mini .playability-overlay").length,
       suggestionMiniOverlayCount: document.querySelectorAll("#midi-suggestions [data-suggestion-mini] .playability-overlay").length,
@@ -483,6 +485,7 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
           chipCount: host.querySelectorAll(".practice-feedback-chip-row .pill, .practice-feedback-chip-row .chip, .practice-feedback-chip-row .status-pill").length,
           metricCount: host.querySelectorAll(".inspector-metric").length,
           lineCount: host.querySelectorAll(".practice-feedback-line").length,
+          summaryReady: (host.querySelector(".practice-feedback-summary")?.textContent || "").trim().length > 20,
           textReady: (host.textContent || "").trim().length > 40,
         };
       })(),

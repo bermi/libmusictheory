@@ -426,6 +426,8 @@ async function main() {
           && midi?.currentMiniOverlay?.overlayRendered === true
           && midi?.focusedMiniOverlay?.overlayRendered === true
           && (midi?.suggestionOverlayCount || 0) >= 1
+          && (midi?.midiPlayabilityGuideFeatures?.cardCount || 0) >= 3
+          && (document.getElementById("playability-overlay-help")?.textContent || "").includes("finger markers")
           && set?.overlayRendered === true
           && document.querySelectorAll(".playability-overlay").length >= 3
           && document.querySelectorAll(".playability-finger-marker").length >= 2
@@ -443,6 +445,8 @@ async function main() {
           && midi?.playabilityOverlayMode === "detailed"
           && midi?.currentMiniOverlay?.overlayRendered === true
           && midi?.focusedMiniOverlay?.overlayRendered === true
+          && (midi?.midiPlayabilityGuideFeatures?.overlayMode || "") === "detailed"
+          && (document.getElementById("playability-overlay-help")?.textContent || "").includes("hand boxes")
           && fret?.overlayRendered === true
           && document.querySelectorAll(".playability-overlay.is-detailed").length >= 3
           && document.querySelectorAll(".playability-hand-box").length >= 1
@@ -457,19 +461,26 @@ async function main() {
       const practiceFeedbackSnapshot = await page.waitForFunction(() => {
         const midi = window.__lmtGallerySummary?.scenes?.midi;
         const host = document.querySelector("#midi-practice-feedback");
+        const guide = document.querySelector("#midi-playability-guide");
         return midi?.playabilityPresetId === 0
           && midi?.playabilityPolicyId === 1
           && midi?.playabilityPreset === "compact-beginner"
           && midi?.playabilityPolicy === "minimax-bottleneck"
+          && (midi?.midiPlayabilityGuideFeatures?.cardCount || 0) >= 3
+          && (midi?.midiPlayabilityGuideFeatures?.presetLabel || "") === "compact-beginner"
+          && (midi?.midiPlayabilityGuideFeatures?.policyLabel || "") === "minimax-bottleneck"
           && (midi?.midiPracticeFeedbackFeatures?.cardCount || 0) >= 1
           && (midi?.midiPracticeFeedbackFeatures?.sectionCount || 0) >= 1
+          && midi?.midiPracticeFeedbackFeatures?.summaryReady === true
           && (midi?.midiPracticeFeedbackFeatures?.topNextCount || 0) >= 1
           && (midi?.midiPracticeFeedbackFeatures?.topContextCount || 0) >= 1
           && (midi?.midiPracticeFeedbackFeatures?.saferSuggestionSignature || "").length > 0
           && (midi?.midiPracticeFeedbackFeatures?.keyboardRealizationStatus || "").length > 0
           && (midi?.midiPracticeFeedbackFeatures?.keyboardTransitionStatus || "").length > 0
           && (host?.textContent || "").includes("compact-beginner")
-          && (host?.textContent || "").includes("minimax-bottleneck");
+          && (host?.textContent || "").includes("minimax-bottleneck")
+          && (guide?.textContent || "").includes("compact-beginner")
+          && (guide?.textContent || "").includes("minimax-bottleneck");
       }, { timeout: 30000 }).then((handle) => handle.jsonValue());
       if (!practiceFeedbackSnapshot) {
         throw new Error("playability practice feedback controls did not settle");

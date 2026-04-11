@@ -258,6 +258,12 @@ if [ -f "$ROOT_DIR/docs/plans/in_progress/0129-personalized-profiles-and-practic
     check_cmd "cd '$ROOT_DIR' && rg -n 'playability\\.keyboard_assessment|playability\\.profile|playability\\.ranking|lmt_playability_policy_count|lmt_playability_profile_preset_count|lmt_sizeof_playability_difficulty_summary|lmt_summarize_keyboard_realization_difficulty_n|lmt_summarize_keyboard_transition_difficulty_n|lmt_suggest_easier_keyboard_fingering_n|lmt_suggest_easier_fret_realization_n|lmt_suggest_safer_keyboard_next_step_by_playability|lmt_rank_keyboard_next_steps_by_playability|lmt_rank_keyboard_context_suggestions_by_playability' docs/api.md >/dev/null" "0129 API reference guardrail (unified API doc includes the full playability profile and practice-feedback surface)"
 fi
 
+if [ -f "$ROOT_DIR/docs/plans/in_progress/0130-playability-doc-examples-and-gallery-ux.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0130-playability-doc-examples-and-gallery-ux.md" ]; then
+    check_cmd "cd '$ROOT_DIR' && rg -n 'Playability API Recipes|Recipe 1: Apply A Preset|Recipe 4: Filter Or Rerank Theory-Valid Next Steps|LLM explanation pattern|Playability And Practice APIs' docs/api.md README.md >/dev/null" "0130 playability docs guardrail (unified API reference and README expose concrete task-oriented playability recipes)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'run-playability|out-playability|lmt_default_keyboard_hand_profile|lmt_playability_profile_from_preset|lmt_summarize_keyboard_realization_difficulty_n|lmt_suggest_easier_keyboard_fingering_n|lmt_suggest_safer_keyboard_next_step_by_playability' examples/wasm-demo/index.html examples/wasm-demo/app.js scripts/validate_wasm_docs_playwright.mjs >/dev/null" "0130 wasm docs guardrail (browser docs bundle includes runnable playability examples and validation wiring)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'playability-overlay-help|midi-playability-guide|playability guide|practice-feedback-summary|finger markers|hand boxes' examples/wasm-gallery/index.html examples/wasm-gallery/styles.css examples/wasm-gallery/gallery.js scripts/lib/wasm_gallery_playwright_common.mjs scripts/validate_wasm_gallery_playwright.mjs >/dev/null" "0130 gallery UX guardrail (playability controls expose helper copy and practice feedback stays readable and validated)"
+fi
+
 
 
 if [ -f "$ROOT_DIR/docs/plans/in_progress/0088-live-midi-composer-scene.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0088-live-midi-composer-scene.md" ]; then

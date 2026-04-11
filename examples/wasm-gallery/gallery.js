@@ -268,6 +268,7 @@ const previewModeSvgEl = document.getElementById("preview-mode-svg");
 const previewModeBitmapEl = document.getElementById("preview-mode-bitmap");
 const miniInstrumentModeEl = document.getElementById("mini-instrument-mode");
 const playabilityOverlayModeEl = document.getElementById("playability-overlay-mode");
+const playabilityOverlayHelpEl = document.getElementById("playability-overlay-help");
 const pcsToggleGrid = document.getElementById("pcs-toggle-grid");
 const midiCaptionEl = document.getElementById("midi-caption");
 const midiStatusPillsEl = document.getElementById("midi-status-pills");
@@ -275,6 +276,7 @@ const midiDevicesEl = document.getElementById("midi-devices");
 const midiSummaryEl = document.getElementById("midi-summary");
 const midiNotesEl = document.getElementById("midi-notes");
 const midiHistoryEl = document.getElementById("midi-history");
+const midiPlayabilityGuideEl = document.getElementById("midi-playability-guide");
 const midiInspectorEl = document.getElementById("midi-inspector");
 const midiPracticeFeedbackEl = document.getElementById("midi-practice-feedback");
 const midiConsensusAtlasEl = document.getElementById("midi-consensus-atlas");
@@ -592,6 +594,7 @@ function setMiniInstrumentMode(mode, { persist = true, rerender = true } = {}) {
     galleryUiState.miniInstrument = mode;
   }
   miniInstrumentModeEl.value = galleryUiState.miniInstrument;
+  updatePlayabilityOverlayHelp();
   if (persist) persistMiniInstrument(galleryUiState.miniInstrument);
   if (rerender && wasm && memory) renderAll();
 }
@@ -602,6 +605,54 @@ function playabilityPresetLabel(raw = galleryUiState.playabilityPreset) {
 
 function playabilityPolicyLabel(raw = galleryUiState.playabilityPolicy) {
   return playabilityPolicyNames[raw] || "balanced";
+}
+
+function playabilityPresetDescription(raw = galleryUiState.playabilityPreset) {
+  switch (playabilityPresetLabel(raw)) {
+    case "compact-beginner":
+      return "Uses the tightest comfort span so awkward stretches and large shifts surface early.";
+    case "span-tolerant":
+      return "Allows wider reaches before warning, useful when the hand can absorb more stretch than shift.";
+    case "shift-tolerant":
+      return "Allows larger repositioning before warning, useful when you would rather move than stretch.";
+    case "balanced-standard":
+    default:
+      return "Keeps a middle-of-the-road comfort span and shift window for general practice and exploration.";
+  }
+}
+
+function playabilityPolicyDescription(raw = galleryUiState.playabilityPolicy) {
+  switch (playabilityPolicyLabel(raw)) {
+    case "minimax-bottleneck":
+      return "Ranks by the easiest hardest move, so a single impossible jump is penalized heavily.";
+    case "cumulative-strain":
+      return "Ranks by total load across the phrase, even if one move is locally acceptable.";
+    case "balanced":
+    default:
+      return "Balances bottleneck risk and phrase-level strain so one awkward move matters without hiding accumulated load.";
+  }
+}
+
+function playabilityOverlayDescription(mode = galleryUiState.playabilityOverlay) {
+  switch (mode) {
+    case PLAYABILITY_OVERLAY_BASIC:
+      return "Basic overlays add finger markers and quick blocked or warning chips to mini previews.";
+    case PLAYABILITY_OVERLAY_DETAILED:
+      return "Detailed overlays add hand boxes, shift arrows, and extra diagnostics on mini previews.";
+    case PLAYABILITY_OVERLAY_OFF:
+    default:
+      return "Overlay off keeps mini previews clean and leaves the biomechanical detail in Practice Feedback.";
+  }
+}
+
+function updatePlayabilityOverlayHelp() {
+  if (!playabilityOverlayHelpEl) return;
+  const overlayText = playabilityOverlayDescription();
+  if (miniInstrumentMode() === MINI_INSTRUMENT_OFF) {
+    playabilityOverlayHelpEl.textContent = `${overlayText} Turn Mini Instrument on to see the overlay geometry.`;
+    return;
+  }
+  playabilityOverlayHelpEl.textContent = `${overlayText} Current mini target: ${miniInstrumentMode()}.`;
 }
 
 function setPlayabilityPreset(raw, { persist = true, rerender = true } = {}) {
@@ -634,6 +685,7 @@ function setPlayabilityOverlayMode(mode, { persist = true, rerender = true } = {
   }
   playabilityOverlayModeEl.value = galleryUiState.playabilityOverlay;
   gallerySummary.playabilityOverlayMode = galleryUiState.playabilityOverlay;
+  updatePlayabilityOverlayHelp();
   if (persist) persistPlayabilityOverlay(galleryUiState.playabilityOverlay);
   if (rerender && wasm && memory) renderAll();
 }
@@ -2088,6 +2140,50 @@ function rankKeyboardContextSuggestionsByPlayability(arena, setValue, midiNotes,
   }).filter(Boolean);
 }
 
+function renderMidiPlayabilityGuide(target, { presetRaw, policyRaw, overlayMode, miniMode }) {
+  if (!target) {
+    return {
+      cardCount: 0,
+      textReady: false,
+      presetLabel: "",
+      policyLabel: "",
+      overlayMode: "",
+    };
+  }
+  const presetLabel = playabilityPresetLabel(presetRaw);
+  const policyLabel = playabilityPolicyLabel(policyRaw);
+  const overlayLabel = overlayMode || playabilityOverlayMode();
+  const overlayDetail = miniMode === MINI_INSTRUMENT_OFF
+    ? `${playabilityOverlayDescription(overlayLabel)} Turn Mini Instrument on to place the overlay on piano or fret previews.`
+    : `${playabilityOverlayDescription(overlayLabel)} It is currently attached to the ${miniMode} mini previews.`;
+
+  target.innerHTML = `
+    <article class="playability-guide-card">
+      <div class="playability-guide-meta"><span class="status-pill is-live">Profile</span></div>
+      <h3>${escapeHtml(presetLabel)}</h3>
+      <p>${escapeHtml(playabilityPresetDescription(presetRaw))}</p>
+    </article>
+    <article class="playability-guide-card">
+      <div class="playability-guide-meta"><span class="status-pill is-muted">Difficulty lens</span></div>
+      <h3>${escapeHtml(policyLabel)}</h3>
+      <p>${escapeHtml(playabilityPolicyDescription(policyRaw))}</p>
+    </article>
+    <article class="playability-guide-card">
+      <div class="playability-guide-meta"><span class="status-pill ${overlayLabel === PLAYABILITY_OVERLAY_OFF ? "is-muted" : "is-live"}">Overlay</span></div>
+      <h3>${escapeHtml(overlayLabel)}</h3>
+      <p>${escapeHtml(overlayDetail)}</p>
+    </article>
+  `;
+
+  return {
+    cardCount: 3,
+    textReady: true,
+    presetLabel,
+    policyLabel,
+    overlayMode: overlayLabel,
+  };
+}
+
 function buildMidiPracticeFeedback(arena, {
   displayNotes,
   previousNotes,
@@ -2108,6 +2204,7 @@ function buildMidiPracticeFeedback(arena, {
         chipCount: 0,
         metricCount: 0,
         lineCount: 0,
+        summaryReady: false,
         textReady: false,
         topNextCount: 0,
         topContextCount: 0,
@@ -2212,6 +2309,9 @@ function buildMidiPracticeFeedback(arena, {
         <strong>${escapeHtml(playabilityPolicyLabel(policyRaw))}</strong> lens, the gallery can explain
         what is currently comfortable, what strains the hand, and which next moves stay playable.
       </p>
+      <p class="practice-feedback-summary">
+        ${escapeHtml(playabilityPresetDescription(presetRaw))} ${escapeHtml(playabilityPolicyDescription(policyRaw))}
+      </p>
       <div class="inspector-metric-grid">
         ${summaryMetric("keyboard span", keyboardRealizationSummary ? `${keyboardRealizationSummary.spanSteps}` : "n/a")}
         ${summaryMetric("recent shift", keyboardTransitionSummary ? `${keyboardTransitionSummary.shiftSteps}` : "0")}
@@ -2231,6 +2331,7 @@ function buildMidiPracticeFeedback(arena, {
       chipCount: ((keyboardRealizationSummary?.reasonNames?.length || 0) + (keyboardRealizationSummary?.warningNames?.length || 0) + (keyboardTransitionSummary?.reasonNames?.length || 0) + (keyboardTransitionSummary?.warningNames?.length || 0) + ((saferKeyboardNext?.reasonNames || []).slice(0, 2).length) + ((saferKeyboardNext?.warningNames || []).slice(0, 2).length) + (fretRealizationSummary ? (fretRealizationSummary.reasonNames?.length || 0) + (fretRealizationSummary.warningNames?.length || 0) : 0) + (fretTransitionSummary ? (fretTransitionSummary.reasonNames?.length || 0) + (fretTransitionSummary.warningNames?.length || 0) : 0)),
       metricCount: 4,
       lineCount: 3 + rankedKeyboardNext.slice(0, 3).length + rankedContextSuggestions.slice(0, 3).length + (fretSection ? 1 : 0),
+      summaryReady: true,
       textReady: true,
       topNextCount: rankedKeyboardNext.slice(0, 3).length,
       topContextCount: rankedContextSuggestions.slice(0, 3).length,
@@ -7138,6 +7239,9 @@ function renderMidiScene() {
   const viewingSnapshot = midiState.activeSnapshotId != null;
   const profile = currentMidiProfile();
   const profileLabel = counterpointProfileNames[profile] || DEFAULT_COUNTERPOINT_PROFILE_NAMES[profile] || "species";
+  const currentPlayabilityPreset = currentMidiPlayabilityPreset();
+  const currentPlayabilityPolicy = currentMidiPlayabilityPolicy();
+  const currentOverlayMode = playabilityOverlayMode();
 
   midiCaptionEl.textContent = summarizeMidiAccess();
   connectMidiEl.disabled = midiState.accessState === "connecting";
@@ -7150,14 +7254,20 @@ function renderMidiScene() {
   statusPills.push(`<span class="status-pill ${midiState.snapshots.length > 0 ? "is-snapshot" : "is-muted"}">${midiState.snapshots.length} saved</span>`);
   statusPills.push(`<span class="status-pill is-live">${escapeHtml(context.label)}</span>`);
   statusPills.push(`<span class="status-pill is-live">${escapeHtml(profileLabel)}</span>`);
-  statusPills.push(`<span class="status-pill is-live">${escapeHtml(playabilityPresetLabel())}</span>`);
-  statusPills.push(`<span class="status-pill is-muted">${escapeHtml(playabilityPolicyLabel())}</span>`);
+  statusPills.push(`<span class="status-pill is-live">${escapeHtml(playabilityPresetLabel(currentPlayabilityPreset))}</span>`);
+  statusPills.push(`<span class="status-pill is-muted">${escapeHtml(playabilityPolicyLabel(currentPlayabilityPolicy))}</span>`);
   statusPills.push(`<span class="status-pill ${miniInstrumentMode() === MINI_INSTRUMENT_OFF ? "is-muted" : "is-live"}">mini ${escapeHtml(miniInstrumentMode())}</span>`);
-  statusPills.push(`<span class="status-pill ${playabilityOverlayMode() === PLAYABILITY_OVERLAY_OFF ? "is-muted" : "is-live"}">overlay ${escapeHtml(playabilityOverlayMode())}</span>`);
+  statusPills.push(`<span class="status-pill ${currentOverlayMode === PLAYABILITY_OVERLAY_OFF ? "is-muted" : "is-live"}">overlay ${escapeHtml(currentOverlayMode)}</span>`);
   midiStatusPillsEl.innerHTML = statusPills.join("");
   midiDevicesEl.innerHTML = Array.from(midiState.inputs.values()).map((input) =>
     `<span class="pill">${escapeHtml(input.name || input.manufacturer || input.id || "MIDI input")}</span>`).join("")
     || `<span class="pill">No MIDI input devices reported yet</span>`;
+  const midiPlayabilityGuideFeatures = renderMidiPlayabilityGuide(midiPlayabilityGuideEl, {
+    presetRaw: currentPlayabilityPreset,
+    policyRaw: currentPlayabilityPolicy,
+    overlayMode: currentOverlayMode,
+    miniMode: miniInstrumentMode(),
+  });
 
   renderMidiSnapshotCards();
 
@@ -7234,8 +7344,8 @@ function renderMidiScene() {
       `mode: ${viewingSnapshot ? "snapshot preview" : "live input"}`,
       `selected context: ${context.label}`,
       `counterpoint profile: ${profileLabel}`,
-      `playability profile: ${playabilityPresetLabel()}`,
-      `difficulty lens: ${playabilityPolicyLabel()}`,
+      `playability profile: ${playabilityPresetLabel(currentPlayabilityPreset)}`,
+      `difficulty lens: ${playabilityPolicyLabel(currentPlayabilityPolicy)}`,
       `active MIDI notes: ${displayNotes.length > 0 ? displayNotes.join(", ") : "none"}`,
       `set: ${setValue === 0 ? "0x000 []" : `0x${setValue.toString(16).padStart(3, "0")} ${JSON.stringify(setMembers(setValue))}`}`,
       `hearing: ${setValue === 0 ? "awaiting notes" : currentChord}`,
@@ -7627,10 +7737,10 @@ function renderMidiScene() {
       contextLabel: context.label,
       counterpointProfile: profileLabel,
       counterpointProfileId: profile,
-      playabilityPreset: playabilityPresetLabel(),
-      playabilityPresetId: currentMidiPlayabilityPreset(),
-      playabilityPolicy: playabilityPolicyLabel(),
-      playabilityPolicyId: currentMidiPlayabilityPolicy(),
+      playabilityPreset: playabilityPresetLabel(currentPlayabilityPreset),
+      playabilityPresetId: currentPlayabilityPreset,
+      playabilityPolicy: playabilityPolicyLabel(currentPlayabilityPolicy),
+      playabilityPolicyId: currentPlayabilityPolicy,
       tonic: context.tonic,
       modeType: context.modeType,
       historyFrameCount: historyFrames.length,
@@ -7646,7 +7756,8 @@ function renderMidiScene() {
       focusedCandidateIndex: focusedSuggestionIndex == null ? -1 : focusedSuggestionIndex,
       pinnedCandidateIndex: pinnedSuggestionIndex == null ? -1 : pinnedSuggestionIndex,
       currentMiniMode: miniInstrumentMode(),
-      playabilityOverlayMode: playabilityOverlayMode(),
+      playabilityOverlayMode: currentOverlayMode,
+      midiPlayabilityGuideFeatures,
       currentMiniRendered,
       focusedMiniRendered,
       suggestionMiniCount: miniInstrumentMode() === MINI_INSTRUMENT_OFF ? 0 : suggestions.length,

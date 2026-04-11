@@ -331,6 +331,148 @@ Most experimental `uint32_t` functions return `1` on success and `0` on invalid 
 | `lmt_summarize_fret_realization_difficulty_n`, `lmt_summarize_fret_transition_difficulty_n`, `lmt_summarize_keyboard_realization_difficulty_n`, `lmt_summarize_keyboard_transition_difficulty_n` | assessed note/fret inputs, technique or hand info, output summary | success flag | `lmt_summarize_keyboard_transition_difficulty_n(a, an, b, bn, hand, &profile, NULL, &summary)` | Collapse blocker, warning, bottleneck, and recent-load data into practice-facing summaries without inventing opaque scores. |
 | `lmt_suggest_easier_fret_realization_n`, `lmt_suggest_easier_keyboard_fingering_n`, `lmt_filter_next_steps_by_playability`, `lmt_rank_keyboard_next_steps_by_playability`, `lmt_suggest_safer_keyboard_next_step_by_playability`, `lmt_rank_keyboard_context_suggestions_by_playability` | current note/fret context, theory profile, hand role, hand profile, policy, output buffers | ranked rows, filtered next steps, or one safer fallback | `lmt_rank_keyboard_next_steps_by_playability(&history, LMT_COUNTERPOINT_TONAL_CHORALE, LMT_KEYBOARD_HAND_RIGHT, &profile, LMT_PLAYABILITY_POLICY_MINIMAX_BOTTLENECK, out, cap)` | Turn theory-valid output into explicitly playable alternatives and safer continuations for practice tools and LLM assistants. |
 
+### Playability API Recipes
+
+These recipes are the intended adoption path for the experimental playability surface.
+
+The important contract is:
+
+- start from an explicit hand profile
+- optionally apply a named preset
+- summarize the current realization or transition
+- only then filter or rerank theory-valid next steps
+- explain the result with blockers, warnings, spans, shifts, and accepted/rejected candidates instead of hidden scores
+
+#### Recipe 1: Apply A Preset Before Any Summary
+
+```c
+lmt_hand_profile base = {0};
+lmt_hand_profile tuned = {0};
+
+if (!lmt_default_keyboard_hand_profile(&base)) {
+    /* invalid build/runtime state */
+}
+if (!lmt_playability_profile_from_preset(
+        LMT_PLAYABILITY_PROFILE_COMPACT_BEGINNER,
+        &base,
+        &tuned)) {
+    /* invalid preset */
+}
+```
+
+Use this when your host wants to say:
+
+`"I am evaluating this passage with a compact-beginner hand profile, so short spans and small shifts are treated as the comfort baseline."`
+
+#### Recipe 2: Summarize The Current Keyboard Realization
+
+```c
+const lmt_midi_note notes[] = {60, 64, 67};
+lmt_playability_difficulty_summary summary = {0};
+
+if (lmt_summarize_keyboard_realization_difficulty_n(
+        notes,
+        3,
+        LMT_KEYBOARD_HAND_RIGHT,
+        &tuned,
+        NULL,
+        &summary)) {
+    /* summary.accepted, summary.blocker_count, summary.warning_count,
+       summary.bottleneck_cost, summary.cumulative_cost, summary.span_steps,
+       and the comfort/limit margins are now populated */
+}
+```
+
+Use this when your host wants to say:
+
+`"This voicing is accepted because it stays inside the current comfort span,"`
+
+or:
+
+`"This voicing is blocked because it exceeds the profile's span or shift limits."`
+
+#### Recipe 3: Offer An Easier Local Fingering
+
+```c
+lmt_ranked_keyboard_fingering easier = {0};
+
+if (lmt_suggest_easier_keyboard_fingering_n(
+        notes,
+        3,
+        LMT_KEYBOARD_HAND_RIGHT,
+        &tuned,
+        &easier)) {
+    /* easier.fingers[0..easier.note_count] describes the recommended assignment */
+}
+```
+
+Use this when your host wants to say:
+
+`"I kept the same notes but changed the fingering to reduce the hardest local move."`
+
+#### Recipe 4: Filter Or Rerank Theory-Valid Next Steps
+
+```c
+lmt_voiced_history history = {0};
+lmt_voiced_state state = {0};
+lmt_ranked_keyboard_next_step ranked[8] = {0};
+
+lmt_voiced_history_reset(&history);
+lmt_voiced_history_push(
+    &history,
+    notes, 3,
+    NULL, 0,
+    0, /* tonic C */
+    LMT_MODE_IONIAN,
+    1, 4, 0,
+    LMT_CADENCE_NONE,
+    &state);
+
+uint32_t logical = lmt_rank_keyboard_next_steps_by_playability(
+    &history,
+    LMT_COUNTERPOINT_TONAL_CHORALE,
+    LMT_KEYBOARD_HAND_RIGHT,
+    &tuned,
+    LMT_PLAYABILITY_POLICY_MINIMAX_BOTTLENECK,
+    ranked,
+    8);
+```
+
+Use this when your host wants to say:
+
+`"These next moves are theory-valid first; this ranking then favors the move with the easiest hardest jump."`
+
+If you want a single conservative fallback instead of a ranked list:
+
+```c
+lmt_ranked_keyboard_next_step safer = {0};
+
+if (lmt_suggest_safer_keyboard_next_step_by_playability(
+        &history,
+        LMT_COUNTERPOINT_TONAL_CHORALE,
+        LMT_KEYBOARD_HAND_RIGHT,
+        &tuned,
+        LMT_PLAYABILITY_POLICY_MINIMAX_BOTTLENECK,
+        &safer)) {
+    /* safer.candidate_index points back into the ranked-theory candidate space */
+}
+```
+
+#### Recipe 5: LLM Explanation Pattern
+
+Good downstream phrasing looks like this:
+
+- `"I used the compact-beginner preset, so the comfort span is intentionally narrow."`
+- `"This voicing is accepted, but it raises a warning because the shift is near the profile limit."`
+- `"I rejected that next step because it creates the bottleneck move in the phrase."`
+- `"I suggested this alternative because it preserves the harmonic role while reducing the hardest transition."`
+
+Avoid phrasing like:
+
+- `"The model preferred this."`
+- `"This scored 47."`
+- `"The heuristic weight was higher."`
+
 #### Experimental Counterpoint, SATB, And Cadence Analysis
 
 | Function(s) | Parameters | Returns | Example | Typical use |
@@ -365,6 +507,14 @@ WASM memory helpers:
 Use them when your JS host wants a reusable scratch region for temporary string or RGBA marshalling.
 
 Aside from those helpers, exported browser symbols mirror the C ABI.
+
+The `wasm-docs` bundle now includes a dedicated `Playability And Practice APIs` section that walks through:
+
+- default keyboard profiles
+- preset application
+- realization and transition summaries
+- easier fingering suggestions
+- safer next-step selection and playability-aware reranking
 
 ## Internal Compatibility And Proof Surface
 

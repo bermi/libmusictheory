@@ -159,6 +159,7 @@ async function waitForRenderedOutputs(page) {
       scaleMode: document.getElementById("out-scale-mode")?.textContent || "",
       chord: document.getElementById("out-chord")?.textContent || "",
       guitar: document.getElementById("out-guitar")?.textContent || "",
+      playability: document.getElementById("out-playability")?.textContent || "",
       svgMeta: document.getElementById("out-svg-meta")?.textContent || "",
       clock: document.getElementById("svg-clock")?.innerHTML || "",
       opticK: document.getElementById("svg-optic-k")?.innerHTML || "",
@@ -278,6 +279,12 @@ async function waitForRenderedOutputs(page) {
       snapshot.guitar.includes("lmt_pitch_class_guide_n") &&
       snapshot.guitar.includes("lmt_frets_to_url_n") &&
       snapshot.guitar.includes("lmt_url_to_frets_n") &&
+      snapshot.playability.includes("lmt_default_keyboard_hand_profile") &&
+      snapshot.playability.includes("lmt_playability_profile_from_preset") &&
+      snapshot.playability.includes("lmt_summarize_keyboard_realization_difficulty_n") &&
+      snapshot.playability.includes("lmt_suggest_easier_keyboard_fingering_n") &&
+      snapshot.playability.includes("lmt_suggest_safer_keyboard_next_step_by_playability") &&
+      snapshot.playability.includes("LLM framing:") &&
       snapshot.svgMeta.includes("lmt_svg_clock_optc bytes:") &&
       snapshot.svgMeta.includes("lmt_svg_optic_k_group bytes:") &&
       snapshot.svgMeta.includes("lmt_svg_evenness_chart bytes:") &&
@@ -381,7 +388,7 @@ async function main() {
       await page.waitForSelector("#run-all", { timeout: 30_000 });
       await waitForInteractiveReady(page);
       await page.evaluate(() => {
-        for (const id of ["out-pcs", "out-classification", "out-scale-mode", "out-chord", "out-guitar", "out-svg-meta"]) {
+        for (const id of ["out-pcs", "out-classification", "out-scale-mode", "out-chord", "out-guitar", "out-playability", "out-svg-meta"]) {
           const node = document.getElementById(id);
           if (node) node.textContent = "";
         }

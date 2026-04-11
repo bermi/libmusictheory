@@ -2,6 +2,8 @@
 
 `libmusictheory` is a Zig music-theory library with a C ABI and browser/WASM surfaces.
 
+The unified consumer-facing reference is `/Users/bermi/code/libmusictheory/docs/api.md`. Start there if you want one place that covers the stable surface, the experimental surface, task-oriented playability recipes, and the browser/WASM entry pattern.
+
 It covers:
 
 - pitch-class-set operations and set classification
@@ -179,6 +181,13 @@ python3 -m http.server --directory /Users/bermi/code/libmusictheory/zig-out/wasm
 ```
 
 Open [http://localhost:8001/index.html](http://localhost:8001/index.html).
+
+The docs bundle now includes a `Playability And Practice APIs` section that demonstrates:
+
+- applying a named hand-profile preset
+- summarizing keyboard realization and transition difficulty
+- suggesting an easier fingering for the same notes
+- choosing a safer next step from a theory-valid history state
 
 For a single-image QA atlas covering the stable public image methods rendered by the docs bundle:
 

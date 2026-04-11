@@ -10,6 +10,7 @@
   <header>
     <h1>libmusictheory WASM Interactive Documentation</h1>
     <p>All outputs below are computed by the WebAssembly module.</p>
+    <p>Authoritative written reference: <code>/Users/bermi/code/libmusictheory/docs/api.md</code>.</p>
     <p><a href="./validation.html">Open harmoniousapp.net compatibility validation</a></p>
     <p id="status">Loading WASM module...</p>
   </header>
@@ -155,6 +156,69 @@
       </div>
       <button id="run-guitar">Run Guitar APIs</button>
       <pre id="out-guitar"></pre>
+    </section>
+
+    <section>
+      <h2>Playability And Practice APIs</h2>
+      <p>
+        This section shows the intended ergonomic workflow: start from a default hand profile,
+        apply a named preset, summarize the current shape, ask for an easier fingering, and then
+        request a safer next step without dropping into opaque scoring.
+      </p>
+      <div class="grid">
+        <label>Current notes (comma-separated MIDI)
+          <input id="playability-notes" value="60,64,67" />
+        </label>
+        <label>Previous notes (comma-separated MIDI)
+          <input id="playability-prev-notes" value="60,65,69" />
+        </label>
+        <label>Keyboard hand
+          <select id="playability-hand">
+            <option value="1">RIGHT</option>
+            <option value="0">LEFT</option>
+          </select>
+        </label>
+        <label>Playability preset
+          <select id="playability-preset">
+            <option value="0">compact-beginner</option>
+            <option value="1">balanced-standard</option>
+            <option value="2">span-tolerant</option>
+            <option value="3">shift-tolerant</option>
+          </select>
+        </label>
+        <label>Difficulty lens
+          <select id="playability-policy">
+            <option value="0">balanced</option>
+            <option value="1">minimax-bottleneck</option>
+            <option value="2">cumulative-strain</option>
+          </select>
+        </label>
+        <label>Counterpoint profile
+          <select id="playability-counterpoint-profile">
+            <option value="0">species</option>
+            <option value="1">tonal-chorale</option>
+            <option value="2">modal-polyphony</option>
+            <option value="3">jazz-close-leading</option>
+            <option value="4">free-contemporary</option>
+          </select>
+        </label>
+        <label>Tonic
+          <input id="playability-tonic" type="number" min="0" max="11" value="0" />
+        </label>
+        <label>Mode
+          <select id="playability-mode">
+            <option value="0">IONIAN</option>
+            <option value="1">DORIAN</option>
+            <option value="2">PHRYGIAN</option>
+            <option value="3">LYDIAN</option>
+            <option value="4">MIXOLYDIAN</option>
+            <option value="5">AEOLIAN</option>
+            <option value="6">LOCRIAN</option>
+          </select>
+        </label>
+      </div>
+      <button id="run-playability">Run Playability APIs</button>
+      <pre id="out-playability"></pre>
     </section>
 
     <section>
