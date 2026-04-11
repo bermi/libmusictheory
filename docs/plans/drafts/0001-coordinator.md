@@ -13,7 +13,7 @@ Build `libmusictheory`, a Zig library exposing a C ABI that implements the compl
 - In progress: none
 ## Current Remaining Work
 
-The stable-release execution lane, the post-`0.1.0` explainable-theory Contrapunk lane, the experimental playability roadmap, the `0130` adoption follow-up, and the `0131` screenshot/docs follow-up are complete. There is no active implementation slice right now.
+The stable-release execution lane, the post-`0.1.0` explainable-theory Contrapunk lane, the experimental playability roadmap, the `0130` adoption follow-up, and the `0131` screenshot/docs follow-up are complete. There is no active implementation slice right now. The next planned draft is `0132`, which extends the current local playability engine into phrase-level auditing and explainable repair helpers for practice tools and LLM composition workflows.
 
 - Completed: 0002, 0003, 0004, 0005, 0006, 0007, 0008, 0009, 0010, 0011, 0012, 0013, 0014, 0015, 0016, 0017, 0018, 0019, 0020, 0021, 0022, 0023, 0024, 0025, 0026, 0027, 0028, 0029, 0030, 0031, 0032, 0033, 0034, 0035, 0036, 0037, 0038, 0039, 0040, 0041, 0042, 0043, 0044, 0045, 0046, 0047, 0048, 0049, 0050, 0051, 0052, 0053, 0054, 0055, 0056, 0057, 0058, 0059, 0060, 0061, 0062, 0063, 0064, 0065, 0066, 0067, 0068, 0069, 0070, 0071, 0072, 0073, 0074, 0075, 0076, 0077, 0078, 0079, 0080, 0081, 0082, 0083, 0084, 0085, 0086, 0087, 0088, 0089, 0090, 0091, 0092, 0093, 0094, 0095, 0096, 0097, 0098, 0099, 0100, 0101, 0102, 0103, 0104, 0105, 0106, 0107, 0108, 0109, 0110, 0111, 0112, 0113, 0114, 0115, 0116, 0117, 0118, 0119, 0120, 0121, 0122, 0123, 0124, 0125, 0126, 0127, 0128, 0129, 0130, 0131, contrapunk-theory-integration
 
@@ -461,6 +461,25 @@ Planned execution order:
 - `0129` personalized profiles and practice feedback
 
 **Deliverable**: an experimental `playability` API family plus optional gallery overlays that can explain why a passage or next move is comfortable, strained, or blocked on a chosen instrument without weakening the existing theory-first contract.
+
+## Phase 0132 (Draft): Phrase-Level Playability Audit And Rewrite Helpers
+
+The next roadmap slice should move from local ergonomic facts to phrase-aware verification. The current `playability` family can tell us whether one realization or one transition is blocked, strained, or comfortable. What it cannot yet do is audit a whole phrase, identify the bottleneck event or transition, summarize accumulated strain, and propose explicitly allowed repairs.
+
+This slice should stay disciplined:
+- build on the existing local playability engines instead of duplicating them
+- return named reasons, warnings, and issue clusters instead of hiding everything behind one scalar score
+- distinguish alternate realizations from music-changing repairs through explicit caller policy
+- defer heavy gallery work and two-hand assignment problems until the audit semantics are stable
+
+Planned focus:
+- phrase event and phrase summary structs
+- fixed-realization phrase auditing for fret and keyboard
+- issue extraction and bottleneck summaries
+- explicit repair-policy modeling
+- ranked phrase repair helpers
+
+**Deliverable**: an experimental phrase-audit layer that lets hosts and LLMs verify whether a passage remains playable over time, pinpoint the passage bottleneck, and request only the kinds of repairs they are willing to allow.
 
 ## Research Documents Index
 
