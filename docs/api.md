@@ -335,6 +335,11 @@ Most experimental `uint32_t` functions return `1` on success and `0` on invalid 
 
 These recipes are the intended adoption path for the experimental playability surface.
 
+Visual walkthroughs for the same surface live in:
+
+- `/Users/bermi/code/libmusictheory/README.md` under `Playability Gallery States`
+- `/Users/bermi/code/libmusictheory/docs/release/gallery-capture.md`
+
 The important contract is:
 
 - start from an explicit hand profile

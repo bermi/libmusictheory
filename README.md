@@ -231,6 +231,22 @@ The gallery bundle is a supported standalone example surface, but its live count
 
 The gallery preview toggle is also an experimental proof tool. It compares large SVG previews against direct library bitmap previews with a bundle-level drift threshold of `0.07` on the critical set/context hosts. Treat that as coherence validation for the example surface, not as a stable promise of exact SVG-vs-bitmap parity.
 
+## Playability Gallery States
+
+The repo also keeps a small deterministic screenshot set for the new playability-focused gallery states. These are captured from the public `wasm-gallery` surface, not mocked up separately.
+
+![Live MIDI playability guide state](docs/release/images/scene-midi-playability-guide.png)
+
+Caption: the default `balanced-standard` + `balanced` state keeps overlays off, surfaces the live playability guide cards, and leaves the extra detail in the practice-feedback panel.
+
+![Live MIDI piano playability overlay](docs/release/images/scene-midi-playability-piano.png)
+
+Caption: `compact-beginner` + `minimax-bottleneck` on `Piano` with the `Basic` overlay puts finger markers and blocked or warning chips directly on the keyboard mini preview.
+
+![Live MIDI fret playability overlay](docs/release/images/scene-midi-playability-fret.png)
+
+Caption: the `Fret` mini preview with the `Detailed` overlay adds hand-box geometry and richer warning context so a practice tool or LLM can explain why a continuation is awkward.
+
 ## Release Readiness
 
 The standalone release scaffold is documented here:

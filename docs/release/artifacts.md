@@ -33,6 +33,9 @@ Release-candidate gallery screenshots are reproducible local review artifacts, n
   - `gallery-overview.png`
   - `gallery-hero.png`
   - `scene-midi.png`
+  - `scene-midi-playability-guide.png`
+  - `scene-midi-playability-piano.png`
+  - `scene-midi-playability-fret.png`
   - `scene-*.png`
   - `captures.json`
 

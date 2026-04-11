@@ -20,6 +20,10 @@ Artifacts produced:
 
 - `gallery-overview.png`
 - `gallery-hero.png`
+- `scene-midi.png`
+- `scene-midi-playability-guide.png`
+- `scene-midi-playability-piano.png`
+- `scene-midi-playability-fret.png`
 - `scene-set.png`
 - `scene-key.png`
 - `scene-chord.png`
@@ -28,11 +32,23 @@ Artifacts produced:
 - `scene-fret.png`
 - `captures.json`
 
+Curated doc images:
+
+- `/Users/bermi/code/libmusictheory/docs/release/images/scene-midi-playability-guide.png`
+- `/Users/bermi/code/libmusictheory/docs/release/images/scene-midi-playability-piano.png`
+- `/Users/bermi/code/libmusictheory/docs/release/images/scene-midi-playability-fret.png`
+
+These checked-in doc images are copied from the deterministic capture output so the README and release docs can show the playability states directly.
+
 ## Capture Contract
 
 - captures must come from `/index.html?capture=1`
 - captures must use the public `wasm-gallery` bundle only
 - the live MIDI scene must be visible as `/Users/bermi/code/libmusictheory/zig-out/wasm-gallery-captures/scene-midi.png`
+- the dedicated playability states must be captured as:
+  - `/Users/bermi/code/libmusictheory/zig-out/wasm-gallery-captures/scene-midi-playability-guide.png`
+  - `/Users/bermi/code/libmusictheory/zig-out/wasm-gallery-captures/scene-midi-playability-piano.png`
+  - `/Users/bermi/code/libmusictheory/zig-out/wasm-gallery-captures/scene-midi-playability-fret.png`
 - captures must not depend on:
   - local Harmonious reference trees
   - parity/proof bundles
@@ -50,5 +66,7 @@ Artifacts produced:
 Manual spot check:
 
 1. open `/Users/bermi/code/libmusictheory/zig-out/wasm-gallery-captures/gallery-overview.png`
-2. inspect each `scene-*.png`
-3. confirm the screenshots remain legible at release-candidate scale and still reflect only public APIs
+2. inspect `/Users/bermi/code/libmusictheory/zig-out/wasm-gallery-captures/scene-midi-playability-guide.png`
+3. inspect `/Users/bermi/code/libmusictheory/zig-out/wasm-gallery-captures/scene-midi-playability-piano.png`
+4. inspect `/Users/bermi/code/libmusictheory/zig-out/wasm-gallery-captures/scene-midi-playability-fret.png`
+5. confirm the screenshots remain legible at release-candidate scale and still reflect only public APIs

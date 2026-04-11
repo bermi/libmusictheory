@@ -118,8 +118,17 @@ Inspect:
 - `/Users/bermi/code/libmusictheory/zig-out/wasm-gallery-captures/gallery-overview.png`
 - `/Users/bermi/code/libmusictheory/zig-out/wasm-gallery-captures/gallery-hero.png`
 - `/Users/bermi/code/libmusictheory/zig-out/wasm-gallery-captures/scene-midi.png`
+- `/Users/bermi/code/libmusictheory/zig-out/wasm-gallery-captures/scene-midi-playability-guide.png`
+- `/Users/bermi/code/libmusictheory/zig-out/wasm-gallery-captures/scene-midi-playability-piano.png`
+- `/Users/bermi/code/libmusictheory/zig-out/wasm-gallery-captures/scene-midi-playability-fret.png`
 - `/Users/bermi/code/libmusictheory/zig-out/wasm-gallery-captures/scene-chord.png`
 - `/Users/bermi/code/libmusictheory/zig-out/wasm-gallery-captures/scene-fret.png`
+
+Playability screenshot reading guide:
+
+- `scene-midi-playability-guide.png`: confirm the guide cards and practice feedback read clearly with overlays off.
+- `scene-midi-playability-piano.png`: confirm the keyboard mini preview shows visible markers and chips in a compact, readable span.
+- `scene-midi-playability-fret.png`: confirm the detailed fret overlay shows hand-box geometry and visible warning context without collapsing the mini view.
 
 ## QA Atlas Review
 

@@ -46,10 +46,30 @@ function parsePngSize(buffer) {
   };
 }
 
-async function captureElement(page, selector, outPath) {
+async function captureElement(page, selector, outPath, options = {}) {
   const locator = page.locator(selector);
-  await locator.scrollIntoViewIfNeeded();
-  await locator.screenshot({ path: outPath });
+  const maxCssHeight = Number.isFinite(options.maxCssHeight) ? Math.max(1, options.maxCssHeight) : null;
+  if (maxCssHeight != null) {
+    await page.evaluate((sel) => {
+      document.querySelector(sel)?.scrollIntoView({ block: "start", inline: "nearest" });
+    }, selector);
+    await delay(150);
+    const handle = await locator.elementHandle();
+    const box = await handle?.boundingBox();
+    if (!box) throw new Error(`missing bounding box for ${selector}`);
+    await page.screenshot({
+      path: outPath,
+      clip: {
+        x: Math.max(0, box.x),
+        y: Math.max(0, box.y),
+        width: Math.max(1, box.width),
+        height: Math.max(1, Math.min(box.height, maxCssHeight)),
+      },
+    });
+  } else {
+    await locator.scrollIntoViewIfNeeded();
+    await locator.screenshot({ path: outPath });
+  }
   const buffer = fs.readFileSync(outPath);
   const size = parsePngSize(buffer);
   return {
@@ -58,6 +78,71 @@ async function captureElement(page, selector, outPath) {
     width: size.width,
     height: size.height,
   };
+}
+
+async function captureParentCard(page, selector, outPath) {
+  const locator = page.locator(selector);
+  await locator.scrollIntoViewIfNeeded();
+  const card = locator.locator("xpath=..");
+  await card.screenshot({ path: outPath });
+  const buffer = fs.readFileSync(outPath);
+  const size = parsePngSize(buffer);
+  return {
+    path: outPath,
+    fileSize: buffer.byteLength,
+    width: size.width,
+    height: size.height,
+  };
+}
+
+async function waitForMidiPlayabilityCaptureState(page, expected) {
+  await page.waitForFunction((state) => {
+    const gallery = window.__lmtGallerySummary || null;
+    const midi = gallery?.scenes?.midi || null;
+    const guideText = document.getElementById("midi-playability-guide")?.textContent || "";
+    if (!gallery || !midi) return false;
+    if (midi.viewingSnapshot !== true) return false;
+    if ((midi.suggestionCount || 0) < 1) return false;
+    if ((midi.historyFrameCount || 0) < 1) return false;
+    if (state.mini && midi.currentMiniMode !== state.mini) return false;
+    if (state.overlay && gallery.playabilityOverlayMode !== state.overlay) return false;
+    if (state.overlay && midi.playabilityOverlayMode !== state.overlay) return false;
+    if (state.preset && midi.playabilityPreset !== state.preset) return false;
+    if (state.policy && midi.playabilityPolicy !== state.policy) return false;
+    if (state.guideIncludes && !guideText.includes(state.guideIncludes)) return false;
+    if (state.mini !== "off" && midi.currentMiniRendered !== true) return false;
+    if (state.overlay && state.overlay !== "off" && midi.currentMiniOverlay?.overlayRendered !== true) return false;
+    return true;
+  }, expected, { timeout: 30000 });
+  await page.evaluate(() => document.fonts?.ready ?? Promise.resolve());
+  await delay(300);
+}
+
+async function setMidiPlayabilityCaptureState(page, {
+  mini,
+  overlay,
+  presetLabel,
+  policyLabel,
+}) {
+  if (typeof presetLabel === "string") {
+    await page.selectOption("#midi-playability-preset", { label: presetLabel });
+  }
+  if (typeof policyLabel === "string") {
+    await page.selectOption("#midi-playability-policy", { label: policyLabel });
+  }
+  if (typeof mini === "string") {
+    await page.selectOption("#mini-instrument-mode", mini);
+  }
+  if (typeof overlay === "string") {
+    await page.selectOption("#playability-overlay-mode", overlay);
+  }
+  await waitForMidiPlayabilityCaptureState(page, {
+    mini,
+    overlay,
+    preset: presetLabel,
+    policy: policyLabel,
+    guideIncludes: presetLabel,
+  });
 }
 
 async function main() {
@@ -129,6 +214,43 @@ async function main() {
         shots[name] = await captureElement(page, selector, path.join(outputDir, `scene-${name}.png`));
       }
 
+      await setMidiPlayabilityCaptureState(page, {
+        mini: "off",
+        overlay: "off",
+        presetLabel: "balanced-standard",
+        policyLabel: "balanced",
+      });
+      shots.midiPlayabilityGuide = await captureElement(
+        page,
+        "#scene-midi",
+        path.join(outputDir, "scene-midi-playability-guide.png"),
+        { maxCssHeight: 1500 },
+      );
+
+      await setMidiPlayabilityCaptureState(page, {
+        mini: "piano",
+        overlay: "basic",
+        presetLabel: "compact-beginner",
+        policyLabel: "minimax-bottleneck",
+      });
+      shots.midiPlayabilityPiano = await captureParentCard(
+        page,
+        "#midi-current-fret",
+        path.join(outputDir, "scene-midi-playability-piano.png"),
+      );
+
+      await setMidiPlayabilityCaptureState(page, {
+        mini: "fret",
+        overlay: "detailed",
+        presetLabel: "compact-beginner",
+        policyLabel: "minimax-bottleneck",
+      });
+      shots.midiPlayabilityFret = await captureParentCard(
+        page,
+        "#midi-current-fret",
+        path.join(outputDir, "scene-midi-playability-fret.png"),
+      );
+
       const summary = await page.evaluate(() => ({
         status: document.getElementById("status")?.textContent || "",
         captureMode: document.documentElement.dataset.captureMode || "",
@@ -144,11 +266,29 @@ async function main() {
       };
       fs.writeFileSync(path.join(outputDir, "captures.json"), `${JSON.stringify(manifest, null, 2)}\n`);
 
-      const requiredShots = ["overview", "hero", "midi", "set", "key", "chord", "progression", "compare", "fret"];
+      const requiredShots = [
+        "overview",
+        "hero",
+        "midi",
+        "set",
+        "key",
+        "chord",
+        "progression",
+        "compare",
+        "fret",
+        "midiPlayabilityGuide",
+        "midiPlayabilityPiano",
+        "midiPlayabilityFret",
+      ];
+      const minDimensions = {
+        midiPlayabilityPiano: { width: 600, height: 700 },
+        midiPlayabilityFret: { width: 600, height: 700 },
+      };
       for (const name of requiredShots) {
         const shot = shots[name];
         if (!shot) throw new Error(`missing screenshot metadata: ${name}`);
-        if (shot.width < 900 || shot.height < 500) {
+        const expected = minDimensions[name] || { width: 900, height: 500 };
+        if (shot.width < expected.width || shot.height < expected.height) {
           throw new Error(`screenshot too small: ${name} ${shot.width}x${shot.height}`);
         }
         if (shot.fileSize < 40000) {
