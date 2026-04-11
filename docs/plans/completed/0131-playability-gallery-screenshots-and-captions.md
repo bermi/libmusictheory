@@ -4,6 +4,7 @@
 
 - Draft: 2026-04-11
 - In progress: 2026-04-11
+- Completed: 2026-04-11
 
 ## Goal
 
@@ -35,6 +36,14 @@ Add reproducible, captioned screenshots for the new playability-focused gallery 
 
 - `/Users/bermi/code/libmusictheory/./verify.sh`
 
-## Completion Notes
+## Implementation History (Point-in-Time)
 
-Add an `Implementation History (Point-in-Time)` section before moving this plan to `completed`.
+- Commit: `2770f572890313803c63404231f4e8222d7795ed`
+- Date: `2026-04-11`
+- Shipped behavior:
+  - added three deterministic gallery captures for the playability guide, piano mini overlay, and fret mini overlay states
+  - checked in curated release-doc images derived from the capture pipeline under `/Users/bermi/code/libmusictheory/docs/release/images/`
+  - documented the new playability gallery states in `/Users/bermi/code/libmusictheory/README.md` and linked them from release-facing docs
+  - hardened `/Users/bermi/code/libmusictheory/verify.sh` so filenames, asset presence, and capture/docs agreement are enforced together
+- Verification commands:
+  - `/Users/bermi/code/libmusictheory/./verify.sh`
