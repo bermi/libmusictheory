@@ -157,3 +157,70 @@ That lets downstream tools say:
 - "This realization is blocked because the shift margin is negative."
 - "This option is playable, but it has only one semitone of comfort-span headroom left."
 - "This alternative keeps the musical target but lowers the bottleneck cost."
+
+## 0133 - Phrase Event Model And Audit Summaries
+
+`0133` adds the shared phrase vocabulary that the later audit and repair slices build on.
+
+The important boundary is still intact:
+
+- no phrase audit engine yet
+- no committed phrase memory yet
+- no gallery pin or preview semantics in the library
+
+This slice only standardizes the facts later slices need to agree on:
+
+- `KeyboardPhraseEvent`
+  a fixed-size single-hand event carrying a realized note list
+- `FretPhraseEvent`
+  a fixed-size realized fret event carrying caller-provided string choices
+- `PhraseIssue`
+  an explainable issue row with:
+  - event or transition scope
+  - advisory, warning, or blocked severity
+  - a family-domain namespace
+  - explicit event indices
+  - a caller-visible magnitude
+- `PhraseSummary`
+  a compact phrase-level report with:
+  - first blocked event
+  - first blocked transition
+  - bottleneck issue metadata
+  - dominant reason and warning families
+  - severity/family counts
+  - recovery-deficit run metadata
+  - a named strain bucket
+
+### Why The Issue Row Needs Domains
+
+Later phrase audits need to explain more than "something is hard."
+
+The same phrase can contain:
+
+- a general playability reason
+- a general playability warning
+- a fret-specific blocker
+- a keyboard-specific blocker
+
+So the shared issue row uses a `FamilyDomain` instead of pretending one flat enum can explain every instrument-specific blocker.
+
+That keeps downstream explanations honest:
+
+- "The bottleneck is a keyboard shift hard limit."
+- "The dominant warning family is shift required."
+- "The phrase keeps reaching relief facts like open-string relief, so the strain never accumulates into a recovery deficit."
+
+### Strain Buckets Stay Rule-Based
+
+The strain bucket is intentionally small and explicit:
+
+- `neutral`
+  no warning or blocked issue survives into the phrase summary
+- `elevated`
+  warnings exist, but they do not yet form a sustained recovery deficit
+- `high`
+  warnings persist across multiple consecutive events without recovery
+- `blocked`
+  at least one blocked issue exists
+
+This avoids a fake "difficulty score" while still giving hosts and LLMs a phrase-level answer they can explain.

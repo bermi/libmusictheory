@@ -20,6 +20,10 @@ const LmtContainingModeMatch = api.LmtContainingModeMatch;
 const LmtChordMatch = api.LmtChordMatch;
 const LmtHandProfile = api.LmtHandProfile;
 const LmtPlayabilityDifficultySummary = api.LmtPlayabilityDifficultySummary;
+const LmtKeyboardPhraseEvent = api.LmtKeyboardPhraseEvent;
+const LmtFretPhraseEvent = api.LmtFretPhraseEvent;
+const LmtPlayabilityPhraseIssue = api.LmtPlayabilityPhraseIssue;
+const LmtPlayabilityPhraseSummary = api.LmtPlayabilityPhraseSummary;
 const LmtTemporalLoadState = api.LmtTemporalLoadState;
 const LmtFretCandidateLocation = api.LmtFretCandidateLocation;
 const LmtFretPlayState = api.LmtFretPlayState;
@@ -75,6 +79,14 @@ const lmt_playability_policy_name = api.lmt_playability_policy_name;
 const lmt_playability_profile_preset_count = api.lmt_playability_profile_preset_count;
 const lmt_playability_profile_preset_name = api.lmt_playability_profile_preset_name;
 const lmt_playability_profile_from_preset = api.lmt_playability_profile_from_preset;
+const lmt_playability_phrase_issue_scope_count = api.lmt_playability_phrase_issue_scope_count;
+const lmt_playability_phrase_issue_scope_name = api.lmt_playability_phrase_issue_scope_name;
+const lmt_playability_phrase_issue_severity_count = api.lmt_playability_phrase_issue_severity_count;
+const lmt_playability_phrase_issue_severity_name = api.lmt_playability_phrase_issue_severity_name;
+const lmt_playability_phrase_family_domain_count = api.lmt_playability_phrase_family_domain_count;
+const lmt_playability_phrase_family_domain_name = api.lmt_playability_phrase_family_domain_name;
+const lmt_playability_phrase_strain_bucket_count = api.lmt_playability_phrase_strain_bucket_count;
+const lmt_playability_phrase_strain_bucket_name = api.lmt_playability_phrase_strain_bucket_name;
 const lmt_fret_playability_blocker_count = api.lmt_fret_playability_blocker_count;
 const lmt_fret_playability_blocker_name = api.lmt_fret_playability_blocker_name;
 const lmt_fret_technique_profile_count = api.lmt_fret_technique_profile_count;
@@ -142,6 +154,10 @@ const lmt_sizeof_ranked_keyboard_fingering = api.lmt_sizeof_ranked_keyboard_fing
 const lmt_sizeof_ranked_keyboard_context_suggestion = api.lmt_sizeof_ranked_keyboard_context_suggestion;
 const lmt_sizeof_ranked_keyboard_next_step = api.lmt_sizeof_ranked_keyboard_next_step;
 const lmt_sizeof_playability_difficulty_summary = api.lmt_sizeof_playability_difficulty_summary;
+const lmt_sizeof_keyboard_phrase_event = api.lmt_sizeof_keyboard_phrase_event;
+const lmt_sizeof_fret_phrase_event = api.lmt_sizeof_fret_phrase_event;
+const lmt_sizeof_playability_phrase_issue = api.lmt_sizeof_playability_phrase_issue;
+const lmt_sizeof_playability_phrase_summary = api.lmt_sizeof_playability_phrase_summary;
 const lmt_sizeof_voiced_state = api.lmt_sizeof_voiced_state;
 const lmt_sizeof_voiced_history = api.lmt_sizeof_voiced_history;
 const lmt_sizeof_next_step_suggestion = api.lmt_sizeof_next_step_suggestion;
@@ -164,6 +180,7 @@ const lmt_orbifold_triad_edge_at = api.lmt_orbifold_triad_edge_at;
 const lmt_default_fret_hand_profile = api.lmt_default_fret_hand_profile;
 const lmt_default_fret_hand_profile_for_technique = api.lmt_default_fret_hand_profile_for_technique;
 const lmt_default_keyboard_hand_profile = api.lmt_default_keyboard_hand_profile;
+const lmt_summarize_playability_phrase_issues = api.lmt_summarize_playability_phrase_issues;
 const lmt_describe_fret_play_state = api.lmt_describe_fret_play_state;
 const lmt_windowed_fret_positions_n = api.lmt_windowed_fret_positions_n;
 const lmt_assess_fret_realization_n = api.lmt_assess_fret_realization_n;
@@ -234,6 +251,10 @@ test "c abi header layout and constants" {
     try testing.expectEqual(@sizeOf(c.lmt_chord_match), @sizeOf(LmtChordMatch));
     try testing.expectEqual(@sizeOf(c.lmt_hand_profile), @sizeOf(LmtHandProfile));
     try testing.expectEqual(@sizeOf(c.lmt_playability_difficulty_summary), @sizeOf(LmtPlayabilityDifficultySummary));
+    try testing.expectEqual(@sizeOf(c.lmt_keyboard_phrase_event), @sizeOf(LmtKeyboardPhraseEvent));
+    try testing.expectEqual(@sizeOf(c.lmt_fret_phrase_event), @sizeOf(LmtFretPhraseEvent));
+    try testing.expectEqual(@sizeOf(c.lmt_playability_phrase_issue), @sizeOf(LmtPlayabilityPhraseIssue));
+    try testing.expectEqual(@sizeOf(c.lmt_playability_phrase_summary), @sizeOf(LmtPlayabilityPhraseSummary));
     try testing.expectEqual(@sizeOf(c.lmt_temporal_load_state), @sizeOf(LmtTemporalLoadState));
     try testing.expectEqual(@sizeOf(c.lmt_fret_candidate_location), @sizeOf(LmtFretCandidateLocation));
     try testing.expectEqual(@sizeOf(c.lmt_fret_play_state), @sizeOf(LmtFretPlayState));
@@ -296,10 +317,18 @@ test "c abi header layout and constants" {
     try testing.expectEqual(@as(c_int, 3), c.LMT_KEYBOARD_PLAYABILITY_BLOCKER_IMPOSSIBLE_THUMB_CROSSING);
     try testing.expectEqual(@as(c_int, 1), c.LMT_PLAYABILITY_POLICY_MINIMAX_BOTTLENECK);
     try testing.expectEqual(@as(c_int, 2), c.LMT_PLAYABILITY_PROFILE_SPAN_TOLERANT);
+    try testing.expectEqual(@as(c_int, 1), c.LMT_PLAYABILITY_PHRASE_ISSUE_TRANSITION);
+    try testing.expectEqual(@as(c_int, 2), c.LMT_PLAYABILITY_PHRASE_SEVERITY_BLOCKED);
+    try testing.expectEqual(@as(c_int, 4), c.LMT_PLAYABILITY_PHRASE_DOMAIN_KEYBOARD_BLOCKER);
+    try testing.expectEqual(@as(c_int, 3), c.LMT_PLAYABILITY_PHRASE_STRAIN_BLOCKED);
     try testing.expectEqual(@as(u32, playability.types.REASON_NAMES.len), lmt_playability_reason_count());
     try testing.expectEqual(@as(u32, playability.types.WARNING_NAMES.len), lmt_playability_warning_count());
     try testing.expectEqual(@as(u32, playability.ranking.POLICY_NAMES.len), lmt_playability_policy_count());
     try testing.expectEqual(@as(u32, playability.profile.PRESET_NAMES.len), lmt_playability_profile_preset_count());
+    try testing.expectEqual(@as(u32, playability.phrase.ISSUE_SCOPE_NAMES.len), lmt_playability_phrase_issue_scope_count());
+    try testing.expectEqual(@as(u32, playability.phrase.ISSUE_SEVERITY_NAMES.len), lmt_playability_phrase_issue_severity_count());
+    try testing.expectEqual(@as(u32, playability.phrase.FAMILY_DOMAIN_NAMES.len), lmt_playability_phrase_family_domain_count());
+    try testing.expectEqual(@as(u32, playability.phrase.STRAIN_BUCKET_NAMES.len), lmt_playability_phrase_strain_bucket_count());
     try testing.expectEqual(@as(u32, playability.fret_assessment.BLOCKER_NAMES.len), lmt_fret_playability_blocker_count());
     try testing.expectEqual(@as(u32, playability.fret_assessment.PROFILE_NAMES.len), lmt_fret_technique_profile_count());
     try testing.expectEqual(@as(u32, playability.keyboard_assessment.HAND_ROLE_NAMES.len), lmt_keyboard_hand_count());
@@ -308,6 +337,10 @@ test "c abi header layout and constants" {
     try testing.expectEqualStrings("hard limit exceeded", std.mem.sliceTo(@as([*:0]const u8, @ptrCast(lmt_playability_warning_name(c.LMT_PLAYABILITY_WARNING_HARD_LIMIT_EXCEEDED))), 0));
     try testing.expectEqualStrings("minimax-bottleneck", std.mem.sliceTo(@as([*:0]const u8, @ptrCast(lmt_playability_policy_name(c.LMT_PLAYABILITY_POLICY_MINIMAX_BOTTLENECK))), 0));
     try testing.expectEqualStrings("span-tolerant", std.mem.sliceTo(@as([*:0]const u8, @ptrCast(lmt_playability_profile_preset_name(c.LMT_PLAYABILITY_PROFILE_SPAN_TOLERANT))), 0));
+    try testing.expectEqualStrings("transition", std.mem.sliceTo(@as([*:0]const u8, @ptrCast(lmt_playability_phrase_issue_scope_name(c.LMT_PLAYABILITY_PHRASE_ISSUE_TRANSITION))), 0));
+    try testing.expectEqualStrings("blocked", std.mem.sliceTo(@as([*:0]const u8, @ptrCast(lmt_playability_phrase_issue_severity_name(c.LMT_PLAYABILITY_PHRASE_SEVERITY_BLOCKED))), 0));
+    try testing.expectEqualStrings("keyboard blocker", std.mem.sliceTo(@as([*:0]const u8, @ptrCast(lmt_playability_phrase_family_domain_name(c.LMT_PLAYABILITY_PHRASE_DOMAIN_KEYBOARD_BLOCKER))), 0));
+    try testing.expectEqualStrings("high", std.mem.sliceTo(@as([*:0]const u8, @ptrCast(lmt_playability_phrase_strain_bucket_name(c.LMT_PLAYABILITY_PHRASE_STRAIN_HIGH))), 0));
     try testing.expectEqualStrings("unsupported extension", std.mem.sliceTo(@as([*:0]const u8, @ptrCast(lmt_fret_playability_blocker_name(c.LMT_FRET_PLAYABILITY_BLOCKER_UNSUPPORTED_EXTENSION))), 0));
     try testing.expectEqualStrings("bass simandl", std.mem.sliceTo(@as([*:0]const u8, @ptrCast(lmt_fret_technique_profile_name(c.LMT_FRET_TECHNIQUE_BASS_SIMANDL))), 0));
     try testing.expectEqualStrings("right hand", std.mem.sliceTo(@as([*:0]const u8, @ptrCast(lmt_keyboard_hand_name(c.LMT_KEYBOARD_HAND_RIGHT))), 0));
@@ -327,6 +360,10 @@ test "c abi header layout and constants" {
     try testing.expectEqual(@as(u32, @sizeOf(LmtRankedKeyboardContextSuggestion)), lmt_sizeof_ranked_keyboard_context_suggestion());
     try testing.expectEqual(@as(u32, @sizeOf(LmtRankedKeyboardNextStep)), lmt_sizeof_ranked_keyboard_next_step());
     try testing.expectEqual(@as(u32, @sizeOf(LmtPlayabilityDifficultySummary)), lmt_sizeof_playability_difficulty_summary());
+    try testing.expectEqual(@as(u32, @sizeOf(LmtKeyboardPhraseEvent)), lmt_sizeof_keyboard_phrase_event());
+    try testing.expectEqual(@as(u32, @sizeOf(LmtFretPhraseEvent)), lmt_sizeof_fret_phrase_event());
+    try testing.expectEqual(@as(u32, @sizeOf(LmtPlayabilityPhraseIssue)), lmt_sizeof_playability_phrase_issue());
+    try testing.expectEqual(@as(u32, @sizeOf(LmtPlayabilityPhraseSummary)), lmt_sizeof_playability_phrase_summary());
     try testing.expectEqual(@as(u32, counterpoint.MAX_VOICES), lmt_counterpoint_max_voices());
     try testing.expectEqual(@as(u32, counterpoint.HISTORY_CAPACITY), lmt_counterpoint_history_capacity());
     try testing.expectEqual(@as(u32, @sizeOf(LmtVoicedState)), lmt_sizeof_voiced_state());
@@ -937,6 +974,65 @@ test "c abi playability profile presets and summaries" {
     try testing.expect(summary.blocker_count > 0);
     try testing.expect(summary.limit_shift_margin < 0);
     try testing.expectEqual(@as(u8, 12), summary.shift_steps);
+}
+
+test "c abi phrase issue summaries" {
+    const issues = [_]LmtPlayabilityPhraseIssue{
+        .{
+            .scope = c.LMT_PLAYABILITY_PHRASE_ISSUE_EVENT,
+            .severity = c.LMT_PLAYABILITY_PHRASE_SEVERITY_ADVISORY,
+            .family_domain = c.LMT_PLAYABILITY_PHRASE_DOMAIN_REASON,
+            .family_index = c.LMT_PLAYABILITY_REASON_REACHABLE_IN_CURRENT_WINDOW,
+            .event_index = 0,
+            .related_event_index = playability.phrase.NONE_EVENT_INDEX,
+            .magnitude = 0,
+            .reserved0 = 0,
+        },
+        .{
+            .scope = c.LMT_PLAYABILITY_PHRASE_ISSUE_EVENT,
+            .severity = c.LMT_PLAYABILITY_PHRASE_SEVERITY_WARNING,
+            .family_domain = c.LMT_PLAYABILITY_PHRASE_DOMAIN_WARNING,
+            .family_index = c.LMT_PLAYABILITY_WARNING_SHIFT_REQUIRED,
+            .event_index = 1,
+            .related_event_index = playability.phrase.NONE_EVENT_INDEX,
+            .magnitude = 3,
+            .reserved0 = 0,
+        },
+        .{
+            .scope = c.LMT_PLAYABILITY_PHRASE_ISSUE_TRANSITION,
+            .severity = c.LMT_PLAYABILITY_PHRASE_SEVERITY_BLOCKED,
+            .family_domain = c.LMT_PLAYABILITY_PHRASE_DOMAIN_KEYBOARD_BLOCKER,
+            .family_index = c.LMT_KEYBOARD_PLAYABILITY_BLOCKER_SHIFT_HARD_LIMIT,
+            .event_index = 1,
+            .related_event_index = 2,
+            .magnitude = 9,
+            .reserved0 = 0,
+        },
+    };
+
+    var summary: LmtPlayabilityPhraseSummary = undefined;
+    try testing.expectEqual(@as(u32, 1), lmt_summarize_playability_phrase_issues(
+        3,
+        @ptrCast(&issues),
+        issues.len,
+        @ptrCast(&summary),
+    ));
+    try testing.expectEqual(@as(u16, 3), summary.event_count);
+    try testing.expectEqual(@as(u16, 3), summary.issue_count);
+    try testing.expectEqual(@as(u16, 1), summary.first_blocked_transition_from_index);
+    try testing.expectEqual(@as(u16, 2), summary.first_blocked_transition_to_index);
+    try testing.expectEqual(@as(u8, c.LMT_PLAYABILITY_PHRASE_SEVERITY_BLOCKED), summary.bottleneck_severity);
+    try testing.expectEqual(@as(u8, c.LMT_PLAYABILITY_PHRASE_DOMAIN_KEYBOARD_BLOCKER), summary.bottleneck_domain);
+    try testing.expectEqual(@as(u8, c.LMT_KEYBOARD_PLAYABILITY_BLOCKER_SHIFT_HARD_LIMIT), summary.bottleneck_family_index);
+    try testing.expectEqual(@as(u8, c.LMT_PLAYABILITY_PHRASE_STRAIN_BLOCKED), summary.strain_bucket);
+    try testing.expectEqual(@as(u8, c.LMT_PLAYABILITY_REASON_REACHABLE_IN_CURRENT_WINDOW), summary.dominant_reason_family);
+    try testing.expectEqual(@as(u8, c.LMT_PLAYABILITY_WARNING_SHIFT_REQUIRED), summary.dominant_warning_family);
+    try testing.expectEqual(@as(u16, 1), summary.severity_counts[c.LMT_PLAYABILITY_PHRASE_SEVERITY_ADVISORY]);
+    try testing.expectEqual(@as(u16, 1), summary.severity_counts[c.LMT_PLAYABILITY_PHRASE_SEVERITY_WARNING]);
+    try testing.expectEqual(@as(u16, 1), summary.severity_counts[c.LMT_PLAYABILITY_PHRASE_SEVERITY_BLOCKED]);
+    try testing.expectEqual(@as(u16, 1), summary.recovery_deficit_start_index);
+    try testing.expectEqual(@as(u16, 2), summary.recovery_deficit_end_index);
+    try testing.expectEqual(@as(u16, 2), summary.longest_recovery_deficit_run);
 }
 
 test "c abi fret playability assessment helpers" {

@@ -117,6 +117,56 @@ pub const LmtPlayabilityDifficultySummary = extern struct {
     limit_shift_margin: i16,
 };
 
+pub const LmtKeyboardPhraseEvent = extern struct {
+    note_count: u8,
+    hand: u8,
+    reserved0: u8,
+    reserved1: u8,
+    notes: [playability.keyboard_assessment.MAX_FINGERING_NOTES]u8,
+};
+
+pub const LmtFretPhraseEvent = extern struct {
+    fret_count: u8,
+    reserved0: u8,
+    reserved1: u8,
+    reserved2: u8,
+    frets: [guitar.MAX_GENERIC_STRINGS]i8,
+};
+
+pub const LmtPlayabilityPhraseIssue = extern struct {
+    scope: u8,
+    severity: u8,
+    family_domain: u8,
+    family_index: u8,
+    event_index: u16,
+    related_event_index: u16,
+    magnitude: u16,
+    reserved0: u16,
+};
+
+pub const LmtPlayabilityPhraseSummary = extern struct {
+    event_count: u16,
+    issue_count: u16,
+    first_blocked_event_index: u16,
+    first_blocked_transition_from_index: u16,
+    first_blocked_transition_to_index: u16,
+    bottleneck_issue_index: u16,
+    bottleneck_magnitude: u16,
+    bottleneck_severity: u8,
+    bottleneck_domain: u8,
+    bottleneck_family_index: u8,
+    strain_bucket: u8,
+    dominant_reason_family: u8,
+    dominant_warning_family: u8,
+    reserved0: u8,
+    severity_counts: [3]u16,
+    reason_family_counts: [playability.types.REASON_NAMES.len]u16,
+    warning_family_counts: [playability.types.WARNING_NAMES.len]u16,
+    recovery_deficit_start_index: u16,
+    recovery_deficit_end_index: u16,
+    longest_recovery_deficit_run: u16,
+};
+
 pub const LmtTemporalLoadState = extern struct {
     event_count: u8,
     last_anchor_step: u8,
@@ -652,6 +702,18 @@ fn decodePlayabilityProfilePreset(raw: u32) ?playability.profile.ProfilePreset {
     return playability.profile.fromInt(@as(u8, @intCast(raw)));
 }
 
+fn decodePhraseIssueScope(raw: u8) ?playability.phrase.IssueScope {
+    return std.meta.intToEnum(playability.phrase.IssueScope, raw) catch null;
+}
+
+fn decodePhraseIssueSeverity(raw: u8) ?playability.phrase.IssueSeverity {
+    return std.meta.intToEnum(playability.phrase.IssueSeverity, raw) catch null;
+}
+
+fn decodePhraseFamilyDomain(raw: u8) ?playability.phrase.FamilyDomain {
+    return std.meta.intToEnum(playability.phrase.FamilyDomain, raw) catch null;
+}
+
 fn writeHandProfile(out: *LmtHandProfile, profile: playability.types.HandProfile) void {
     out.* = .{
         .finger_count = profile.finger_count,
@@ -686,6 +748,47 @@ fn writePlayabilityDifficultySummary(
         .limit_span_margin = summary.limit_span_margin,
         .comfort_shift_margin = summary.comfort_shift_margin,
         .limit_shift_margin = summary.limit_shift_margin,
+    };
+}
+
+fn decodePhraseIssue(raw: LmtPlayabilityPhraseIssue) ?playability.phrase.PhraseIssue {
+    return .{
+        .scope = decodePhraseIssueScope(raw.scope) orelse return null,
+        .severity = decodePhraseIssueSeverity(raw.severity) orelse return null,
+        .family_domain = decodePhraseFamilyDomain(raw.family_domain) orelse return null,
+        .family_index = raw.family_index,
+        .event_index = raw.event_index,
+        .related_event_index = raw.related_event_index,
+        .magnitude = raw.magnitude,
+        .reserved0 = raw.reserved0,
+    };
+}
+
+fn writePhraseSummary(
+    out: *LmtPlayabilityPhraseSummary,
+    summary: playability.phrase.PhraseSummary,
+) void {
+    out.* = .{
+        .event_count = summary.event_count,
+        .issue_count = summary.issue_count,
+        .first_blocked_event_index = summary.first_blocked_event_index,
+        .first_blocked_transition_from_index = summary.first_blocked_transition_from_index,
+        .first_blocked_transition_to_index = summary.first_blocked_transition_to_index,
+        .bottleneck_issue_index = summary.bottleneck_issue_index,
+        .bottleneck_magnitude = summary.bottleneck_magnitude,
+        .bottleneck_severity = @intFromEnum(summary.bottleneck_severity),
+        .bottleneck_domain = @intFromEnum(summary.bottleneck_domain),
+        .bottleneck_family_index = summary.bottleneck_family_index,
+        .strain_bucket = @intFromEnum(summary.strain_bucket),
+        .dominant_reason_family = summary.dominant_reason_family,
+        .dominant_warning_family = summary.dominant_warning_family,
+        .reserved0 = 0,
+        .severity_counts = summary.severity_counts,
+        .reason_family_counts = summary.reason_family_counts,
+        .warning_family_counts = summary.warning_family_counts,
+        .recovery_deficit_start_index = summary.recovery_deficit_start_index,
+        .recovery_deficit_end_index = summary.recovery_deficit_end_index,
+        .longest_recovery_deficit_run = summary.longest_recovery_deficit_run,
     };
 }
 
@@ -1565,6 +1668,46 @@ pub export fn lmt_playability_profile_from_preset(
     return 1;
 }
 
+pub export fn lmt_playability_phrase_issue_scope_count() callconv(.c) u32 {
+    return @as(u32, @intCast(playability.phrase.ISSUE_SCOPE_NAMES.len));
+}
+
+pub export fn lmt_playability_phrase_issue_scope_name(index: u32) callconv(.c) [*c]const u8 {
+    const idx = @as(usize, @intCast(index));
+    if (idx >= playability.phrase.ISSUE_SCOPE_NAMES.len) return null;
+    return writeCString(playability.phrase.ISSUE_SCOPE_NAMES[idx]);
+}
+
+pub export fn lmt_playability_phrase_issue_severity_count() callconv(.c) u32 {
+    return @as(u32, @intCast(playability.phrase.ISSUE_SEVERITY_NAMES.len));
+}
+
+pub export fn lmt_playability_phrase_issue_severity_name(index: u32) callconv(.c) [*c]const u8 {
+    const idx = @as(usize, @intCast(index));
+    if (idx >= playability.phrase.ISSUE_SEVERITY_NAMES.len) return null;
+    return writeCString(playability.phrase.ISSUE_SEVERITY_NAMES[idx]);
+}
+
+pub export fn lmt_playability_phrase_family_domain_count() callconv(.c) u32 {
+    return @as(u32, @intCast(playability.phrase.FAMILY_DOMAIN_NAMES.len));
+}
+
+pub export fn lmt_playability_phrase_family_domain_name(index: u32) callconv(.c) [*c]const u8 {
+    const idx = @as(usize, @intCast(index));
+    if (idx >= playability.phrase.FAMILY_DOMAIN_NAMES.len) return null;
+    return writeCString(playability.phrase.FAMILY_DOMAIN_NAMES[idx]);
+}
+
+pub export fn lmt_playability_phrase_strain_bucket_count() callconv(.c) u32 {
+    return @as(u32, @intCast(playability.phrase.STRAIN_BUCKET_NAMES.len));
+}
+
+pub export fn lmt_playability_phrase_strain_bucket_name(index: u32) callconv(.c) [*c]const u8 {
+    const idx = @as(usize, @intCast(index));
+    if (idx >= playability.phrase.STRAIN_BUCKET_NAMES.len) return null;
+    return writeCString(playability.phrase.STRAIN_BUCKET_NAMES[idx]);
+}
+
 pub export fn lmt_scale_degree(tonic: u8, mode_type: u8, note: u8) callconv(.c) u8 {
     const mt = decodeModeType(mode_type) orelse return 0;
     const tonic_pc = @as(pitch.PitchClass, @intCast(tonic % 12));
@@ -1792,6 +1935,22 @@ pub export fn lmt_sizeof_playability_difficulty_summary() callconv(.c) u32 {
     return @as(u32, @intCast(@sizeOf(LmtPlayabilityDifficultySummary)));
 }
 
+pub export fn lmt_sizeof_keyboard_phrase_event() callconv(.c) u32 {
+    return @as(u32, @intCast(@sizeOf(LmtKeyboardPhraseEvent)));
+}
+
+pub export fn lmt_sizeof_fret_phrase_event() callconv(.c) u32 {
+    return @as(u32, @intCast(@sizeOf(LmtFretPhraseEvent)));
+}
+
+pub export fn lmt_sizeof_playability_phrase_issue() callconv(.c) u32 {
+    return @as(u32, @intCast(@sizeOf(LmtPlayabilityPhraseIssue)));
+}
+
+pub export fn lmt_sizeof_playability_phrase_summary() callconv(.c) u32 {
+    return @as(u32, @intCast(@sizeOf(LmtPlayabilityPhraseSummary)));
+}
+
 pub export fn lmt_sizeof_voiced_state() callconv(.c) u32 {
     return @as(u32, @intCast(@sizeOf(LmtVoicedState)));
 }
@@ -1925,6 +2084,29 @@ pub export fn lmt_default_keyboard_hand_profile(out: [*c]LmtHandProfile) callcon
     if (out == null) return 0;
     const out_profile: *LmtHandProfile = @ptrCast(out);
     writeHandProfile(out_profile, playability.keyboard_topology.defaultHandProfile());
+    return 1;
+}
+
+pub export fn lmt_summarize_playability_phrase_issues(
+    event_count: u32,
+    issues_ptr: [*c]const LmtPlayabilityPhraseIssue,
+    issue_count: u32,
+    out: [*c]LmtPlayabilityPhraseSummary,
+) callconv(.c) u32 {
+    if (out == null) return 0;
+    if (event_count > playability.phrase.MAX_PHRASE_EVENTS) return 0;
+
+    var accumulator = playability.phrase.SummaryAccumulator.init(event_count);
+    if (issues_ptr != null) {
+        const len = @as(usize, @intCast(issue_count));
+        var index: usize = 0;
+        while (index < len) : (index += 1) {
+            const issue = decodePhraseIssue(issues_ptr[index]) orelse continue;
+            accumulator.observeIssue(issue, index);
+        }
+    }
+
+    writePhraseSummary(@ptrCast(out), accumulator.finish());
     return 1;
 }
 
