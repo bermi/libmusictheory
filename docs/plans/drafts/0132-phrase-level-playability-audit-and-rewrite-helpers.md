@@ -1,8 +1,9 @@
-# 0132 — Phrase-Level Playability Audit And Rewrite Helpers
+# 0132 — Phrase-Level Playability Audit, Committed Memory, And Repair Helpers
 
 ## Status
 
 - Draft: 2026-04-11
+- Updated: 2026-04-12
 
 ## Goal
 
@@ -10,6 +11,7 @@ Extend the experimental `playability` family from local realizations and next-st
 - where a passage becomes physically implausible
 - which event or transition is the phrase bottleneck
 - whether the difficulty comes from span, shift, repetition, or unresolved load
+- which accepted choices should bias later suggestions
 - what minimal, explainable repair options exist when a passage should stay musically similar but become more playable
 
 ## Why This Is The Right Post-0131 Slice
@@ -24,6 +26,7 @@ What it still cannot do cleanly is audit a whole phrase and explain:
 - "measure 3 is the bottleneck"
 - "the same hand never recovers after the previous stretch"
 - "this chord is locally reachable, but the phrase becomes unplayable because the next jump compounds the strain"
+- "this next move is better because you already committed the last two accepted states"
 
 That is the missing bridge between:
 - theory-valid generation
@@ -38,13 +41,52 @@ Adopt:
 - bottleneck location
 - accumulated load windows
 - phrase-local issue clusters
+- explicit committed-memory semantics for accepted choices
 - explicit repair classes with caller-selected permissions
 
 Reject:
 - black-box phrase difficulty scores with no reason breakdown
 - automatic compositional rewrites that silently change musical meaning
 - hidden style policies about what counts as an acceptable simplification
-- premature hand-animation or gallery-heavy work before the core audit semantics exist
+- hidden global mutable state in the library
+
+## Critical Boundary: Library Memory Versus Host UI State
+
+This roadmap needs a strict boundary.
+
+### Library-owned working memory
+
+If a choice is meant to change later music-theory or playability results, it belongs in caller-owned library memory.
+
+That includes:
+- committed voiced states
+- committed keyboard phrase events
+- committed fret phrase events
+- phrase summaries derived from committed event streams
+- next-step bias derived from committed accepted history
+
+### Host-owned UI memory
+
+If something only controls presentation or browser interaction, it stays outside the library.
+
+That includes:
+- hover state
+- preview pins
+- active Web MIDI devices
+- local storage snapshots
+- virtual keyboard toggles before commit
+- "return to live" versus "previewing snapshot"
+
+### Design consequence
+
+The library should not grow a hidden singleton blackboard.
+
+Instead, it should expose explicit caller-owned state, in the same style as `lmt_voiced_history`:
+- reset
+- push or append
+- inspect
+- summarize
+- use that committed state to bias later ranking when the caller asks for it
 
 ## Scope
 
@@ -52,105 +94,65 @@ Reject:
 2. Add phrase-level audit helpers for:
    - fixed fret realizations and transitions
    - fixed keyboard realizations and transitions
-3. Add structured phrase summaries:
+3. Add committed phrase memory for accepted choices.
+4. Add structured phrase summaries:
    - max bottleneck severity
    - cumulative strain bucket
    - first blocked event
    - first blocked transition
-   - issue counts by reason/warning family
-4. Add controlled repair helpers that can propose minimal alternatives using explicit caller policy.
-5. Add focused docs and tests that show how hosts and LLMs should consume the new audit layer.
+   - issue counts by reason or warning family
+5. Add controlled repair helpers that can propose minimal alternatives using explicit caller policy.
+6. Add focused docs and host examples that show how committed memory, audit, and repair interact.
+
+## Structural Decision: Commit Versus Preview
+
+This is the key interaction model that keeps the API coherent.
+
+### Preview
+- host-owned
+- does not change future ranking state
+- examples: hover, inspect, pin for comparison
+
+### Commit
+- library-relevant
+- appends an accepted event or state into caller-owned phrase memory
+- later ranking and auditing can use that committed memory explicitly
+
+A host must never treat preview focus as if it were a committed musical choice.
 
 ## Structural Decision: Repair Policy Boundary
 
-This is the most important design decision in the slice.
-
 The repair surface must distinguish three different things:
 
-1. `realization-only repair`
+1. `realization_only`
 - same sounding notes
 - same onset structure
 - same musical event sequence
 - only the physical realization changes
 
-Examples:
-- different fret/string location for the same note
-- different keyboard fingering for the same chord
-- different anchor window or hand shift plan with identical sounding output
-
-2. `register-preserving musical repair`
+2. `register_adjusted`
 - same event count
 - same harmonic target is preserved as closely as possible
 - one or more notes may move by octave or swap voicing order
-- this is a musical change, but still a conservative one
+- still a musical change
 
-Examples:
-- move one inner note up an octave
-- respread a keyboard voicing between adjacent registers
-- move a guitar note to a different octave while preserving chord quality and anchors
-
-3. `texture-reducing musical repair`
+3. `texture_reduced`
 - the musical surface changes more materially
 - some notes may be omitted or simplified
-- still constrained by explicit preservation rules
-
-Examples:
-- drop a doubled pitch
-- reduce a five-note sonority to a shell voicing
-- remove a non-structural inner note to restore playability
+- constrained by explicit preservation rules
 
 The API must never mix these categories into one undifferentiated ranked list.
 
-## Repair Policy Rules
-
-The caller should always choose an explicit repair policy struct rather than rely on defaults.
-
-Minimum policy axes:
-- whether realization-only repairs are allowed
-- whether octave displacement is allowed
-- whether note omission is allowed
-- whether note reordering within the event is allowed
-- whether top voice must be preserved
-- whether bass voice must be preserved
-- whether chord root must be preserved when identifiable
-- maximum events that may be altered
-- maximum notes per event that may be altered
-
-That makes the downstream explanation and UX clean:
-- "show me another fingering"
-- "allow octave moves but do not delete notes"
-- "allow note thinning, but keep the bass and top voice fixed"
-
-## Repair Result Taxonomy
-
-Every ranked repair should carry:
-- `repair_class`
-  - `realization_only`
-  - `register_adjusted`
-  - `texture_reduced`
-- `events_touched`
-- `notes_changed`
-- `preserves_bass`
-- `preserves_top_voice`
-- `preserves_root`
-- `playability_lift`
-- `musical_deviation_flags`
-
-That prevents a host from presenting a note-thinned fallback as if it were just an alternate fingering.
-
 ## Non-Goals
 
-This slice should not try to solve everything at once.
-
-Not in scope:
-- two-hand piano voice-to-hand assignment
-- right-hand bass slap/pop mechanics
-- generic score engraving or notation timeline rendering
-- automatic reharmonization
+Not in scope for the core library slices:
+- hidden browser-session memory
+- localStorage persistence semantics
+- Web MIDI device management
+- UI hover or pin logic
 - silent note deletion or octave displacement unless a repair policy explicitly allows it
-- a new gallery scene
 
-If we need a gallery surface later, it should be a follow-up slice built on stable audit outputs.
+These belong in host slices built on the core API.
 
 ## Proposed API Direction
 
@@ -158,11 +160,22 @@ Everything starts experimental and caller-buffered.
 
 ### New structs
 
-- `lmt_playability_phrase_event`
 - `lmt_playability_phrase_issue`
 - `lmt_playability_phrase_summary`
+- `lmt_keyboard_phrase_memory`
+- `lmt_fret_phrase_memory`
 - `lmt_playability_repair_policy`
 - `lmt_ranked_phrase_repair`
+
+### Proposed committed-memory helpers
+
+- `lmt_keyboard_phrase_memory_reset`
+- `lmt_keyboard_phrase_memory_push_event`
+- `lmt_keyboard_phrase_memory_len`
+- `lmt_fret_phrase_memory_reset`
+- `lmt_fret_phrase_memory_push_event`
+- `lmt_fret_phrase_memory_len`
+- helpers that bias later ranking or phrase summarization from the committed memory
 
 ### Proposed repair-policy fields
 
@@ -176,81 +189,19 @@ Everything starts experimental and caller-buffered.
 - `max_events_touched`
 - `max_notes_changed_per_event`
 
-### Proposed phrase-summary fields
-
-- `first_blocked_event_index`
-- `first_blocked_transition_index`
-- `max_bottleneck_cost`
-- `cumulative_cost`
-- `issue_count`
-- `blocked_issue_count`
-- `warning_issue_count`
-- `peak_span`
-- `peak_shift`
-- `recovery_deficit_count`
-- `dominant_reason`
-- `dominant_warning`
-
-### New helpers
-
-- `lmt_assess_fret_phrase_n`
-- `lmt_assess_keyboard_phrase_n`
-- `lmt_summarize_fret_phrase_playability`
-- `lmt_summarize_keyboard_phrase_playability`
-- `lmt_suggest_fret_phrase_repairs_n`
-- `lmt_suggest_keyboard_phrase_repairs_n`
-
-### Likely internal modules
-
-- `/Users/bermi/code/libmusictheory/src/playability/phrase.zig`
-- `/Users/bermi/code/libmusictheory/src/playability/repair.zig`
-
-### Supporting files
-
-- `/Users/bermi/code/libmusictheory/src/c_api.zig`
-- `/Users/bermi/code/libmusictheory/include/libmusictheory.h`
-- `/Users/bermi/code/libmusictheory/src/tests/playability_phrase_test.zig`
-- `/Users/bermi/code/libmusictheory/src/tests/c_api_test.zig`
-- `/Users/bermi/code/libmusictheory/docs/api.md`
-- `/Users/bermi/code/libmusictheory/docs/research/algorithms/playability.md`
-- `/Users/bermi/code/libmusictheory/verify.sh`
-
 ## Design Constraints
 
 1. Stay deterministic.
 2. Keep all outputs decomposable into reasons, warnings, blockers, and repair classes.
 3. Phrase auditing must build on the existing local assessment engines rather than duplicating them.
 4. Repair helpers must require explicit policy input from the caller.
-5. The API must distinguish:
+5. Committed memory must be caller-owned explicit state, not hidden global library state.
+6. The API must distinguish:
    - fixed realization auditing
+   - committed memory that biases future steps
    - alternative realization repair
    - composition-changing repair
-
-That last distinction matters for DX. A host must be able to say:
-- "only show alternate fingerings"
-- "allow octave displacement"
-- "allow note thinning"
-
-without guessing what the library changed.
-
-6. Phrase auditing should accept caller-authored event boundaries rather than infer meter or phrasing heuristically.
-7. Repair helpers may rank candidates, but they must never silently cross a policy boundary.
-
-## Phrase Model Boundary
-
-The first version of phrase auditing should work on explicit event sequences, not full notation semantics.
-
-That means callers provide:
-- event-ordered note groups
-- already-realized fret or keyboard state per event, or enough information to derive it
-- optional timing weights if they want denser events to count more heavily
-
-That avoids overpromising:
-- no meter inference
-- no beat-strength inference
-- no automatic phrase segmentation from notation
-
-If a host wants bar-aware or beat-aware language, it can map event indexes back to score locations itself.
+7. Phrase auditing should accept caller-authored event boundaries rather than infer meter or phrasing heuristically.
 
 ## Explainability Contract
 
@@ -258,8 +209,8 @@ Every phrase-level result should support a sentence like one of these:
 
 - "The phrase becomes blocked at event 6 because the required right-hand span exceeds the configured practical range."
 - "The hardest move is the jump into event 9; it is reachable, but it creates the largest bottleneck in the passage."
+- "This next move is favored because your committed phrase memory already established an anchor that avoids another large shift."
 - "This repair keeps the same pitch targets but moves the fret realization into a lower-shift window."
-- "This alternate keyboard fingering preserves the chord but reduces repeated weak-finger use across the sequence."
 
 If the API cannot support a sentence like that, it is too opaque for this repo.
 
@@ -270,31 +221,30 @@ If the API cannot support a sentence like that, it is too opaque for this repo.
 - score verification for LLM output
 - practice-app warnings
 - explainable bottleneck detection
+- committed-memory-informed ranking
 - localized repair suggestions
 
 ### What needs caution
 
-- phrase repair can easily slide into composition rewriting
+- phrase repair can slide into composition rewriting
 - keyboard phrases become ambiguous once both hands and redistributed voices are involved
-- note-thinning or octave-drop suggestions are useful, but they must be opt-in and visibly labeled as musical compromises
-- phrase difficulty summaries can become misleading if they imply a single universal score rather than explicit bottleneck and cumulative facts
+- a generic library "blackboard" can become a dump for UI state if we do not keep the boundary explicit
 
 ### What we should defer
 
 - full two-hand piano assignment
 - bass-technique-specific right-hand models
-- decorative timeline/gallery UI
-
-Those are worthwhile, but they should sit on top of a solid phrase-audit core.
+- decorative timeline or blackboard UI semantics inside the library
 
 ## Suggested Execution Order
 
 1. Phrase event and summary structs.
 2. Fixed-realization phrase auditing for fret and keyboard.
-3. Phrase issue extraction and summary helpers.
+3. Committed phrase memory and choice-bias helpers.
 4. Explicit repair-policy model.
 5. Minimal repair suggestion helpers.
-6. Docs and C ABI examples for host/LLM usage.
+6. Host/gallery adoption for committed blackboard workflows and no-MIDI fallback.
+7. Docs and examples for host and LLM usage.
 
 ## Planned Follow-On Slices
 
@@ -306,16 +256,21 @@ Define the event-level phrase model, issue records, phrase summary structs, and 
 
 Add the actual phrase-audit passes for keyboard and fret sequences by composing the existing local realization and transition assessors over explicit event streams.
 
-### 0135 - Repair Policy And Ranked Phrase Repairs
+### 0135 - Committed Phrase Memory And Choice Bias
+
+Add caller-owned committed phrase memory so accepted choices can bias future ranking and phrase analysis without introducing hidden global state.
+
+### 0136 - Repair Policy And Ranked Phrase Repairs
 
 Add the explicit repair-policy surface plus ranked repair candidates, keeping `realization_only`, `register_adjusted`, and `texture_reduced` outputs visibly distinct.
 
-### 0136 - Phrase Audit Docs And Host Adoption
+### 0137 - Gallery Phrase Blackboard And Virtual Keyboard Fallback
 
-Document the intended usage in the unified API docs with examples aimed at:
-- LLM verification of generated passages
-- practice-app bottleneck reporting
-- conservative versus music-changing repair requests
+Adapt the gallery host so preview pins stay UI-local, committed choices are written into library-backed phrase memory, and the MIDI scene remains usable without hardware by letting users toggle notes from a virtual keyboard.
+
+### 0138 - Phrase Audit Docs And Host Adoption
+
+Document the intended usage in the unified API docs and host examples with explicit distinctions between audit-only, committed-memory bias, realization-only repair, and music-changing repair.
 
 ## Dependency Graph
 
@@ -323,21 +278,25 @@ Document the intended usage in the unified API docs with examples aimed at:
 0132 phrase-level-playability-audit-and-rewrite-helpers
   -> 0133 phrase-event-model-and-audit-summaries
        -> 0134 fixed-realization-phrase-audit-engines
-            -> 0135 repair-policy-and-ranked-phrase-repairs
-                 -> 0136 phrase-audit-docs-and-host-adoption
+            -> 0135 committed-phrase-memory-and-choice-bias
+                 -> 0136 repair-policy-and-ranked-phrase-repairs
+                      -> 0137 gallery-phrase-blackboard-and-virtual-keyboard-fallback
+                           -> 0138 phrase-audit-docs-and-host-adoption
 ```
 
 ## Verification
 
 - `/Users/bermi/code/libmusictheory/./verify.sh`
-- focused Zig tests for phrase audit and repair helpers
+- focused Zig tests for phrase audit, committed-memory, and repair helpers
 - C ABI tests for every new exported struct and helper
-- docs examples proving the repair-policy distinction is explicit
+- host validation that preview and commit are distinct behaviors
 
 ## Completion Gate
 
-This slice is complete when a host can:
+This roadmap is complete when a host can:
 - pass a short phrase into the library
 - receive a phrase summary and issue list with named reasons
+- commit accepted choices into caller-owned library memory
+- rerank later suggestions from that committed memory explicitly
 - ask for allowed repair classes explicitly
 - get ranked repair candidates whose tradeoffs are explainable in plain music-plus-playability language

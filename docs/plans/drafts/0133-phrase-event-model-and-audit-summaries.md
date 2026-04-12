@@ -8,6 +8,21 @@
 
 Create the shared phrase-audit foundation for playability so later slices can reason about a whole passage without inventing incompatible event or summary semantics.
 
+## Important Boundary
+
+This slice is structural only.
+
+It does:
+- define the event model
+- define issue rows and phrase summaries
+- define the vocabulary later audit engines and committed-memory helpers will reuse
+
+It does not:
+- perform phrase auditing yet
+- introduce committed phrase memory
+- bias future ranking
+- carry host preview or pin state into the library
+
 ## Scope
 
 1. Define phrase event structs for keyboard and fret audit inputs.
@@ -16,9 +31,10 @@ Create the shared phrase-audit foundation for playability so later slices can re
    - first blocked event
    - first blocked transition
    - bottleneck severity
-   - cumulative cost
-   - dominant reason and warning
-   - issue counts by severity
+   - cumulative strain bucket
+   - dominant reason and warning family
+   - issue counts by severity and family
+   - recovery-deficit run metadata
 4. Expose reflection and sizeof helpers through the experimental C ABI.
 
 ## Files
@@ -35,9 +51,11 @@ Create the shared phrase-audit foundation for playability so later slices can re
 
 An LLM should be able to say:
 - "The first blocked point in the phrase is transition 4 → 5, and the phrase bottleneck is a shift overload rather than a span overload."
+- "The phrase is not blocked yet, but it stays in a high-strain bucket for three consecutive events with no recovery."
 
 ## Verification
 
 - focused phrase-struct and summary tests
+- summary bucket/family tests
 - C ABI reflection/sizeof coverage
 - `/Users/bermi/code/libmusictheory/./verify.sh`
