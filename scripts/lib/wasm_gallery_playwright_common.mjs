@@ -250,6 +250,9 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
       midiPlayabilityPolicyValue: document.getElementById("midi-playability-policy")?.value || "",
       playabilityOverlayHelpText: document.getElementById("playability-overlay-help")?.textContent || "",
       midiPlayabilityGuideText: document.getElementById("midi-playability-guide")?.textContent || "",
+      phraseBlackboardText: document.getElementById("midi-phrase-blackboard")?.textContent || "",
+      virtualKeyboardButtonCount: document.querySelectorAll("#midi-virtual-keyboard [data-virtual-midi-note]").length,
+      virtualKeyboardActiveCount: document.querySelectorAll("#midi-virtual-keyboard [data-virtual-midi-note].is-active").length,
       currentMiniOverlayCount: document.querySelectorAll("#midi-current-fret .playability-overlay").length,
       focusedMiniOverlayCount: document.querySelectorAll("#midi-focused-mini .playability-overlay").length,
       suggestionMiniOverlayCount: document.querySelectorAll("#midi-suggestions [data-suggestion-mini] .playability-overlay").length,
@@ -854,6 +857,8 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
     const midiVoiceDutiesFeatures = snapshot.summary?.midiVoiceDutiesFeatures ?? snapshot.midiVoiceDutiesFeatures;
     const midiRepairLabFeatures = snapshot.summary?.midiRepairLabFeatures ?? snapshot.midiRepairLabFeatures;
     const midiRepairFutureFeatures = snapshot.summary?.midiRepairFutureFeatures ?? snapshot.midiRepairFutureFeatures;
+    const midiVirtualKeyboardFeatures = snapshot.summary?.midiVirtualKeyboardFeatures ?? { keyCount: 0, activeKeyCount: 0, fallbackVisible: false };
+    const midiPhraseBlackboardFeatures = snapshot.summary?.midiPhraseBlackboardFeatures ?? { committedEventCount: 0, issueCount: 0, biasActive: false };
     const keyboardFeatures = snapshot.summary?.keyboardFeatures ?? snapshot.keyboardFeaturesFallback;
     if (
       snapshot.summary?.rendered === true
@@ -872,6 +877,10 @@ export async function waitForMidiSceneActive(page, expectedPreviewMode = null) {
       && snapshot.suggestionCards >= 1
       && snapshot.midiPlayabilityPresetValue !== ""
       && snapshot.midiPlayabilityPolicyValue !== ""
+      && snapshot.virtualKeyboardButtonCount >= 24
+      && snapshot.phraseBlackboardText.includes("Pinning only changes preview focus")
+      && midiVirtualKeyboardFeatures.keyCount >= 24
+      && midiPhraseBlackboardFeatures.currentCommitReady === true
       && (snapshot.summary?.currentMiniMode || "off") !== ""
       && (snapshot.summary?.currentMiniRendered === true || snapshot.summary?.currentMiniMode === "off")
       && ((snapshot.summary?.suggestionMiniCount || 0) >= 1 || snapshot.summary?.currentMiniMode === "off")

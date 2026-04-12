@@ -356,6 +356,42 @@ The important contract is:
 - only then filter or rerank theory-valid next steps
 - explain the result with blockers, warnings, spans, shifts, and accepted/rejected candidates instead of hidden scores
 
+The gallery uses one extra boundary that host apps should copy:
+
+- `Pin for preview` is host-only UI state
+- `Commit to phrase` appends an accepted event into caller-owned library memory
+- preview state must not change later ranking
+- committed phrase memory may bias later ranking, phrase audits, and safer-next-step selection
+- a `virtual keyboard` fallback may feed the same current-input path as live MIDI, but it still does not change committed phrase memory until the host explicitly commits the current state
+
+That split keeps the library deterministic and reusable across hosts:
+
+- browser/UI concerns stay outside the ABI
+- committed musical choices that should affect future analysis stay inside explicit caller-owned structs
+
+#### Recipe 0: Gallery-Style Preview Versus Commit
+
+```c
+lmt_keyboard_committed_phrase_memory memory = {0};
+lmt_keyboard_phrase_event accepted = {0};
+
+/* Preview-only UI pin: no library call here. */
+
+/* Later, when the user accepts the move: */
+accepted.note_count = 3;
+accepted.notes[0] = 60;
+accepted.notes[1] = 64;
+accepted.notes[2] = 67;
+accepted.hand = LMT_KEYBOARD_HAND_RIGHT;
+
+lmt_keyboard_committed_phrase_reset(&memory);
+lmt_keyboard_committed_phrase_push(&memory, &accepted);
+```
+
+Use this when your host wants to say:
+
+`"Pin for preview only changes the inspection focus. Commit to phrase changes later ranking because the accepted voicing is now in committed phrase memory."`
+
 #### Recipe 1: Apply A Preset Before Any Summary
 
 ```c

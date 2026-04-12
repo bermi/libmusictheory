@@ -36,6 +36,13 @@ const FRET_TECHNIQUE_BASS_SIMANDL = 1;
 const FRET_TECHNIQUE_BASS_OFPF = 2;
 const FRET_TECHNIQUE_EXTENDED_RANGE_CLASSICAL_THUMB = 3;
 const PLAYABILITY_POLICY_BALANCED = 0;
+const VIRTUAL_MIDI_INPUT_ID = "__lmt_virtual_keyboard__";
+const VIRTUAL_MIDI_CHANNEL = 0;
+const VIRTUAL_KEYBOARD_LOW = 36;
+const VIRTUAL_KEYBOARD_HIGH = 72;
+const PHRASE_AUDIT_ISSUE_PREVIEW_CAP = 12;
+const NONE_EVENT_INDEX = 0xffff;
+const NONE_FAMILY_INDEX = 0xff;
 const KEYBOARD_MARGIN_X = 16;
 const KEYBOARD_MARGIN_Y = 16;
 const KEYBOARD_WHITE_KEY_WIDTH = 24;
@@ -96,6 +103,28 @@ const DEFAULT_SUSPENSION_STATE_NAMES = Object.freeze([
   "suspension",
   "resolution",
   "unresolved",
+]);
+const PHRASE_SCOPE_NAMES = Object.freeze([
+  "event",
+  "transition",
+]);
+const PHRASE_SEVERITY_NAMES = Object.freeze([
+  "advisory",
+  "warning",
+  "blocked",
+]);
+const PHRASE_FAMILY_DOMAIN_NAMES = Object.freeze([
+  "none",
+  "playability reason",
+  "playability warning",
+  "fret blocker",
+  "keyboard blocker",
+]);
+const PHRASE_STRAIN_BUCKET_NAMES = Object.freeze([
+  "neutral",
+  "elevated",
+  "high",
+  "blocked",
 ]);
 const ORBIFOLD_QUALITY_NAMES = Object.freeze([
   "major",
@@ -218,6 +247,10 @@ const REQUIRED_EXPORTS = [
   "lmt_sizeof_ranked_keyboard_context_suggestion",
   "lmt_sizeof_ranked_keyboard_next_step",
   "lmt_sizeof_playability_difficulty_summary",
+  "lmt_sizeof_keyboard_phrase_event",
+  "lmt_sizeof_keyboard_committed_phrase_memory",
+  "lmt_sizeof_playability_phrase_issue",
+  "lmt_sizeof_playability_phrase_summary",
   "lmt_default_fret_hand_profile_for_technique",
   "lmt_default_keyboard_hand_profile",
   "lmt_assess_fret_realization_n",
@@ -236,6 +269,12 @@ const REQUIRED_EXPORTS = [
   "lmt_rank_keyboard_next_steps_by_playability",
   "lmt_suggest_safer_keyboard_next_step_by_playability",
   "lmt_rank_keyboard_context_suggestions_by_playability",
+  "lmt_keyboard_committed_phrase_reset",
+  "lmt_keyboard_committed_phrase_push",
+  "lmt_keyboard_committed_phrase_len",
+  "lmt_audit_committed_keyboard_phrase_n",
+  "lmt_rank_keyboard_next_steps_by_committed_phrase",
+  "lmt_suggest_safer_keyboard_next_step_by_committed_phrase",
   "lmt_pitch_class_guide_n",
   "lmt_frets_to_url_n",
   "lmt_url_to_frets_n",
@@ -277,6 +316,9 @@ const midiSummaryEl = document.getElementById("midi-summary");
 const midiNotesEl = document.getElementById("midi-notes");
 const midiHistoryEl = document.getElementById("midi-history");
 const midiPlayabilityGuideEl = document.getElementById("midi-playability-guide");
+const midiVirtualStatusEl = document.getElementById("midi-virtual-status");
+const midiVirtualKeyboardEl = document.getElementById("midi-virtual-keyboard");
+const midiPhraseBlackboardEl = document.getElementById("midi-phrase-blackboard");
 const midiInspectorEl = document.getElementById("midi-inspector");
 const midiPracticeFeedbackEl = document.getElementById("midi-practice-feedback");
 const midiConsensusAtlasEl = document.getElementById("midi-consensus-atlas");
@@ -311,6 +353,10 @@ const midiSnapshotsEl = document.getElementById("midi-snapshots");
 const connectMidiEl = document.getElementById("connect-midi");
 const midiSaveSnapshotEl = document.getElementById("midi-save-snapshot");
 const midiReturnLiveEl = document.getElementById("midi-return-live");
+const midiClearVirtualEl = document.getElementById("midi-clear-virtual");
+const midiCommitCurrentEl = document.getElementById("midi-commit-current");
+const midiCommitFocusedEl = document.getElementById("midi-commit-focused");
+const midiClearPhraseEl = document.getElementById("midi-clear-phrase");
 const midiTonicEl = document.getElementById("midi-tonic");
 const midiModeEl = document.getElementById("midi-mode");
 const midiProfileEl = document.getElementById("midi-profile");
@@ -401,6 +447,10 @@ let playabilityProfilePresetNames = [];
 let playabilityStructSizes = {
   handProfile: 0,
   temporalLoadState: 0,
+  keyboardPhraseEvent: 0,
+  keyboardCommittedPhraseMemory: 0,
+  playabilityPhraseIssue: 0,
+  playabilityPhraseSummary: 0,
   fretPlayState: 0,
   fretRealizationAssessment: 0,
   fretTransitionAssessment: 0,
@@ -460,9 +510,12 @@ const midiState = {
   access: null,
   inputs: new Map(),
   channels: new Map(),
+  committedPhraseBytes: null,
   historyFrames: [],
   snapshots: [],
   activeSnapshotId: null,
+  lastRenderedSuggestions: [],
+  lastFocusedSuggestionIndex: null,
   hoveredSuggestionIndex: null,
   pinnedSuggestionIndex: null,
   pinnedSuggestionSignature: "",
@@ -768,6 +821,217 @@ function writeCString(arena, text) {
   return ptr;
 }
 
+function createStructStore(size) {
+  return new Uint8Array(Math.max(1, size || 1));
+}
+
+function readU16Array(view, offset, count) {
+  return Array.from({ length: count }, (_unused, index) => view.getUint16(offset + index * 2, true));
+}
+
+function structStoreView(bytes) {
+  return new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+}
+
+function keyboardPhraseEventNoteCapacity() {
+  return Math.max(0, (playabilityStructSizes.keyboardPhraseEvent || 12) - 4);
+}
+
+function ensureMidiPhraseMemoryStore() {
+  if (midiState.committedPhraseBytes || !wasm || !memory || !playabilityStructSizes.keyboardCommittedPhraseMemory) return;
+  midiState.committedPhraseBytes = createStructStore(playabilityStructSizes.keyboardCommittedPhraseMemory);
+  const arena = new ScratchArena();
+  try {
+    const memPtr = arena.alloc(midiState.committedPhraseBytes.length, 4);
+    u8().fill(0, memPtr, memPtr + midiState.committedPhraseBytes.length);
+    wasm.lmt_keyboard_committed_phrase_reset(memPtr);
+    midiState.committedPhraseBytes.set(u8().subarray(memPtr, memPtr + midiState.committedPhraseBytes.length));
+  } finally {
+    arena.release();
+  }
+}
+
+function withKeyboardCommittedPhraseMemory(arena, callback, { syncBack = false } = {}) {
+  ensureMidiPhraseMemoryStore();
+  if (!midiState.committedPhraseBytes) return callback(0);
+  const memPtr = arena.alloc(midiState.committedPhraseBytes.length, 4);
+  u8().set(midiState.committedPhraseBytes, memPtr);
+  const result = callback(memPtr);
+  if (syncBack) {
+    midiState.committedPhraseBytes.set(u8().subarray(memPtr, memPtr + midiState.committedPhraseBytes.length));
+  }
+  return result;
+}
+
+function writeKeyboardPhraseEventToPointer(ptr, notes, hand) {
+  const cap = keyboardPhraseEventNoteCapacity();
+  const cleanNotes = sortedAscendingNumbers((notes || []).filter((note) => Number.isFinite(note) && note >= 0 && note <= 127)).slice(0, cap);
+  const view = new DataView(memory.buffer, ptr, playabilityStructSizes.keyboardPhraseEvent || 12);
+  view.setUint8(0, cleanNotes.length);
+  view.setUint8(1, hand === KEYBOARD_HAND_LEFT ? KEYBOARD_HAND_LEFT : KEYBOARD_HAND_RIGHT);
+  view.setUint8(2, 0);
+  view.setUint8(3, 0);
+  u8().fill(0, ptr + 4, ptr + 4 + cap);
+  if (cleanNotes.length > 0) u8().set(cleanNotes, ptr + 4);
+  return cleanNotes;
+}
+
+function decodeKeyboardPhraseEventFromView(view, offset = 0) {
+  const cap = keyboardPhraseEventNoteCapacity();
+  const noteCount = Math.min(view.getUint8(offset), cap);
+  const hand = view.getUint8(offset + 1);
+  const notes = Array.from({ length: noteCount }, (_unused, index) => view.getUint8(offset + 4 + index));
+  return {
+    noteCount,
+    hand,
+    handLabel: hand === KEYBOARD_HAND_LEFT ? "LH" : "RH",
+    notes,
+  };
+}
+
+function decodeKeyboardCommittedPhraseBytes(bytes = midiState.committedPhraseBytes) {
+  if (!(bytes instanceof Uint8Array) || bytes.byteLength === 0) {
+    return { eventCount: 0, events: [] };
+  }
+  const eventSize = playabilityStructSizes.keyboardPhraseEvent || 12;
+  const view = structStoreView(bytes);
+  const eventCount = Math.min(view.getUint8(0), Math.max(0, Math.floor((bytes.byteLength - 4) / eventSize)));
+  const events = Array.from({ length: eventCount }, (_unused, index) =>
+    decodeKeyboardPhraseEventFromView(view, 4 + index * eventSize));
+  return { eventCount, events };
+}
+
+function currentCommittedKeyboardPhraseEvent() {
+  const decoded = decodeKeyboardCommittedPhraseBytes();
+  return decoded.events[decoded.events.length - 1] || null;
+}
+
+function phraseFamilyLabel(domain, familyIndex) {
+  switch (domain) {
+    case 1:
+      return playabilityReasonNames[familyIndex] || `reason ${familyIndex}`;
+    case 2:
+      return playabilityWarningNames[familyIndex] || `warning ${familyIndex}`;
+    case 3:
+      return `fret blocker ${familyIndex}`;
+    case 4:
+      return `keyboard blocker ${familyIndex}`;
+    default:
+      return "none";
+  }
+}
+
+function phraseIssueLabel(issue) {
+  const scope = PHRASE_SCOPE_NAMES[issue.scope] || "event";
+  const severity = PHRASE_SEVERITY_NAMES[issue.severity] || "advisory";
+  const family = phraseFamilyLabel(issue.familyDomain, issue.familyIndex);
+  const location = issue.scope === 1
+    ? `T${issue.eventIndex + 1} -> T${issue.relatedEventIndex + 1}`
+    : `T${issue.eventIndex + 1}`;
+  return `${location}: ${family} (${scope}, ${severity}, magnitude ${issue.magnitude})`;
+}
+
+function decodePlayabilityPhraseIssueFromPointer(ptr) {
+  if (!ptr) return null;
+  const view = new DataView(memory.buffer, ptr, playabilityStructSizes.playabilityPhraseIssue || 12);
+  return {
+    scope: view.getUint8(0),
+    severity: view.getUint8(1),
+    familyDomain: view.getUint8(2),
+    familyIndex: view.getUint8(3),
+    eventIndex: view.getUint16(4, true),
+    relatedEventIndex: view.getUint16(6, true),
+    magnitude: view.getUint16(8, true),
+  };
+}
+
+function decodePlayabilityPhraseSummaryFromPointer(ptr) {
+  if (!ptr) return null;
+  const view = new DataView(memory.buffer, ptr, playabilityStructSizes.playabilityPhraseSummary || 76);
+  let offset = 0;
+  const summary = {
+    eventCount: view.getUint16(offset, true),
+    issueCount: view.getUint16(offset + 2, true),
+    firstBlockedEventIndex: view.getUint16(offset + 4, true),
+    firstBlockedTransitionFromIndex: view.getUint16(offset + 6, true),
+    firstBlockedTransitionToIndex: view.getUint16(offset + 8, true),
+    bottleneckIssueIndex: view.getUint16(offset + 10, true),
+    bottleneckMagnitude: view.getUint16(offset + 12, true),
+    bottleneckSeverity: view.getUint8(offset + 14),
+    bottleneckDomain: view.getUint8(offset + 15),
+    bottleneckFamilyIndex: view.getUint8(offset + 16),
+    strainBucket: view.getUint8(offset + 17),
+    dominantReasonFamily: view.getUint8(offset + 18),
+    dominantWarningFamily: view.getUint8(offset + 19),
+  };
+  offset = 22;
+  summary.severityCounts = readU16Array(view, offset, 3);
+  offset += 6;
+  summary.reasonFamilyCounts = readU16Array(view, offset, playabilityReasonNames.length);
+  offset += playabilityReasonNames.length * 2;
+  summary.warningFamilyCounts = readU16Array(view, offset, playabilityWarningNames.length);
+  offset += playabilityWarningNames.length * 2;
+  summary.recoveryDeficitStartIndex = view.getUint16(offset, true);
+  summary.recoveryDeficitEndIndex = view.getUint16(offset + 2, true);
+  summary.longestRecoveryDeficitRun = view.getUint16(offset + 4, true);
+  return summary;
+}
+
+function keyboardCommittedPhraseLen() {
+  return decodeKeyboardCommittedPhraseBytes().eventCount;
+}
+
+function resetCommittedKeyboardPhraseMemory() {
+  if (!wasm || !memory) return false;
+  ensureMidiPhraseMemoryStore();
+  if (!midiState.committedPhraseBytes) return false;
+  const arena = new ScratchArena();
+  try {
+    return withKeyboardCommittedPhraseMemory(arena, (memPtr) => {
+      if (!memPtr) return false;
+      wasm.lmt_keyboard_committed_phrase_reset(memPtr);
+      return true;
+    }, { syncBack: true });
+  } finally {
+    arena.release();
+  }
+}
+
+function pushCommittedKeyboardPhraseEvent(event) {
+  if (!wasm || !memory) return false;
+  ensureMidiPhraseMemoryStore();
+  if (!midiState.committedPhraseBytes) return false;
+  const arena = new ScratchArena();
+  try {
+    return withKeyboardCommittedPhraseMemory(arena, (memPtr) => {
+      if (!memPtr) return false;
+      const eventPtr = arena.alloc(playabilityStructSizes.keyboardPhraseEvent || 12, 4);
+      writeKeyboardPhraseEventToPointer(eventPtr, event.notes, event.hand);
+      return wasm.lmt_keyboard_committed_phrase_push(memPtr, eventPtr) === 1;
+    }, { syncBack: true });
+  } finally {
+    arena.release();
+  }
+}
+
+function auditCommittedKeyboardPhrase(arena, handProfilePtr, issueCap = PHRASE_AUDIT_ISSUE_PREVIEW_CAP) {
+  if (!wasm || !memory || !midiState.committedPhraseBytes || keyboardCommittedPhraseLen() === 0) return null;
+  return withKeyboardCommittedPhraseMemory(arena, (memPtr) => {
+    if (!memPtr) return null;
+    const issueBytes = playabilityStructSizes.playabilityPhraseIssue || 12;
+    const issuesPtr = issueCap > 0 ? arena.alloc(issueBytes * issueCap, 4) : 0;
+    const summaryPtr = arena.alloc(playabilityStructSizes.playabilityPhraseSummary || 76, 4);
+    const total = wasm.lmt_audit_committed_keyboard_phrase_n(memPtr, handProfilePtr, issuesPtr, issueCap, summaryPtr);
+    const written = Math.min(total, issueCap);
+    return {
+      total,
+      issues: Array.from({ length: written }, (_unused, index) =>
+        decodePlayabilityPhraseIssueFromPointer(issuesPtr + index * issueBytes)).filter(Boolean),
+      summary: decodePlayabilityPhraseSummaryFromPointer(summaryPtr),
+    };
+  });
+}
+
 function parseCsvIntegers(raw, min, max) {
   const values = raw
     .split(",")
@@ -927,6 +1191,10 @@ function loadPlayabilityMetadata() {
   playabilityStructSizes = {
     handProfile: wasm.lmt_sizeof_hand_profile(),
     temporalLoadState: wasm.lmt_sizeof_temporal_load_state(),
+    keyboardPhraseEvent: wasm.lmt_sizeof_keyboard_phrase_event(),
+    keyboardCommittedPhraseMemory: wasm.lmt_sizeof_keyboard_committed_phrase_memory(),
+    playabilityPhraseIssue: wasm.lmt_sizeof_playability_phrase_issue(),
+    playabilityPhraseSummary: wasm.lmt_sizeof_playability_phrase_summary(),
     fretPlayState: wasm.lmt_sizeof_fret_play_state(),
     fretRealizationAssessment: wasm.lmt_sizeof_fret_realization_assessment(),
     fretTransitionAssessment: wasm.lmt_sizeof_fret_transition_assessment(),
@@ -1604,6 +1872,15 @@ function keyboardHandLabel(hand) {
   return hand === KEYBOARD_HAND_LEFT ? "LH" : "RH";
 }
 
+function inferKeyboardHandForPhraseNotes(arena, notes, previousNotes = []) {
+  const overlay = assessKeyboardOverlay(arena, notes, { previousNotes });
+  if (overlay?.hand === KEYBOARD_HAND_LEFT || overlay?.hand === KEYBOARD_HAND_RIGHT) return overlay.hand;
+  const noteCenter = Array.isArray(notes) && notes.length > 0
+    ? notes.reduce((sum, note) => sum + note, 0) / notes.length
+    : 60;
+  return noteCenter < 60 ? KEYBOARD_HAND_LEFT : KEYBOARD_HAND_RIGHT;
+}
+
 function fretTechniqueLabel(profile) {
   switch (profile) {
     case FRET_TECHNIQUE_BASS_SIMANDL:
@@ -2104,6 +2381,43 @@ function suggestSaferKeyboardNextStep(arena, historyPtr, profile, hand, handProf
     suggestion,
     warningNames: namesFromMask(row.transition?.warningBits || 0, playabilityWarningNames),
     reasonNames: namesFromMask(row.transition?.reasonBits || 0, playabilityReasonNames),
+  };
+}
+
+function rankKeyboardNextStepsByCommittedPhrase(arena, historyPtr, profile, handProfilePtr, policy, sourceSuggestions) {
+  if (!historyPtr || !Array.isArray(sourceSuggestions) || sourceSuggestions.length === 0 || keyboardCommittedPhraseLen() === 0) return [];
+  const outCap = Math.min(sourceSuggestions.length, 8);
+  const rowBytes = playabilityStructSizes.rankedKeyboardNextStep || 236;
+  return withKeyboardCommittedPhraseMemory(arena, (memPtr) => {
+    if (!memPtr) return [];
+    const outPtr = arena.alloc(rowBytes * outCap, 4);
+    const total = wasm.lmt_rank_keyboard_next_steps_by_committed_phrase(memPtr, historyPtr, profile, handProfilePtr, policy, outPtr, outCap);
+    const count = Math.min(total, outCap);
+    return Array.from({ length: count }, (_unused, index) => {
+      const row = decodeRankedKeyboardNextStepRow(outPtr + index * rowBytes);
+      const suggestion = sourceSuggestions[row?.candidateIndex ?? -1] || null;
+      if (!row || !suggestion) return null;
+      return {
+        ...row,
+        suggestion,
+        warningNames: namesFromMask(row.transition?.warningBits || 0, playabilityWarningNames),
+        reasonNames: namesFromMask(row.transition?.reasonBits || 0, playabilityReasonNames),
+      };
+    }).filter(Boolean);
+  });
+}
+
+function decorateSuggestionWithPlayability(suggestion, row) {
+  if (!suggestion) return null;
+  return {
+    ...suggestion,
+    playabilityRow: row || null,
+    playabilityAccepted: row?.accepted ?? null,
+    playabilityHand: row?.hand ?? null,
+    playabilityHandLabel: row ? keyboardHandLabel(row.hand) : "",
+    playabilityReasonNames: row?.reasonNames || [],
+    playabilityWarningNames: row?.warningNames || [],
+    playabilityTransition: row?.transition || null,
   };
 }
 
@@ -3863,6 +4177,110 @@ function currentSustainedOnlyMidiNotes() {
     }
   }
   return sortedAscendingNumbers(aggregate);
+}
+
+function currentVirtualMidiNotes() {
+  const aggregate = new Set();
+  for (const channel of midiState.channels.values()) {
+    if (channel.inputId !== VIRTUAL_MIDI_INPUT_ID) continue;
+    for (const note of channel.held) aggregate.add(note);
+    for (const note of channel.sustained) aggregate.add(note);
+  }
+  return sortedAscendingNumbers(aggregate);
+}
+
+function hasConnectedHardwareMidiInputs() {
+  return midiState.inputs.size > 0;
+}
+
+function midiInputSourceLabel() {
+  const virtualCount = currentVirtualMidiNotes().length;
+  if (hasConnectedHardwareMidiInputs() && virtualCount > 0) return "hardware + virtual";
+  if (hasConnectedHardwareMidiInputs()) return "hardware";
+  if (virtualCount > 0) return "virtual";
+  return "waiting";
+}
+
+function setVirtualMidiNoteActive(note, active) {
+  const normalized = Number(note);
+  if (!Number.isFinite(normalized) || normalized < 0 || normalized > 127) return;
+  const activeNotes = new Set(currentVirtualMidiNotes());
+  if (active && activeNotes.has(normalized)) return;
+  if (!active && !activeNotes.has(normalized)) return;
+  handleMidiEvent(
+    VIRTUAL_MIDI_INPUT_ID,
+    active
+      ? [0x90 | VIRTUAL_MIDI_CHANNEL, normalized & 0x7f, 100]
+      : [0x80 | VIRTUAL_MIDI_CHANNEL, normalized & 0x7f, 0],
+  );
+}
+
+function toggleVirtualMidiNote(note) {
+  const activeNotes = new Set(currentVirtualMidiNotes());
+  setVirtualMidiNoteActive(note, !activeNotes.has(Number(note)));
+}
+
+function clearVirtualMidiNotes() {
+  const activeNotes = currentVirtualMidiNotes();
+  if (activeNotes.length === 0) return false;
+  activeNotes.forEach((note) => setVirtualMidiNoteActive(note, false));
+  return true;
+}
+
+function renderVirtualMidiKeyboard() {
+  if (!midiVirtualKeyboardEl) return { keyCount: 0, activeKeyCount: 0, fallbackVisible: false };
+  const activeNotes = new Set(currentVirtualMidiNotes());
+  const blackPitchClasses = new Set([1, 3, 6, 8, 10]);
+  const whiteCount = Array.from({ length: VIRTUAL_KEYBOARD_HIGH - VIRTUAL_KEYBOARD_LOW + 1 }, (_unused, index) => VIRTUAL_KEYBOARD_LOW + index)
+    .filter((note) => !blackPitchClasses.has(note % 12))
+    .length;
+
+  let whiteIndex = 0;
+  const whiteKeys = [];
+  const blackKeys = [];
+
+  for (let note = VIRTUAL_KEYBOARD_LOW; note <= VIRTUAL_KEYBOARD_HIGH; note += 1) {
+    const isBlack = blackPitchClasses.has(note % 12);
+    const markup = `
+      <button
+        class="virtual-key ${isBlack ? "is-black" : "is-white"}${activeNotes.has(note) ? " is-active" : ""}"
+        type="button"
+        data-virtual-midi-note="${note}"
+        aria-pressed="${activeNotes.has(note) ? "true" : "false"}"
+        style="left: calc(8px + ((100% - 16px) / var(--virtual-white-count)) * ${isBlack ? Math.max(0, whiteIndex - 0.34) : whiteIndex});"
+      >
+        <span class="virtual-key-note">${escapeHtml(noteName(note % 12))}</span>
+        <span class="virtual-key-label">${escapeHtml(midiName(note))}</span>
+      </button>`;
+    if (isBlack) {
+      blackKeys.push(markup);
+    } else {
+      whiteKeys.push(markup);
+      whiteIndex += 1;
+    }
+  }
+
+  midiVirtualKeyboardEl.innerHTML = `
+    <div class="virtual-keyboard-board" style="--virtual-white-count:${whiteCount};">
+      ${whiteKeys.join("")}
+      ${blackKeys.join("")}
+    </div>`;
+
+  const statusChips = [];
+  const virtualCount = activeNotes.size;
+  statusChips.push(`<span class="status-pill ${virtualCount > 0 ? "is-live" : "is-muted"}">${virtualCount} virtual sounding</span>`);
+  statusChips.push(`<span class="status-pill ${hasConnectedHardwareMidiInputs() ? "is-live" : "is-muted"}">${hasConnectedHardwareMidiInputs() ? `${midiState.inputs.size} hardware input${midiState.inputs.size === 1 ? "" : "s"}` : "no hardware detected"}</span>`);
+  statusChips.push(`<span class="pill">${escapeHtml(`source ${midiInputSourceLabel()}`)}</span>`);
+  if (!midiState.supported || midiState.accessState === "unsupported" || !hasConnectedHardwareMidiInputs()) {
+    statusChips.push(`<span class="pill">virtual keyboard fallback ready</span>`);
+  }
+  midiVirtualStatusEl.innerHTML = statusChips.join("");
+
+  return {
+    keyCount: VIRTUAL_KEYBOARD_HIGH - VIRTUAL_KEYBOARD_LOW + 1,
+    activeKeyCount: activeNotes.size,
+    fallbackVisible: !midiState.supported || !hasConnectedHardwareMidiInputs(),
+  };
 }
 
 function sameNumberArray(left, right) {
@@ -7197,20 +7615,22 @@ function describeRelation(leftSet, rightSet) {
 }
 
 function summarizeMidiAccess() {
-  if (!midiState.supported) return "Web MIDI unavailable in this browser.";
+  if (!midiState.supported) return "Web MIDI unavailable in this browser. Use the virtual keyboard below to build the current state.";
   switch (midiState.accessState) {
     case "connected":
       return midiState.inputs.size > 0
-        ? `Listening to ${midiState.inputs.size} MIDI input${midiState.inputs.size === 1 ? "" : "s"}.`
-        : "MIDI access granted. Waiting for input devices.";
+        ? `Listening to ${midiState.inputs.size} MIDI input${midiState.inputs.size === 1 ? "" : "s"}. The virtual keyboard can layer or substitute notes without touching committed phrase memory.`
+        : "MIDI access granted, but no hardware inputs are connected. Use the virtual keyboard below to drive the same live analysis path.";
     case "connecting":
-      return "Connecting to browser MIDI access...";
+      return "Connecting to browser MIDI access. The virtual keyboard is already available as a fallback.";
     case "denied":
-      return "MIDI access was denied. Click Connect MIDI to retry.";
+      return "MIDI access was denied. Click Connect MIDI to retry, or keep working with the virtual keyboard fallback.";
     case "error":
-      return midiState.lastError || "Unable to initialize MIDI access.";
+      return midiState.lastError
+        ? `${midiState.lastError} Use the virtual keyboard fallback while browser MIDI is unavailable.`
+        : "Unable to initialize MIDI access. Use the virtual keyboard fallback.";
     default:
-      return "Connect MIDI to listen to every browser MIDI input, sustain pedal, and middle-pedal snapshots.";
+      return "Connect MIDI to listen to browser inputs, sustain pedal, and middle-pedal snapshots, or use the virtual keyboard to build notes without hardware.";
   }
 }
 
@@ -7232,8 +7652,93 @@ function renderMidiSnapshotCards() {
     .join("");
 }
 
+function renderMidiPhraseBlackboard(host, { decodedPhrase, audit, focusedSuggestion, focusedRow, displayNotes, viewingSnapshot }) {
+  if (!host) {
+    return {
+      committedEventCount: 0,
+      issueCount: 0,
+      biasActive: false,
+      focusedCommitReady: false,
+      currentCommitReady: false,
+      virtualFallbackVisible: false,
+    };
+  }
+
+  const committedEventCount = decodedPhrase?.eventCount || 0;
+  const summary = audit?.summary || null;
+  const strainLabel = summary ? (PHRASE_STRAIN_BUCKET_NAMES[summary.strainBucket] || "neutral") : "neutral";
+  const dominantReason = summary && summary.dominantReasonFamily !== NONE_FAMILY_INDEX
+    ? (playabilityReasonNames[summary.dominantReasonFamily] || `reason ${summary.dominantReasonFamily}`)
+    : "none";
+  const dominantWarning = summary && summary.dominantWarningFamily !== NONE_FAMILY_INDEX
+    ? (playabilityWarningNames[summary.dominantWarningFamily] || `warning ${summary.dominantWarningFamily}`)
+    : "none";
+  const bottleneckLabel = summary && summary.bottleneckFamilyIndex !== NONE_FAMILY_INDEX
+    ? phraseFamilyLabel(summary.bottleneckDomain, summary.bottleneckFamilyIndex)
+    : "none";
+  const phraseHeadline = committedEventCount > 0
+    ? `Committed phrase memory is active, so later playability ranking is being judged relative to ${committedEventCount} accepted event${committedEventCount === 1 ? "" : "s"}.`
+    : "Nothing is committed yet. Pinning only changes preview focus; commit is what promotes a state into phrase memory.";
+
+  const noteCards = committedEventCount > 0
+    ? decodedPhrase.events.slice(-6).map((event, index, events) => {
+      const absoluteIndex = decodedPhrase.events.length - events.length + index;
+      const labels = event.notes.map((note) => midiName(note)).join(" · ");
+      return `
+        <article class="phrase-blackboard-note">
+          <strong>T${absoluteIndex + 1} · ${escapeHtml(event.handLabel)}</strong>
+          <p>${escapeHtml(labels || "empty")}</p>
+        </article>`;
+    }).join("")
+    : `<p class="phrase-blackboard-empty">Commit the displayed state or the focused candidate to start a phrase. The committed phrase stays in library-backed memory, while hover and pin remain host-only preview state.</p>`;
+
+  const issueCards = audit?.issues?.length
+    ? audit.issues.slice(0, 4).map((issue) => `
+        <article class="phrase-blackboard-issue">
+          <strong>${escapeHtml(phraseIssueLabel(issue))}</strong>
+          <p>${escapeHtml(phraseFamilyLabel(issue.familyDomain, issue.familyIndex))}</p>
+        </article>`).join("")
+    : `<p class="phrase-blackboard-empty">No committed phrase issues yet.</p>`;
+
+  host.innerHTML = `
+    <article class="phrase-blackboard-summary">
+      <p>${escapeHtml(phraseHeadline)}</p>
+      <div class="chip-row">
+        <span class="status-pill ${committedEventCount > 0 ? "is-live" : "is-muted"}">${escapeHtml(`${committedEventCount} committed`)}</span>
+        <span class="status-pill ${summary && summary.issueCount > 0 ? "is-snapshot" : "is-muted"}">${escapeHtml(`strain ${strainLabel}`)}</span>
+        <span class="pill">${escapeHtml(`displayed ${viewingSnapshot ? "snapshot" : "live"} state`)}</span>
+      </div>
+      <div class="phrase-blackboard-meta">
+        ${summaryMetric("phrase issues", summary?.issueCount || 0)}
+        ${summaryMetric("bottleneck", bottleneckLabel)}
+        ${summaryMetric("dominant reason", dominantReason)}
+        ${summaryMetric("dominant warning", dominantWarning)}
+      </div>
+      <div class="chip-row">
+        <span class="pill">${escapeHtml(`preview pin ${focusedSuggestion ? "ready" : "empty"}`)}</span>
+        <span class="pill">${escapeHtml(`focused commit ${focusedRow?.accepted === false ? "allowed with warnings" : focusedSuggestion ? "ready" : "empty"}`)}</span>
+        <span class="pill">${escapeHtml(`displayed notes ${displayNotes.length}`)}</span>
+      </div>
+    </article>
+    <div class="phrase-blackboard-events">${noteCards}</div>
+    <div class="phrase-blackboard-issues">${issueCards}</div>`;
+
+  return {
+    committedEventCount,
+    issueCount: summary?.issueCount || 0,
+    biasActive: committedEventCount > 0,
+    focusedCommitReady: Boolean(focusedSuggestion),
+    currentCommitReady: displayNotes.length > 0,
+    virtualFallbackVisible: !midiState.supported || !hasConnectedHardwareMidiInputs(),
+    strainBucket: strainLabel,
+    bottleneckLabel,
+  };
+}
+
 function renderMidiScene() {
+  ensureMidiPhraseMemoryStore();
   const liveNotes = currentLiveMidiNotes();
+  const virtualNotes = currentVirtualMidiNotes();
   const displayNotes = currentDisplayMidiNotes();
   const context = currentDisplayMidiContext();
   const viewingSnapshot = midiState.activeSnapshotId != null;
@@ -7242,6 +7747,9 @@ function renderMidiScene() {
   const currentPlayabilityPreset = currentMidiPlayabilityPreset();
   const currentPlayabilityPolicy = currentMidiPlayabilityPolicy();
   const currentOverlayMode = playabilityOverlayMode();
+  const committedPhrase = decodeKeyboardCommittedPhraseBytes();
+  const phraseBiasActive = committedPhrase.eventCount > 0;
+  const virtualKeyboardFeatures = renderVirtualMidiKeyboard();
 
   midiCaptionEl.textContent = summarizeMidiAccess();
   connectMidiEl.disabled = midiState.accessState === "connecting";
@@ -7251,17 +7759,20 @@ function renderMidiScene() {
   const statusPills = [];
   statusPills.push(`<span class="status-pill ${viewingSnapshot ? "is-snapshot" : "is-live"}">${viewingSnapshot ? "Viewing snapshot" : "Live input"}</span>`);
   statusPills.push(`<span class="status-pill ${liveNotes.length > 0 ? "is-live" : "is-muted"}">${liveNotes.length} sounding</span>`);
+  statusPills.push(`<span class="status-pill ${virtualNotes.length > 0 ? "is-live" : "is-muted"}">${virtualNotes.length} virtual</span>`);
   statusPills.push(`<span class="status-pill ${midiState.snapshots.length > 0 ? "is-snapshot" : "is-muted"}">${midiState.snapshots.length} saved</span>`);
+  statusPills.push(`<span class="status-pill ${phraseBiasActive ? "is-live" : "is-muted"}">${phraseBiasActive ? `${committedPhrase.eventCount} committed` : "phrase idle"}</span>`);
   statusPills.push(`<span class="status-pill is-live">${escapeHtml(context.label)}</span>`);
   statusPills.push(`<span class="status-pill is-live">${escapeHtml(profileLabel)}</span>`);
   statusPills.push(`<span class="status-pill is-live">${escapeHtml(playabilityPresetLabel(currentPlayabilityPreset))}</span>`);
   statusPills.push(`<span class="status-pill is-muted">${escapeHtml(playabilityPolicyLabel(currentPlayabilityPolicy))}</span>`);
+  statusPills.push(`<span class="status-pill ${midiInputSourceLabel() === "waiting" ? "is-muted" : "is-live"}">${escapeHtml(midiInputSourceLabel())}</span>`);
   statusPills.push(`<span class="status-pill ${miniInstrumentMode() === MINI_INSTRUMENT_OFF ? "is-muted" : "is-live"}">mini ${escapeHtml(miniInstrumentMode())}</span>`);
   statusPills.push(`<span class="status-pill ${currentOverlayMode === PLAYABILITY_OVERLAY_OFF ? "is-muted" : "is-live"}">overlay ${escapeHtml(currentOverlayMode)}</span>`);
   midiStatusPillsEl.innerHTML = statusPills.join("");
   midiDevicesEl.innerHTML = Array.from(midiState.inputs.values()).map((input) =>
     `<span class="pill">${escapeHtml(input.name || input.manufacturer || input.id || "MIDI input")}</span>`).join("")
-    || `<span class="pill">No MIDI input devices reported yet</span>`;
+    || `<span class="pill">No MIDI input devices reported yet</span><span class="pill">Virtual keyboard fallback available</span>`;
   const midiPlayabilityGuideFeatures = renderMidiPlayabilityGuide(midiPlayabilityGuideEl, {
     presetRaw: currentPlayabilityPreset,
     policyRaw: currentPlayabilityPolicy,
@@ -7281,14 +7792,30 @@ function renderMidiScene() {
     const outsideCount = wasm.lmt_pcs_cardinality(setValue) - contextOverlap;
     const historyFrames = effectiveHistoryFrames(displayNotes);
     const historyBundle = historyFrames.length > 0 ? buildCounterpointHistory(arena, historyFrames, context) : null;
-    const suggestions = historyBundle ? decodeRankedNextSteps(arena, historyBundle.historyPtr, profile, context) : [];
+    const theorySuggestions = historyBundle ? decodeRankedNextSteps(arena, historyBundle.historyPtr, profile, context) : [];
     const voicedHistory = historyBundle ? decodeVoicedHistoryFromPointer(historyBundle.historyPtr) : { len: 0, states: [] };
     const currentVoicedState = voicedHistory.states[voicedHistory.states.length - 1] || null;
     const previousVoicedState = voicedHistory.states.length >= 2 ? voicedHistory.states[voicedHistory.states.length - 2] : null;
     const currentMotionAnalysis = buildCurrentMotionAnalysis(arena, historyBundle, voicedHistory, profile);
     const cadenceDestinations = historyBundle ? decodeCadenceDestinations(arena, historyBundle.historyPtr, profile) : [];
     const suspensionMachine = historyBundle ? decodeSuspensionMachine(arena, historyBundle.historyPtr, profile, context) : null;
+    const previousNotes = historyFrames.length >= 2 ? historyFrames[historyFrames.length - 2].notes : [];
+    const currentHandProfile = keyboardHandProfileForPreset(arena, currentPlayabilityPreset);
+    const currentCommittedEvent = committedPhrase.events[committedPhrase.events.length - 1] || null;
+    const inferredCurrentHand = inferKeyboardHandForPhraseNotes(arena, displayNotes, currentCommittedEvent?.notes || previousNotes);
+    const rankedSuggestionRows = historyBundle && currentHandProfile
+      ? (phraseBiasActive
+        ? rankKeyboardNextStepsByCommittedPhrase(arena, historyBundle.historyPtr, profile, currentHandProfile.ptr, currentPlayabilityPolicy, theorySuggestions)
+        : rankKeyboardNextStepsByPlayability(arena, historyBundle.historyPtr, profile, inferredCurrentHand, currentHandProfile.ptr, currentPlayabilityPolicy, theorySuggestions))
+      : [];
+    const rankedSuggestionByCandidate = new Map(rankedSuggestionRows.map((row) => [row.candidateIndex, row]));
+    const suggestions = phraseBiasActive && rankedSuggestionRows.length > 0
+      ? rankedSuggestionRows.map((row) => decorateSuggestionWithPlayability(row.suggestion, row)).filter(Boolean)
+      : theorySuggestions.map((suggestion, index) => decorateSuggestionWithPlayability(suggestion, rankedSuggestionByCandidate.get(index) || null)).filter(Boolean);
+    const committedPhraseAudit = currentHandProfile ? auditCommittedKeyboardPhrase(arena, currentHandProfile.ptr) : null;
     const { hoveredSuggestionIndex, pinnedSuggestionIndex, focusedSuggestionIndex } = resolveFocusedMidiSuggestionIndex(suggestions);
+    midiState.lastRenderedSuggestions = suggestions.map((suggestion) => ({ ...suggestion }));
+    midiState.lastFocusedSuggestionIndex = focusedSuggestionIndex;
     const candidateStates = currentVoicedState
       ? suggestions.map((suggestion, index) =>
         buildCandidateVoicedState(
@@ -7332,7 +7859,6 @@ function renderMidiScene() {
       ? displayNotes.map((midi) => midiName(midi, context.tonic, context.quality))
       : [];
     const orbitNames = orderedMembersFromSet(context.setValue, context.tonic).map((pc) => spellNote(pc, context.tonic, context.quality));
-    const previousNotes = historyFrames.length >= 2 ? historyFrames[historyFrames.length - 2].notes : [];
     const clockSvg = svgString(arena, wasm.lmt_svg_clock_optc, setValue);
     const opticKSvg = svgString(arena, wasm.lmt_svg_optic_k_group, setValue);
     const evennessFieldSvg = svgString(arena, wasm.lmt_svg_evenness_field, setValue);
@@ -7342,16 +7868,20 @@ function renderMidiScene() {
 
     midiSummaryEl.textContent = [
       `mode: ${viewingSnapshot ? "snapshot preview" : "live input"}`,
+      `input source: ${midiInputSourceLabel()}`,
       `selected context: ${context.label}`,
       `counterpoint profile: ${profileLabel}`,
       `playability profile: ${playabilityPresetLabel(currentPlayabilityPreset)}`,
       `difficulty lens: ${playabilityPolicyLabel(currentPlayabilityPolicy)}`,
       `active MIDI notes: ${displayNotes.length > 0 ? displayNotes.join(", ") : "none"}`,
+      `virtual notes: ${virtualNotes.length > 0 ? virtualNotes.join(", ") : "none"}`,
       `set: ${setValue === 0 ? "0x000 []" : `0x${setValue.toString(16).padStart(3, "0")} ${JSON.stringify(setMembers(setValue))}`}`,
       `hearing: ${setValue === 0 ? "awaiting notes" : currentChord}`,
       `context orbit: ${orbitNames.join(" · ")}`,
       `context overlap: ${contextOverlap}/${wasm.lmt_pcs_cardinality(setValue)} inside, ${outsideCount} outside`,
       `temporal memory frames: ${historyFrames.length}`,
+      `committed phrase events: ${committedPhrase.eventCount}`,
+      `phrase bias: ${phraseBiasActive ? "active" : "inactive"}`,
       `next-step suggestions: ${suggestions.length}`,
       `focused next move: ${focusedSuggestion ? focusedSuggestion.noteNames.join(" · ") : "none"}`,
       `last event: ${midiState.lastEventText}`,
@@ -7360,7 +7890,7 @@ function renderMidiScene() {
     if (displayNotesLabel.length > 0) {
       setChipRow(midiNotesEl, displayNotesLabel);
     } else {
-      midiNotesEl.innerHTML = `<span class="pill">Play a chord or melodic fragment. Sustain is tracked; middle pedal saves snapshots.</span>`;
+      midiNotesEl.innerHTML = `<span class="pill">Play a chord or melodic fragment. Sustain is tracked, middle pedal saves snapshots, and the virtual keyboard can drive this same state without hardware.</span>`;
     }
 
     midiHistoryEl.innerHTML = historyFrames.length > 0
@@ -7583,6 +8113,17 @@ function renderMidiScene() {
       previousFretVoicing: previousDisplayFretVoicing,
     });
     midiPracticeFeedbackEl.innerHTML = practiceFeedback.html;
+    midiCommitCurrentEl.disabled = displayNotes.length === 0;
+    midiCommitFocusedEl.disabled = !focusedSuggestion;
+    midiClearPhraseEl.disabled = committedPhrase.eventCount === 0;
+    const midiPhraseBlackboardFeatures = renderMidiPhraseBlackboard(midiPhraseBlackboardEl, {
+      decodedPhrase: committedPhrase,
+      audit: committedPhraseAudit,
+      focusedSuggestion,
+      focusedRow: focusedSuggestion?.playabilityRow || null,
+      displayNotes,
+      viewingSnapshot,
+    });
 
     const currentMiniRendered = displayNotes.length > 0
       ? renderMiniInstrumentPreview(
@@ -7648,7 +8189,11 @@ function renderMidiScene() {
           <strong>${String.fromCharCode(65 + index)}. ${escapeHtml(suggestion.noteNames.join(" · "))}</strong>
           <p>${escapeHtml(suggestion.chordLabel)}</p>
           <p>score ${escapeHtml(String(suggestion.score))} · cadence ${escapeHtml(suggestion.cadenceLabel)} · tension ${escapeHtml(suggestion.tensionDelta >= 0 ? `+${suggestion.tensionDelta}` : String(suggestion.tensionDelta))}</p>
-          <div class="chip-row suggestion-pin-row">${pinnedSuggestionIndex === index ? `<span class="status-pill is-snapshot">Pinned</span>` : `<span class="status-pill is-muted">Click to pin</span>`}</div>
+          <div class="chip-row suggestion-pin-row">
+            ${pinnedSuggestionIndex === index ? `<span class="status-pill is-snapshot">Pinned preview</span>` : `<span class="status-pill is-muted">Click card to pin for preview</span>`}
+            ${suggestion.playabilityHandLabel ? `<span class="pill">${escapeHtml(suggestion.playabilityHandLabel)}</span>` : ""}
+            ${suggestion.playabilityAccepted === false ? `<span class="chip warning-chip">blocked by policy</span>` : suggestion.playabilityAccepted === true ? `<span class="chip safe-chip">accepted by policy</span>` : ""}
+          </div>
           <div class="chip-row suggestion-playability-row" data-suggestion-playability="${index}"></div>
           <div class="chip-row suggestion-reasons">${suggestion.reasonNames.map((reason) => `<span class="pill">${escapeHtml(reason)}</span>`).join("") || `<span class="pill">no dominant reason</span>`}</div>
           <div class="chip-row suggestion-warnings">${suggestion.warningNames.map((warning) => `<span class="chip warning-chip">${escapeHtml(warning)}</span>`).join("") || `<span class="chip safe-chip">clean motion</span>`}</div>
@@ -7730,7 +8275,9 @@ function renderMidiScene() {
       supported: midiState.supported,
       accessState: midiState.accessState,
       inputCount: midiState.inputs.size,
+      inputSource: midiInputSourceLabel(),
       liveCount: liveNotes.length,
+      virtualCount: virtualNotes.length,
       displayCount: displayNotes.length,
       snapshotCount: midiState.snapshots.length,
       viewingSnapshot,
@@ -7744,6 +8291,8 @@ function renderMidiScene() {
       tonic: context.tonic,
       modeType: context.modeType,
       historyFrameCount: historyFrames.length,
+      committedPhraseCount: committedPhrase.eventCount,
+      phraseBiasActive,
       insideCount: contextOverlap,
       outsideCount,
       chordName: setValue === 0 ? "" : currentChord,
@@ -7758,6 +8307,8 @@ function renderMidiScene() {
       currentMiniMode: miniInstrumentMode(),
       playabilityOverlayMode: currentOverlayMode,
       midiPlayabilityGuideFeatures,
+      midiVirtualKeyboardFeatures: virtualKeyboardFeatures,
+      midiPhraseBlackboardFeatures,
       currentMiniRendered,
       focusedMiniRendered,
       suggestionMiniCount: miniInstrumentMode() === MINI_INSTRUMENT_OFF ? 0 : suggestions.length,
@@ -7798,6 +8349,53 @@ function renderMidiScene() {
   }
 }
 
+function buildCommittedKeyboardPhraseEvent(arena, notes) {
+  const cleanNotes = sortedAscendingNumbers((notes || []).filter((note) => Number.isFinite(note) && note >= 0 && note <= 127)).slice(0, keyboardPhraseEventNoteCapacity());
+  if (cleanNotes.length === 0) return null;
+  const previousCommitted = currentCommittedKeyboardPhraseEvent();
+  const previousNotes = previousCommitted?.notes || [];
+  const hand = inferKeyboardHandForPhraseNotes(arena, cleanNotes, previousNotes);
+  return {
+    notes: cleanNotes,
+    hand,
+    handLabel: keyboardHandLabel(hand),
+  };
+}
+
+function commitCurrentDisplayedMidiStateToPhrase() {
+  const arena = new ScratchArena();
+  try {
+    const event = buildCommittedKeyboardPhraseEvent(arena, currentDisplayMidiNotes());
+    if (!event) return { ok: false, reason: "empty" };
+    const wrote = pushCommittedKeyboardPhraseEvent(event);
+    return wrote ? { ok: true, event } : { ok: false, reason: "full" };
+  } finally {
+    arena.release();
+  }
+}
+
+function commitFocusedMidiSuggestionToPhrase() {
+  const focusedIndex = midiState.lastFocusedSuggestionIndex;
+  const suggestion = Number.isInteger(focusedIndex) && focusedIndex >= 0
+    ? midiState.lastRenderedSuggestions[focusedIndex] || null
+    : null;
+  if (!suggestion) return { ok: false, reason: "missing" };
+
+  const arena = new ScratchArena();
+  try {
+    const event = buildCommittedKeyboardPhraseEvent(arena, suggestion.notes);
+    if (!event) return { ok: false, reason: "empty" };
+    if (suggestion.playabilityHand === KEYBOARD_HAND_LEFT || suggestion.playabilityHand === KEYBOARD_HAND_RIGHT) {
+      event.hand = suggestion.playabilityHand;
+      event.handLabel = keyboardHandLabel(suggestion.playabilityHand);
+    }
+    const wrote = pushCommittedKeyboardPhraseEvent(event);
+    return wrote ? { ok: true, event, suggestion } : { ok: false, reason: "full", suggestion };
+  } finally {
+    arena.release();
+  }
+}
+
 function handleMidiEvent(inputId, data) {
   if (!data || data.length < 2) return;
   const status = data[0];
@@ -7806,11 +8404,12 @@ function handleMidiEvent(inputId, data) {
   const data1 = data[1];
   const data2 = data.length > 2 ? data[2] : 0;
   const state = getMidiChannelState(inputId, channel);
+  const sourceLabel = inputId === VIRTUAL_MIDI_INPUT_ID ? "virtual keyboard" : `channel ${channel + 1}`;
 
   if (kind === 0x90 && data2 > 0) {
     state.held.add(data1);
     state.sustained.delete(data1);
-    midiState.lastEventText = `Note on ${midiName(data1)} on channel ${channel + 1}`;
+    midiState.lastEventText = `Note on ${midiName(data1)} from ${sourceLabel}`;
   } else if (kind === 0x80 || (kind === 0x90 && data2 === 0)) {
     state.held.delete(data1);
     if (state.sustainDown) {
@@ -7818,23 +8417,23 @@ function handleMidiEvent(inputId, data) {
     } else {
       state.sustained.delete(data1);
     }
-    midiState.lastEventText = `Note off ${midiName(data1)} on channel ${channel + 1}`;
+    midiState.lastEventText = `Note off ${midiName(data1)} from ${sourceLabel}`;
   } else if (kind === 0xb0 && data1 === 64) {
     const nextDown = data2 >= 64;
     if (!nextDown && state.sustainDown) {
       state.sustainDown = false;
       state.sustained = new Set(Array.from(state.sustained).filter((note) => state.held.has(note)));
-      midiState.lastEventText = `Sustain pedal released on channel ${channel + 1}`;
+      midiState.lastEventText = `Sustain pedal released on ${sourceLabel}`;
     } else if (nextDown && !state.sustainDown) {
       state.sustainDown = true;
-      midiState.lastEventText = `Sustain pedal engaged on channel ${channel + 1}`;
+      midiState.lastEventText = `Sustain pedal engaged on ${sourceLabel}`;
     }
   } else if (kind === 0xb0 && data1 === 66) {
     const nextDown = data2 >= 64;
     if (nextDown && !state.sostenutoDown) {
       state.sostenutoDown = true;
       const saved = saveMidiSnapshot();
-      midiState.lastEventText = saved ? `Middle pedal saved snapshot on channel ${channel + 1}` : `Middle pedal ignored empty state on channel ${channel + 1}`;
+      midiState.lastEventText = saved ? `Middle pedal saved snapshot on ${sourceLabel}` : `Middle pedal ignored empty state on ${sourceLabel}`;
     } else if (!nextDown && state.sostenutoDown) {
       state.sostenutoDown = false;
     }
@@ -8505,11 +9104,43 @@ function wireSceneEvents() {
     renderMidiScene();
     setStatus(saved ? `${MIDI_SCENE_TITLE} snapshot saved for ${currentMidiContext().label}.` : `${MIDI_SCENE_TITLE} snapshot ignored because nothing changed.`);
   });
+  midiClearVirtualEl.addEventListener("click", () => {
+    const cleared = clearVirtualMidiNotes();
+    renderMidiScene();
+    setStatus(cleared ? `${MIDI_SCENE_TITLE} cleared the virtual keyboard state.` : `${MIDI_SCENE_TITLE} virtual keyboard was already empty.`);
+  });
+  midiCommitCurrentEl.addEventListener("click", () => {
+    const result = commitCurrentDisplayedMidiStateToPhrase();
+    renderMidiScene();
+    if (result.ok) {
+      setStatus(`${MIDI_SCENE_TITLE} committed ${result.event.notes.map((note) => midiName(note)).join(" · ")} to phrase memory.`);
+    } else if (result.reason === "empty") {
+      setStatus(`${MIDI_SCENE_TITLE} cannot commit an empty current state.`, "error");
+    } else {
+      setStatus(`${MIDI_SCENE_TITLE} phrase memory is full. Clear the phrase to keep committing.`, "error");
+    }
+  });
+  midiCommitFocusedEl.addEventListener("click", () => {
+    const result = commitFocusedMidiSuggestionToPhrase();
+    renderMidiScene();
+    if (result.ok) {
+      setStatus(`${MIDI_SCENE_TITLE} committed focused candidate ${result.suggestion.noteNames.join(" · ")} to phrase memory.`);
+    } else if (result.reason === "missing") {
+      setStatus(`${MIDI_SCENE_TITLE} has no focused candidate to commit yet.`, "error");
+    } else {
+      setStatus(`${MIDI_SCENE_TITLE} phrase memory is full. Clear the phrase to keep committing.`, "error");
+    }
+  });
+  midiClearPhraseEl.addEventListener("click", () => {
+    const cleared = resetCommittedKeyboardPhraseMemory();
+    renderMidiScene();
+    setStatus(cleared ? `${MIDI_SCENE_TITLE} cleared committed phrase memory.` : `${MIDI_SCENE_TITLE} phrase memory was already empty.`);
+  });
   midiClearPinEl.addEventListener("click", () => {
     clearPinnedMidiSuggestion();
     midiState.hoveredSuggestionIndex = 0;
     renderMidiScene();
-    setStatus(`${MIDI_SCENE_TITLE} returned to hover-driven focus.`);
+    setStatus(`${MIDI_SCENE_TITLE} returned to hover-driven preview focus.`);
   });
   midiReturnLiveEl.addEventListener("click", () => {
     returnMidiSceneToLive();
@@ -8540,7 +9171,7 @@ function wireSceneEvents() {
     if (midiState.pinnedSuggestionIndex === nextIndex) {
       clearPinnedMidiSuggestion();
       renderMidiScene();
-      setStatus(`${MIDI_SCENE_TITLE} unpinned candidate ${String.fromCharCode(65 + nextIndex)}.`);
+      setStatus(`${MIDI_SCENE_TITLE} unpinned preview candidate ${String.fromCharCode(65 + nextIndex)}.`);
       return;
     }
     midiState.hoveredSuggestionIndex = nextIndex;
@@ -8558,7 +9189,7 @@ function wireSceneEvents() {
       arena.release();
     }
     renderMidiScene();
-    setStatus(`${MIDI_SCENE_TITLE} pinned candidate ${String.fromCharCode(65 + nextIndex)}.`);
+    setStatus(`${MIDI_SCENE_TITLE} pinned candidate ${String.fromCharCode(65 + nextIndex)} for preview only.`);
   });
   midiSuggestionsEl.addEventListener("keydown", (event) => {
     if (event.key !== "Enter" && event.key !== " ") return;
@@ -8573,6 +9204,23 @@ function wireSceneEvents() {
       midiState.hoveredSuggestionIndex = 0;
       renderMidiScene();
     }
+  });
+  midiVirtualKeyboardEl.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-virtual-midi-note]");
+    if (!button) return;
+    const note = Number.parseInt(button.getAttribute("data-virtual-midi-note") || "-1", 10);
+    if (!Number.isInteger(note) || note < 0) return;
+    toggleVirtualMidiNote(note);
+    renderMidiScene();
+    const active = new Set(currentVirtualMidiNotes()).has(note);
+    setStatus(`${MIDI_SCENE_TITLE} ${active ? "added" : "released"} ${midiName(note)} on the virtual keyboard.`);
+  });
+  midiVirtualKeyboardEl.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    const button = event.target.closest("[data-virtual-midi-note]");
+    if (!button) return;
+    event.preventDefault();
+    button.click();
   });
   [midiTonicEl, midiModeEl].forEach((node) => node.addEventListener("change", () => {
     renderMidiScene();
@@ -8726,7 +9374,7 @@ function initializeUi() {
   setPlayabilityOverlayMode(loadPlayabilityOverlayPreference(), { persist: false, rerender: false });
   galleryUiState.playabilityPreset = loadPlayabilityPresetPreference();
   galleryUiState.playabilityPolicy = loadPlayabilityPolicyPreference();
-  midiCaptionEl.textContent = "Connect MIDI to listen to every browser MIDI input, sustain pedal, and middle-pedal snapshots.";
+  midiCaptionEl.textContent = "Connect MIDI to listen to every browser MIDI input, sustain pedal, and middle-pedal snapshots, or use the virtual keyboard fallback below.";
   populatePresetSelect(setPresetEl, manifestList("setPresets"));
   populatePresetSelect(keyPresetEl, manifestList("keyPresets"));
   populatePresetSelect(chordPresetEl, manifestList("chordPresets"));
@@ -8754,6 +9402,7 @@ async function main() {
     memory = wasm.memory;
     loadCounterpointMetadata();
     loadPlayabilityMetadata();
+    ensureMidiPhraseMemoryStore();
     populateCounterpointProfileSelect(midiProfileEl);
     populatePlayabilityPresetSelect(midiPlayabilityPresetEl);
     populatePlayabilityPolicySelect(midiPlayabilityPolicyEl);

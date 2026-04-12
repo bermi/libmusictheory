@@ -599,6 +599,14 @@ async function main() {
         targetIndex: hoverCandidateIndex,
         targetSignature: midiActive.summary?.suggestionSignatures?.[hoverCandidateIndex] || "",
       }, { timeout: 30000 }).then((handle) => handle.jsonValue());
+      const previewOnlyPin = await page.waitForFunction(() => {
+        const midi = window.__lmtGallerySummary?.scenes?.midi;
+        return midi?.pinnedCandidateIndex >= 0
+          && (midi?.committedPhraseCount || 0) === 0
+          && midi?.phraseBiasActive === false
+          && (midi?.midiPhraseBlackboardFeatures?.committedEventCount || 0) === 0
+          && (document.querySelector("#midi-phrase-blackboard")?.textContent || "").includes("Pinning only changes preview focus");
+      }, { timeout: 30000 }).then((handle) => handle.jsonValue());
       traceStep("clear-pin");
       await page.click("#midi-clear-pin");
       const hoverReset = await page.waitForFunction(() => {
@@ -716,6 +724,32 @@ async function main() {
           && !!midi?.midiSuspensionMachineFeatures?.stateLabel
           && (midi?.midiOrbifoldRibbonFeatures?.candidateAnchorCount || 0) >= 1
           && (midi?.midiCommonToneConstellationFeatures?.retainedStarCount || 0) >= 1;
+      }, { timeout: 30000 }).then((handle) => handle.jsonValue());
+      traceStep("commit-current");
+      await page.click("#midi-commit-current");
+      const commitCurrent = await page.waitForFunction(() => {
+        const midi = window.__lmtGallerySummary?.scenes?.midi;
+        return (midi?.committedPhraseCount || 0) === 1
+          && midi?.phraseBiasActive === true
+          && (midi?.midiPhraseBlackboardFeatures?.committedEventCount || 0) === 1
+          && (document.querySelector("#midi-phrase-blackboard")?.textContent || "").includes("Committed phrase memory is active");
+      }, { timeout: 30000 }).then((handle) => handle.jsonValue());
+      traceStep("commit-focused");
+      await page.click("#midi-commit-focused");
+      const commitFocused = await page.waitForFunction(() => {
+        const midi = window.__lmtGallerySummary?.scenes?.midi;
+        return (midi?.committedPhraseCount || 0) === 2
+          && midi?.phraseBiasActive === true
+          && (midi?.midiPhraseBlackboardFeatures?.committedEventCount || 0) === 2
+          && (midi?.midiPhraseBlackboardFeatures?.issueCount || 0) >= 0;
+      }, { timeout: 30000 }).then((handle) => handle.jsonValue());
+      traceStep("clear-phrase");
+      await page.click("#midi-clear-phrase");
+      const clearPhrase = await page.waitForFunction(() => {
+        const midi = window.__lmtGallerySummary?.scenes?.midi;
+        return (midi?.committedPhraseCount || 0) === 0
+          && midi?.phraseBiasActive === false
+          && (midi?.midiPhraseBlackboardFeatures?.committedEventCount || 0) === 0;
       }, { timeout: 30000 }).then((handle) => handle.jsonValue());
       traceStep("mini-piano");
       await page.selectOption("#mini-instrument-mode", "piano");
@@ -992,6 +1026,67 @@ async function main() {
       await page.click("#render-progression");
       await page.click("#render-compare");
       await page.click("#render-fret");
+      traceStep("no-midi-fallback");
+      const noMidiFallbackPage = await browser.newPage({
+        viewport: { width: 1560, height: 1160 },
+        deviceScaleFactor: 2,
+      });
+      let noMidiFallback = null;
+      try {
+        await noMidiFallbackPage.goto(url, { waitUntil: "domcontentloaded" });
+        await noMidiFallbackPage.waitForSelector("#midi-virtual-keyboard", { timeout: 30000 });
+        noMidiFallback = await noMidiFallbackPage.waitForFunction(() => {
+          const midi = window.__lmtGallerySummary?.scenes?.midi;
+          return midi?.rendered === true
+            && midi?.inputCount === 0
+            && (midi?.midiVirtualKeyboardFeatures?.keyCount || 0) >= 24
+            && midi?.midiVirtualKeyboardFeatures?.fallbackVisible === true
+            && (document.querySelector("#midi-caption")?.textContent || "").includes("virtual keyboard");
+        }, { timeout: 30000 }).then((handle) => handle.jsonValue());
+        await noMidiFallbackPage.click('#midi-virtual-keyboard [data-virtual-midi-note="60"]');
+        await noMidiFallbackPage.click('#midi-virtual-keyboard [data-virtual-midi-note="64"]');
+        await noMidiFallbackPage.click('#midi-virtual-keyboard [data-virtual-midi-note="67"]');
+        const virtualKeyboard = await noMidiFallbackPage.waitForFunction(() => {
+          const midi = window.__lmtGallerySummary?.scenes?.midi;
+          return midi?.inputSource === "virtual"
+            && (midi?.virtualCount || 0) === 3
+            && midi?.liveCount === 3
+            && (midi?.midiVirtualKeyboardFeatures?.activeKeyCount || 0) === 3;
+        }, { timeout: 30000 }).then((handle) => handle.jsonValue());
+        await noMidiFallbackPage.click("#midi-commit-current");
+        const committedPhrase = await noMidiFallbackPage.waitForFunction(() => {
+          const midi = window.__lmtGallerySummary?.scenes?.midi;
+          return (midi?.committedPhraseCount || 0) === 1
+            && midi?.phraseBiasActive === true
+            && (midi?.midiPhraseBlackboardFeatures?.committedEventCount || 0) === 1
+            && (document.querySelector("#midi-phrase-blackboard")?.textContent || "").includes("Committed phrase memory is active");
+        }, { timeout: 30000 }).then((handle) => handle.jsonValue());
+        await noMidiFallbackPage.click('#midi-suggestions [data-suggestion-index="0"]');
+        const previewOnlyPinFallback = await noMidiFallbackPage.waitForFunction(() => {
+          const midi = window.__lmtGallerySummary?.scenes?.midi;
+          return midi?.pinnedCandidateIndex === 0
+            && (midi?.committedPhraseCount || 0) === 1
+            && (document.querySelector("#midi-phrase-blackboard")?.textContent || "").includes("Committed phrase memory is active");
+        }, { timeout: 30000 }).then((handle) => handle.jsonValue());
+        await noMidiFallbackPage.click("#midi-clear-virtual");
+        await noMidiFallbackPage.click("#midi-clear-phrase");
+        const clearPhraseFallback = await noMidiFallbackPage.waitForFunction(() => {
+          const midi = window.__lmtGallerySummary?.scenes?.midi;
+          return (midi?.virtualCount || 0) === 0
+            && midi?.liveCount === 0
+            && (midi?.committedPhraseCount || 0) === 0
+            && midi?.phraseBiasActive === false;
+        }, { timeout: 30000 }).then((handle) => handle.jsonValue());
+        noMidiFallback = {
+          noMidiFallback,
+          virtualKeyboard,
+          committedPhrase,
+          previewOnlyPinFallback,
+          clearPhraseFallback,
+        };
+      } finally {
+        await noMidiFallbackPage.close();
+      }
       traceStep("final-ready");
       const finalSnapshot = await waitForGalleryReady(page);
       const clockPaletteMetrics = await page.evaluate(() => {
@@ -1044,14 +1139,19 @@ async function main() {
             hoveredCandidate,
             pinnedCandidate,
             pinPersistsAfterMouseleave,
+            previewOnlyPin,
             hoverReset,
             contextChanged,
             keyboardSeamCheck,
             profileChanged,
+            commitCurrent,
+            commitFocused,
+            clearPhrase,
             pianoMiniState,
             pianoMiniHosts,
             fretMiniState,
             fretMiniHosts,
+            noMidiFallback,
             snapshotContextRestored,
             snapshotView,
             backToLive,

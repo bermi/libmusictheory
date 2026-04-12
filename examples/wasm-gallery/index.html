@@ -118,6 +118,27 @@
             </div>
             <div class="note-card">
               <div class="note-card-head">
+                <h3>Virtual Keyboard</h3>
+                <button id="midi-clear-virtual" class="ghost-button" type="button">Clear Virtual Keys</button>
+              </div>
+              <p class="scene-caption scene-caption-compact">If no hardware is connected, toggle notes here. This host-side input drives the same live analysis path as browser MIDI but stays outside committed phrase memory until you explicitly commit it.</p>
+              <div id="midi-virtual-status" class="chip-row"></div>
+              <div id="midi-virtual-keyboard" class="virtual-keyboard-shell" role="group" aria-label="Virtual keyboard"></div>
+            </div>
+            <div class="note-card">
+              <div class="note-card-head">
+                <h3>Phrase Blackboard</h3>
+              </div>
+              <p class="scene-caption scene-caption-compact">Pin for preview stays local to the gallery. Commit to phrase appends the displayed or focused event into library-backed committed phrase memory so later playability ranking and phrase audit use accepted choices.</p>
+              <div class="blackboard-action-row">
+                <button id="midi-commit-current" class="accent-button" type="button">Commit Current State</button>
+                <button id="midi-commit-focused" class="ghost-button" type="button">Commit Focused Candidate</button>
+                <button id="midi-clear-phrase" class="ghost-button" type="button">Clear Phrase</button>
+              </div>
+              <div id="midi-phrase-blackboard" class="inspector-panel phrase-blackboard-panel"></div>
+            </div>
+            <div class="note-card">
+              <div class="note-card-head">
                 <h3>Counterpoint Inspector</h3>
                 <button id="midi-clear-pin" class="ghost-button" type="button" disabled>Clear Pin</button>
               </div>

@@ -298,6 +298,12 @@ if [ -f "$ROOT_DIR/docs/plans/in_progress/0136-repair-policy-and-ranked-phrase-r
     check_cmd "cd '$ROOT_DIR' && rg -n 'repair policy|ranked phrase repairs|crossed musical-change boundary|what changed|what was preserved|realization_only|register_adjusted|texture_reduced' docs/research/algorithms/playability.md docs/api.md >/dev/null" "0136 phrase repair docs guardrail (research notes and unified API docs explain the repair-policy boundary)"
 fi
 
+if [ -f "$ROOT_DIR/docs/plans/in_progress/0137-gallery-phrase-blackboard-and-virtual-keyboard-fallback.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0137-gallery-phrase-blackboard-and-virtual-keyboard-fallback.md" ]; then
+    check_cmd "cd '$ROOT_DIR' && rg -n 'midi-phrase-blackboard|midi-virtual-keyboard|midi-commit-current|midi-commit-focused|midi-clear-phrase|midi-clear-virtual|data-virtual-midi-note' examples/wasm-gallery/index.html examples/wasm-gallery/gallery.js examples/wasm-gallery/styles.css >/dev/null" "0137 gallery phrase UI guardrail (blackboard controls and virtual keyboard affordances are wired into the MIDI scene)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'lmt_keyboard_committed_phrase_reset|lmt_keyboard_committed_phrase_push|lmt_keyboard_committed_phrase_len|lmt_audit_committed_keyboard_phrase_n|lmt_rank_keyboard_next_steps_by_committed_phrase|Pin for preview|Commit to phrase|virtual keyboard' examples/wasm-gallery/gallery.js docs/api.md docs/research/algorithms/keyboard-interaction.md >/dev/null" "0137 gallery phrase semantics guardrail (preview-versus-commit boundary, committed-memory bias, and fallback docs are explicit)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'virtualKeyboard|phraseBlackboard|commitFocused|commitCurrent|clearPhrase|noMidiFallback|previewOnlyPin|committedPhrase' scripts/lib/wasm_gallery_playwright_common.mjs scripts/validate_wasm_gallery_playwright.mjs >/dev/null" "0137 gallery validation guardrail (playwright covers no-MIDI fallback and phrase-blackboard interactions)"
+fi
+
 
 
 if [ -f "$ROOT_DIR/docs/plans/in_progress/0088-live-midi-composer-scene.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0088-live-midi-composer-scene.md" ]; then

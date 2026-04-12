@@ -238,6 +238,38 @@ The implementation uses a bounded local ranking model:
 
 This is the same product stance described in the cited piano papers:
 
+### 12. Gallery Phrase Blackboard Boundary
+
+The live gallery now separates preview state from committed musical memory.
+
+- `Pin for preview`
+  - host-only UI state
+  - keeps a candidate visible for inspection
+  - does not mutate library memory
+  - must not bias later ranking
+- `Commit to phrase`
+  - appends a realized event into caller-owned library memory
+  - does affect later phrase audits and committed-phrase ranking helpers
+  - is the action a host should use when a user accepts a voicing as part of the phrase
+
+This boundary matters because the library is meant to answer musical questions, not to absorb browser state. Hover, pin, local persistence, MIDI permissions, and other transient controls remain host-owned. Accepted musical choices that should influence later analysis belong in explicit caller-owned structs such as `lmt_keyboard_committed_phrase_memory`.
+
+### 13. No-MIDI Fallback And Virtual Keyboard Input
+
+The gallery is no longer blocked on hardware MIDI. When Web MIDI is unavailable or when no device inputs are connected, the host presents a `virtual keyboard` that toggles notes into the same current-input path used by live MIDI events.
+
+That fallback intentionally preserves the same semantic split:
+
+- toggling notes on the virtual keyboard changes the current displayed input state
+- it does not automatically commit anything into phrase memory
+- phrase bias only begins after the host explicitly chooses `Commit to phrase`
+
+This keeps the no-hardware path explainable:
+
+- "No MIDI device is connected, so the virtual keyboard is driving the current input state."
+- "This move is pinned for preview only."
+- "This move was committed to phrase memory, so later suggestions are now judged relative to it."
+
 - HMM and Viterbi models are useful internally, but public results still need named reasons rather than hidden state numbers
 - Variable Neighborhood Search highlights that vertical span, thumb use on black keys, and weak-finger stress are meaningful local constraints
 - Checklist Models emphasize recent-context fluency, which is why the temporal load state remains part of the playability surface
