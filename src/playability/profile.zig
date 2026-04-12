@@ -4,6 +4,7 @@ const counterpoint = @import("../counterpoint.zig");
 const fret_assessment = @import("fret_assessment.zig");
 const keyboard_assessment = @import("keyboard_assessment.zig");
 const phrase = @import("phrase.zig");
+const repair = @import("repair.zig");
 const ranking = @import("ranking.zig");
 const types = @import("types.zig");
 
@@ -247,6 +248,40 @@ pub fn suggestSaferKeyboardNextStepFromCommittedPhrase(
         ranked_buf[0..],
     );
     return firstAcceptedOrFallback(ranked_rows);
+}
+
+pub fn suggestBestKeyboardPhraseRepair(
+    committed: *const phrase.KeyboardCommittedPhraseMemory,
+    hand_profile: types.HandProfile,
+    policy: repair.RepairPolicy,
+) ?repair.RankedKeyboardPhraseRepair {
+    var ranked_buf: [repair.MAX_PHRASE_REPAIRS]repair.RankedKeyboardPhraseRepair = undefined;
+    const ranked_rows = repair.rankKeyboardPhraseRepairs(
+        committed,
+        hand_profile,
+        policy,
+        ranked_buf[0..],
+    );
+    return if (ranked_rows.len == 0) null else ranked_rows[0];
+}
+
+pub fn suggestBestFretPhraseRepair(
+    committed: *const phrase.FretCommittedPhraseMemory,
+    tuning: []const pitch.MidiNote,
+    technique: fret_assessment.TechniqueProfile,
+    hand_override: ?types.HandProfile,
+    policy: repair.RepairPolicy,
+) ?repair.RankedFretPhraseRepair {
+    var ranked_buf: [repair.MAX_PHRASE_REPAIRS]repair.RankedFretPhraseRepair = undefined;
+    const ranked_rows = repair.rankFretPhraseRepairs(
+        committed,
+        tuning,
+        technique,
+        hand_override,
+        policy,
+        ranked_buf[0..],
+    );
+    return if (ranked_rows.len == 0) null else ranked_rows[0];
 }
 
 pub fn suggestSaferKeyboardNextStepCandidates(

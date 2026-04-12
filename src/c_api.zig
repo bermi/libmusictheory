@@ -183,6 +183,61 @@ pub const LmtPlayabilityPhraseSummary = extern struct {
     longest_recovery_deficit_run: u16,
 };
 
+pub const LmtPlayabilityRepairPolicy = extern struct {
+    max_class: u8,
+    preserve_bass: u8,
+    preserve_top_voice: u8,
+    prefer_inner_changes: u8,
+    allow_hand_reassignment: u8,
+    reserved0: u8,
+    reserved1: u8,
+    reserved2: u8,
+};
+
+pub const LmtRankedKeyboardPhraseRepair = extern struct {
+    repair_class: u8,
+    changed_from_index: u8,
+    changed_to_index: u8,
+    changed_from_value: u8,
+    changed_to_value: u8,
+    crossed_musical_change_boundary: u8,
+    hand: u8,
+    reserved0: u8,
+    target_event_index: u16,
+    reserved1: u16,
+    preserved_mask: u32,
+    change_mask: u32,
+    bottleneck_lift: i16,
+    issue_lift: i16,
+    blocked_issue_lift: i16,
+    warning_issue_lift: i16,
+    before_summary: LmtPlayabilityPhraseSummary,
+    after_summary: LmtPlayabilityPhraseSummary,
+    replacement_event: LmtKeyboardPhraseEvent,
+};
+
+pub const LmtRankedFretPhraseRepair = extern struct {
+    repair_class: u8,
+    changed_from_index: u8,
+    changed_to_index: u8,
+    changed_from_value: i8,
+    changed_to_value: i8,
+    crossed_musical_change_boundary: u8,
+    technique: u8,
+    reserved0: u8,
+    target_event_index: u16,
+    reserved1: u16,
+    preserved_mask: u32,
+    change_mask: u32,
+    bottleneck_lift: i16,
+    issue_lift: i16,
+    blocked_issue_lift: i16,
+    warning_issue_lift: i16,
+    before_summary: LmtPlayabilityPhraseSummary,
+    after_summary: LmtPlayabilityPhraseSummary,
+    replacement_event: LmtFretPhraseEvent,
+};
+
 pub const LmtTemporalLoadState = extern struct {
     event_count: u8,
     last_anchor_step: u8,
@@ -730,6 +785,23 @@ fn decodePhraseFamilyDomain(raw: u8) ?playability.phrase.FamilyDomain {
     return std.meta.intToEnum(playability.phrase.FamilyDomain, raw) catch null;
 }
 
+fn decodeRepairClass(raw: u8) ?playability.repair.RepairClass {
+    return playability.repair.fromInt(raw);
+}
+
+fn decodeRepairPolicy(raw: LmtPlayabilityRepairPolicy) ?playability.repair.RepairPolicy {
+    return .{
+        .max_class = decodeRepairClass(raw.max_class) orelse return null,
+        .preserve_bass = raw.preserve_bass != 0,
+        .preserve_top_voice = raw.preserve_top_voice != 0,
+        .prefer_inner_changes = raw.prefer_inner_changes != 0,
+        .allow_hand_reassignment = raw.allow_hand_reassignment != 0,
+        .reserved0 = raw.reserved0,
+        .reserved1 = raw.reserved1,
+        .reserved2 = raw.reserved2,
+    };
+}
+
 fn writeHandProfile(out: *LmtHandProfile, profile: playability.types.HandProfile) void {
     out.* = .{
         .finger_count = profile.finger_count,
@@ -931,6 +1003,82 @@ fn writePhraseSummary(
         .recovery_deficit_end_index = summary.recovery_deficit_end_index,
         .longest_recovery_deficit_run = summary.longest_recovery_deficit_run,
     };
+}
+
+fn writeRepairPolicy(
+    out: *LmtPlayabilityRepairPolicy,
+    policy: playability.repair.RepairPolicy,
+) void {
+    out.* = .{
+        .max_class = @intFromEnum(policy.max_class),
+        .preserve_bass = @intFromBool(policy.preserve_bass),
+        .preserve_top_voice = @intFromBool(policy.preserve_top_voice),
+        .prefer_inner_changes = @intFromBool(policy.prefer_inner_changes),
+        .allow_hand_reassignment = @intFromBool(policy.allow_hand_reassignment),
+        .reserved0 = 0,
+        .reserved1 = 0,
+        .reserved2 = 0,
+    };
+}
+
+fn writeRankedKeyboardPhraseRepair(
+    out: *LmtRankedKeyboardPhraseRepair,
+    row: playability.repair.RankedKeyboardPhraseRepair,
+) void {
+    out.* = .{
+        .repair_class = @intFromEnum(row.repair_class),
+        .changed_from_index = row.changed_from_index,
+        .changed_to_index = row.changed_to_index,
+        .changed_from_value = row.changed_from_value,
+        .changed_to_value = row.changed_to_value,
+        .crossed_musical_change_boundary = @intFromBool(row.crossed_musical_change_boundary),
+        .hand = @intFromEnum(row.hand),
+        .reserved0 = 0,
+        .target_event_index = row.target_event_index,
+        .reserved1 = 0,
+        .preserved_mask = row.preserved_mask,
+        .change_mask = row.change_mask,
+        .bottleneck_lift = row.bottleneck_lift,
+        .issue_lift = row.issue_lift,
+        .blocked_issue_lift = row.blocked_issue_lift,
+        .warning_issue_lift = row.warning_issue_lift,
+        .before_summary = undefined,
+        .after_summary = undefined,
+        .replacement_event = undefined,
+    };
+    writePhraseSummary(&out.before_summary, row.before_summary);
+    writePhraseSummary(&out.after_summary, row.after_summary);
+    writeKeyboardPhraseEvent(&out.replacement_event, row.replacement_event);
+}
+
+fn writeRankedFretPhraseRepair(
+    out: *LmtRankedFretPhraseRepair,
+    row: playability.repair.RankedFretPhraseRepair,
+) void {
+    out.* = .{
+        .repair_class = @intFromEnum(row.repair_class),
+        .changed_from_index = row.changed_from_index,
+        .changed_to_index = row.changed_to_index,
+        .changed_from_value = row.changed_from_value,
+        .changed_to_value = row.changed_to_value,
+        .crossed_musical_change_boundary = @intFromBool(row.crossed_musical_change_boundary),
+        .technique = @intFromEnum(row.technique),
+        .reserved0 = 0,
+        .target_event_index = row.target_event_index,
+        .reserved1 = 0,
+        .preserved_mask = row.preserved_mask,
+        .change_mask = row.change_mask,
+        .bottleneck_lift = row.bottleneck_lift,
+        .issue_lift = row.issue_lift,
+        .blocked_issue_lift = row.blocked_issue_lift,
+        .warning_issue_lift = row.warning_issue_lift,
+        .before_summary = undefined,
+        .after_summary = undefined,
+        .replacement_event = undefined,
+    };
+    writePhraseSummary(&out.before_summary, row.before_summary);
+    writePhraseSummary(&out.after_summary, row.after_summary);
+    writeFretPhraseEvent(&out.replacement_event, row.replacement_event);
 }
 
 fn decodeTemporalLoadState(raw: LmtTemporalLoadState) playability.types.TemporalLoadState {
@@ -1849,6 +1997,16 @@ pub export fn lmt_playability_phrase_strain_bucket_name(index: u32) callconv(.c)
     return writeCString(playability.phrase.STRAIN_BUCKET_NAMES[idx]);
 }
 
+pub export fn lmt_playability_repair_class_count() callconv(.c) u32 {
+    return @as(u32, @intCast(playability.repair.REPAIR_CLASS_NAMES.len));
+}
+
+pub export fn lmt_playability_repair_class_name(index: u32) callconv(.c) [*c]const u8 {
+    const idx = @as(usize, @intCast(index));
+    if (idx >= playability.repair.REPAIR_CLASS_NAMES.len) return null;
+    return writeCString(playability.repair.REPAIR_CLASS_NAMES[idx]);
+}
+
 pub export fn lmt_scale_degree(tonic: u8, mode_type: u8, note: u8) callconv(.c) u8 {
     const mt = decodeModeType(mode_type) orelse return 0;
     const tonic_pc = @as(pitch.PitchClass, @intCast(tonic % 12));
@@ -2100,6 +2258,18 @@ pub export fn lmt_sizeof_playability_phrase_summary() callconv(.c) u32 {
     return @as(u32, @intCast(@sizeOf(LmtPlayabilityPhraseSummary)));
 }
 
+pub export fn lmt_sizeof_playability_repair_policy() callconv(.c) u32 {
+    return @as(u32, @intCast(@sizeOf(LmtPlayabilityRepairPolicy)));
+}
+
+pub export fn lmt_sizeof_ranked_keyboard_phrase_repair() callconv(.c) u32 {
+    return @as(u32, @intCast(@sizeOf(LmtRankedKeyboardPhraseRepair)));
+}
+
+pub export fn lmt_sizeof_ranked_fret_phrase_repair() callconv(.c) u32 {
+    return @as(u32, @intCast(@sizeOf(LmtRankedFretPhraseRepair)));
+}
+
 pub export fn lmt_sizeof_voiced_state() callconv(.c) u32 {
     return @as(u32, @intCast(@sizeOf(LmtVoicedState)));
 }
@@ -2233,6 +2403,16 @@ pub export fn lmt_default_keyboard_hand_profile(out: [*c]LmtHandProfile) callcon
     if (out == null) return 0;
     const out_profile: *LmtHandProfile = @ptrCast(out);
     writeHandProfile(out_profile, playability.keyboard_topology.defaultHandProfile());
+    return 1;
+}
+
+pub export fn lmt_default_playability_repair_policy(
+    max_class_raw: u32,
+    out: [*c]LmtPlayabilityRepairPolicy,
+) callconv(.c) u32 {
+    if (out == null) return 0;
+    const max_class = decodeRepairClass(@as(u8, @intCast(max_class_raw))) orelse return 0;
+    writeRepairPolicy(@ptrCast(out), playability.repair.RepairPolicy.defaultForClass(max_class));
     return 1;
 }
 
@@ -2488,6 +2668,84 @@ pub export fn lmt_audit_committed_keyboard_phrase_n(
         writePhraseSummary(@ptrCast(summary_out), result.summary);
     }
     return @as(u32, @intCast(result.logical_issue_count));
+}
+
+pub export fn lmt_rank_keyboard_phrase_repairs_n(
+    memory_ptr: [*c]const LmtKeyboardCommittedPhraseMemory,
+    profile_ptr: [*c]const LmtHandProfile,
+    policy_ptr: [*c]const LmtPlayabilityRepairPolicy,
+    out: [*c]LmtRankedKeyboardPhraseRepair,
+    out_cap: u32,
+) callconv(.c) u32 {
+    if (memory_ptr == null or policy_ptr == null) return 0;
+    if (out_cap > 0 and out == null) return 0;
+
+    const profile = if (profile_ptr != null)
+        decodeHandProfile(profile_ptr[0])
+    else
+        playability.keyboard_topology.defaultHandProfile();
+    const memory = decodeKeyboardCommittedPhraseMemory((@as(*const LmtKeyboardCommittedPhraseMemory, @ptrCast(memory_ptr))).*) orelse return 0;
+    const policy = decodeRepairPolicy((@as(*const LmtPlayabilityRepairPolicy, @ptrCast(policy_ptr))).*) orelse return 0;
+
+    var ranked_buf: [playability.repair.MAX_PHRASE_REPAIRS]playability.repair.RankedKeyboardPhraseRepair = undefined;
+    const ranked = playability.repair.rankKeyboardPhraseRepairs(
+        &memory,
+        profile,
+        policy,
+        ranked_buf[0..],
+    );
+
+    if (out != null) {
+        const write_len = @min(ranked.len, @as(usize, @intCast(out_cap)));
+        for (ranked[0..write_len], 0..) |row, index| {
+            writeRankedKeyboardPhraseRepair(@ptrCast(&out[index]), row);
+        }
+    }
+    return @as(u32, @intCast(ranked.len));
+}
+
+pub export fn lmt_rank_fret_phrase_repairs_n(
+    memory_ptr: [*c]const LmtFretCommittedPhraseMemory,
+    tuning_ptr: [*c]const u8,
+    tuning_count: u32,
+    profile_raw: u32,
+    hand_profile_ptr: [*c]const LmtHandProfile,
+    policy_ptr: [*c]const LmtPlayabilityRepairPolicy,
+    out: [*c]LmtRankedFretPhraseRepair,
+    out_cap: u32,
+) callconv(.c) u32 {
+    if (memory_ptr == null or policy_ptr == null) return 0;
+    if (out_cap > 0 and out == null) return 0;
+
+    var tuning_buf: [MAX_PARAMETRIC_FRET_STRINGS]pitch.MidiNote = undefined;
+    const tuning = decodeTuningGeneric(tuning_ptr, tuning_count, &tuning_buf);
+    if (tuning.len == 0) return 0;
+
+    const technique = decodeFretTechniqueProfile(profile_raw) orelse return 0;
+    const hand_profile: ?playability.types.HandProfile = if (hand_profile_ptr != null)
+        decodeHandProfile(hand_profile_ptr[0])
+    else
+        null;
+    const memory = decodeFretCommittedPhraseMemory((@as(*const LmtFretCommittedPhraseMemory, @ptrCast(memory_ptr))).*);
+    const policy = decodeRepairPolicy((@as(*const LmtPlayabilityRepairPolicy, @ptrCast(policy_ptr))).*) orelse return 0;
+
+    var ranked_buf: [playability.repair.MAX_PHRASE_REPAIRS]playability.repair.RankedFretPhraseRepair = undefined;
+    const ranked = playability.repair.rankFretPhraseRepairs(
+        &memory,
+        tuning,
+        technique,
+        hand_profile,
+        policy,
+        ranked_buf[0..],
+    );
+
+    if (out != null) {
+        const write_len = @min(ranked.len, @as(usize, @intCast(out_cap)));
+        for (ranked[0..write_len], 0..) |row, index| {
+            writeRankedFretPhraseRepair(@ptrCast(&out[index]), row);
+        }
+    }
+    return @as(u32, @intCast(ranked.len));
 }
 
 pub export fn lmt_orbifold_triad_edge_at(index: u32, out: [*c]LmtOrbifoldTriadEdge) callconv(.c) u32 {

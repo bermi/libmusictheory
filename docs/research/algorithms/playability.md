@@ -318,6 +318,79 @@ This keeps the phrase report explainable:
 
 A phrase can fail gracefully or fail cumulatively.
 
+## 0136 - Repair Policy And Ranked Phrase Repairs
+
+`0136` adds an explicit repair policy layer and ranked phrase repairs on top of the fixed-realization phrase audit engines.
+
+The boundary is deliberate:
+
+- the library may suggest repairs
+- the library must say whether a candidate stayed inside `realization_only`
+- the library must say when a candidate crossed into `register_adjusted`
+- the library must say when a candidate crossed into `texture_reduced`
+
+That keeps the explanation honest:
+
+- "This repair stayed realization_only, so the music did not change."
+- "This repair crossed musical-change boundary because it octave-displaced one note."
+- "This repair crossed musical-change boundary because it removed one note from the texture."
+
+### Repair Policy
+
+The repair policy is explicit caller input, not a hidden preference table.
+
+It controls:
+
+- the maximum allowed repair class
+- whether the bass must remain fixed
+- whether the top voice must remain fixed
+- whether inner-note changes are preferred
+- whether keyboard hand reassignment is allowed
+
+This lets hosts say exactly why a repair appeared:
+
+- "We allowed realization_only repairs first, so the library only looked for hand or fret-location changes."
+- "We widened the repair policy to register_adjusted because realization_only could not reduce the phrase bottleneck."
+
+### Ranked Phrase Repairs
+
+The ranked phrase repairs return:
+
+- the target event index
+- before and after phrase summaries
+- a replacement event
+- whether the candidate crossed musical-change boundary
+- `what changed`
+- `what was preserved`
+
+`what changed` is represented explicitly so hosts can explain:
+
+- hand reassigned
+- fret location changed
+- octave displaced
+- note removed
+
+`what was preserved` is represented explicitly so hosts can explain:
+
+- bass preserved
+- top voice preserved
+- pitch classes preserved
+- note count preserved
+- exact pitches preserved
+- exact frets preserved
+
+The ranking order stays explainable:
+
+- repairs that do not cross musical-change boundary come first
+- lower after-strain buckets outrank higher ones
+- lower after bottleneck severity outranks higher severity
+- bigger blocked-issue reduction outranks smaller reduction
+
+That lets an LLM or practice app say:
+
+- "This is the first repair because it fixes the bottleneck without changing the written pitches."
+- "This register_adjusted repair ranks below the realization_only repair because it crossed musical-change boundary even though both improved the phrase."
+
 `0134` keeps both cases visible:
 
 - a repeated warning cluster says the same warning family keeps recurring across a continuity segment

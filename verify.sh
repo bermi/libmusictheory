@@ -291,6 +291,13 @@ if [ -f "$ROOT_DIR/docs/plans/in_progress/0135-committed-phrase-memory-and-choic
     check_cmd "cd '$ROOT_DIR' && rg -n 'committed phrase memory|accepted choices bias later ranking|preview-only host interactions stay out of library memory|caller-owned committed memory' docs/research/algorithms/playability.md docs/api.md >/dev/null" "0135 committed phrase memory docs guardrail (research notes and unified API docs explain committed-memory semantics)"
 fi
 
+if [ -f "$ROOT_DIR/docs/plans/in_progress/0136-repair-policy-and-ranked-phrase-repairs.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0136-repair-policy-and-ranked-phrase-repairs.md" ]; then
+    check_cmd "cd '$ROOT_DIR' && test -f src/playability/repair.zig && test -f src/tests/playability_repair_test.zig && rg -n 'pub const repair|tests/playability_repair_test\\.zig' src/playability.zig src/root.zig >/dev/null" "0136 phrase repair foundation guardrail (repair module and focused tests are wired)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'RepairClass|RepairPolicy|RankedKeyboardPhraseRepair|RankedFretPhraseRepair|rankKeyboardPhraseRepairs|rankFretPhraseRepairs|realization_only|register_adjusted|texture_reduced|what changed|what was preserved|crossed musical-change boundary' src/playability/repair.zig src/playability/profile.zig src/tests/playability_repair_test.zig >/dev/null" "0136 phrase repair algorithm guardrail (repair classes, policy boundary, and ranked phrase repair helpers are implemented)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'lmt_playability_repair_class|lmt_playability_repair_policy|lmt_ranked_keyboard_phrase_repair|lmt_ranked_fret_phrase_repair|lmt_playability_repair_class_count|lmt_playability_repair_class_name|lmt_default_playability_repair_policy|lmt_sizeof_playability_repair_policy|lmt_sizeof_ranked_keyboard_phrase_repair|lmt_sizeof_ranked_fret_phrase_repair|lmt_rank_keyboard_phrase_repairs_n|lmt_rank_fret_phrase_repairs_n' include/libmusictheory.h src/c_api.zig build.zig scripts/check_wasm_exports.mjs src/tests/c_api_test.zig >/dev/null" "0136 phrase repair ABI guardrail (repair policy structs, reflection helpers, and phrase repair exports are wired)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'repair policy|ranked phrase repairs|crossed musical-change boundary|what changed|what was preserved|realization_only|register_adjusted|texture_reduced' docs/research/algorithms/playability.md docs/api.md >/dev/null" "0136 phrase repair docs guardrail (research notes and unified API docs explain the repair-policy boundary)"
+fi
+
 
 
 if [ -f "$ROOT_DIR/docs/plans/in_progress/0088-live-midi-composer-scene.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0088-live-midi-composer-scene.md" ]; then

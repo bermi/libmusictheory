@@ -26,6 +26,9 @@ const LmtKeyboardCommittedPhraseMemory = api.LmtKeyboardCommittedPhraseMemory;
 const LmtFretCommittedPhraseMemory = api.LmtFretCommittedPhraseMemory;
 const LmtPlayabilityPhraseIssue = api.LmtPlayabilityPhraseIssue;
 const LmtPlayabilityPhraseSummary = api.LmtPlayabilityPhraseSummary;
+const LmtPlayabilityRepairPolicy = api.LmtPlayabilityRepairPolicy;
+const LmtRankedKeyboardPhraseRepair = api.LmtRankedKeyboardPhraseRepair;
+const LmtRankedFretPhraseRepair = api.LmtRankedFretPhraseRepair;
 const LmtTemporalLoadState = api.LmtTemporalLoadState;
 const LmtFretCandidateLocation = api.LmtFretCandidateLocation;
 const LmtFretPlayState = api.LmtFretPlayState;
@@ -89,6 +92,8 @@ const lmt_playability_phrase_family_domain_count = api.lmt_playability_phrase_fa
 const lmt_playability_phrase_family_domain_name = api.lmt_playability_phrase_family_domain_name;
 const lmt_playability_phrase_strain_bucket_count = api.lmt_playability_phrase_strain_bucket_count;
 const lmt_playability_phrase_strain_bucket_name = api.lmt_playability_phrase_strain_bucket_name;
+const lmt_playability_repair_class_count = api.lmt_playability_repair_class_count;
+const lmt_playability_repair_class_name = api.lmt_playability_repair_class_name;
 const lmt_fret_playability_blocker_count = api.lmt_fret_playability_blocker_count;
 const lmt_fret_playability_blocker_name = api.lmt_fret_playability_blocker_name;
 const lmt_fret_technique_profile_count = api.lmt_fret_technique_profile_count;
@@ -162,6 +167,9 @@ const lmt_sizeof_keyboard_committed_phrase_memory = api.lmt_sizeof_keyboard_comm
 const lmt_sizeof_fret_committed_phrase_memory = api.lmt_sizeof_fret_committed_phrase_memory;
 const lmt_sizeof_playability_phrase_issue = api.lmt_sizeof_playability_phrase_issue;
 const lmt_sizeof_playability_phrase_summary = api.lmt_sizeof_playability_phrase_summary;
+const lmt_sizeof_playability_repair_policy = api.lmt_sizeof_playability_repair_policy;
+const lmt_sizeof_ranked_keyboard_phrase_repair = api.lmt_sizeof_ranked_keyboard_phrase_repair;
+const lmt_sizeof_ranked_fret_phrase_repair = api.lmt_sizeof_ranked_fret_phrase_repair;
 const lmt_sizeof_voiced_state = api.lmt_sizeof_voiced_state;
 const lmt_sizeof_voiced_history = api.lmt_sizeof_voiced_history;
 const lmt_sizeof_next_step_suggestion = api.lmt_sizeof_next_step_suggestion;
@@ -184,6 +192,7 @@ const lmt_orbifold_triad_edge_at = api.lmt_orbifold_triad_edge_at;
 const lmt_default_fret_hand_profile = api.lmt_default_fret_hand_profile;
 const lmt_default_fret_hand_profile_for_technique = api.lmt_default_fret_hand_profile_for_technique;
 const lmt_default_keyboard_hand_profile = api.lmt_default_keyboard_hand_profile;
+const lmt_default_playability_repair_policy = api.lmt_default_playability_repair_policy;
 const lmt_summarize_playability_phrase_issues = api.lmt_summarize_playability_phrase_issues;
 const lmt_keyboard_committed_phrase_reset = api.lmt_keyboard_committed_phrase_reset;
 const lmt_keyboard_committed_phrase_push = api.lmt_keyboard_committed_phrase_push;
@@ -211,6 +220,8 @@ const lmt_summarize_keyboard_realization_difficulty_n = api.lmt_summarize_keyboa
 const lmt_summarize_keyboard_transition_difficulty_n = api.lmt_summarize_keyboard_transition_difficulty_n;
 const lmt_rank_keyboard_fingerings_n = api.lmt_rank_keyboard_fingerings_n;
 const lmt_suggest_easier_keyboard_fingering_n = api.lmt_suggest_easier_keyboard_fingering_n;
+const lmt_rank_keyboard_phrase_repairs_n = api.lmt_rank_keyboard_phrase_repairs_n;
+const lmt_rank_fret_phrase_repairs_n = api.lmt_rank_fret_phrase_repairs_n;
 const lmt_filter_next_steps_by_playability = api.lmt_filter_next_steps_by_playability;
 const lmt_rank_keyboard_next_steps_by_playability = api.lmt_rank_keyboard_next_steps_by_playability;
 const lmt_rank_keyboard_next_steps_by_committed_phrase = api.lmt_rank_keyboard_next_steps_by_committed_phrase;
@@ -274,6 +285,9 @@ test "c abi header layout and constants" {
     try testing.expectEqual(@sizeOf(c.lmt_fret_committed_phrase_memory), @sizeOf(LmtFretCommittedPhraseMemory));
     try testing.expectEqual(@sizeOf(c.lmt_playability_phrase_issue), @sizeOf(LmtPlayabilityPhraseIssue));
     try testing.expectEqual(@sizeOf(c.lmt_playability_phrase_summary), @sizeOf(LmtPlayabilityPhraseSummary));
+    try testing.expectEqual(@sizeOf(c.lmt_playability_repair_policy), @sizeOf(LmtPlayabilityRepairPolicy));
+    try testing.expectEqual(@sizeOf(c.lmt_ranked_keyboard_phrase_repair), @sizeOf(LmtRankedKeyboardPhraseRepair));
+    try testing.expectEqual(@sizeOf(c.lmt_ranked_fret_phrase_repair), @sizeOf(LmtRankedFretPhraseRepair));
     try testing.expectEqual(@sizeOf(c.lmt_temporal_load_state), @sizeOf(LmtTemporalLoadState));
     try testing.expectEqual(@sizeOf(c.lmt_fret_candidate_location), @sizeOf(LmtFretCandidateLocation));
     try testing.expectEqual(@sizeOf(c.lmt_fret_play_state), @sizeOf(LmtFretPlayState));
@@ -387,6 +401,9 @@ test "c abi header layout and constants" {
     try testing.expectEqual(@as(u32, @sizeOf(LmtFretCommittedPhraseMemory)), lmt_sizeof_fret_committed_phrase_memory());
     try testing.expectEqual(@as(u32, @sizeOf(LmtPlayabilityPhraseIssue)), lmt_sizeof_playability_phrase_issue());
     try testing.expectEqual(@as(u32, @sizeOf(LmtPlayabilityPhraseSummary)), lmt_sizeof_playability_phrase_summary());
+    try testing.expectEqual(@as(u32, @sizeOf(LmtPlayabilityRepairPolicy)), lmt_sizeof_playability_repair_policy());
+    try testing.expectEqual(@as(u32, @sizeOf(LmtRankedKeyboardPhraseRepair)), lmt_sizeof_ranked_keyboard_phrase_repair());
+    try testing.expectEqual(@as(u32, @sizeOf(LmtRankedFretPhraseRepair)), lmt_sizeof_ranked_fret_phrase_repair());
     try testing.expectEqual(@as(u32, counterpoint.MAX_VOICES), lmt_counterpoint_max_voices());
     try testing.expectEqual(@as(u32, counterpoint.HISTORY_CAPACITY), lmt_counterpoint_history_capacity());
     try testing.expectEqual(@as(u32, @sizeOf(LmtVoicedState)), lmt_sizeof_voiced_state());
@@ -1058,6 +1075,25 @@ test "c abi phrase issue summaries" {
     try testing.expectEqual(@as(u16, 2), summary.longest_recovery_deficit_run);
 }
 
+test "c abi playability repair reflection and defaults" {
+    try testing.expectEqual(@as(u32, 3), lmt_playability_repair_class_count());
+    try testing.expectEqualStrings("realization-only", std.mem.span(lmt_playability_repair_class_name(0).?));
+    try testing.expectEqualStrings("register-adjusted", std.mem.span(lmt_playability_repair_class_name(1).?));
+    try testing.expectEqualStrings("texture-reduced", std.mem.span(lmt_playability_repair_class_name(2).?));
+    try testing.expectEqual(@as(?[*:0]const u8, null), lmt_playability_repair_class_name(9));
+
+    var policy: LmtPlayabilityRepairPolicy = undefined;
+    try testing.expectEqual(@as(u32, 1), lmt_default_playability_repair_policy(
+        c.LMT_PLAYABILITY_REPAIR_TEXTURE_REDUCED,
+        @ptrCast(&policy),
+    ));
+    try testing.expectEqual(@as(u8, c.LMT_PLAYABILITY_REPAIR_TEXTURE_REDUCED), policy.max_class);
+    try testing.expectEqual(@as(u8, 1), policy.preserve_bass);
+    try testing.expectEqual(@as(u8, 1), policy.preserve_top_voice);
+    try testing.expectEqual(@as(u8, 1), policy.prefer_inner_changes);
+    try testing.expectEqual(@as(u8, 1), policy.allow_hand_reassignment);
+}
+
 test "c abi keyboard phrase audit wrapper" {
     var profile: LmtHandProfile = undefined;
     try testing.expectEqual(@as(u32, 1), lmt_default_keyboard_hand_profile(@ptrCast(&profile)));
@@ -1135,6 +1171,41 @@ test "c abi committed keyboard phrase memory helpers and audit wrapper" {
     try testing.expect(logical > 0);
     try testing.expectEqual(@as(u16, 3), summary.event_count);
     try testing.expect(summary.longest_recovery_deficit_run >= 1);
+}
+
+test "c abi keyboard phrase repair wrapper" {
+    var profile: LmtHandProfile = undefined;
+    try testing.expectEqual(@as(u32, 1), lmt_default_keyboard_hand_profile(@ptrCast(&profile)));
+
+    var memory = std.mem.zeroes(LmtKeyboardCommittedPhraseMemory);
+    lmt_keyboard_committed_phrase_reset(@ptrCast(&memory));
+    const events = [_]LmtKeyboardPhraseEvent{
+        .{ .note_count = 1, .hand = c.LMT_KEYBOARD_HAND_RIGHT, .reserved0 = 0, .reserved1 = 0, .notes = .{ 72, 0, 0, 0, 0 } },
+        .{ .note_count = 1, .hand = c.LMT_KEYBOARD_HAND_RIGHT, .reserved0 = 0, .reserved1 = 0, .notes = .{ 48, 0, 0, 0, 0 } },
+    };
+    for (events) |event| {
+        try testing.expect(lmt_keyboard_committed_phrase_push(@ptrCast(&memory), @ptrCast(&event)) > 0);
+    }
+
+    var policy: LmtPlayabilityRepairPolicy = undefined;
+    try testing.expectEqual(@as(u32, 1), lmt_default_playability_repair_policy(
+        c.LMT_PLAYABILITY_REPAIR_REALIZATION_ONLY,
+        @ptrCast(&policy),
+    ));
+
+    var ranked: [playability.repair.MAX_PHRASE_REPAIRS]LmtRankedKeyboardPhraseRepair = undefined;
+    const total = lmt_rank_keyboard_phrase_repairs_n(
+        @ptrCast(&memory),
+        @ptrCast(&profile),
+        @ptrCast(&policy),
+        @ptrCast(&ranked),
+        ranked.len,
+    );
+    try testing.expect(total > 0);
+    try testing.expectEqual(@as(u8, c.LMT_PLAYABILITY_REPAIR_REALIZATION_ONLY), ranked[0].repair_class);
+    try testing.expectEqual(@as(u8, 0), ranked[0].crossed_musical_change_boundary);
+    try testing.expectEqual(@as(u8, c.LMT_KEYBOARD_HAND_LEFT), ranked[0].replacement_event.hand);
+    try testing.expect(ranked[0].after_summary.bottleneck_magnitude <= ranked[0].before_summary.bottleneck_magnitude);
 }
 
 test "c abi fret phrase audit wrapper" {
@@ -1235,6 +1306,54 @@ test "c abi committed fret phrase memory helpers and audit wrapper" {
     try testing.expectEqual(@as(u16, 3), summary.event_count);
     try testing.expectEqual(@as(u16, 0), summary.first_blocked_transition_from_index);
     try testing.expectEqual(@as(u16, 1), summary.first_blocked_transition_to_index);
+}
+
+test "c abi fret phrase repair wrapper" {
+    const tuning = [_]u8{ 40, 45, 50, 55 };
+    var hand_profile = LmtHandProfile{
+        .finger_count = 4,
+        .comfort_span_steps = 4,
+        .limit_span_steps = 5,
+        .comfort_shift_steps = 1,
+        .limit_shift_steps = 3,
+        .prefers_low_tension = 1,
+        .reserved0 = 0,
+        .reserved1 = 0,
+    };
+
+    var memory = std.mem.zeroes(LmtFretCommittedPhraseMemory);
+    lmt_fret_committed_phrase_reset(@ptrCast(&memory));
+    const events = [_]LmtFretPhraseEvent{
+        .{ .fret_count = 4, .reserved0 = 0, .reserved1 = 0, .reserved2 = 0, .frets = .{ 3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 } },
+        .{ .fret_count = 4, .reserved0 = 0, .reserved1 = 0, .reserved2 = 0, .frets = .{ 10, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 } },
+    };
+    for (events) |event| {
+        try testing.expect(lmt_fret_committed_phrase_push(@ptrCast(&memory), @ptrCast(&event)) > 0);
+    }
+
+    var policy: LmtPlayabilityRepairPolicy = undefined;
+    try testing.expectEqual(@as(u32, 1), lmt_default_playability_repair_policy(
+        c.LMT_PLAYABILITY_REPAIR_REALIZATION_ONLY,
+        @ptrCast(&policy),
+    ));
+
+    var ranked: [playability.repair.MAX_PHRASE_REPAIRS]LmtRankedFretPhraseRepair = undefined;
+    const total = lmt_rank_fret_phrase_repairs_n(
+        @ptrCast(&memory),
+        @ptrCast(&tuning),
+        tuning.len,
+        c.LMT_FRET_TECHNIQUE_GENERIC_GUITAR,
+        @ptrCast(&hand_profile),
+        @ptrCast(&policy),
+        @ptrCast(&ranked),
+        ranked.len,
+    );
+    try testing.expect(total > 0);
+    try testing.expectEqual(@as(u8, c.LMT_PLAYABILITY_REPAIR_REALIZATION_ONLY), ranked[0].repair_class);
+    try testing.expectEqual(@as(u8, 0), ranked[0].crossed_musical_change_boundary);
+    try testing.expectEqual(@as(i8, -1), ranked[0].replacement_event.frets[0]);
+    try testing.expectEqual(@as(i8, 5), ranked[0].replacement_event.frets[1]);
+    try testing.expect(ranked[0].after_summary.bottleneck_magnitude <= ranked[0].before_summary.bottleneck_magnitude);
 }
 
 test "c abi fret playability assessment helpers" {
