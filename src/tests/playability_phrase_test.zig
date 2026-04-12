@@ -42,6 +42,36 @@ test "fret phrase event fills unused strings with sentinel" {
     try testing.expectEqual(@as(i8, -1), event.frets[6]);
 }
 
+test "keyboard committed phrase memory resets and appends explicit events" {
+    var memory = phrase.KeyboardCommittedPhraseMemory.init();
+    try testing.expectEqual(@as(usize, 0), memory.len());
+    try testing.expect(memory.current() == null);
+
+    try testing.expect(memory.push(phrase.KeyboardPhraseEvent.init(&[_]pitch.MidiNote{60}, .right)));
+    try testing.expect(memory.push(phrase.KeyboardPhraseEvent.init(&[_]pitch.MidiNote{67}, .right)));
+    try testing.expectEqual(@as(usize, 2), memory.len());
+    try testing.expectEqual(@as(u8, 67), memory.current().?.notes[0]);
+    try testing.expectEqual(@as(u8, 60), memory.previous().?.notes[0]);
+
+    memory.reset();
+    try testing.expectEqual(@as(usize, 0), memory.len());
+    try testing.expect(memory.current() == null);
+}
+
+test "fret committed phrase memory resets and appends explicit events" {
+    var memory = phrase.FretCommittedPhraseMemory.init();
+    try testing.expectEqual(@as(usize, 0), memory.len());
+
+    try testing.expect(memory.push(phrase.FretPhraseEvent.init(&[_]i8{ 3, -1, -1, -1 })));
+    try testing.expect(memory.push(phrase.FretPhraseEvent.init(&[_]i8{ 5, -1, -1, -1 })));
+    try testing.expectEqual(@as(usize, 2), memory.len());
+    try testing.expectEqual(@as(i8, 5), memory.current().?.frets[0]);
+    try testing.expectEqual(@as(i8, 3), memory.previous().?.frets[0]);
+
+    memory.reset();
+    try testing.expectEqual(@as(usize, 0), memory.len());
+}
+
 test "phrase summary tracks blocked transitions and recovery deficit runs" {
     const issues = [_]phrase.PhraseIssue{
         phrase.PhraseIssue.eventIssue(.advisory, .playability_reason, @intFromEnum(types.ReasonKind.reachable_in_current_window), 0, 0),
@@ -161,4 +191,39 @@ test "fixed-realization fret phrase audit emits shift blockers and recovery defi
         }
     }
     try testing.expect(found_shift_blocker);
+}
+
+test "committed keyboard phrase audit delegates to fixed realization audit" {
+    var memory = phrase.KeyboardCommittedPhraseMemory.init();
+    try testing.expect(memory.push(phrase.KeyboardPhraseEvent.init(&[_]pitch.MidiNote{ 60, 67 }, .right)));
+    try testing.expect(memory.push(phrase.KeyboardPhraseEvent.init(&[_]pitch.MidiNote{ 60, 67 }, .right)));
+    try testing.expect(memory.push(phrase.KeyboardPhraseEvent.init(&[_]pitch.MidiNote{ 60, 67 }, .right)));
+
+    const profile = types.HandProfile.init(5, 4, 12, 12, 12, true);
+    var issues: [128]phrase.PhraseIssue = undefined;
+    const result = phrase.auditCommittedKeyboardPhrase(&memory, profile, issues[0..]);
+
+    try testing.expectEqual(@as(u16, 3), result.summary.event_count);
+    try testing.expectEqual(@as(u16, 3), result.summary.longest_recovery_deficit_run);
+}
+
+test "committed fret phrase audit delegates to fixed realization audit" {
+    var memory = phrase.FretCommittedPhraseMemory.init();
+    try testing.expect(memory.push(phrase.FretPhraseEvent.init(&[_]i8{ 1, -1, -1, -1 })));
+    try testing.expect(memory.push(phrase.FretPhraseEvent.init(&[_]i8{ 8, -1, -1, -1 })));
+    try testing.expect(memory.push(phrase.FretPhraseEvent.init(&[_]i8{ 12, -1, -1, -1 })));
+
+    const tuning = [_]pitch.MidiNote{ 40, 45, 50, 55 };
+    const profile = types.HandProfile.init(4, 3, 5, 2, 3, true);
+    var issues: [128]phrase.PhraseIssue = undefined;
+    const result = phrase.auditCommittedFretPhrase(
+        &memory,
+        tuning[0..],
+        .generic_guitar,
+        profile,
+        issues[0..],
+    );
+
+    try testing.expectEqual(phrase.StrainBucket.blocked, result.summary.strain_bucket);
+    try testing.expectEqual(@as(u16, 3), result.summary.event_count);
 }

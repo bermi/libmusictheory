@@ -22,6 +22,8 @@ const LmtHandProfile = api.LmtHandProfile;
 const LmtPlayabilityDifficultySummary = api.LmtPlayabilityDifficultySummary;
 const LmtKeyboardPhraseEvent = api.LmtKeyboardPhraseEvent;
 const LmtFretPhraseEvent = api.LmtFretPhraseEvent;
+const LmtKeyboardCommittedPhraseMemory = api.LmtKeyboardCommittedPhraseMemory;
+const LmtFretCommittedPhraseMemory = api.LmtFretCommittedPhraseMemory;
 const LmtPlayabilityPhraseIssue = api.LmtPlayabilityPhraseIssue;
 const LmtPlayabilityPhraseSummary = api.LmtPlayabilityPhraseSummary;
 const LmtTemporalLoadState = api.LmtTemporalLoadState;
@@ -156,6 +158,8 @@ const lmt_sizeof_ranked_keyboard_next_step = api.lmt_sizeof_ranked_keyboard_next
 const lmt_sizeof_playability_difficulty_summary = api.lmt_sizeof_playability_difficulty_summary;
 const lmt_sizeof_keyboard_phrase_event = api.lmt_sizeof_keyboard_phrase_event;
 const lmt_sizeof_fret_phrase_event = api.lmt_sizeof_fret_phrase_event;
+const lmt_sizeof_keyboard_committed_phrase_memory = api.lmt_sizeof_keyboard_committed_phrase_memory;
+const lmt_sizeof_fret_committed_phrase_memory = api.lmt_sizeof_fret_committed_phrase_memory;
 const lmt_sizeof_playability_phrase_issue = api.lmt_sizeof_playability_phrase_issue;
 const lmt_sizeof_playability_phrase_summary = api.lmt_sizeof_playability_phrase_summary;
 const lmt_sizeof_voiced_state = api.lmt_sizeof_voiced_state;
@@ -181,8 +185,16 @@ const lmt_default_fret_hand_profile = api.lmt_default_fret_hand_profile;
 const lmt_default_fret_hand_profile_for_technique = api.lmt_default_fret_hand_profile_for_technique;
 const lmt_default_keyboard_hand_profile = api.lmt_default_keyboard_hand_profile;
 const lmt_summarize_playability_phrase_issues = api.lmt_summarize_playability_phrase_issues;
+const lmt_keyboard_committed_phrase_reset = api.lmt_keyboard_committed_phrase_reset;
+const lmt_keyboard_committed_phrase_push = api.lmt_keyboard_committed_phrase_push;
+const lmt_keyboard_committed_phrase_len = api.lmt_keyboard_committed_phrase_len;
+const lmt_fret_committed_phrase_reset = api.lmt_fret_committed_phrase_reset;
+const lmt_fret_committed_phrase_push = api.lmt_fret_committed_phrase_push;
+const lmt_fret_committed_phrase_len = api.lmt_fret_committed_phrase_len;
 const lmt_audit_fret_phrase_n = api.lmt_audit_fret_phrase_n;
 const lmt_audit_keyboard_phrase_n = api.lmt_audit_keyboard_phrase_n;
+const lmt_audit_committed_fret_phrase_n = api.lmt_audit_committed_fret_phrase_n;
+const lmt_audit_committed_keyboard_phrase_n = api.lmt_audit_committed_keyboard_phrase_n;
 const lmt_describe_fret_play_state = api.lmt_describe_fret_play_state;
 const lmt_windowed_fret_positions_n = api.lmt_windowed_fret_positions_n;
 const lmt_assess_fret_realization_n = api.lmt_assess_fret_realization_n;
@@ -201,7 +213,9 @@ const lmt_rank_keyboard_fingerings_n = api.lmt_rank_keyboard_fingerings_n;
 const lmt_suggest_easier_keyboard_fingering_n = api.lmt_suggest_easier_keyboard_fingering_n;
 const lmt_filter_next_steps_by_playability = api.lmt_filter_next_steps_by_playability;
 const lmt_rank_keyboard_next_steps_by_playability = api.lmt_rank_keyboard_next_steps_by_playability;
+const lmt_rank_keyboard_next_steps_by_committed_phrase = api.lmt_rank_keyboard_next_steps_by_committed_phrase;
 const lmt_suggest_safer_keyboard_next_step_by_playability = api.lmt_suggest_safer_keyboard_next_step_by_playability;
+const lmt_suggest_safer_keyboard_next_step_by_committed_phrase = api.lmt_suggest_safer_keyboard_next_step_by_committed_phrase;
 const lmt_voiced_history_reset = api.lmt_voiced_history_reset;
 const lmt_build_voiced_state = api.lmt_build_voiced_state;
 const lmt_voiced_history_push = api.lmt_voiced_history_push;
@@ -217,6 +231,7 @@ const lmt_satb_range_contains = api.lmt_satb_range_contains;
 const lmt_check_satb_registers = api.lmt_check_satb_registers;
 const lmt_rank_next_steps = api.lmt_rank_next_steps;
 const lmt_rank_keyboard_context_suggestions_by_playability = api.lmt_rank_keyboard_context_suggestions_by_playability;
+const lmt_rank_keyboard_context_suggestions_by_committed_phrase = api.lmt_rank_keyboard_context_suggestions_by_committed_phrase;
 const lmt_rank_cadence_destinations = api.lmt_rank_cadence_destinations;
 const lmt_analyze_suspension_machine = api.lmt_analyze_suspension_machine;
 const lmt_next_step_reason_count = api.lmt_next_step_reason_count;
@@ -255,6 +270,8 @@ test "c abi header layout and constants" {
     try testing.expectEqual(@sizeOf(c.lmt_playability_difficulty_summary), @sizeOf(LmtPlayabilityDifficultySummary));
     try testing.expectEqual(@sizeOf(c.lmt_keyboard_phrase_event), @sizeOf(LmtKeyboardPhraseEvent));
     try testing.expectEqual(@sizeOf(c.lmt_fret_phrase_event), @sizeOf(LmtFretPhraseEvent));
+    try testing.expectEqual(@sizeOf(c.lmt_keyboard_committed_phrase_memory), @sizeOf(LmtKeyboardCommittedPhraseMemory));
+    try testing.expectEqual(@sizeOf(c.lmt_fret_committed_phrase_memory), @sizeOf(LmtFretCommittedPhraseMemory));
     try testing.expectEqual(@sizeOf(c.lmt_playability_phrase_issue), @sizeOf(LmtPlayabilityPhraseIssue));
     try testing.expectEqual(@sizeOf(c.lmt_playability_phrase_summary), @sizeOf(LmtPlayabilityPhraseSummary));
     try testing.expectEqual(@sizeOf(c.lmt_temporal_load_state), @sizeOf(LmtTemporalLoadState));
@@ -366,6 +383,8 @@ test "c abi header layout and constants" {
     try testing.expectEqual(@as(u32, @sizeOf(LmtPlayabilityDifficultySummary)), lmt_sizeof_playability_difficulty_summary());
     try testing.expectEqual(@as(u32, @sizeOf(LmtKeyboardPhraseEvent)), lmt_sizeof_keyboard_phrase_event());
     try testing.expectEqual(@as(u32, @sizeOf(LmtFretPhraseEvent)), lmt_sizeof_fret_phrase_event());
+    try testing.expectEqual(@as(u32, @sizeOf(LmtKeyboardCommittedPhraseMemory)), lmt_sizeof_keyboard_committed_phrase_memory());
+    try testing.expectEqual(@as(u32, @sizeOf(LmtFretCommittedPhraseMemory)), lmt_sizeof_fret_committed_phrase_memory());
     try testing.expectEqual(@as(u32, @sizeOf(LmtPlayabilityPhraseIssue)), lmt_sizeof_playability_phrase_issue());
     try testing.expectEqual(@as(u32, @sizeOf(LmtPlayabilityPhraseSummary)), lmt_sizeof_playability_phrase_summary());
     try testing.expectEqual(@as(u32, counterpoint.MAX_VOICES), lmt_counterpoint_max_voices());
@@ -1079,6 +1098,45 @@ test "c abi keyboard phrase audit wrapper" {
     try testing.expect(found_transition_warning);
 }
 
+test "c abi committed keyboard phrase memory helpers and audit wrapper" {
+    var profile: LmtHandProfile = undefined;
+    try testing.expectEqual(@as(u32, 1), lmt_default_keyboard_hand_profile(@ptrCast(&profile)));
+    profile.comfort_span_steps = 4;
+    profile.limit_span_steps = 12;
+    profile.comfort_shift_steps = 12;
+    profile.limit_shift_steps = 12;
+
+    var memory = std.mem.zeroes(LmtKeyboardCommittedPhraseMemory);
+    lmt_keyboard_committed_phrase_reset(@ptrCast(&memory));
+    try testing.expectEqual(@as(u32, 0), lmt_keyboard_committed_phrase_len(@ptrCast(&memory)));
+
+    const event = LmtKeyboardPhraseEvent{
+        .note_count = 2,
+        .hand = c.LMT_KEYBOARD_HAND_RIGHT,
+        .reserved0 = 0,
+        .reserved1 = 0,
+        .notes = .{ 60, 67, 0, 0, 0 },
+    };
+    try testing.expectEqual(@as(u32, 1), lmt_keyboard_committed_phrase_push(@ptrCast(&memory), @ptrCast(&event)));
+    try testing.expectEqual(@as(u32, 2), lmt_keyboard_committed_phrase_push(@ptrCast(&memory), @ptrCast(&event)));
+    try testing.expectEqual(@as(u32, 3), lmt_keyboard_committed_phrase_push(@ptrCast(&memory), @ptrCast(&event)));
+    try testing.expectEqual(@as(u32, 3), lmt_keyboard_committed_phrase_len(@ptrCast(&memory)));
+
+    var issues: [64]LmtPlayabilityPhraseIssue = undefined;
+    var summary: LmtPlayabilityPhraseSummary = undefined;
+    const logical = lmt_audit_committed_keyboard_phrase_n(
+        @ptrCast(&memory),
+        @ptrCast(&profile),
+        @ptrCast(&issues),
+        issues.len,
+        @ptrCast(&summary),
+    );
+
+    try testing.expect(logical > 0);
+    try testing.expectEqual(@as(u16, 3), summary.event_count);
+    try testing.expect(summary.longest_recovery_deficit_run >= 1);
+}
+
 test "c abi fret phrase audit wrapper" {
     var profile: LmtHandProfile = undefined;
     try testing.expectEqual(@as(u32, 1), lmt_default_fret_hand_profile(@ptrCast(&profile)));
@@ -1120,6 +1178,63 @@ test "c abi fret phrase audit wrapper" {
         }
     }
     try testing.expect(found_shift_blocker);
+}
+
+test "c abi committed fret phrase memory helpers and audit wrapper" {
+    var profile: LmtHandProfile = undefined;
+    try testing.expectEqual(@as(u32, 1), lmt_default_fret_hand_profile(@ptrCast(&profile)));
+    profile.comfort_shift_steps = 2;
+    profile.limit_shift_steps = 3;
+
+    var memory = std.mem.zeroes(LmtFretCommittedPhraseMemory);
+    lmt_fret_committed_phrase_reset(@ptrCast(&memory));
+    try testing.expectEqual(@as(u32, 0), lmt_fret_committed_phrase_len(@ptrCast(&memory)));
+
+    const event_a = LmtFretPhraseEvent{
+        .fret_count = 4,
+        .reserved0 = 0,
+        .reserved1 = 0,
+        .reserved2 = 0,
+        .frets = .{ 1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 },
+    };
+    const event_b = LmtFretPhraseEvent{
+        .fret_count = 4,
+        .reserved0 = 0,
+        .reserved1 = 0,
+        .reserved2 = 0,
+        .frets = .{ 8, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 },
+    };
+    const event_c = LmtFretPhraseEvent{
+        .fret_count = 4,
+        .reserved0 = 0,
+        .reserved1 = 0,
+        .reserved2 = 0,
+        .frets = .{ 12, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 },
+    };
+
+    try testing.expectEqual(@as(u32, 1), lmt_fret_committed_phrase_push(@ptrCast(&memory), @ptrCast(&event_a)));
+    try testing.expectEqual(@as(u32, 2), lmt_fret_committed_phrase_push(@ptrCast(&memory), @ptrCast(&event_b)));
+    try testing.expectEqual(@as(u32, 3), lmt_fret_committed_phrase_push(@ptrCast(&memory), @ptrCast(&event_c)));
+    try testing.expectEqual(@as(u32, 3), lmt_fret_committed_phrase_len(@ptrCast(&memory)));
+
+    const tuning = [_]u8{ 40, 45, 50, 55 };
+    var issues: [64]LmtPlayabilityPhraseIssue = undefined;
+    var summary: LmtPlayabilityPhraseSummary = undefined;
+    const logical = lmt_audit_committed_fret_phrase_n(
+        @ptrCast(&memory),
+        @ptrCast(&tuning),
+        tuning.len,
+        c.LMT_FRET_TECHNIQUE_GENERIC_GUITAR,
+        @ptrCast(&profile),
+        @ptrCast(&issues),
+        issues.len,
+        @ptrCast(&summary),
+    );
+
+    try testing.expect(logical > 0);
+    try testing.expectEqual(@as(u16, 3), summary.event_count);
+    try testing.expectEqual(@as(u16, 0), summary.first_blocked_transition_from_index);
+    try testing.expectEqual(@as(u16, 1), summary.first_blocked_transition_to_index);
 }
 
 test "c abi fret playability assessment helpers" {
@@ -1366,6 +1481,63 @@ test "c abi playability-aware next-step wrappers" {
     try testing.expectEqual(ranked[0].candidate_index, safer.candidate_index);
 }
 
+test "c abi committed phrase next step wrappers" {
+    var history: LmtVoicedHistory = undefined;
+    lmt_voiced_history_reset(@ptrCast(&history));
+    _ = lmt_voiced_history_push(
+        @ptrCast(&history),
+        @ptrCast(&[_]u8{60}),
+        1,
+        null,
+        0,
+        0,
+        c.LMT_MODE_IONIAN,
+        0,
+        4,
+        0,
+        c.LMT_CADENCE_STABLE,
+        null,
+    );
+
+    var keyboard_profile: LmtHandProfile = undefined;
+    try testing.expectEqual(@as(u32, 1), lmt_default_keyboard_hand_profile(@ptrCast(&keyboard_profile)));
+
+    var memory = std.mem.zeroes(LmtKeyboardCommittedPhraseMemory);
+    lmt_keyboard_committed_phrase_reset(@ptrCast(&memory));
+    const event = LmtKeyboardPhraseEvent{
+        .note_count = 1,
+        .hand = c.LMT_KEYBOARD_HAND_RIGHT,
+        .reserved0 = 0,
+        .reserved1 = 0,
+        .notes = .{ 60, 0, 0, 0, 0 },
+    };
+    try testing.expectEqual(@as(u32, 1), lmt_keyboard_committed_phrase_push(@ptrCast(&memory), @ptrCast(&event)));
+
+    var ranked: [counterpoint.MAX_NEXT_STEP_SUGGESTIONS]LmtRankedKeyboardNextStep = undefined;
+    const ranked_total = lmt_rank_keyboard_next_steps_by_committed_phrase(
+        @ptrCast(&memory),
+        @ptrCast(&history),
+        c.LMT_COUNTERPOINT_SPECIES,
+        @ptrCast(&keyboard_profile),
+        c.LMT_PLAYABILITY_POLICY_BALANCED,
+        @ptrCast(&ranked),
+        ranked.len,
+    );
+    try testing.expect(ranked_total > 0);
+    try testing.expectEqual(@as(u8, c.LMT_KEYBOARD_HAND_RIGHT), ranked[0].hand);
+
+    var safer: LmtRankedKeyboardNextStep = undefined;
+    try testing.expectEqual(@as(u32, 1), lmt_suggest_safer_keyboard_next_step_by_committed_phrase(
+        @ptrCast(&memory),
+        @ptrCast(&history),
+        c.LMT_COUNTERPOINT_SPECIES,
+        @ptrCast(&keyboard_profile),
+        c.LMT_PLAYABILITY_POLICY_BALANCED,
+        @ptrCast(&safer),
+    ));
+    try testing.expectEqual(@as(u8, c.LMT_KEYBOARD_HAND_RIGHT), safer.hand);
+}
+
 test "c abi playability-aware context suggestion wrapper" {
     var keyboard_profile: LmtHandProfile = undefined;
     try testing.expectEqual(@as(u32, 1), lmt_default_keyboard_hand_profile(@ptrCast(&keyboard_profile)));
@@ -1390,6 +1562,38 @@ test "c abi playability-aware context suggestion wrapper" {
     try testing.expectEqual(@as(u8, c.LMT_PLAYABILITY_POLICY_MINIMAX_BOTTLENECK), ranked[0].policy);
     try testing.expect(ranked[0].realized_note <= 127);
     try testing.expect(ranked[0].candidate.score != 0);
+}
+
+test "c abi committed phrase context suggestion wrapper" {
+    var keyboard_profile: LmtHandProfile = undefined;
+    try testing.expectEqual(@as(u32, 1), lmt_default_keyboard_hand_profile(@ptrCast(&keyboard_profile)));
+
+    var memory = std.mem.zeroes(LmtKeyboardCommittedPhraseMemory);
+    lmt_keyboard_committed_phrase_reset(@ptrCast(&memory));
+    const event = LmtKeyboardPhraseEvent{
+        .note_count = 1,
+        .hand = c.LMT_KEYBOARD_HAND_RIGHT,
+        .reserved0 = 0,
+        .reserved1 = 0,
+        .notes = .{ 72, 0, 0, 0, 0 },
+    };
+    try testing.expectEqual(@as(u32, 1), lmt_keyboard_committed_phrase_push(@ptrCast(&memory), @ptrCast(&event)));
+
+    var ranked: [keyboard.MAX_CONTEXT_SUGGESTIONS]LmtRankedKeyboardContextSuggestion = undefined;
+    const total = lmt_rank_keyboard_context_suggestions_by_committed_phrase(
+        @ptrCast(&memory),
+        pcs.fromList(&[_]u4{0}),
+        0,
+        c.LMT_MODE_IONIAN,
+        @ptrCast(&keyboard_profile),
+        c.LMT_PLAYABILITY_POLICY_BALANCED,
+        @ptrCast(&ranked),
+        ranked.len,
+    );
+    try testing.expect(total > 0);
+    try testing.expect(ranked[0].realized_note >= 69);
+    try testing.expect(ranked[0].realized_note <= 79);
+    try testing.expectEqual(@as(u8, c.LMT_KEYBOARD_HAND_RIGHT), ranked[0].hand);
 }
 
 test "c abi guitar functions" {

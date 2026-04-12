@@ -258,6 +258,55 @@ Keyboard phrase events carry an explicit hand role, so the audit must not preten
 When adjacent events switch from one hand to the other, the audit emits a `hand continuity reset` advisory reason and restarts the local continuity segment for:
 
 - transition interpretation
+
+## 0135 - Committed Phrase Memory And Choice Bias
+
+`0135` adds committed phrase memory as explicit library state without collapsing UI state into the core API.
+
+The public rule is strict:
+
+- committed phrase memory is library-owned musical state
+- caller-owned committed memory is passed in explicitly
+- accepted choices bias later ranking
+- preview-only host interactions stay out of library memory
+
+That keeps the semantics aligned with the rest of `libmusictheory`:
+
+- no hidden global blackboard
+- no browser/device state in the C layer
+- no confusion between preview focus and accepted musical history
+
+### What Counts As Committed Memory
+
+The new committed memory structs hold accepted realized phrase events only:
+
+- `KeyboardCommittedPhraseMemory`
+- `FretCommittedPhraseMemory`
+
+They support explicit:
+
+- reset
+- push
+- length inspection
+- phrase auditing over the committed window
+- keyboard next-step and context reranking from the committed window
+
+This makes the downstream explanation honest:
+
+- "accepted choices bias later ranking because the committed phrase already established a higher register anchor"
+- "preview-only host interactions stay out of library memory, so hovering or pinning does not mutate the committed phrase"
+
+### Why This Boundary Matters
+
+Hosts still need their own UI state for:
+
+- hover
+- preview pin
+- device connection state
+- virtual keyboard toggles
+- local persistence
+
+But that state is not theory state. The library should only store committed choices that change later musical or playability results.
 - warning cluster detection
 - recovery-deficit accounting
 

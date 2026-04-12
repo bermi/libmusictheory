@@ -133,6 +133,22 @@ pub const LmtFretPhraseEvent = extern struct {
     frets: [guitar.MAX_GENERIC_STRINGS]i8,
 };
 
+pub const LmtKeyboardCommittedPhraseMemory = extern struct {
+    event_count: u8,
+    reserved0: u8,
+    reserved1: u8,
+    reserved2: u8,
+    events: [playability.phrase.MAX_PHRASE_EVENTS]LmtKeyboardPhraseEvent,
+};
+
+pub const LmtFretCommittedPhraseMemory = extern struct {
+    event_count: u8,
+    reserved0: u8,
+    reserved1: u8,
+    reserved2: u8,
+    events: [playability.phrase.MAX_PHRASE_EVENTS]LmtFretPhraseEvent,
+};
+
 pub const LmtPlayabilityPhraseIssue = extern struct {
     scope: u8,
     severity: u8,
@@ -791,6 +807,86 @@ fn decodeFretPhraseEvent(raw: LmtFretPhraseEvent) playability.phrase.FretPhraseE
         .reserved2 = 0,
         .frets = raw.frets,
     };
+}
+
+fn decodeKeyboardCommittedPhraseMemory(raw: LmtKeyboardCommittedPhraseMemory) ?playability.phrase.KeyboardCommittedPhraseMemory {
+    var out = playability.phrase.KeyboardCommittedPhraseMemory.init();
+    const count = @min(@as(usize, raw.event_count), playability.phrase.MAX_PHRASE_EVENTS);
+    var index: usize = 0;
+    while (index < count) : (index += 1) {
+        out.events[index] = decodeKeyboardPhraseEvent(raw.events[index]) orelse return null;
+    }
+    out.event_count = @as(u8, @intCast(count));
+    return out;
+}
+
+fn decodeFretCommittedPhraseMemory(raw: LmtFretCommittedPhraseMemory) playability.phrase.FretCommittedPhraseMemory {
+    var out = playability.phrase.FretCommittedPhraseMemory.init();
+    const count = @min(@as(usize, raw.event_count), playability.phrase.MAX_PHRASE_EVENTS);
+    var index: usize = 0;
+    while (index < count) : (index += 1) {
+        out.events[index] = decodeFretPhraseEvent(raw.events[index]);
+    }
+    out.event_count = @as(u8, @intCast(count));
+    return out;
+}
+
+fn writeKeyboardPhraseEvent(out: *LmtKeyboardPhraseEvent, event: playability.phrase.KeyboardPhraseEvent) void {
+    var notes: [playability.keyboard_assessment.MAX_FINGERING_NOTES]u8 = [_]u8{0} ** playability.keyboard_assessment.MAX_FINGERING_NOTES;
+    for (event.notes, 0..) |note, index| {
+        notes[index] = note;
+    }
+    out.* = .{
+        .note_count = event.note_count,
+        .hand = @intFromEnum(event.hand),
+        .reserved0 = 0,
+        .reserved1 = 0,
+        .notes = notes,
+    };
+}
+
+fn writeFretPhraseEvent(out: *LmtFretPhraseEvent, event: playability.phrase.FretPhraseEvent) void {
+    out.* = .{
+        .fret_count = event.fret_count,
+        .reserved0 = 0,
+        .reserved1 = 0,
+        .reserved2 = 0,
+        .frets = event.frets,
+    };
+}
+
+fn writeKeyboardCommittedPhraseMemory(
+    out: *LmtKeyboardCommittedPhraseMemory,
+    memory: playability.phrase.KeyboardCommittedPhraseMemory,
+) void {
+    out.* = .{
+        .event_count = memory.event_count,
+        .reserved0 = 0,
+        .reserved1 = 0,
+        .reserved2 = 0,
+        .events = undefined,
+    };
+    var index: usize = 0;
+    while (index < playability.phrase.MAX_PHRASE_EVENTS) : (index += 1) {
+        writeKeyboardPhraseEvent(&out.events[index], memory.events[index]);
+    }
+}
+
+fn writeFretCommittedPhraseMemory(
+    out: *LmtFretCommittedPhraseMemory,
+    memory: playability.phrase.FretCommittedPhraseMemory,
+) void {
+    out.* = .{
+        .event_count = memory.event_count,
+        .reserved0 = 0,
+        .reserved1 = 0,
+        .reserved2 = 0,
+        .events = undefined,
+    };
+    var index: usize = 0;
+    while (index < playability.phrase.MAX_PHRASE_EVENTS) : (index += 1) {
+        writeFretPhraseEvent(&out.events[index], memory.events[index]);
+    }
 }
 
 fn writePhraseIssue(
@@ -1988,6 +2084,14 @@ pub export fn lmt_sizeof_fret_phrase_event() callconv(.c) u32 {
     return @as(u32, @intCast(@sizeOf(LmtFretPhraseEvent)));
 }
 
+pub export fn lmt_sizeof_keyboard_committed_phrase_memory() callconv(.c) u32 {
+    return @as(u32, @intCast(@sizeOf(LmtKeyboardCommittedPhraseMemory)));
+}
+
+pub export fn lmt_sizeof_fret_committed_phrase_memory() callconv(.c) u32 {
+    return @as(u32, @intCast(@sizeOf(LmtFretCommittedPhraseMemory)));
+}
+
 pub export fn lmt_sizeof_playability_phrase_issue() callconv(.c) u32 {
     return @as(u32, @intCast(@sizeOf(LmtPlayabilityPhraseIssue)));
 }
@@ -2155,6 +2259,54 @@ pub export fn lmt_summarize_playability_phrase_issues(
     return 1;
 }
 
+pub export fn lmt_keyboard_committed_phrase_reset(memory_ptr: [*c]LmtKeyboardCommittedPhraseMemory) callconv(.c) void {
+    if (memory_ptr == null) return;
+    writeKeyboardCommittedPhraseMemory(@ptrCast(memory_ptr), playability.phrase.KeyboardCommittedPhraseMemory.init());
+}
+
+pub export fn lmt_keyboard_committed_phrase_push(
+    memory_ptr: [*c]LmtKeyboardCommittedPhraseMemory,
+    event_ptr: [*c]const LmtKeyboardPhraseEvent,
+) callconv(.c) u32 {
+    if (memory_ptr == null or event_ptr == null) return 0;
+
+    var memory = decodeKeyboardCommittedPhraseMemory((@as(*const LmtKeyboardCommittedPhraseMemory, @ptrCast(memory_ptr))).*) orelse return 0;
+    const event = decodeKeyboardPhraseEvent((@as(*const LmtKeyboardPhraseEvent, @ptrCast(event_ptr))).*) orelse return 0;
+    if (!memory.push(event)) return 0;
+    writeKeyboardCommittedPhraseMemory(@ptrCast(memory_ptr), memory);
+    return @as(u32, memory.event_count);
+}
+
+pub export fn lmt_keyboard_committed_phrase_len(memory_ptr: [*c]const LmtKeyboardCommittedPhraseMemory) callconv(.c) u32 {
+    if (memory_ptr == null) return 0;
+    const memory = decodeKeyboardCommittedPhraseMemory((@as(*const LmtKeyboardCommittedPhraseMemory, @ptrCast(memory_ptr))).*) orelse return 0;
+    return @as(u32, memory.event_count);
+}
+
+pub export fn lmt_fret_committed_phrase_reset(memory_ptr: [*c]LmtFretCommittedPhraseMemory) callconv(.c) void {
+    if (memory_ptr == null) return;
+    writeFretCommittedPhraseMemory(@ptrCast(memory_ptr), playability.phrase.FretCommittedPhraseMemory.init());
+}
+
+pub export fn lmt_fret_committed_phrase_push(
+    memory_ptr: [*c]LmtFretCommittedPhraseMemory,
+    event_ptr: [*c]const LmtFretPhraseEvent,
+) callconv(.c) u32 {
+    if (memory_ptr == null or event_ptr == null) return 0;
+
+    var memory = decodeFretCommittedPhraseMemory((@as(*const LmtFretCommittedPhraseMemory, @ptrCast(memory_ptr))).*);
+    const event = decodeFretPhraseEvent((@as(*const LmtFretPhraseEvent, @ptrCast(event_ptr))).*);
+    if (!memory.push(event)) return 0;
+    writeFretCommittedPhraseMemory(@ptrCast(memory_ptr), memory);
+    return @as(u32, memory.event_count);
+}
+
+pub export fn lmt_fret_committed_phrase_len(memory_ptr: [*c]const LmtFretCommittedPhraseMemory) callconv(.c) u32 {
+    if (memory_ptr == null) return 0;
+    const memory = decodeFretCommittedPhraseMemory((@as(*const LmtFretCommittedPhraseMemory, @ptrCast(memory_ptr))).*);
+    return @as(u32, memory.event_count);
+}
+
 pub export fn lmt_audit_fret_phrase_n(
     events_ptr: [*c]const LmtFretPhraseEvent,
     event_count: u32,
@@ -2211,6 +2363,54 @@ pub export fn lmt_audit_fret_phrase_n(
     return @as(u32, @intCast(result.logical_issue_count));
 }
 
+pub export fn lmt_audit_committed_fret_phrase_n(
+    memory_ptr: [*c]const LmtFretCommittedPhraseMemory,
+    tuning_ptr: [*c]const u8,
+    tuning_count: u32,
+    profile_raw: u32,
+    hand_profile_ptr: [*c]const LmtHandProfile,
+    issues_out: [*c]LmtPlayabilityPhraseIssue,
+    issues_cap: u32,
+    summary_out: [*c]LmtPlayabilityPhraseSummary,
+) callconv(.c) u32 {
+    if (memory_ptr == null) return 0;
+
+    var tuning_buf: [MAX_PARAMETRIC_FRET_STRINGS]pitch.MidiNote = undefined;
+    const tuning = decodeTuningGeneric(tuning_ptr, tuning_count, &tuning_buf);
+    if (tuning.len == 0) return 0;
+
+    const technique = decodeFretTechniqueProfile(profile_raw) orelse return 0;
+    const hand_profile: ?playability.types.HandProfile = if (hand_profile_ptr != null)
+        decodeHandProfile(hand_profile_ptr[0])
+    else
+        null;
+    const memory = decodeFretCommittedPhraseMemory((@as(*const LmtFretCommittedPhraseMemory, @ptrCast(memory_ptr))).*);
+
+    var issues_buf: [playability.phrase.MAX_PHRASE_AUDIT_ISSUES]playability.phrase.PhraseIssue = undefined;
+    const out_cap = if (issues_out != null)
+        @min(@as(usize, @intCast(issues_cap)), issues_buf.len)
+    else
+        0;
+    const result = playability.phrase.auditCommittedFretPhrase(
+        &memory,
+        tuning,
+        technique,
+        hand_profile,
+        issues_buf[0..out_cap],
+    );
+
+    if (issues_out != null) {
+        const write_len = @min(result.written_issue_count, @as(usize, @intCast(issues_cap)));
+        for (issues_buf[0..write_len], 0..) |issue, index| {
+            writePhraseIssue(@ptrCast(&issues_out[index]), issue);
+        }
+    }
+    if (summary_out != null) {
+        writePhraseSummary(@ptrCast(summary_out), result.summary);
+    }
+    return @as(u32, @intCast(result.logical_issue_count));
+}
+
 pub export fn lmt_audit_keyboard_phrase_n(
     events_ptr: [*c]const LmtKeyboardPhraseEvent,
     event_count: u32,
@@ -2243,6 +2443,40 @@ pub export fn lmt_audit_keyboard_phrase_n(
         profile,
         issues_buf[0..out_cap],
     );
+
+    if (issues_out != null) {
+        const write_len = @min(result.written_issue_count, @as(usize, @intCast(issues_cap)));
+        for (issues_buf[0..write_len], 0..) |issue, index| {
+            writePhraseIssue(@ptrCast(&issues_out[index]), issue);
+        }
+    }
+    if (summary_out != null) {
+        writePhraseSummary(@ptrCast(summary_out), result.summary);
+    }
+    return @as(u32, @intCast(result.logical_issue_count));
+}
+
+pub export fn lmt_audit_committed_keyboard_phrase_n(
+    memory_ptr: [*c]const LmtKeyboardCommittedPhraseMemory,
+    profile_ptr: [*c]const LmtHandProfile,
+    issues_out: [*c]LmtPlayabilityPhraseIssue,
+    issues_cap: u32,
+    summary_out: [*c]LmtPlayabilityPhraseSummary,
+) callconv(.c) u32 {
+    if (memory_ptr == null) return 0;
+
+    const profile = if (profile_ptr != null)
+        decodeHandProfile(profile_ptr[0])
+    else
+        playability.keyboard_topology.defaultHandProfile();
+    const memory = decodeKeyboardCommittedPhraseMemory((@as(*const LmtKeyboardCommittedPhraseMemory, @ptrCast(memory_ptr))).*) orelse return 0;
+
+    var issues_buf: [playability.phrase.MAX_PHRASE_AUDIT_ISSUES]playability.phrase.PhraseIssue = undefined;
+    const out_cap = if (issues_out != null)
+        @min(@as(usize, @intCast(issues_cap)), issues_buf.len)
+    else
+        0;
+    const result = playability.phrase.auditCommittedKeyboardPhrase(&memory, profile, issues_buf[0..out_cap]);
 
     if (issues_out != null) {
         const write_len = @min(result.written_issue_count, @as(usize, @intCast(issues_cap)));
@@ -2623,6 +2857,49 @@ pub export fn lmt_rank_keyboard_next_steps_by_playability(
     return @as(u32, @intCast(ranked.len));
 }
 
+pub export fn lmt_rank_keyboard_next_steps_by_committed_phrase(
+    memory_ptr: [*c]const LmtKeyboardCommittedPhraseMemory,
+    history: [*c]const LmtVoicedHistory,
+    profile_raw: u32,
+    hand_profile_ptr: [*c]const LmtHandProfile,
+    policy_raw: u32,
+    out: [*c]LmtRankedKeyboardNextStep,
+    out_cap: u32,
+) callconv(.c) u32 {
+    if (memory_ptr == null or history == null) return 0;
+    if (profile_raw > std.math.maxInt(u8)) return 0;
+
+    const memory = decodeKeyboardCommittedPhraseMemory((@as(*const LmtKeyboardCommittedPhraseMemory, @ptrCast(memory_ptr))).*) orelse return 0;
+    const profile_value = decodeCounterpointRuleProfile(@as(u8, @intCast(profile_raw))) orelse return 0;
+    const hand_profile = if (hand_profile_ptr != null)
+        decodeHandProfile(hand_profile_ptr[0])
+    else
+        playability.keyboard_topology.defaultHandProfile();
+    const policy = decodePlayabilityPolicy(policy_raw) orelse return 0;
+
+    const raw_history: *const LmtVoicedHistory = @ptrCast(history);
+    var decoded_history = decodeVoicedHistory(raw_history.*);
+    var ranked_buf: [counterpoint.MAX_NEXT_STEP_SUGGESTIONS]playability.ranking.RankedKeyboardNextStep = undefined;
+    const ranked = playability.ranking.rankKeyboardNextStepsFromCommittedPhrase(
+        &memory,
+        &decoded_history,
+        profile_value,
+        hand_profile,
+        policy,
+        ranked_buf[0..],
+    );
+
+    if (out != null) {
+        const write_len = @min(ranked.len, @as(usize, @intCast(out_cap)));
+        for (ranked[0..write_len], 0..) |row, index| {
+            const out_row: *LmtRankedKeyboardNextStep = @ptrCast(&out[index]);
+            writeRankedKeyboardNextStep(out_row, row);
+        }
+    }
+
+    return @as(u32, @intCast(ranked.len));
+}
+
 pub export fn lmt_suggest_safer_keyboard_next_step_by_playability(
     history: [*c]const LmtVoicedHistory,
     profile_raw: u32,
@@ -2647,6 +2924,37 @@ pub export fn lmt_suggest_safer_keyboard_next_step_by_playability(
         &decoded_history,
         profile_value,
         hand,
+        hand_profile,
+        policy,
+    ) orelse return 0;
+    writeRankedKeyboardNextStep(@ptrCast(out), ranked);
+    return 1;
+}
+
+pub export fn lmt_suggest_safer_keyboard_next_step_by_committed_phrase(
+    memory_ptr: [*c]const LmtKeyboardCommittedPhraseMemory,
+    history: [*c]const LmtVoicedHistory,
+    profile_raw: u32,
+    hand_profile_ptr: [*c]const LmtHandProfile,
+    policy_raw: u32,
+    out: [*c]LmtRankedKeyboardNextStep,
+) callconv(.c) u32 {
+    if (memory_ptr == null or history == null or out == null) return 0;
+    if (profile_raw > std.math.maxInt(u8)) return 0;
+
+    const memory = decodeKeyboardCommittedPhraseMemory((@as(*const LmtKeyboardCommittedPhraseMemory, @ptrCast(memory_ptr))).*) orelse return 0;
+    const profile_value = decodeCounterpointRuleProfile(@as(u8, @intCast(profile_raw))) orelse return 0;
+    const hand_profile = if (hand_profile_ptr != null)
+        decodeHandProfile(hand_profile_ptr[0])
+    else
+        playability.keyboard_topology.defaultHandProfile();
+    const policy = decodePlayabilityPolicy(policy_raw) orelse return 0;
+
+    var decoded_history = decodeVoicedHistory((@as(*const LmtVoicedHistory, @ptrCast(history))).*);
+    const ranked = playability.profile.suggestSaferKeyboardNextStepFromCommittedPhrase(
+        &memory,
+        &decoded_history,
+        profile_value,
         hand_profile,
         policy,
     ) orelse return 0;
@@ -2935,6 +3243,49 @@ pub export fn lmt_rank_keyboard_context_suggestions_by_playability(
         hand,
         hand_profile,
         previous_load,
+        policy,
+        ranked_buf[0..],
+    );
+
+    if (out != null) {
+        const write_len = @min(ranked.len, @as(usize, @intCast(out_cap)));
+        for (ranked[0..write_len], 0..) |row, index| {
+            const out_row: *LmtRankedKeyboardContextSuggestion = @ptrCast(&out[index]);
+            writeRankedKeyboardContextSuggestion(out_row, row);
+        }
+    }
+
+    return @as(u32, @intCast(ranked.len));
+}
+
+pub export fn lmt_rank_keyboard_context_suggestions_by_committed_phrase(
+    memory_ptr: [*c]const LmtKeyboardCommittedPhraseMemory,
+    set: u16,
+    tonic: u8,
+    mode_type: u8,
+    hand_profile_ptr: [*c]const LmtHandProfile,
+    policy_raw: u32,
+    out: [*c]LmtRankedKeyboardContextSuggestion,
+    out_cap: u32,
+) callconv(.c) u32 {
+    if (memory_ptr == null) return 0;
+
+    const mt = decodeModeType(mode_type) orelse return 0;
+    const tonic_pc = @as(pitch.PitchClass, @intCast(tonic % 12));
+    const memory = decodeKeyboardCommittedPhraseMemory((@as(*const LmtKeyboardCommittedPhraseMemory, @ptrCast(memory_ptr))).*) orelse return 0;
+    const hand_profile = if (hand_profile_ptr != null)
+        decodeHandProfile(hand_profile_ptr[0])
+    else
+        playability.keyboard_topology.defaultHandProfile();
+    const policy = decodePlayabilityPolicy(policy_raw) orelse return 0;
+
+    var ranked_buf: [keyboard_logic.MAX_CONTEXT_SUGGESTIONS]playability.ranking.RankedKeyboardContextSuggestion = undefined;
+    const ranked = playability.ranking.rankKeyboardContextSuggestionsFromCommittedPhrase(
+        &memory,
+        maskPitchClassSet(set),
+        tonic_pc,
+        mt,
+        hand_profile,
         policy,
         ranked_buf[0..],
     );

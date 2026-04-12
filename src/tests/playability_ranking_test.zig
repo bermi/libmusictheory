@@ -165,3 +165,73 @@ test "keyboard next-step filtering returns only accepted candidates" {
     try testing.expectEqual(@as(u8, 59), filtered[0].notes[0]);
     try testing.expectEqual(@as(u8, 61), filtered[1].notes[0]);
 }
+
+test "committed phrase memory biases later keyboard next-step ranking" {
+    var committed = playability.phrase.KeyboardCommittedPhraseMemory.init();
+    try testing.expect(committed.push(playability.phrase.KeyboardPhraseEvent.init(&[_]pitch.MidiNote{60}, .right)));
+
+    const profile = playability.keyboard_topology.defaultHandProfile();
+    const candidates = [_]counterpoint.NextStepSuggestion{
+        makeNextStep(100, 61),
+        makeNextStep(100, 73),
+    };
+
+    var before_buf: [2]playability.ranking.RankedKeyboardNextStep = undefined;
+    const before = playability.ranking.rankKeyboardNextStepCandidatesFromCommittedPhrase(
+        &committed,
+        &candidates,
+        profile,
+        .cumulative_strain,
+        before_buf[0..],
+    );
+    try testing.expectEqual(@as(u8, 0), before[0].candidate_index);
+
+    const preview = playability.phrase.KeyboardPhraseEvent.init(&[_]pitch.MidiNote{72}, .right);
+    _ = preview;
+
+    var preview_buf: [2]playability.ranking.RankedKeyboardNextStep = undefined;
+    const preview_ranked = playability.ranking.rankKeyboardNextStepCandidatesFromCommittedPhrase(
+        &committed,
+        &candidates,
+        profile,
+        .cumulative_strain,
+        preview_buf[0..],
+    );
+    try testing.expectEqual(@as(u8, 0), preview_ranked[0].candidate_index);
+    try testing.expectEqual(before[0].transition.cumulative_cost, preview_ranked[0].transition.cumulative_cost);
+
+    try testing.expect(committed.push(playability.phrase.KeyboardPhraseEvent.init(&[_]pitch.MidiNote{72}, .right)));
+
+    var after_buf: [2]playability.ranking.RankedKeyboardNextStep = undefined;
+    const after = playability.ranking.rankKeyboardNextStepCandidatesFromCommittedPhrase(
+        &committed,
+        &candidates,
+        profile,
+        .cumulative_strain,
+        after_buf[0..],
+    );
+    try testing.expectEqual(@as(u8, 1), after[0].candidate_index);
+    try testing.expectEqual(@as(u8, 0), after[1].candidate_index);
+    try testing.expect(after[1].transition.cumulative_cost > before[0].transition.cumulative_cost);
+    try testing.expect(after[1].transition.bottleneck_cost > before[0].transition.bottleneck_cost);
+}
+
+test "committed phrase memory resolves keyboard context suggestions from accepted anchor" {
+    var committed = playability.phrase.KeyboardCommittedPhraseMemory.init();
+    try testing.expect(committed.push(playability.phrase.KeyboardPhraseEvent.init(&[_]pitch.MidiNote{72}, .right)));
+
+    var ranked_buf: [keyboard.MAX_CONTEXT_SUGGESTIONS]playability.ranking.RankedKeyboardContextSuggestion = undefined;
+    const ranked = playability.ranking.rankKeyboardContextSuggestionsFromCommittedPhrase(
+        &committed,
+        pcs.fromList(&[_]pitch.PitchClass{0}),
+        0,
+        .ionian,
+        playability.keyboard_topology.defaultHandProfile(),
+        .balanced,
+        ranked_buf[0..],
+    );
+
+    try testing.expect(ranked.len > 0);
+    try testing.expect(ranked[0].realized_note >= 69);
+    try testing.expect(ranked[0].realized_note <= 79);
+}

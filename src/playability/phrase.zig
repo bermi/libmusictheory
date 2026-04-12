@@ -25,7 +25,9 @@ pub const KeyboardPhraseEvent = struct {
             .reserved1 = 0,
             .notes = [_]pitch.MidiNote{0} ** keyboard_assessment.MAX_FINGERING_NOTES,
         };
-        @memcpy(out.notes[0..out.note_count], notes[0..out.note_count]);
+        for (notes[0..out.note_count], 0..) |note, index| {
+            out.notes[index] = note;
+        }
         return out;
     }
 };
@@ -47,6 +49,149 @@ pub const FretPhraseEvent = struct {
         };
         @memcpy(out.frets[0..out.fret_count], frets[0..out.fret_count]);
         return out;
+    }
+};
+
+pub const KeyboardCommittedPhraseMemory = struct {
+    event_count: u8,
+    reserved0: u8,
+    reserved1: u8,
+    reserved2: u8,
+    events: [MAX_PHRASE_EVENTS]KeyboardPhraseEvent,
+
+    pub fn init() KeyboardCommittedPhraseMemory {
+        return .{
+            .event_count = 0,
+            .reserved0 = 0,
+            .reserved1 = 0,
+            .reserved2 = 0,
+            .events = [_]KeyboardPhraseEvent{KeyboardPhraseEvent.init(&[_]pitch.MidiNote{}, .right)} ** MAX_PHRASE_EVENTS,
+        };
+    }
+
+    pub fn reset(self: *KeyboardCommittedPhraseMemory) void {
+        self.* = init();
+    }
+
+    pub fn len(self: *const KeyboardCommittedPhraseMemory) usize {
+        return @min(@as(usize, self.event_count), MAX_PHRASE_EVENTS);
+    }
+
+    pub fn slice(self: *const KeyboardCommittedPhraseMemory) []const KeyboardPhraseEvent {
+        return self.events[0..self.len()];
+    }
+
+    pub fn current(self: *const KeyboardCommittedPhraseMemory) ?*const KeyboardPhraseEvent {
+        const count = self.len();
+        if (count == 0) return null;
+        return &self.events[count - 1];
+    }
+
+    pub fn previous(self: *const KeyboardCommittedPhraseMemory) ?*const KeyboardPhraseEvent {
+        const count = self.len();
+        if (count < 2) return null;
+        return &self.events[count - 2];
+    }
+
+    pub fn push(self: *KeyboardCommittedPhraseMemory, event: KeyboardPhraseEvent) bool {
+        const count = self.len();
+        if (count >= MAX_PHRASE_EVENTS) return false;
+        self.events[count] = event;
+        self.event_count = @as(u8, @intCast(count + 1));
+        return true;
+    }
+
+    pub fn loadBeforeCurrent(self: *const KeyboardCommittedPhraseMemory, profile: types.HandProfile) ?types.TemporalLoadState {
+        const count = self.len();
+        if (count < 2) return null;
+
+        var maybe_load: ?types.TemporalLoadState = null;
+        var index: usize = 0;
+        while (index + 1 < count) : (index += 1) {
+            const event = self.events[index];
+            const realization = keyboard_assessment.assessRealization(
+                keyboardPhraseNotes(&event),
+                event.hand,
+                profile,
+                maybe_load,
+            );
+            maybe_load = realization.state.load;
+        }
+        return maybe_load;
+    }
+};
+
+pub const FretCommittedPhraseMemory = struct {
+    event_count: u8,
+    reserved0: u8,
+    reserved1: u8,
+    reserved2: u8,
+    events: [MAX_PHRASE_EVENTS]FretPhraseEvent,
+
+    pub fn init() FretCommittedPhraseMemory {
+        return .{
+            .event_count = 0,
+            .reserved0 = 0,
+            .reserved1 = 0,
+            .reserved2 = 0,
+            .events = [_]FretPhraseEvent{FretPhraseEvent.init(&[_]i8{})} ** MAX_PHRASE_EVENTS,
+        };
+    }
+
+    pub fn reset(self: *FretCommittedPhraseMemory) void {
+        self.* = init();
+    }
+
+    pub fn len(self: *const FretCommittedPhraseMemory) usize {
+        return @min(@as(usize, self.event_count), MAX_PHRASE_EVENTS);
+    }
+
+    pub fn slice(self: *const FretCommittedPhraseMemory) []const FretPhraseEvent {
+        return self.events[0..self.len()];
+    }
+
+    pub fn current(self: *const FretCommittedPhraseMemory) ?*const FretPhraseEvent {
+        const count = self.len();
+        if (count == 0) return null;
+        return &self.events[count - 1];
+    }
+
+    pub fn previous(self: *const FretCommittedPhraseMemory) ?*const FretPhraseEvent {
+        const count = self.len();
+        if (count < 2) return null;
+        return &self.events[count - 2];
+    }
+
+    pub fn push(self: *FretCommittedPhraseMemory, event: FretPhraseEvent) bool {
+        const count = self.len();
+        if (count >= MAX_PHRASE_EVENTS) return false;
+        self.events[count] = event;
+        self.event_count = @as(u8, @intCast(count + 1));
+        return true;
+    }
+
+    pub fn loadBeforeCurrent(
+        self: *const FretCommittedPhraseMemory,
+        tuning: []const pitch.MidiNote,
+        technique: fret_assessment.TechniqueProfile,
+        hand_override: ?types.HandProfile,
+    ) ?types.TemporalLoadState {
+        const count = self.len();
+        if (count < 2) return null;
+
+        var maybe_load: ?types.TemporalLoadState = null;
+        var index: usize = 0;
+        while (index + 1 < count) : (index += 1) {
+            const realization = fret_assessment.assessRealization(
+                fretPhraseFrets(&self.events[index]),
+                tuning,
+                technique,
+                hand_override,
+                maybe_load,
+            );
+            maybe_load = realization.state.load;
+        }
+        return maybe_load;
     }
 };
 
@@ -378,7 +523,7 @@ pub fn auditKeyboardPhrase(
 
     for (events[0..bounded_events], 0..) |event, raw_index| {
         const event_index = @as(u16, @intCast(raw_index));
-        const notes = keyboardEventNotes(event);
+        const notes = keyboardPhraseNotes(&event);
 
         var input_load: ?types.TemporalLoadState = null;
         if (previous_event) |prior| {
@@ -387,7 +532,7 @@ pub fn auditKeyboardPhrase(
                 appendKeyboardTransitionIssues(
                     &builder,
                     keyboard_assessment.assessTransition(
-                        keyboardEventNotes(prior),
+                        keyboardPhraseNotes(&prior),
                         notes,
                         event.hand,
                         profile,
@@ -418,6 +563,14 @@ pub fn auditKeyboardPhrase(
     return builder.finish();
 }
 
+pub fn auditCommittedKeyboardPhrase(
+    memory: *const KeyboardCommittedPhraseMemory,
+    profile: types.HandProfile,
+    out: []PhraseIssue,
+) PhraseAuditResult {
+    return auditKeyboardPhrase(memory.slice(), profile, out);
+}
+
 pub fn auditFretPhrase(
     events: []const FretPhraseEvent,
     tuning: []const pitch.MidiNote,
@@ -435,7 +588,7 @@ pub fn auditFretPhrase(
 
     for (events[0..bounded_events], 0..) |event, raw_index| {
         const event_index = @as(u16, @intCast(raw_index));
-        const frets = fretEventFrets(event);
+        const frets = fretPhraseFrets(&event);
         const input_load: ?types.TemporalLoadState = if (previous_event != null)
             previous_realization.state.load
         else
@@ -448,7 +601,7 @@ pub fn auditFretPhrase(
             appendFretTransitionIssues(
                 &builder,
                 fret_assessment.assessTransition(
-                    fretEventFrets(prior),
+                    fretPhraseFrets(&prior),
                     frets,
                     tuning,
                     technique,
@@ -472,16 +625,26 @@ pub fn auditFretPhrase(
     return builder.finish();
 }
 
+pub fn auditCommittedFretPhrase(
+    memory: *const FretCommittedPhraseMemory,
+    tuning: []const pitch.MidiNote,
+    technique: fret_assessment.TechniqueProfile,
+    hand_override: ?types.HandProfile,
+    out: []PhraseIssue,
+) PhraseAuditResult {
+    return auditFretPhrase(memory.slice(), tuning, technique, hand_override, out);
+}
+
 fn boundedEventCount(raw_len: usize) usize {
     return @min(raw_len, MAX_PHRASE_EVENTS);
 }
 
-fn keyboardEventNotes(event: KeyboardPhraseEvent) []const pitch.MidiNote {
+pub fn keyboardPhraseNotes(event: *const KeyboardPhraseEvent) []const pitch.MidiNote {
     const clipped = @min(@as(usize, event.note_count), keyboard_assessment.MAX_FINGERING_NOTES);
     return event.notes[0..clipped];
 }
 
-fn fretEventFrets(event: FretPhraseEvent) []const i8 {
+pub fn fretPhraseFrets(event: *const FretPhraseEvent) []const i8 {
     const clipped = @min(@as(usize, event.fret_count), guitar.MAX_GENERIC_STRINGS);
     return event.frets[0..clipped];
 }

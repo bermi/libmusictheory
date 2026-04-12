@@ -5,6 +5,7 @@ const mode = @import("../mode.zig");
 const counterpoint = @import("../counterpoint.zig");
 const keyboard = @import("../keyboard.zig");
 const types = @import("types.zig");
+const phrase = @import("phrase.zig");
 const keyboard_assessment = @import("keyboard_assessment.zig");
 const keyboard_topology = @import("keyboard_topology.zig");
 
@@ -70,6 +71,21 @@ pub fn rankKeyboardNextSteps(
     return rankKeyboardNextStepCandidates(current_notes, previous_load, theory, hand, hand_profile, policy, out);
 }
 
+pub fn rankKeyboardNextStepsFromCommittedPhrase(
+    committed: *const phrase.KeyboardCommittedPhraseMemory,
+    history: *const counterpoint.VoicedHistoryWindow,
+    profile: counterpoint.CounterpointRuleProfile,
+    hand_profile: types.HandProfile,
+    policy: PlayabilityPolicy,
+    out: []RankedKeyboardNextStep,
+) []RankedKeyboardNextStep {
+    if (out.len == 0) return out[0..0];
+
+    var theory_buf: [counterpoint.MAX_NEXT_STEP_SUGGESTIONS]counterpoint.NextStepSuggestion = undefined;
+    const theory = counterpoint.rankNextSteps(history, profile, theory_buf[0..]);
+    return rankKeyboardNextStepCandidatesFromCommittedPhrase(committed, theory, hand_profile, policy, out);
+}
+
 pub fn rankKeyboardNextStepCandidates(
     current_notes: []const pitch.MidiNote,
     previous_load: ?types.TemporalLoadState,
@@ -97,6 +113,25 @@ pub fn rankKeyboardNextStepCandidates(
 
     std.sort.insertion(RankedKeyboardNextStep, out[0..write_len], policy, nextStepLessThan);
     return out[0..write_len];
+}
+
+pub fn rankKeyboardNextStepCandidatesFromCommittedPhrase(
+    committed: *const phrase.KeyboardCommittedPhraseMemory,
+    candidates: []const counterpoint.NextStepSuggestion,
+    hand_profile: types.HandProfile,
+    policy: PlayabilityPolicy,
+    out: []RankedKeyboardNextStep,
+) []RankedKeyboardNextStep {
+    const current = committed.current() orelse return out[0..0];
+    return rankKeyboardNextStepCandidates(
+        phrase.keyboardPhraseNotes(current),
+        committed.loadBeforeCurrent(hand_profile),
+        candidates,
+        current.hand,
+        hand_profile,
+        policy,
+        out,
+    );
 }
 
 pub fn filterNextStepsByPlayability(
@@ -138,6 +173,29 @@ pub fn rankKeyboardContextSuggestions(
     var theory_buf: [keyboard.MAX_CONTEXT_SUGGESTIONS]keyboard.ContextSuggestion = undefined;
     const theory = keyboard.rankContextSuggestions(set_value, midi_notes, tonic, mode_type, theory_buf[0..]);
     return rankKeyboardContextCandidates(midi_notes, previous_load, theory, hand, hand_profile, policy, out);
+}
+
+pub fn rankKeyboardContextSuggestionsFromCommittedPhrase(
+    committed: *const phrase.KeyboardCommittedPhraseMemory,
+    set_value: pcs.PitchClassSet,
+    tonic: pitch.PitchClass,
+    mode_type: mode.ModeType,
+    hand_profile: types.HandProfile,
+    policy: PlayabilityPolicy,
+    out: []RankedKeyboardContextSuggestion,
+) []RankedKeyboardContextSuggestion {
+    const current = committed.current() orelse return out[0..0];
+    return rankKeyboardContextSuggestions(
+        set_value,
+        phrase.keyboardPhraseNotes(current),
+        tonic,
+        mode_type,
+        current.hand,
+        hand_profile,
+        committed.loadBeforeCurrent(hand_profile),
+        policy,
+        out,
+    );
 }
 
 pub fn rankKeyboardContextCandidates(
@@ -217,7 +275,9 @@ fn nearestMidiForPitchClass(target_pc: pitch.PitchClass, anchor: pitch.MidiNote,
 
 fn appendRealizedNote(current_notes: []const pitch.MidiNote, realized_note: pitch.MidiNote, out: *[MAX_CONTEXT_CANDIDATE_NOTES]pitch.MidiNote) []const pitch.MidiNote {
     const copy_len = @min(current_notes.len, out.len - 1);
-    @memcpy(out[0..copy_len], current_notes[0..copy_len]);
+    for (current_notes[0..copy_len], 0..) |note, index| {
+        out[index] = note;
+    }
 
     var index: usize = 0;
     while (index < copy_len) : (index += 1) {

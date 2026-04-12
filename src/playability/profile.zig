@@ -3,6 +3,7 @@ const pitch = @import("../pitch.zig");
 const counterpoint = @import("../counterpoint.zig");
 const fret_assessment = @import("fret_assessment.zig");
 const keyboard_assessment = @import("keyboard_assessment.zig");
+const phrase = @import("phrase.zig");
 const ranking = @import("ranking.zig");
 const types = @import("types.zig");
 
@@ -222,6 +223,25 @@ pub fn suggestSaferKeyboardNextStep(
         history,
         profile,
         hand,
+        hand_profile,
+        policy,
+        ranked_buf[0..],
+    );
+    return firstAcceptedOrFallback(ranked_rows);
+}
+
+pub fn suggestSaferKeyboardNextStepFromCommittedPhrase(
+    committed: *const phrase.KeyboardCommittedPhraseMemory,
+    history: *const counterpoint.VoicedHistoryWindow,
+    profile: counterpoint.CounterpointRuleProfile,
+    hand_profile: types.HandProfile,
+    policy: ranking.PlayabilityPolicy,
+) ?ranking.RankedKeyboardNextStep {
+    var ranked_buf: [counterpoint.MAX_NEXT_STEP_SUGGESTIONS]ranking.RankedKeyboardNextStep = undefined;
+    const ranked_rows = ranking.rankKeyboardNextStepsFromCommittedPhrase(
+        committed,
+        history,
+        profile,
         hand_profile,
         policy,
         ranked_buf[0..],
