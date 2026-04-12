@@ -2,7 +2,7 @@
 
 ## Status
 
-- Draft: 2026-04-12
+- Completed: 2026-04-12
 
 ## Goal
 
@@ -59,3 +59,17 @@ An LLM should be able to say:
 - summary bucket/family tests
 - C ABI reflection/sizeof coverage
 - `/Users/bermi/code/libmusictheory/./verify.sh`
+
+## Verification Commands
+
+- `/Users/bermi/code/libmusictheory/./zigw build test`
+- `/Users/bermi/code/libmusictheory/./verify.sh`
+
+## Implementation History (Point-in-Time)
+
+- `525dfc9` — 2026-04-12
+  - added `/Users/bermi/code/libmusictheory/src/playability/phrase.zig` with fixed-size keyboard/fret phrase events, issue rows, summary accumulator logic, and named phrase-summary vocabulary
+  - exported the phrase surface through `/Users/bermi/code/libmusictheory/src/playability.zig`, `/Users/bermi/code/libmusictheory/src/c_api.zig`, `/Users/bermi/code/libmusictheory/include/libmusictheory.h`, `/Users/bermi/code/libmusictheory/build.zig`, and `/Users/bermi/code/libmusictheory/scripts/check_wasm_exports.mjs`
+  - added focused Zig and C ABI coverage in `/Users/bermi/code/libmusictheory/src/tests/playability_phrase_test.zig` and `/Users/bermi/code/libmusictheory/src/tests/c_api_test.zig`
+  - documented the phrase-foundation boundary in `/Users/bermi/code/libmusictheory/docs/research/algorithms/playability.md` and `/Users/bermi/code/libmusictheory/docs/api.md`
+  - verification gates: `/Users/bermi/code/libmusictheory/./zigw build test`, `/Users/bermi/code/libmusictheory/./verify.sh`
