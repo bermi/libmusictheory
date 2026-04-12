@@ -117,6 +117,62 @@ pub const LmtPlayabilityDifficultySummary = extern struct {
     limit_shift_margin: i16,
 };
 
+pub const LmtFretPhraseEvent = extern struct {
+    fret_count: u8,
+    reserved0: u8,
+    reserved1: u8,
+    reserved2: u8,
+    frets: [guitar.MAX_GENERIC_STRINGS]i8,
+};
+
+pub const LmtKeyboardPhraseEvent = extern struct {
+    note_count: u8,
+    reserved0: u8,
+    reserved1: u8,
+    reserved2: u8,
+    notes: [playability.keyboard_assessment.MAX_FINGERING_NOTES]u8,
+};
+
+pub const LmtPlayabilityPhraseIssue = extern struct {
+    location: u8,
+    severity: u8,
+    event_index: u32,
+    next_event_index: u32,
+    blocker_count: u8,
+    warning_count: u8,
+    dominant_reason: u8,
+    dominant_warning: u8,
+    bottleneck_cost: u16,
+    cumulative_cost: u16,
+    blocker_bits: u32,
+    warning_bits: u32,
+    reason_bits: u32,
+};
+
+pub const LmtPlayabilityPhraseSummary = extern struct {
+    event_count: u32,
+    transition_count: u32,
+    issue_count: u32,
+    blocked_issue_count: u32,
+    warning_issue_count: u32,
+    first_blocked_event_index: u32,
+    first_blocked_transition_index: u32,
+    bottleneck_event_index: u32,
+    bottleneck_next_event_index: u32,
+    cumulative_cost: u32,
+    total_blocker_count: u32,
+    total_warning_count: u32,
+    total_reason_count: u32,
+    max_bottleneck_cost: u16,
+    peak_span_steps: u8,
+    peak_shift_steps: u8,
+    bottleneck_location: u8,
+    bottleneck_severity: u8,
+    dominant_reason: u8,
+    dominant_warning: u8,
+    reserved0: u8,
+};
+
 pub const LmtTemporalLoadState = extern struct {
     event_count: u8,
     last_anchor_step: u8,
@@ -712,6 +768,149 @@ fn writeTemporalLoadState(out: *LmtTemporalLoadState, state: playability.types.T
         .peak_shift_steps = state.peak_shift_steps,
         .cumulative_span_steps = state.cumulative_span_steps,
         .cumulative_shift_steps = state.cumulative_shift_steps,
+    };
+}
+
+fn decodeFretPlayState(raw: LmtFretPlayState) playability.fret_topology.PlayState {
+    return .{
+        .anchor_fret = raw.anchor_fret,
+        .window_start = raw.window_start,
+        .window_end = raw.window_end,
+        .lowest_string = raw.lowest_string,
+        .highest_string = raw.highest_string,
+        .active_string_count = raw.active_string_count,
+        .fretted_note_count = raw.fretted_note_count,
+        .open_string_count = raw.open_string_count,
+        .span_steps = raw.span_steps,
+        .comfort_fit = raw.comfort_fit != 0,
+        .limit_fit = raw.limit_fit != 0,
+        .load = decodeTemporalLoadState(raw.load),
+    };
+}
+
+fn decodeKeyboardPlayState(raw: LmtKeyboardPlayState) playability.keyboard_topology.PlayState {
+    return .{
+        .anchor_midi = @as(pitch.MidiNote, @intCast(@min(raw.anchor_midi, @as(u8, 127)))),
+        .low_midi = @as(pitch.MidiNote, @intCast(@min(raw.low_midi, @as(u8, 127)))),
+        .high_midi = @as(pitch.MidiNote, @intCast(@min(raw.high_midi, @as(u8, 127)))),
+        .active_note_count = raw.active_note_count,
+        .black_key_count = raw.black_key_count,
+        .white_key_count = raw.white_key_count,
+        .span_semitones = raw.span_semitones,
+        .comfort_fit = raw.comfort_fit != 0,
+        .limit_fit = raw.limit_fit != 0,
+        .load = decodeTemporalLoadState(raw.load),
+    };
+}
+
+fn decodeFretRealizationAssessment(raw: LmtFretRealizationAssessment) ?playability.fret_assessment.RealizationAssessment {
+    const profile = decodeFretTechniqueProfile(raw.profile) orelse return null;
+    return .{
+        .state = decodeFretPlayState(raw.state),
+        .string_span_steps = raw.string_span_steps,
+        .bottleneck_cost = raw.bottleneck_cost,
+        .cumulative_cost = raw.cumulative_cost,
+        .blocker_bits = raw.blocker_bits,
+        .warning_bits = raw.warning_bits,
+        .reason_bits = raw.reason_bits,
+        .profile = profile,
+        .recommended_fingers = raw.recommended_fingers,
+    };
+}
+
+fn decodeFretTransitionAssessment(raw: LmtFretTransitionAssessment) ?playability.fret_assessment.TransitionAssessment {
+    const profile = decodeFretTechniqueProfile(raw.profile) orelse return null;
+    return .{
+        .from_state = decodeFretPlayState(raw.from_state),
+        .to_state = decodeFretPlayState(raw.to_state),
+        .anchor_delta_steps = raw.anchor_delta_steps,
+        .changed_string_count = raw.changed_string_count,
+        .bottleneck_cost = raw.bottleneck_cost,
+        .cumulative_cost = raw.cumulative_cost,
+        .blocker_bits = raw.blocker_bits,
+        .warning_bits = raw.warning_bits,
+        .reason_bits = raw.reason_bits,
+        .profile = profile,
+        .recommended_fingers = raw.recommended_fingers,
+    };
+}
+
+fn decodeKeyboardRealizationAssessment(raw: LmtKeyboardRealizationAssessment) ?playability.keyboard_assessment.RealizationAssessment {
+    const hand = decodeKeyboardHand(raw.hand) orelse return null;
+    return .{
+        .state = decodeKeyboardPlayState(raw.state),
+        .hand = hand,
+        .note_count = raw.note_count,
+        .outer_black_count = raw.outer_black_count,
+        .bottleneck_cost = raw.bottleneck_cost,
+        .cumulative_cost = raw.cumulative_cost,
+        .blocker_bits = raw.blocker_bits,
+        .warning_bits = raw.warning_bits,
+        .reason_bits = raw.reason_bits,
+        .recommended_fingers = raw.recommended_fingers,
+    };
+}
+
+fn decodeKeyboardTransitionAssessment(raw: LmtKeyboardTransitionAssessment) ?playability.keyboard_assessment.TransitionAssessment {
+    const hand = decodeKeyboardHand(raw.hand) orelse return null;
+    return .{
+        .from_state = decodeKeyboardPlayState(raw.from_state),
+        .to_state = decodeKeyboardPlayState(raw.to_state),
+        .hand = hand,
+        .note_count = raw.note_count,
+        .anchor_delta_semitones = raw.anchor_delta_semitones,
+        .reserved0 = raw.reserved0,
+        .bottleneck_cost = raw.bottleneck_cost,
+        .cumulative_cost = raw.cumulative_cost,
+        .blocker_bits = raw.blocker_bits,
+        .warning_bits = raw.warning_bits,
+        .reason_bits = raw.reason_bits,
+        .from_fingers = raw.from_fingers,
+        .to_fingers = raw.to_fingers,
+    };
+}
+
+fn writePlayabilityPhraseIssue(out: *LmtPlayabilityPhraseIssue, issue: playability.phrase.PhraseIssue) void {
+    out.* = .{
+        .location = @intFromEnum(issue.location),
+        .severity = @intFromEnum(issue.severity),
+        .event_index = issue.event_index,
+        .next_event_index = issue.next_event_index,
+        .blocker_count = issue.blocker_count,
+        .warning_count = issue.warning_count,
+        .dominant_reason = issue.dominant_reason,
+        .dominant_warning = issue.dominant_warning,
+        .bottleneck_cost = issue.bottleneck_cost,
+        .cumulative_cost = issue.cumulative_cost,
+        .blocker_bits = issue.blocker_bits,
+        .warning_bits = issue.warning_bits,
+        .reason_bits = issue.reason_bits,
+    };
+}
+
+fn writePlayabilityPhraseSummary(out: *LmtPlayabilityPhraseSummary, summary: playability.phrase.PhraseSummary) void {
+    out.* = .{
+        .event_count = summary.event_count,
+        .transition_count = summary.transition_count,
+        .issue_count = summary.issue_count,
+        .blocked_issue_count = summary.blocked_issue_count,
+        .warning_issue_count = summary.warning_issue_count,
+        .first_blocked_event_index = summary.first_blocked_event_index,
+        .first_blocked_transition_index = summary.first_blocked_transition_index,
+        .bottleneck_event_index = summary.bottleneck_event_index,
+        .bottleneck_next_event_index = summary.bottleneck_next_event_index,
+        .cumulative_cost = summary.cumulative_cost,
+        .total_blocker_count = summary.total_blocker_count,
+        .total_warning_count = summary.total_warning_count,
+        .total_reason_count = summary.total_reason_count,
+        .max_bottleneck_cost = summary.max_bottleneck_cost,
+        .peak_span_steps = summary.peak_span_steps,
+        .peak_shift_steps = summary.peak_shift_steps,
+        .bottleneck_location = @intFromEnum(summary.bottleneck_location),
+        .bottleneck_severity = @intFromEnum(summary.bottleneck_severity),
+        .dominant_reason = summary.dominant_reason,
+        .dominant_warning = summary.dominant_warning,
+        .reserved0 = 0,
     };
 }
 
@@ -1565,6 +1764,26 @@ pub export fn lmt_playability_profile_from_preset(
     return 1;
 }
 
+pub export fn lmt_playability_phrase_issue_location_count() callconv(.c) u32 {
+    return @as(u32, @intCast(playability.phrase.ISSUE_LOCATION_NAMES.len));
+}
+
+pub export fn lmt_playability_phrase_issue_location_name(index: u32) callconv(.c) [*c]const u8 {
+    const idx = @as(usize, @intCast(index));
+    if (idx >= playability.phrase.ISSUE_LOCATION_NAMES.len) return null;
+    return writeCString(playability.phrase.ISSUE_LOCATION_NAMES[idx]);
+}
+
+pub export fn lmt_playability_phrase_issue_severity_count() callconv(.c) u32 {
+    return @as(u32, @intCast(playability.phrase.ISSUE_SEVERITY_NAMES.len));
+}
+
+pub export fn lmt_playability_phrase_issue_severity_name(index: u32) callconv(.c) [*c]const u8 {
+    const idx = @as(usize, @intCast(index));
+    if (idx >= playability.phrase.ISSUE_SEVERITY_NAMES.len) return null;
+    return writeCString(playability.phrase.ISSUE_SEVERITY_NAMES[idx]);
+}
+
 pub export fn lmt_scale_degree(tonic: u8, mode_type: u8, note: u8) callconv(.c) u8 {
     const mt = decodeModeType(mode_type) orelse return 0;
     const tonic_pc = @as(pitch.PitchClass, @intCast(tonic % 12));
@@ -1790,6 +2009,22 @@ pub export fn lmt_sizeof_ranked_keyboard_next_step() callconv(.c) u32 {
 
 pub export fn lmt_sizeof_playability_difficulty_summary() callconv(.c) u32 {
     return @as(u32, @intCast(@sizeOf(LmtPlayabilityDifficultySummary)));
+}
+
+pub export fn lmt_sizeof_fret_phrase_event() callconv(.c) u32 {
+    return @as(u32, @intCast(@sizeOf(LmtFretPhraseEvent)));
+}
+
+pub export fn lmt_sizeof_keyboard_phrase_event() callconv(.c) u32 {
+    return @as(u32, @intCast(@sizeOf(LmtKeyboardPhraseEvent)));
+}
+
+pub export fn lmt_sizeof_playability_phrase_issue() callconv(.c) u32 {
+    return @as(u32, @intCast(@sizeOf(LmtPlayabilityPhraseIssue)));
+}
+
+pub export fn lmt_sizeof_playability_phrase_summary() callconv(.c) u32 {
+    return @as(u32, @intCast(@sizeOf(LmtPlayabilityPhraseSummary)));
 }
 
 pub export fn lmt_sizeof_voiced_state() callconv(.c) u32 {
@@ -3169,6 +3404,160 @@ pub export fn lmt_summarize_keyboard_transition_difficulty_n(
 
     const assessment = playability.keyboard_assessment.assessTransition(from_notes, to_notes, hand, profile, previous_load);
     writePlayabilityDifficultySummary(@ptrCast(out), playability.profile.summarizeKeyboardTransition(assessment, profile));
+    return 1;
+}
+
+pub export fn lmt_collect_fret_phrase_issues_n(
+    realizations_ptr: [*c]const LmtFretRealizationAssessment,
+    realization_count: u32,
+    transitions_ptr: [*c]const LmtFretTransitionAssessment,
+    transition_count: u32,
+    out: [*c]LmtPlayabilityPhraseIssue,
+    out_cap: u32,
+) callconv(.c) u32 {
+    const realization_len = @as(usize, @intCast(realization_count));
+    const transition_len = @as(usize, @intCast(transition_count));
+    if (realization_len > 0 and realizations_ptr == null) return 0;
+    if (transition_len > 0 and transitions_ptr == null) return 0;
+    if (realization_len > playability.phrase.MAX_AUDIT_EVENTS or transition_len > playability.phrase.MAX_AUDIT_EVENTS) return 0;
+
+    var realization_buf: [playability.phrase.MAX_AUDIT_EVENTS]playability.fret_assessment.RealizationAssessment = undefined;
+    var transition_buf: [playability.phrase.MAX_AUDIT_EVENTS]playability.fret_assessment.TransitionAssessment = undefined;
+
+    var index: usize = 0;
+    while (index < realization_len) : (index += 1) {
+        realization_buf[index] = decodeFretRealizationAssessment(realizations_ptr[index]) orelse return 0;
+    }
+    index = 0;
+    while (index < transition_len) : (index += 1) {
+        transition_buf[index] = decodeFretTransitionAssessment(transitions_ptr[index]) orelse return 0;
+    }
+
+    var issue_buf: [playability.phrase.MAX_AUDIT_EVENTS * 2]playability.phrase.PhraseIssue = undefined;
+    const collected = playability.phrase.collectFretIssues(
+        realization_buf[0..realization_len],
+        transition_buf[0..transition_len],
+        issue_buf[0..],
+    );
+
+    if (out != null and out_cap > 0) {
+        const write_len = @min(collected.rows.len, @as(usize, @intCast(out_cap)));
+        for (collected.rows[0..write_len], 0..) |issue, issue_index| {
+            writePlayabilityPhraseIssue(@ptrCast(&out[issue_index]), issue);
+        }
+    }
+
+    return collected.total_count;
+}
+
+pub export fn lmt_collect_keyboard_phrase_issues_n(
+    realizations_ptr: [*c]const LmtKeyboardRealizationAssessment,
+    realization_count: u32,
+    transitions_ptr: [*c]const LmtKeyboardTransitionAssessment,
+    transition_count: u32,
+    out: [*c]LmtPlayabilityPhraseIssue,
+    out_cap: u32,
+) callconv(.c) u32 {
+    const realization_len = @as(usize, @intCast(realization_count));
+    const transition_len = @as(usize, @intCast(transition_count));
+    if (realization_len > 0 and realizations_ptr == null) return 0;
+    if (transition_len > 0 and transitions_ptr == null) return 0;
+    if (realization_len > playability.phrase.MAX_AUDIT_EVENTS or transition_len > playability.phrase.MAX_AUDIT_EVENTS) return 0;
+
+    var realization_buf: [playability.phrase.MAX_AUDIT_EVENTS]playability.keyboard_assessment.RealizationAssessment = undefined;
+    var transition_buf: [playability.phrase.MAX_AUDIT_EVENTS]playability.keyboard_assessment.TransitionAssessment = undefined;
+
+    var index: usize = 0;
+    while (index < realization_len) : (index += 1) {
+        realization_buf[index] = decodeKeyboardRealizationAssessment(realizations_ptr[index]) orelse return 0;
+    }
+    index = 0;
+    while (index < transition_len) : (index += 1) {
+        transition_buf[index] = decodeKeyboardTransitionAssessment(transitions_ptr[index]) orelse return 0;
+    }
+
+    var issue_buf: [playability.phrase.MAX_AUDIT_EVENTS * 2]playability.phrase.PhraseIssue = undefined;
+    const collected = playability.phrase.collectKeyboardIssues(
+        realization_buf[0..realization_len],
+        transition_buf[0..transition_len],
+        issue_buf[0..],
+    );
+
+    if (out != null and out_cap > 0) {
+        const write_len = @min(collected.rows.len, @as(usize, @intCast(out_cap)));
+        for (collected.rows[0..write_len], 0..) |issue, issue_index| {
+            writePlayabilityPhraseIssue(@ptrCast(&out[issue_index]), issue);
+        }
+    }
+
+    return collected.total_count;
+}
+
+pub export fn lmt_summarize_fret_phrase_assessments_n(
+    realizations_ptr: [*c]const LmtFretRealizationAssessment,
+    realization_count: u32,
+    transitions_ptr: [*c]const LmtFretTransitionAssessment,
+    transition_count: u32,
+    out: [*c]LmtPlayabilityPhraseSummary,
+) callconv(.c) u32 {
+    if (out == null) return 0;
+    const realization_len = @as(usize, @intCast(realization_count));
+    const transition_len = @as(usize, @intCast(transition_count));
+    if (realization_len > 0 and realizations_ptr == null) return 0;
+    if (transition_len > 0 and transitions_ptr == null) return 0;
+    if (realization_len > playability.phrase.MAX_AUDIT_EVENTS or transition_len > playability.phrase.MAX_AUDIT_EVENTS) return 0;
+
+    var realization_buf: [playability.phrase.MAX_AUDIT_EVENTS]playability.fret_assessment.RealizationAssessment = undefined;
+    var transition_buf: [playability.phrase.MAX_AUDIT_EVENTS]playability.fret_assessment.TransitionAssessment = undefined;
+
+    var index: usize = 0;
+    while (index < realization_len) : (index += 1) {
+        realization_buf[index] = decodeFretRealizationAssessment(realizations_ptr[index]) orelse return 0;
+    }
+    index = 0;
+    while (index < transition_len) : (index += 1) {
+        transition_buf[index] = decodeFretTransitionAssessment(transitions_ptr[index]) orelse return 0;
+    }
+
+    const summary = playability.phrase.summarizeFretAssessments(
+        realization_buf[0..realization_len],
+        transition_buf[0..transition_len],
+    );
+    writePlayabilityPhraseSummary(@ptrCast(out), summary);
+    return 1;
+}
+
+pub export fn lmt_summarize_keyboard_phrase_assessments_n(
+    realizations_ptr: [*c]const LmtKeyboardRealizationAssessment,
+    realization_count: u32,
+    transitions_ptr: [*c]const LmtKeyboardTransitionAssessment,
+    transition_count: u32,
+    out: [*c]LmtPlayabilityPhraseSummary,
+) callconv(.c) u32 {
+    if (out == null) return 0;
+    const realization_len = @as(usize, @intCast(realization_count));
+    const transition_len = @as(usize, @intCast(transition_count));
+    if (realization_len > 0 and realizations_ptr == null) return 0;
+    if (transition_len > 0 and transitions_ptr == null) return 0;
+    if (realization_len > playability.phrase.MAX_AUDIT_EVENTS or transition_len > playability.phrase.MAX_AUDIT_EVENTS) return 0;
+
+    var realization_buf: [playability.phrase.MAX_AUDIT_EVENTS]playability.keyboard_assessment.RealizationAssessment = undefined;
+    var transition_buf: [playability.phrase.MAX_AUDIT_EVENTS]playability.keyboard_assessment.TransitionAssessment = undefined;
+
+    var index: usize = 0;
+    while (index < realization_len) : (index += 1) {
+        realization_buf[index] = decodeKeyboardRealizationAssessment(realizations_ptr[index]) orelse return 0;
+    }
+    index = 0;
+    while (index < transition_len) : (index += 1) {
+        transition_buf[index] = decodeKeyboardTransitionAssessment(transitions_ptr[index]) orelse return 0;
+    }
+
+    const summary = playability.phrase.summarizeKeyboardAssessments(
+        realization_buf[0..realization_len],
+        transition_buf[0..transition_len],
+    );
+    writePlayabilityPhraseSummary(@ptrCast(out), summary);
     return 1;
 }
 

@@ -56,6 +56,63 @@ Every surfaced result from this slice should support a direct explanation, for e
 
 Later slices may rank or filter candidates, but they should build on these explicit facts rather than invent hidden weights.
 
+## 0133 - Phrase Event Model And Audit Summaries
+
+`0133` adds the shared phrase foundation needed before any phrase-level rewrite or repair logic exists.
+
+The core idea is simple:
+
+- a phrase event is a fixed-size carrier for one realized keyboard or fret state
+- phrase issues are reported against either an event index or a transition index
+- assessment-sequence summaries collapse a whole run of realization and transition assessments into explicit audit facts
+
+That gives later slices a stable language for saying:
+
+- "the first blocked point is event 3"
+- "the first blocked point is transition 4 -> 5"
+- "the phrase bottleneck is a transition warning, not an isolated chord shape"
+
+### Event Versus Transition
+
+Phrase audit needs event versus transition indexing to stay explainable.
+
+The library now distinguishes:
+
+- `event`
+  one realized voicing or fingering state at a single phrase position
+- `transition`
+  the move from phrase position `n` to phrase position `n + 1`
+
+This avoids a common ambiguity in phrase analyzers where a host can tell that "something around note 5 failed" but cannot say whether the failure belongs to the static realization or the motion into the next one.
+
+### Assessment-Sequence Summaries
+
+The summary layer does not rescore the phrase with a hidden model. It aggregates already-exposed assessment facts:
+
+- first blocked event index
+- first blocked transition index
+- bottleneck location and severity
+- cumulative cost
+- dominant reason and warning
+- clear, warning, and blocked issue counts
+
+That keeps the surface explainable for LLMs and practice tools:
+
+- "The first blocked point is transition 2 -> 3 because the shift cost exceeds the current profile."
+- "The phrase is still accepted overall, but the dominant warning is repeated weak-adjacent-finger use."
+
+### Constraint
+
+There is no black-box phrase difficulty score in this slice.
+
+`0133` intentionally stops at phrase event carriers and assessment-sequence summaries. It does not:
+
+- rewrite the music
+- search alternate realizations across a whole phrase
+- assign a single opaque difficulty number to a passage
+
+Those behaviors depend on later slices, but they now build on a stable event/transition model instead of inventing ad hoc summary semantics.
+
 ## 0127 - Opt-In Playability-Aware Reranking
 
 `0127` adds an explicit policy layer on top of the existing theory-first candidate generators.

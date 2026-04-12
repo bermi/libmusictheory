@@ -271,9 +271,9 @@ fn buildSummary(
 ) DifficultySummary {
     return .{
         .accepted = blocker_bits == 0,
-        .blocker_count = countBits(blocker_bits),
-        .warning_count = countBits(warning_bits),
-        .reason_count = countBits(reason_bits),
+        .blocker_count = types.countBits(blocker_bits),
+        .warning_count = types.countBits(warning_bits),
+        .reason_count = types.countBits(reason_bits),
         .bottleneck_cost = bottleneck_cost,
         .cumulative_cost = cumulative_cost,
         .span_steps = span_steps,
@@ -286,10 +286,6 @@ fn buildSummary(
         .comfort_shift_margin = margin(hand.comfort_shift_steps, shift_steps),
         .limit_shift_margin = margin(hand.limit_shift_steps, shift_steps),
     };
-}
-
-fn countBits(bits: u32) u8 {
-    return @as(u8, @intCast(@min(@popCount(bits), std.math.maxInt(u8))));
 }
 
 fn margin(limit: u8, actual: u8) i16 {

@@ -84,6 +84,7 @@ test {
     _ = @import("tests/playability_topology_test.zig");
     _ = @import("tests/fret_playability_test.zig");
     _ = @import("tests/keyboard_playability_test.zig");
+    _ = @import("tests/playability_phrase_test.zig");
     _ = @import("tests/playability_ranking_test.zig");
     _ = @import("tests/playability_profile_test.zig");
     _ = @import("tests/guitar_test.zig");

@@ -27,8 +27,16 @@ extern "C" {
  *   lmt_playability_profile_preset_count,
  *   lmt_playability_profile_preset_name,
  *   lmt_playability_profile_from_preset,
+ *   lmt_playability_phrase_issue_location_count,
+ *   lmt_playability_phrase_issue_location_name,
+ *   lmt_playability_phrase_issue_severity_count,
+ *   lmt_playability_phrase_issue_severity_name,
  *   lmt_sizeof_hand_profile, lmt_sizeof_temporal_load_state,
  *   lmt_sizeof_playability_difficulty_summary,
+ *   lmt_sizeof_fret_phrase_event,
+ *   lmt_sizeof_keyboard_phrase_event,
+ *   lmt_sizeof_playability_phrase_issue,
+ *   lmt_sizeof_playability_phrase_summary,
  *   lmt_sizeof_fret_candidate_location, lmt_sizeof_fret_play_state,
  *   lmt_sizeof_keybed_key_coord, lmt_sizeof_keyboard_play_state,
  *   lmt_sizeof_ranked_keyboard_context_suggestion,
@@ -38,6 +46,10 @@ extern "C" {
  *   lmt_summarize_fret_transition_difficulty_n,
  *   lmt_summarize_keyboard_realization_difficulty_n,
  *   lmt_summarize_keyboard_transition_difficulty_n,
+ *   lmt_collect_fret_phrase_issues_n,
+ *   lmt_collect_keyboard_phrase_issues_n,
+ *   lmt_summarize_fret_phrase_assessments_n,
+ *   lmt_summarize_keyboard_phrase_assessments_n,
  *   lmt_suggest_easier_fret_realization_n,
  *   lmt_suggest_easier_keyboard_fingering_n,
  *   lmt_suggest_safer_keyboard_next_step_by_playability,
@@ -287,6 +299,19 @@ enum {
     LMT_KEYBOARD_PLAYABILITY_BLOCKER_IMPOSSIBLE_THUMB_CROSSING = 3,
 };
 
+typedef uint8_t lmt_playability_phrase_issue_location;
+enum {
+    LMT_PLAYABILITY_PHRASE_ISSUE_EVENT = 0,
+    LMT_PLAYABILITY_PHRASE_ISSUE_TRANSITION = 1,
+};
+
+typedef uint8_t lmt_playability_phrase_issue_severity;
+enum {
+    LMT_PLAYABILITY_PHRASE_SEVERITY_CLEAR = 0,
+    LMT_PLAYABILITY_PHRASE_SEVERITY_WARNING = 1,
+    LMT_PLAYABILITY_PHRASE_SEVERITY_BLOCKED = 2,
+};
+
 enum {
     LMT_MAX_FRET_PLAYABILITY_STRINGS = 16,
     LMT_MAX_KEYBOARD_FINGERING_NOTES = 5,
@@ -321,6 +346,62 @@ typedef struct {
     int16_t comfort_shift_margin;
     int16_t limit_shift_margin;
 } lmt_playability_difficulty_summary;
+
+typedef struct {
+    uint8_t fret_count;
+    uint8_t reserved0;
+    uint8_t reserved1;
+    uint8_t reserved2;
+    int8_t frets[LMT_MAX_FRET_PLAYABILITY_STRINGS];
+} lmt_fret_phrase_event;
+
+typedef struct {
+    uint8_t note_count;
+    uint8_t reserved0;
+    uint8_t reserved1;
+    uint8_t reserved2;
+    lmt_midi_note notes[LMT_MAX_KEYBOARD_FINGERING_NOTES];
+} lmt_keyboard_phrase_event;
+
+typedef struct {
+    uint8_t location;
+    uint8_t severity;
+    uint32_t event_index;
+    uint32_t next_event_index;
+    uint8_t blocker_count;
+    uint8_t warning_count;
+    uint8_t dominant_reason;
+    uint8_t dominant_warning;
+    uint16_t bottleneck_cost;
+    uint16_t cumulative_cost;
+    uint32_t blocker_bits;
+    uint32_t warning_bits;
+    uint32_t reason_bits;
+} lmt_playability_phrase_issue;
+
+typedef struct {
+    uint32_t event_count;
+    uint32_t transition_count;
+    uint32_t issue_count;
+    uint32_t blocked_issue_count;
+    uint32_t warning_issue_count;
+    uint32_t first_blocked_event_index;
+    uint32_t first_blocked_transition_index;
+    uint32_t bottleneck_event_index;
+    uint32_t bottleneck_next_event_index;
+    uint32_t cumulative_cost;
+    uint32_t total_blocker_count;
+    uint32_t total_warning_count;
+    uint32_t total_reason_count;
+    uint16_t max_bottleneck_cost;
+    uint8_t peak_span_steps;
+    uint8_t peak_shift_steps;
+    uint8_t bottleneck_location;
+    uint8_t bottleneck_severity;
+    uint8_t dominant_reason;
+    uint8_t dominant_warning;
+    uint8_t reserved0;
+} lmt_playability_phrase_summary;
 
 typedef struct {
     uint8_t event_count;
@@ -800,6 +881,10 @@ const char *lmt_playability_policy_name(uint32_t index);
 uint32_t lmt_playability_profile_preset_count(void);
 const char *lmt_playability_profile_preset_name(uint32_t index);
 uint32_t lmt_playability_profile_from_preset(uint32_t preset, const lmt_hand_profile *base_profile, lmt_hand_profile *out);
+uint32_t lmt_playability_phrase_issue_location_count(void);
+const char *lmt_playability_phrase_issue_location_name(uint32_t index);
+uint32_t lmt_playability_phrase_issue_severity_count(void);
+const char *lmt_playability_phrase_issue_severity_name(uint32_t index);
 uint32_t lmt_fret_playability_blocker_count(void);
 const char *lmt_fret_playability_blocker_name(uint32_t index);
 uint32_t lmt_fret_technique_profile_count(void);
@@ -823,6 +908,10 @@ uint32_t lmt_sizeof_ranked_keyboard_fingering(void);
 uint32_t lmt_sizeof_ranked_keyboard_context_suggestion(void);
 uint32_t lmt_sizeof_ranked_keyboard_next_step(void);
 uint32_t lmt_sizeof_playability_difficulty_summary(void);
+uint32_t lmt_sizeof_fret_phrase_event(void);
+uint32_t lmt_sizeof_keyboard_phrase_event(void);
+uint32_t lmt_sizeof_playability_phrase_issue(void);
+uint32_t lmt_sizeof_playability_phrase_summary(void);
 uint32_t lmt_default_fret_hand_profile(lmt_hand_profile *out);
 uint32_t lmt_default_fret_hand_profile_for_technique(uint32_t profile, lmt_hand_profile *out);
 uint32_t lmt_default_keyboard_hand_profile(lmt_hand_profile *out);
@@ -840,6 +929,10 @@ uint32_t lmt_assess_keyboard_realization_n(const lmt_midi_note *notes, uint32_t 
 uint32_t lmt_assess_keyboard_transition_n(const lmt_midi_note *from_notes, uint32_t from_count, const lmt_midi_note *to_notes, uint32_t to_count, uint32_t hand, const lmt_hand_profile *profile, const lmt_temporal_load_state *previous_load, lmt_keyboard_transition_assessment *out);
 uint32_t lmt_summarize_keyboard_realization_difficulty_n(const lmt_midi_note *notes, uint32_t note_count, uint32_t hand, const lmt_hand_profile *profile, const lmt_temporal_load_state *previous_load, lmt_playability_difficulty_summary *out);
 uint32_t lmt_summarize_keyboard_transition_difficulty_n(const lmt_midi_note *from_notes, uint32_t from_count, const lmt_midi_note *to_notes, uint32_t to_count, uint32_t hand, const lmt_hand_profile *profile, const lmt_temporal_load_state *previous_load, lmt_playability_difficulty_summary *out);
+uint32_t lmt_collect_fret_phrase_issues_n(const lmt_fret_realization_assessment *realizations, uint32_t realization_count, const lmt_fret_transition_assessment *transitions, uint32_t transition_count, lmt_playability_phrase_issue *out, uint32_t out_cap);
+uint32_t lmt_collect_keyboard_phrase_issues_n(const lmt_keyboard_realization_assessment *realizations, uint32_t realization_count, const lmt_keyboard_transition_assessment *transitions, uint32_t transition_count, lmt_playability_phrase_issue *out, uint32_t out_cap);
+uint32_t lmt_summarize_fret_phrase_assessments_n(const lmt_fret_realization_assessment *realizations, uint32_t realization_count, const lmt_fret_transition_assessment *transitions, uint32_t transition_count, lmt_playability_phrase_summary *out);
+uint32_t lmt_summarize_keyboard_phrase_assessments_n(const lmt_keyboard_realization_assessment *realizations, uint32_t realization_count, const lmt_keyboard_transition_assessment *transitions, uint32_t transition_count, lmt_playability_phrase_summary *out);
 uint32_t lmt_rank_keyboard_fingerings_n(const lmt_midi_note *notes, uint32_t note_count, uint32_t hand, const lmt_hand_profile *profile, lmt_ranked_keyboard_fingering *out, uint32_t out_cap);
 uint32_t lmt_suggest_easier_keyboard_fingering_n(const lmt_midi_note *notes, uint32_t note_count, uint32_t hand, const lmt_hand_profile *profile, lmt_ranked_keyboard_fingering *out);
 uint32_t lmt_filter_next_steps_by_playability(const lmt_voiced_history *history, uint32_t profile, uint32_t hand, const lmt_hand_profile *hand_profile, uint32_t policy, lmt_next_step_suggestion *out, uint32_t out_cap);

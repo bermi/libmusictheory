@@ -270,6 +270,13 @@ if [ -f "$ROOT_DIR/docs/plans/in_progress/0131-playability-gallery-screenshots-a
     check_cmd "cd '$ROOT_DIR' && rg -n 'scene-midi-playability-guide\\.png|scene-midi-playability-piano\\.png|scene-midi-playability-fret\\.png|compact-beginner|minimax-bottleneck|playability-overlay-mode|mini-instrument-mode' scripts/capture_wasm_gallery_screenshots.mjs docs/release/gallery-capture.md >/dev/null" "0131 playability capture guardrail (capture script and docs agree on the dedicated playability states)"
 fi
 
+if [ -f "$ROOT_DIR/docs/plans/in_progress/0133-phrase-event-model-and-audit-summaries.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0133-phrase-event-model-and-audit-summaries.md" ]; then
+    check_cmd "cd '$ROOT_DIR' && test -f src/playability/phrase.zig && test -f src/tests/playability_phrase_test.zig && rg -n 'pub const phrase|tests/playability_phrase_test\\.zig' src/playability.zig src/root.zig >/dev/null" "0133 phrase foundation guardrail (module and focused tests are wired into the playability family)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'FretPhraseEvent|KeyboardPhraseEvent|IssueLocationKind|IssueSeverity|PhraseIssue|PhraseSummary|collectFretIssues|collectKeyboardIssues|summarizeFretAssessments|summarizeKeyboardAssessments' src/playability/phrase.zig src/tests/playability_phrase_test.zig >/dev/null" "0133 phrase algorithm guardrail (event carriers, issue rows, and phrase summary helpers are implemented)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'lmt_playability_phrase_issue_location|lmt_playability_phrase_issue_severity|lmt_fret_phrase_event|lmt_keyboard_phrase_event|lmt_playability_phrase_issue|lmt_playability_phrase_summary|lmt_collect_fret_phrase_issues_n|lmt_collect_keyboard_phrase_issues_n|lmt_summarize_fret_phrase_assessments_n|lmt_summarize_keyboard_phrase_assessments_n|lmt_sizeof_fret_phrase_event|lmt_sizeof_keyboard_phrase_event|lmt_sizeof_playability_phrase_issue|lmt_sizeof_playability_phrase_summary' include/libmusictheory.h src/c_api.zig build.zig scripts/check_wasm_exports.mjs src/tests/c_api_test.zig >/dev/null" "0133 phrase ABI guardrail (phrase reflection, struct sizes, and assessment-sequence exports are wired)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'phrase event|event versus transition|assessment-sequence summaries|no black-box phrase difficulty score|playability\\.phrase|lmt_playability_phrase_issue_location_count|lmt_summarize_keyboard_phrase_assessments_n' docs/research/algorithms/playability.md docs/api.md >/dev/null" "0133 phrase docs guardrail (research and unified API docs explain the phrase foundation clearly)"
+fi
+
 
 
 if [ -f "$ROOT_DIR/docs/plans/in_progress/0088-live-midi-composer-scene.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0088-live-midi-composer-scene.md" ]; then

@@ -1,5 +1,8 @@
 const std = @import("std");
 
+pub const INVALID_REASON_INDEX: u8 = std.math.maxInt(u8);
+pub const INVALID_WARNING_INDEX: u8 = std.math.maxInt(u8);
+
 pub const ReasonKind = enum(u8) {
     reachable_location = 0,
     reachable_in_current_window = 1,
@@ -123,6 +126,28 @@ pub const TemporalLoadState = struct {
     }
 };
 
+pub fn countBits(bits: u32) u8 {
+    return @as(u8, @intCast(@min(@popCount(bits), std.math.maxInt(u8))));
+}
+
+pub fn firstReasonIndex(bits: u32) u8 {
+    return firstSetBit(bits, REASON_NAMES.len, INVALID_REASON_INDEX);
+}
+
+pub fn firstWarningIndex(bits: u32) u8 {
+    return firstSetBit(bits, WARNING_NAMES.len, INVALID_WARNING_INDEX);
+}
+
+fn firstSetBit(bits: u32, comptime count: usize, fallback: u8) u8 {
+    var index: usize = 0;
+    while (index < count) : (index += 1) {
+        if ((bits & (@as(u32, 1) << @as(u5, @intCast(index)))) != 0) {
+            return @as(u8, @intCast(index));
+        }
+    }
+    return fallback;
+}
+
 test "temporal load state accumulates anchor and span history" {
     var load = TemporalLoadState.init();
     load.observe(3, 4);
@@ -140,4 +165,17 @@ test "temporal load state accumulates anchor and span history" {
     try std.testing.expectEqual(@as(u8, 3), load.peak_shift_steps);
     try std.testing.expectEqual(@as(u16, 9), load.cumulative_span_steps);
     try std.testing.expectEqual(@as(u16, 3), load.cumulative_shift_steps);
+}
+
+test "playability bit helpers expose first reason and warning deterministically" {
+    const reason_bits = (@as(u32, 1) << @intFromEnum(ReasonKind.reuses_current_anchor)) |
+        (@as(u32, 1) << @intFromEnum(ReasonKind.open_string_relief));
+    const warning_bits = (@as(u32, 1) << @intFromEnum(WarningKind.excessive_longitudinal_shift)) |
+        (@as(u32, 1) << @intFromEnum(WarningKind.shift_required));
+
+    try std.testing.expectEqual(@as(u8, 2), countBits(reason_bits));
+    try std.testing.expectEqual(@as(u8, @intFromEnum(ReasonKind.open_string_relief)), firstReasonIndex(reason_bits));
+    try std.testing.expectEqual(@as(u8, @intFromEnum(WarningKind.shift_required)), firstWarningIndex(warning_bits));
+    try std.testing.expectEqual(INVALID_REASON_INDEX, firstReasonIndex(0));
+    try std.testing.expectEqual(INVALID_WARNING_INDEX, firstWarningIndex(0));
 }

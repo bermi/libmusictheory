@@ -185,6 +185,7 @@ Important values:
 - `playability.keyboard_assessment.{HAND_ROLE_NAMES,BLOCKER_NAMES}`
 - `playability.profile.{PRESET_NAMES}`
 - `playability.ranking.{POLICY_NAMES}`
+- `playability.phrase.{ISSUE_LOCATION_NAMES,ISSUE_SEVERITY_NAMES,MAX_AUDIT_EVENTS}`
 
 | Symbol(s) | Parameters | Returns | Example | Typical use |
 | --- | --- | --- | --- | --- |
@@ -195,6 +196,7 @@ Important values:
 | `playability.keyboard_assessment.fromInt`, `assessRealization`, `assessTransition`, `rankFingerings` | note lists, hand role, profile, previous load, output buffers | hand role, assessment structs, ranked fingering slices | `playability.keyboard_assessment.rankFingerings(notes, .right, profile, out[0..])` | Score keyboard realizations, transitions, and local fingerings with explainable blocker and warning flags. |
 | `playability.profile.fromInt`, `playability.profile.applyPreset`, `playability.profile.summarizeFretRealization`, `playability.profile.summarizeFretTransition`, `playability.profile.summarizeKeyboardRealization`, `playability.profile.summarizeKeyboardTransition`, `playability.profile.suggestEasierFretRealization`, `playability.profile.suggestEasierKeyboardFingering`, `playability.profile.suggestSaferKeyboardNextStep` | preset IDs, hand profiles, assessments, history windows | adjusted profiles, difficulty summaries, easier realizations, safer next-step rows | `playability.profile.applyPreset(base, .compact_beginner)` | Apply explainable ergonomic presets and turn raw assessments into practice-facing summaries and safer suggestions. |
 | `playability.ranking.fromInt`, `playability.ranking.rankKeyboardNextSteps`, `playability.ranking.filterNextStepsByPlayability`, `playability.ranking.rankKeyboardContextSuggestions` | voiced history, theory profile, hand role, hand profile, policy, output buffers | policy IDs, ranked playability rows, accepted next steps, ranked context rows | `playability.ranking.rankKeyboardNextSteps(&history, .tonal_chorale, .right, profile, .balanced, out[0..])` | Re-rank theory-valid continuations by explicit bottleneck and strain policies instead of hidden heuristics. |
+| `playability.phrase.FretPhraseEvent.init`, `playability.phrase.KeyboardPhraseEvent.init`, `playability.phrase.collectFretIssues`, `playability.phrase.collectKeyboardIssues`, `playability.phrase.summarizeFretAssessments`, `playability.phrase.summarizeKeyboardAssessments` | fixed-size phrase events or precomputed realization/transition assessment sequences | issue rows and `PhraseSummary` aggregates | `playability.phrase.summarizeKeyboardAssessments(realizations, transitions)` | Audit a whole passage with explicit event versus transition indexing and assessment-sequence summaries instead of a hidden phrase score. |
 | `guitar.FretPosition.toMidi`, `guitar.FretPosition.toPitchClass`, `guitar.GenericFretPosition.toMidi`, `guitar.GenericFretPosition.toPitchClass`, `guitar.GuitarVoicing.toPitchClassSet`, `guitar.GuitarVoicing.handSpan`, `guitar.GenericVoicing.toPitchClassSet`, `guitar.GenericVoicing.handSpan` | fret or voicing objects and tuning | MIDI notes, pitch classes, sets, spans | `voicing.toPitchClassSet()` | Turn fret positions and voicings into theory objects. |
 | `guitar.fretToMidi`, `guitar.fretToMidiGeneric`, `guitar.midiToFretPositions`, `guitar.midiToFretPositionsGeneric`, `guitar.pcToFretPositions` | strings, frets, tuning, output buffers | MIDI notes or candidate-position slices | `guitar.midiToFretPositions(60, guitar.tunings.STANDARD, &out)` | Translate between fretboard coordinates and pitch content. |
 | `guitar.generateVoicingsGeneric`, `guitar.bassMidiGeneric`, `guitar.scoreVoicingGeneric`, `guitar.preferredVoicingGeneric`, `guitar.generateVoicings`, `guitar.cagedPositions` | chord sets, tuning, search bounds, output buffers | voicing slices, bass MIDI, ranking scores, preferred voicing, CAGED anchors | `guitar.preferredVoicingGeneric(set, tuning, 12, 4, null, meta[0..], frets[0..])` | Search, score, and select playable chord voicings. |
@@ -292,6 +294,8 @@ Key experimental but useful types:
 - `lmt_keybed_key_coord`, `lmt_keyboard_play_state`
 - `lmt_keyboard_realization_assessment`, `lmt_keyboard_transition_assessment`, `lmt_ranked_keyboard_fingering`
 - `lmt_playability_difficulty_summary`, `lmt_ranked_keyboard_context_suggestion`, `lmt_ranked_keyboard_next_step`
+- `lmt_fret_phrase_event`, `lmt_keyboard_phrase_event`
+- `lmt_playability_phrase_issue`, `lmt_playability_phrase_summary`
 - `lmt_voiced_state`, `lmt_voiced_history`
 - `lmt_motion_summary`, `lmt_motion_evaluation`
 - `lmt_voice_pair_violation`, `lmt_motion_independence_summary`
@@ -325,10 +329,11 @@ Most experimental `uint32_t` functions return `1` on success and `0` on invalid 
 
 | Function(s) | Parameters | Returns | Example | Typical use |
 | --- | --- | --- | --- | --- |
-| `lmt_playability_reason_count`, `lmt_playability_reason_name`, `lmt_playability_warning_count`, `lmt_playability_warning_name`, `lmt_playability_policy_count`, `lmt_playability_policy_name`, `lmt_playability_profile_preset_count`, `lmt_playability_profile_preset_name`, `lmt_fret_playability_blocker_count`, `lmt_fret_playability_blocker_name`, `lmt_keyboard_playability_blocker_count`, `lmt_keyboard_playability_blocker_name`, `lmt_fret_technique_profile_count`, `lmt_fret_technique_profile_name` | none or enum index | counts and names | `lmt_playability_profile_preset_name(1)` | Reflect the full explainable playability vocabulary into UI, docs, and bindings. |
-| `lmt_sizeof_hand_profile`, `lmt_sizeof_temporal_load_state`, `lmt_sizeof_fret_candidate_location`, `lmt_sizeof_fret_play_state`, `lmt_sizeof_fret_realization_assessment`, `lmt_sizeof_fret_transition_assessment`, `lmt_sizeof_ranked_fret_realization`, `lmt_sizeof_keybed_key_coord`, `lmt_sizeof_keyboard_play_state`, `lmt_sizeof_keyboard_realization_assessment`, `lmt_sizeof_keyboard_transition_assessment`, `lmt_sizeof_ranked_keyboard_fingering`, `lmt_sizeof_ranked_keyboard_context_suggestion`, `lmt_sizeof_ranked_keyboard_next_step`, `lmt_sizeof_playability_difficulty_summary` | none | byte counts | `lmt_sizeof_playability_difficulty_summary()` | Guard FFI layout compatibility for every playability struct the gallery and host apps exchange. |
-| `lmt_default_fret_hand_profile`, `lmt_default_fret_hand_profile_for_technique`, `lmt_default_keyboard_hand_profile`, `lmt_playability_profile_from_preset`, `lmt_describe_fret_play_state`, `lmt_windowed_fret_positions_n`, `lmt_assess_fret_realization_n`, `lmt_assess_fret_transition_n`, `lmt_rank_fret_realizations_n`, `lmt_keyboard_key_coord`, `lmt_describe_keyboard_play_state`, `lmt_assess_keyboard_realization_n`, `lmt_assess_keyboard_transition_n`, `lmt_rank_keyboard_fingerings_n` | profiles, preset IDs, fret arrays, tuning, note lists, previous load, output buffers | success flags or logical totals | `lmt_playability_profile_from_preset(LMT_PLAYABILITY_PRESET_COMPACT_BEGINNER, &base, &out)` | Build preset-aware hand profiles and obtain low-level keyboard/fret assessments from other languages. |
+| `lmt_playability_reason_count`, `lmt_playability_reason_name`, `lmt_playability_warning_count`, `lmt_playability_warning_name`, `lmt_playability_policy_count`, `lmt_playability_policy_name`, `lmt_playability_profile_preset_count`, `lmt_playability_profile_preset_name`, `lmt_fret_playability_blocker_count`, `lmt_fret_playability_blocker_name`, `lmt_keyboard_playability_blocker_count`, `lmt_keyboard_playability_blocker_name`, `lmt_fret_technique_profile_count`, `lmt_fret_technique_profile_name`, `lmt_playability_phrase_issue_location_count`, `lmt_playability_phrase_issue_location_name`, `lmt_playability_phrase_issue_severity_count`, `lmt_playability_phrase_issue_severity_name` | none or enum index | counts and names | `lmt_playability_phrase_issue_location_count()` | Reflect the full explainable playability vocabulary, including phrase issue locations and severities, into UI, docs, and bindings. |
+| `lmt_sizeof_hand_profile`, `lmt_sizeof_temporal_load_state`, `lmt_sizeof_fret_candidate_location`, `lmt_sizeof_fret_play_state`, `lmt_sizeof_fret_realization_assessment`, `lmt_sizeof_fret_transition_assessment`, `lmt_sizeof_ranked_fret_realization`, `lmt_sizeof_keybed_key_coord`, `lmt_sizeof_keyboard_play_state`, `lmt_sizeof_keyboard_realization_assessment`, `lmt_sizeof_keyboard_transition_assessment`, `lmt_sizeof_ranked_keyboard_fingering`, `lmt_sizeof_ranked_keyboard_context_suggestion`, `lmt_sizeof_ranked_keyboard_next_step`, `lmt_sizeof_playability_difficulty_summary`, `lmt_sizeof_fret_phrase_event`, `lmt_sizeof_keyboard_phrase_event`, `lmt_sizeof_playability_phrase_issue`, `lmt_sizeof_playability_phrase_summary` | none | byte counts | `lmt_sizeof_playability_phrase_summary()` | Guard FFI layout compatibility for every playability struct the gallery and host apps exchange, including phrase audit carriers and summaries. |
+| `lmt_default_fret_hand_profile`, `lmt_default_fret_hand_profile_for_technique`, `lmt_default_keyboard_hand_profile`, `lmt_playability_profile_from_preset`, `lmt_describe_fret_play_state`, `lmt_windowed_fret_positions_n`, `lmt_assess_fret_realization_n`, `lmt_assess_fret_transition_n`, `lmt_rank_fret_realizations_n`, `lmt_keyboard_key_coord`, `lmt_describe_keyboard_play_state`, `lmt_assess_keyboard_realization_n`, `lmt_assess_keyboard_transition_n`, `lmt_rank_keyboard_fingerings_n` | profiles, preset IDs, fret arrays, tuning, note lists, previous load, output buffers | success flags or logical totals | `lmt_playability_profile_from_preset(LMT_PLAYABILITY_PROFILE_COMPACT_BEGINNER, &base, &out)` | Build preset-aware hand profiles and obtain low-level keyboard/fret assessments from other languages. |
 | `lmt_summarize_fret_realization_difficulty_n`, `lmt_summarize_fret_transition_difficulty_n`, `lmt_summarize_keyboard_realization_difficulty_n`, `lmt_summarize_keyboard_transition_difficulty_n` | assessed note/fret inputs, technique or hand info, output summary | success flag | `lmt_summarize_keyboard_transition_difficulty_n(a, an, b, bn, hand, &profile, NULL, &summary)` | Collapse blocker, warning, bottleneck, and recent-load data into practice-facing summaries without inventing opaque scores. |
+| `lmt_collect_fret_phrase_issues_n`, `lmt_collect_keyboard_phrase_issues_n`, `lmt_summarize_fret_phrase_assessments_n`, `lmt_summarize_keyboard_phrase_assessments_n` | realization and transition assessment sequences, output buffers | logical issue totals or success flags | `lmt_summarize_keyboard_phrase_assessments_n(realizations, rn, transitions, tn, &summary)` | Build assessment-sequence summaries for a whole phrase with explicit event versus transition indexing and no black-box phrase difficulty score. |
 | `lmt_suggest_easier_fret_realization_n`, `lmt_suggest_easier_keyboard_fingering_n`, `lmt_filter_next_steps_by_playability`, `lmt_rank_keyboard_next_steps_by_playability`, `lmt_suggest_safer_keyboard_next_step_by_playability`, `lmt_rank_keyboard_context_suggestions_by_playability` | current note/fret context, theory profile, hand role, hand profile, policy, output buffers | ranked rows, filtered next steps, or one safer fallback | `lmt_rank_keyboard_next_steps_by_playability(&history, LMT_COUNTERPOINT_TONAL_CHORALE, LMT_KEYBOARD_HAND_RIGHT, &profile, LMT_PLAYABILITY_POLICY_MINIMAX_BOTTLENECK, out, cap)` | Turn theory-valid output into explicitly playable alternatives and safer continuations for practice tools and LLM assistants. |
 
 ### Playability API Recipes
@@ -477,6 +482,41 @@ Avoid phrasing like:
 - `"The model preferred this."`
 - `"This scored 47."`
 - `"The heuristic weight was higher."`
+
+#### Recipe 6: Audit A Phrase From Precomputed Assessments
+
+Use the phrase helpers after you already have low-level realization and transition assessments.
+
+```c
+lmt_keyboard_realization_assessment realizations[3] = {0};
+lmt_keyboard_transition_assessment transitions[2] = {0};
+lmt_playability_phrase_issue issues[8] = {0};
+lmt_playability_phrase_summary summary = {0};
+
+/* populate realizations and transitions with lmt_assess_keyboard_realization_n
+   and lmt_assess_keyboard_transition_n first */
+
+uint32_t logical = lmt_collect_keyboard_phrase_issues_n(
+    realizations, 3,
+    transitions, 2,
+    issues, 8);
+
+if (lmt_summarize_keyboard_phrase_assessments_n(
+        realizations, 3,
+        transitions, 2,
+        &summary)) {
+    /* summary.first_blocked_event_index and
+       summary.first_blocked_transition_index identify the earliest hard stop,
+       while summary.bottleneck_severity and summary.cumulative_cost describe
+       the whole phrase without inventing a black-box score. */
+}
+```
+
+Use this when your host wants to say:
+
+- `"The first blocked point in the phrase is transition 1 -> 2."`
+- `"The phrase bottleneck is a warning-level transition, but the whole passage remains accepted."`
+- `"The dominant warning across the phrase is repeated weak-adjacent-finger use."`
 
 #### Experimental Counterpoint, SATB, And Cadence Analysis
 
