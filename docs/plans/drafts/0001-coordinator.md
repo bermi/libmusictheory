@@ -10,10 +10,10 @@ Build `libmusictheory`, a Zig library exposing a C ABI that implements the compl
 ## Lifecycle Status
 
 - Draft: 0001
-- In progress: none
+- In progress: 0134
 ## Current Remaining Work
 
-The stable-release execution lane, the post-`0.1.0` explainable-theory Contrapunk lane, the experimental playability roadmap, and the `0130`/`0131` adoption follow-ups are complete. `0133` is closed, so the next open implementation slice is `0134`.
+The stable-release execution lane, the post-`0.1.0` explainable-theory Contrapunk lane, the experimental playability roadmap, and the `0130`/`0131` adoption follow-ups are complete. `0133` is closed, and `0134` is now in progress.
 
 The next planned roadmap is `0132`, now refined into:
 - `0133` phrase-event foundation

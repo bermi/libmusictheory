@@ -224,3 +224,54 @@ The strain bucket is intentionally small and explicit:
   at least one blocked issue exists
 
 This avoids a fake "difficulty score" while still giving hosts and LLMs a phrase-level answer they can explain.
+
+## 0134 - Fixed-Realization Phrase Audit Engines
+
+`0134` turns the shared phrase vocabulary into real audit passes for already chosen keyboard and fret realizations.
+
+The public boundary stays explicit:
+
+- this is a fixed-realization phrase audit
+- it does not rewrite the music
+- it does not introduce committed phrase memory
+- it does not treat gallery hover or pin state as library memory
+
+### What The Audit Adds
+
+For both keyboard and fret phrases, the audit now composes:
+
+- event-local realization issues
+- transition-local issues between adjacent realized events
+- repeated warning clusters
+- recovery-deficit runs
+
+That lets a host or LLM say things like:
+
+- "This phrase is locally playable event by event, but it contains a warning cluster of repeated maximal stretches."
+- "The hand continuity reset breaks the recovery-deficit run when the phrase switches hands."
+- "The phrase stays unchanged musically; the audit only reports why the current realization is becoming strained."
+
+### Hand Continuity Reset
+
+Keyboard phrase events carry an explicit hand role, so the audit must not pretend a same-hand shift exists across a hand change.
+
+When adjacent events switch from one hand to the other, the audit emits a `hand continuity reset` advisory reason and restarts the local continuity segment for:
+
+- transition interpretation
+- warning cluster detection
+- recovery-deficit accounting
+
+This keeps the phrase report explainable:
+
+- "The right hand accumulated strain through event 1, then the left hand starts a new continuity segment at event 2."
+
+### Why Warning Clusters And Recovery-Deficit Runs Matter
+
+A phrase can fail gracefully or fail cumulatively.
+
+`0134` keeps both cases visible:
+
+- a repeated warning cluster says the same warning family keeps recurring across a continuity segment
+- a recovery-deficit run says strain persists across consecutive events without enough relief to reset the phrase burden
+
+These are rule-based summaries, not hidden scores. They give downstream tools a phrase-level explanation without inventing a black-box difficulty number.

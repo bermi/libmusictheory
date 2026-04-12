@@ -181,6 +181,8 @@ const lmt_default_fret_hand_profile = api.lmt_default_fret_hand_profile;
 const lmt_default_fret_hand_profile_for_technique = api.lmt_default_fret_hand_profile_for_technique;
 const lmt_default_keyboard_hand_profile = api.lmt_default_keyboard_hand_profile;
 const lmt_summarize_playability_phrase_issues = api.lmt_summarize_playability_phrase_issues;
+const lmt_audit_fret_phrase_n = api.lmt_audit_fret_phrase_n;
+const lmt_audit_keyboard_phrase_n = api.lmt_audit_keyboard_phrase_n;
 const lmt_describe_fret_play_state = api.lmt_describe_fret_play_state;
 const lmt_windowed_fret_positions_n = api.lmt_windowed_fret_positions_n;
 const lmt_assess_fret_realization_n = api.lmt_assess_fret_realization_n;
@@ -308,6 +310,7 @@ test "c abi header layout and constants" {
     try testing.expectEqual(@as(c_int, 3), c.LMT_PLAYABILITY_REASON_EXPANDS_CURRENT_WINDOW);
     try testing.expectEqual(@as(c_int, 2), c.LMT_PLAYABILITY_WARNING_HARD_LIMIT_EXCEEDED);
     try testing.expectEqual(@as(c_int, 4), c.LMT_PLAYABILITY_REASON_OPEN_STRING_RELIEF);
+    try testing.expectEqual(@as(c_int, 8), c.LMT_PLAYABILITY_REASON_HAND_CONTINUITY_RESET);
     try testing.expectEqual(@as(c_int, 7), c.LMT_PLAYABILITY_WARNING_UNSUPPORTED_EXTENSION);
     try testing.expectEqual(@as(c_int, 8), c.LMT_PLAYABILITY_WARNING_THUMB_ON_BLACK_UNDER_STRETCH);
     try testing.expectEqual(@as(c_int, 11), c.LMT_PLAYABILITY_WARNING_FLUENCY_DEGRADATION_FROM_RECENT_MOTION);
@@ -334,6 +337,7 @@ test "c abi header layout and constants" {
     try testing.expectEqual(@as(u32, playability.keyboard_assessment.HAND_ROLE_NAMES.len), lmt_keyboard_hand_count());
     try testing.expectEqual(@as(u32, playability.keyboard_assessment.BLOCKER_NAMES.len), lmt_keyboard_playability_blocker_count());
     try testing.expectEqualStrings("reachable in current window", std.mem.sliceTo(@as([*:0]const u8, @ptrCast(lmt_playability_reason_name(c.LMT_PLAYABILITY_REASON_REACHABLE_IN_CURRENT_WINDOW))), 0));
+    try testing.expectEqualStrings("hand continuity reset", std.mem.sliceTo(@as([*:0]const u8, @ptrCast(lmt_playability_reason_name(c.LMT_PLAYABILITY_REASON_HAND_CONTINUITY_RESET))), 0));
     try testing.expectEqualStrings("hard limit exceeded", std.mem.sliceTo(@as([*:0]const u8, @ptrCast(lmt_playability_warning_name(c.LMT_PLAYABILITY_WARNING_HARD_LIMIT_EXCEEDED))), 0));
     try testing.expectEqualStrings("minimax-bottleneck", std.mem.sliceTo(@as([*:0]const u8, @ptrCast(lmt_playability_policy_name(c.LMT_PLAYABILITY_POLICY_MINIMAX_BOTTLENECK))), 0));
     try testing.expectEqualStrings("span-tolerant", std.mem.sliceTo(@as([*:0]const u8, @ptrCast(lmt_playability_profile_preset_name(c.LMT_PLAYABILITY_PROFILE_SPAN_TOLERANT))), 0));
@@ -1033,6 +1037,89 @@ test "c abi phrase issue summaries" {
     try testing.expectEqual(@as(u16, 1), summary.recovery_deficit_start_index);
     try testing.expectEqual(@as(u16, 2), summary.recovery_deficit_end_index);
     try testing.expectEqual(@as(u16, 2), summary.longest_recovery_deficit_run);
+}
+
+test "c abi keyboard phrase audit wrapper" {
+    var profile: LmtHandProfile = undefined;
+    try testing.expectEqual(@as(u32, 1), lmt_default_keyboard_hand_profile(@ptrCast(&profile)));
+    profile.comfort_span_steps = 4;
+    profile.limit_span_steps = 12;
+    profile.comfort_shift_steps = 12;
+    profile.limit_shift_steps = 12;
+
+    const events = [_]LmtKeyboardPhraseEvent{
+        .{ .note_count = 2, .hand = c.LMT_KEYBOARD_HAND_RIGHT, .reserved0 = 0, .reserved1 = 0, .notes = .{ 60, 67, 0, 0, 0 } },
+        .{ .note_count = 2, .hand = c.LMT_KEYBOARD_HAND_RIGHT, .reserved0 = 0, .reserved1 = 0, .notes = .{ 60, 67, 0, 0, 0 } },
+        .{ .note_count = 2, .hand = c.LMT_KEYBOARD_HAND_RIGHT, .reserved0 = 0, .reserved1 = 0, .notes = .{ 60, 67, 0, 0, 0 } },
+    };
+
+    var issues: [64]LmtPlayabilityPhraseIssue = undefined;
+    var summary: LmtPlayabilityPhraseSummary = undefined;
+    const logical = lmt_audit_keyboard_phrase_n(
+        @ptrCast(&events),
+        events.len,
+        @ptrCast(&profile),
+        @ptrCast(&issues),
+        issues.len,
+        @ptrCast(&summary),
+    );
+
+    try testing.expect(logical > 0);
+    try testing.expectEqual(@as(u16, 3), summary.event_count);
+    try testing.expect(summary.longest_recovery_deficit_run >= 1);
+
+    var found_transition_warning = false;
+    for (issues[0..@min(logical, issues.len)]) |issue| {
+        if (issue.scope == c.LMT_PLAYABILITY_PHRASE_ISSUE_TRANSITION and
+            issue.family_domain == c.LMT_PLAYABILITY_PHRASE_DOMAIN_WARNING)
+        {
+            found_transition_warning = true;
+        }
+    }
+    try testing.expect(found_transition_warning);
+}
+
+test "c abi fret phrase audit wrapper" {
+    var profile: LmtHandProfile = undefined;
+    try testing.expectEqual(@as(u32, 1), lmt_default_fret_hand_profile(@ptrCast(&profile)));
+    profile.comfort_shift_steps = 2;
+    profile.limit_shift_steps = 3;
+
+    const tuning = [_]u8{ 40, 45, 50, 55 };
+    const events = [_]LmtFretPhraseEvent{
+        .{ .fret_count = 4, .reserved0 = 0, .reserved1 = 0, .reserved2 = 0, .frets = .{ 1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 } },
+        .{ .fret_count = 4, .reserved0 = 0, .reserved1 = 0, .reserved2 = 0, .frets = .{ 8, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 } },
+        .{ .fret_count = 4, .reserved0 = 0, .reserved1 = 0, .reserved2 = 0, .frets = .{ 12, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 } },
+    };
+
+    var issues: [64]LmtPlayabilityPhraseIssue = undefined;
+    var summary: LmtPlayabilityPhraseSummary = undefined;
+    const logical = lmt_audit_fret_phrase_n(
+        @ptrCast(&events),
+        events.len,
+        @ptrCast(&tuning),
+        tuning.len,
+        c.LMT_FRET_TECHNIQUE_GENERIC_GUITAR,
+        @ptrCast(&profile),
+        @ptrCast(&issues),
+        issues.len,
+        @ptrCast(&summary),
+    );
+
+    try testing.expect(logical > 0);
+    try testing.expectEqual(@as(u16, 0), summary.first_blocked_transition_from_index);
+    try testing.expectEqual(@as(u16, 1), summary.first_blocked_transition_to_index);
+
+    var found_shift_blocker = false;
+    for (issues[0..@min(logical, issues.len)]) |issue| {
+        if (issue.scope == c.LMT_PLAYABILITY_PHRASE_ISSUE_TRANSITION and
+            issue.family_domain == c.LMT_PLAYABILITY_PHRASE_DOMAIN_FRET_BLOCKER and
+            issue.family_index == c.LMT_FRET_PLAYABILITY_BLOCKER_SHIFT_HARD_LIMIT)
+        {
+            found_shift_blocker = true;
+        }
+    }
+    try testing.expect(found_shift_blocker);
 }
 
 test "c abi fret playability assessment helpers" {

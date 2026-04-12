@@ -277,6 +277,13 @@ if [ -f "$ROOT_DIR/docs/plans/in_progress/0133-phrase-event-model-and-audit-summ
     check_cmd "cd '$ROOT_DIR' && rg -n 'phrase audit|PhraseIssue|PhraseSummary|committed phrase memory|preview versus commit|high-strain bucket|recovery-deficit' docs/research/algorithms/playability.md docs/api.md >/dev/null" "0133 phrase docs guardrail (research notes and unified API docs explain the phrase foundation boundary)"
 fi
 
+if [ -f "$ROOT_DIR/docs/plans/in_progress/0134-fixed-realization-phrase-audit-engines.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0134-fixed-realization-phrase-audit-engines.md" ]; then
+    check_cmd "cd '$ROOT_DIR' && test -f src/playability/phrase.zig && test -f src/tests/playability_phrase_test.zig >/dev/null" "0134 phrase audit foundation guardrail (shared phrase module and focused tests remain wired)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'PhraseAuditResult|auditFretPhrase|auditKeyboardPhrase|appendRepeatedWarningClusterIssue|appendRecoveryDeficitIssue|hand continuity|warning cluster|recovery deficit' src/playability/phrase.zig src/tests/playability_phrase_test.zig >/dev/null" "0134 phrase audit algorithm guardrail (fixed-realization audit engines and phrase-pattern issue emitters are implemented)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'lmt_audit_fret_phrase_n|lmt_audit_keyboard_phrase_n' include/libmusictheory.h src/c_api.zig build.zig scripts/check_wasm_exports.mjs src/tests/c_api_test.zig >/dev/null" "0134 phrase audit ABI guardrail (fixed-realization phrase audit exports are wired)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'fixed-realization phrase audit|warning cluster|hand continuity reset|recovery-deficit run|does not rewrite the music' docs/research/algorithms/playability.md docs/api.md >/dev/null" "0134 phrase audit docs guardrail (research notes and unified API docs explain phrase audit semantics)"
+fi
+
 
 
 if [ -f "$ROOT_DIR/docs/plans/in_progress/0088-live-midi-composer-scene.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0088-live-midi-composer-scene.md" ]; then

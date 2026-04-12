@@ -236,6 +236,7 @@ enum {
     LMT_PLAYABILITY_REASON_REUSES_CURRENT_ANCHOR = 5,
     LMT_PLAYABILITY_REASON_BOTTLENECK_REDUCED = 6,
     LMT_PLAYABILITY_REASON_TECHNIQUE_PROFILE_APPLIED = 7,
+    LMT_PLAYABILITY_REASON_HAND_CONTINUITY_RESET = 8,
 };
 
 typedef uint8_t lmt_playability_warning;
@@ -409,7 +410,7 @@ typedef struct {
     uint8_t dominant_warning_family;
     uint8_t reserved0;
     uint16_t severity_counts[3];
-    uint16_t reason_family_counts[8];
+    uint16_t reason_family_counts[9];
     uint16_t warning_family_counts[12];
     uint16_t recovery_deficit_start_index;
     uint16_t recovery_deficit_end_index;
@@ -933,6 +934,8 @@ uint32_t lmt_default_fret_hand_profile(lmt_hand_profile *out);
 uint32_t lmt_default_fret_hand_profile_for_technique(uint32_t profile, lmt_hand_profile *out);
 uint32_t lmt_default_keyboard_hand_profile(lmt_hand_profile *out);
 uint32_t lmt_summarize_playability_phrase_issues(uint32_t event_count, const lmt_playability_phrase_issue *issues, uint32_t issue_count, lmt_playability_phrase_summary *out);
+uint32_t lmt_audit_fret_phrase_n(const lmt_fret_phrase_event *events, uint32_t event_count, const uint8_t *tuning, uint32_t tuning_count, uint32_t profile, const lmt_hand_profile *hand_profile, lmt_playability_phrase_issue *issues_out, uint32_t issues_cap, lmt_playability_phrase_summary *summary_out);
+uint32_t lmt_audit_keyboard_phrase_n(const lmt_keyboard_phrase_event *events, uint32_t event_count, const lmt_hand_profile *profile, lmt_playability_phrase_issue *issues_out, uint32_t issues_cap, lmt_playability_phrase_summary *summary_out);
 uint32_t lmt_describe_fret_play_state(const int8_t *frets, uint32_t fret_count, const lmt_hand_profile *profile, const lmt_temporal_load_state *previous_load, lmt_fret_play_state *out);
 uint32_t lmt_windowed_fret_positions_n(lmt_midi_note note, const uint8_t *tuning, uint32_t tuning_count, uint8_t anchor_fret, const lmt_hand_profile *profile, lmt_fret_candidate_location *out, uint32_t out_cap);
 uint32_t lmt_assess_fret_realization_n(const int8_t *frets, uint32_t fret_count, const uint8_t *tuning, uint32_t tuning_count, uint32_t profile, const lmt_hand_profile *hand_profile, const lmt_temporal_load_state *previous_load, lmt_fret_realization_assessment *out);

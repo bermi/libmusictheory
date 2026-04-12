@@ -6,6 +6,7 @@ const keyboard_assessment = @import("keyboard_assessment.zig");
 const types = @import("types.zig");
 
 pub const MAX_PHRASE_EVENTS: usize = 64;
+pub const MAX_PHRASE_AUDIT_ISSUES: usize = 4096;
 pub const NONE_EVENT_INDEX: u16 = std.math.maxInt(u16);
 pub const NONE_FAMILY_INDEX: u8 = std.math.maxInt(u8);
 
@@ -199,6 +200,13 @@ pub const PhraseSummary = struct {
     }
 };
 
+pub const PhraseAuditResult = struct {
+    logical_issue_count: usize,
+    written_issue_count: usize,
+    truncated: bool,
+    summary: PhraseSummary,
+};
+
 pub const SummaryAccumulator = struct {
     summary: PhraseSummary,
     strain_mask: u64,
@@ -228,7 +236,9 @@ pub const SummaryAccumulator = struct {
                 if (issue.family_index < types.REASON_NAMES.len) {
                     self.summary.reason_family_counts[issue.family_index] +|= 1;
                 }
-                markEvent(&self.relief_mask, target_index);
+                if (isReliefReason(issue.family_index)) {
+                    markEvent(&self.relief_mask, target_index);
+                }
             },
             .playability_warning => {
                 if (issue.family_index < types.WARNING_NAMES.len) {
@@ -282,6 +292,461 @@ pub fn summarizeIssues(event_count: usize, issues: []const PhraseIssue) PhraseSu
         accumulator.observeIssue(issue, issue_index);
     }
     return accumulator.finish();
+}
+
+const AuditBuilder = struct {
+    out: []PhraseIssue,
+    accumulator: SummaryAccumulator,
+    warning_masks: [MAX_PHRASE_EVENTS]u32,
+    continuity_reset_mask: u64,
+    logical_issue_count: usize,
+    written_issue_count: usize,
+
+    fn init(event_count: usize, out: []PhraseIssue) AuditBuilder {
+        return .{
+            .out = out,
+            .accumulator = SummaryAccumulator.init(event_count),
+            .warning_masks = [_]u32{0} ** MAX_PHRASE_EVENTS,
+            .continuity_reset_mask = 0,
+            .logical_issue_count = 0,
+            .written_issue_count = 0,
+        };
+    }
+
+    fn appendIssue(self: *AuditBuilder, issue: PhraseIssue, track_warning_mask: bool) void {
+        self.accumulator.observeIssue(issue, self.logical_issue_count);
+        if (track_warning_mask and issue.family_domain == .playability_warning and issue.family_index < 32) {
+            const target_index = issueTargetIndex(issue);
+            if (target_index < self.accumulator.summary.event_count) {
+                self.warning_masks[target_index] |= bitForIndex(issue.family_index);
+            }
+        }
+        if (self.written_issue_count < self.out.len) {
+            self.out[self.written_issue_count] = issue;
+            self.written_issue_count += 1;
+        }
+        self.logical_issue_count += 1;
+    }
+
+    fn appendLocalIssue(self: *AuditBuilder, issue: PhraseIssue) void {
+        self.appendIssue(issue, true);
+    }
+
+    fn appendPhraseIssue(self: *AuditBuilder, issue: PhraseIssue) void {
+        self.appendIssue(issue, false);
+    }
+
+    fn noteContinuityReset(self: *AuditBuilder, event_index: u16) void {
+        markEvent(&self.continuity_reset_mask, event_index);
+        self.appendPhraseIssue(PhraseIssue.eventIssue(
+            .advisory,
+            .playability_reason,
+            @as(u8, @intFromEnum(types.ReasonKind.hand_continuity_reset)),
+            event_index,
+            0,
+        ));
+    }
+
+    fn finish(self: *AuditBuilder) PhraseAuditResult {
+        return .{
+            .logical_issue_count = self.logical_issue_count,
+            .written_issue_count = self.written_issue_count,
+            .truncated = self.logical_issue_count > self.written_issue_count,
+            .summary = self.accumulator.finish(),
+        };
+    }
+};
+
+const WarningCluster = struct {
+    family_index: u8,
+    start_index: u16,
+    end_index: u16,
+    length: u16,
+};
+
+pub fn auditKeyboardPhrase(
+    events: []const KeyboardPhraseEvent,
+    profile: types.HandProfile,
+    out: []PhraseIssue,
+) PhraseAuditResult {
+    const bounded_events = boundedEventCount(events.len);
+    var builder = AuditBuilder.init(bounded_events, out);
+
+    var previous_event: ?KeyboardPhraseEvent = null;
+    var previous_input_load: ?types.TemporalLoadState = null;
+    var previous_realization: keyboard_assessment.RealizationAssessment = undefined;
+
+    for (events[0..bounded_events], 0..) |event, raw_index| {
+        const event_index = @as(u16, @intCast(raw_index));
+        const notes = keyboardEventNotes(event);
+
+        var input_load: ?types.TemporalLoadState = null;
+        if (previous_event) |prior| {
+            if (prior.hand == event.hand) {
+                input_load = previous_realization.state.load;
+                appendKeyboardTransitionIssues(
+                    &builder,
+                    keyboard_assessment.assessTransition(
+                        keyboardEventNotes(prior),
+                        notes,
+                        event.hand,
+                        profile,
+                        previous_input_load,
+                    ),
+                    previous_realization,
+                    keyboard_assessment.assessRealization(notes, event.hand, profile, input_load),
+                    profile,
+                    event_index - 1,
+                    event_index,
+                );
+            } else {
+                // hand continuity reset: a hand switch starts a new local segment.
+                builder.noteContinuityReset(event_index);
+            }
+        }
+
+        const realization = keyboard_assessment.assessRealization(notes, event.hand, profile, input_load);
+        appendKeyboardEventIssues(&builder, realization, event_index);
+
+        previous_event = event;
+        previous_input_load = input_load;
+        previous_realization = realization;
+    }
+
+    appendRepeatedWarningClusterIssue(&builder);
+    appendRecoveryDeficitIssue(&builder);
+    return builder.finish();
+}
+
+pub fn auditFretPhrase(
+    events: []const FretPhraseEvent,
+    tuning: []const pitch.MidiNote,
+    technique: fret_assessment.TechniqueProfile,
+    hand_override: ?types.HandProfile,
+    out: []PhraseIssue,
+) PhraseAuditResult {
+    const bounded_events = boundedEventCount(events.len);
+    var builder = AuditBuilder.init(bounded_events, out);
+
+    var previous_event: ?FretPhraseEvent = null;
+    var previous_input_load: ?types.TemporalLoadState = null;
+    var previous_realization: fret_assessment.RealizationAssessment = undefined;
+    const hand = hand_override orelse fret_assessment.defaultHandProfile(technique);
+
+    for (events[0..bounded_events], 0..) |event, raw_index| {
+        const event_index = @as(u16, @intCast(raw_index));
+        const frets = fretEventFrets(event);
+        const input_load: ?types.TemporalLoadState = if (previous_event != null)
+            previous_realization.state.load
+        else
+            null;
+
+        const realization = fret_assessment.assessRealization(frets, tuning, technique, hand_override, input_load);
+        appendFretEventIssues(&builder, realization, event_index);
+
+        if (previous_event) |prior| {
+            appendFretTransitionIssues(
+                &builder,
+                fret_assessment.assessTransition(
+                    fretEventFrets(prior),
+                    frets,
+                    tuning,
+                    technique,
+                    hand_override,
+                ),
+                previous_realization,
+                realization,
+                hand,
+                event_index - 1,
+                event_index,
+            );
+        }
+
+        previous_event = event;
+        previous_input_load = input_load;
+        previous_realization = realization;
+    }
+
+    appendRepeatedWarningClusterIssue(&builder);
+    appendRecoveryDeficitIssue(&builder);
+    return builder.finish();
+}
+
+fn boundedEventCount(raw_len: usize) usize {
+    return @min(raw_len, MAX_PHRASE_EVENTS);
+}
+
+fn keyboardEventNotes(event: KeyboardPhraseEvent) []const pitch.MidiNote {
+    const clipped = @min(@as(usize, event.note_count), keyboard_assessment.MAX_FINGERING_NOTES);
+    return event.notes[0..clipped];
+}
+
+fn fretEventFrets(event: FretPhraseEvent) []const i8 {
+    const clipped = @min(@as(usize, event.fret_count), guitar.MAX_GENERIC_STRINGS);
+    return event.frets[0..clipped];
+}
+
+fn appendKeyboardEventIssues(
+    builder: *AuditBuilder,
+    realization: keyboard_assessment.RealizationAssessment,
+    event_index: u16,
+) void {
+    appendBitIssues(builder, .event, .advisory, .playability_reason, realization.reason_bits, event_index, NONE_EVENT_INDEX, 0);
+    appendBitIssues(builder, .event, .warning, .playability_warning, realization.warning_bits, event_index, NONE_EVENT_INDEX, realization.bottleneck_cost);
+    appendBitIssues(builder, .event, .blocked, .keyboard_blocker, realization.blocker_bits, event_index, NONE_EVENT_INDEX, realization.bottleneck_cost);
+}
+
+fn appendFretEventIssues(
+    builder: *AuditBuilder,
+    realization: fret_assessment.RealizationAssessment,
+    event_index: u16,
+) void {
+    appendBitIssues(builder, .event, .advisory, .playability_reason, realization.reason_bits, event_index, NONE_EVENT_INDEX, 0);
+    appendBitIssues(builder, .event, .warning, .playability_warning, realization.warning_bits, event_index, NONE_EVENT_INDEX, realization.bottleneck_cost);
+    appendBitIssues(builder, .event, .blocked, .fret_blocker, realization.blocker_bits, event_index, NONE_EVENT_INDEX, realization.bottleneck_cost);
+}
+
+fn appendKeyboardTransitionIssues(
+    builder: *AuditBuilder,
+    transition: keyboard_assessment.TransitionAssessment,
+    from_realization: keyboard_assessment.RealizationAssessment,
+    to_realization: keyboard_assessment.RealizationAssessment,
+    profile: types.HandProfile,
+    from_index: u16,
+    to_index: u16,
+) void {
+    const anchor_delta_semitones = midiDelta(from_realization.state.anchor_midi, to_realization.state.anchor_midi);
+
+    var warning_bits = transition.warning_bits & keyboardPairWarningMask();
+    var blocker_bits = transition.blocker_bits & bitForIndex(@intFromEnum(keyboard_assessment.BlockerKind.impossible_thumb_crossing));
+    const reason_bits: u32 = 0;
+
+    if (anchor_delta_semitones > 0) warning_bits |= bitForIndex(@intFromEnum(types.WarningKind.shift_required));
+    if (anchor_delta_semitones > profile.comfort_shift_steps) {
+        warning_bits |= bitForIndex(@intFromEnum(types.WarningKind.excessive_longitudinal_shift));
+    }
+    if (anchor_delta_semitones > profile.limit_shift_steps) {
+        warning_bits |= bitForIndex(@intFromEnum(types.WarningKind.hard_limit_exceeded));
+        blocker_bits |= bitForIndex(@intFromEnum(keyboard_assessment.BlockerKind.shift_hard_limit));
+    }
+    if (from_realization.state.span_semitones >= profile.comfort_span_steps and
+        to_realization.state.span_semitones >= profile.comfort_span_steps)
+    {
+        warning_bits |= bitForIndex(@intFromEnum(types.WarningKind.repeated_maximal_stretch));
+    }
+    if (from_realization.state.load.event_count > 1 and
+        from_realization.state.load.peak_shift_steps >= profile.comfort_shift_steps and
+        anchor_delta_semitones > 0)
+    {
+        warning_bits |= bitForIndex(@intFromEnum(types.WarningKind.fluency_degradation_from_recent_motion));
+    }
+
+    appendBitIssues(builder, .transition, .advisory, .playability_reason, reason_bits, from_index, to_index, 0);
+    appendBitIssues(builder, .transition, .warning, .playability_warning, warning_bits, from_index, to_index, transition.bottleneck_cost);
+    appendBitIssues(builder, .transition, .blocked, .keyboard_blocker, blocker_bits, from_index, to_index, transition.bottleneck_cost);
+}
+
+fn appendFretTransitionIssues(
+    builder: *AuditBuilder,
+    transition: fret_assessment.TransitionAssessment,
+    from_realization: fret_assessment.RealizationAssessment,
+    to_realization: fret_assessment.RealizationAssessment,
+    hand: types.HandProfile,
+    from_index: u16,
+    to_index: u16,
+) void {
+    const anchor_delta_steps = absDiffU8(from_realization.state.anchor_fret, to_realization.state.anchor_fret);
+
+    var warning_bits: u32 = 0;
+    var blocker_bits: u32 = 0;
+    var reason_bits: u32 = 0;
+
+    if (anchor_delta_steps > 0) warning_bits |= bitForIndex(@intFromEnum(types.WarningKind.shift_required));
+    if (anchor_delta_steps > hand.comfort_shift_steps) {
+        warning_bits |= bitForIndex(@intFromEnum(types.WarningKind.excessive_longitudinal_shift));
+    }
+    if (anchor_delta_steps > hand.limit_shift_steps) {
+        warning_bits |= bitForIndex(@intFromEnum(types.WarningKind.hard_limit_exceeded));
+        blocker_bits |= bitForIndex(@intFromEnum(fret_assessment.BlockerKind.shift_hard_limit));
+    }
+    if (from_realization.state.span_steps >= hand.comfort_span_steps and
+        to_realization.state.span_steps >= hand.comfort_span_steps)
+    {
+        warning_bits |= bitForIndex(@intFromEnum(types.WarningKind.repeated_maximal_stretch));
+    }
+    if (transition.to_state.open_string_count > transition.from_state.open_string_count) {
+        reason_bits |= bitForIndex(@intFromEnum(types.ReasonKind.open_string_relief));
+    }
+    if (to_realization.bottleneck_cost < from_realization.bottleneck_cost) {
+        reason_bits |= bitForIndex(@intFromEnum(types.ReasonKind.bottleneck_reduced));
+    }
+
+    appendBitIssues(builder, .transition, .advisory, .playability_reason, reason_bits, from_index, to_index, 0);
+    appendBitIssues(builder, .transition, .warning, .playability_warning, warning_bits, from_index, to_index, transition.bottleneck_cost);
+    appendBitIssues(builder, .transition, .blocked, .fret_blocker, blocker_bits, from_index, to_index, transition.bottleneck_cost);
+}
+
+fn appendBitIssues(
+    builder: *AuditBuilder,
+    scope: IssueScope,
+    severity: IssueSeverity,
+    family_domain: FamilyDomain,
+    bits: u32,
+    event_index: u16,
+    related_event_index: u16,
+    magnitude: u16,
+) void {
+    var remaining = bits;
+    var family_index: u8 = 0;
+    while (remaining != 0) : (family_index += 1) {
+        if ((remaining & 1) != 0) {
+            const issue = switch (scope) {
+                .event => PhraseIssue.eventIssue(severity, family_domain, family_index, event_index, magnitude),
+                .transition => PhraseIssue.transitionIssue(severity, family_domain, family_index, event_index, related_event_index, magnitude),
+            };
+            builder.appendLocalIssue(issue);
+        }
+        remaining >>= 1;
+    }
+}
+
+fn appendRepeatedWarningClusterIssue(builder: *AuditBuilder) void {
+    // warning cluster: repeated copies of the same warning family inside one continuity segment.
+    const cluster = strongestWarningCluster(
+        builder.warning_masks[0..builder.accumulator.summary.event_count],
+        builder.accumulator.summary.event_count,
+        builder.continuity_reset_mask,
+    ) orelse return;
+
+    builder.appendPhraseIssue(makeRangeIssue(
+        .warning,
+        .playability_warning,
+        cluster.family_index,
+        cluster.start_index,
+        cluster.end_index,
+        cluster.length,
+    ));
+}
+
+fn appendRecoveryDeficitIssue(builder: *AuditBuilder) void {
+    // recovery deficit: strain survives without enough relief to reset the phrase burden.
+    const bounded_mask = eventMask(builder.accumulator.summary.event_count);
+    const deficit_mask = (builder.accumulator.strain_mask & ~builder.accumulator.relief_mask) & bounded_mask;
+    const run = longestRun(deficit_mask, builder.accumulator.summary.event_count);
+    if (run.length == 0) return;
+
+    const family_index = dominantWarningInRange(builder.warning_masks[0..builder.accumulator.summary.event_count], run.start_index, run.end_index) orelse return;
+    builder.appendPhraseIssue(makeRangeIssue(
+        .warning,
+        .playability_warning,
+        family_index,
+        run.start_index,
+        run.end_index,
+        run.length,
+    ));
+}
+
+fn strongestWarningCluster(
+    warning_masks: []const u32,
+    event_count: u16,
+    continuity_reset_mask: u64,
+) ?WarningCluster {
+    var best: ?WarningCluster = null;
+
+    for (0..types.WARNING_NAMES.len) |raw_family_index| {
+        const family_index = @as(u8, @intCast(raw_family_index));
+        var current_start: u16 = NONE_EVENT_INDEX;
+        var current_length: u16 = 0;
+
+        var event_index: u16 = 0;
+        while (event_index < event_count) : (event_index += 1) {
+            if (event_index > 0 and hasMaskBit(continuity_reset_mask, event_index)) {
+                current_start = NONE_EVENT_INDEX;
+                current_length = 0;
+            }
+
+            const active = (warning_masks[event_index] & bitForIndex(family_index)) != 0;
+            if (active) {
+                if (current_length == 0) current_start = event_index;
+                current_length += 1;
+                if (current_length >= 2) {
+                    const candidate = WarningCluster{
+                        .family_index = family_index,
+                        .start_index = current_start,
+                        .end_index = event_index,
+                        .length = current_length,
+                    };
+                    if (best == null or shouldPromoteWarningCluster(candidate, best.?)) {
+                        best = candidate;
+                    }
+                }
+            } else {
+                current_start = NONE_EVENT_INDEX;
+                current_length = 0;
+            }
+        }
+    }
+
+    return best;
+}
+
+fn shouldPromoteWarningCluster(candidate: WarningCluster, current: WarningCluster) bool {
+    if (candidate.length != current.length) return candidate.length > current.length;
+    if (candidate.start_index != current.start_index) return candidate.start_index < current.start_index;
+    return candidate.family_index < current.family_index;
+}
+
+fn dominantWarningInRange(warning_masks: []const u32, start_index: u16, end_index: u16) ?u8 {
+    var counts = [_]u16{0} ** types.WARNING_NAMES.len;
+    var event_index = start_index;
+    while (event_index <= end_index and event_index < warning_masks.len) : (event_index += 1) {
+        for (0..types.WARNING_NAMES.len) |raw_family_index| {
+            if ((warning_masks[event_index] & bitForIndex(raw_family_index)) != 0) {
+                counts[raw_family_index] +|= 1;
+            }
+        }
+    }
+    const dominant = dominantFamily(counts[0..]);
+    return if (dominant == NONE_FAMILY_INDEX) null else dominant;
+}
+
+fn makeRangeIssue(
+    severity: IssueSeverity,
+    family_domain: FamilyDomain,
+    family_index: u8,
+    start_index: u16,
+    end_index: u16,
+    magnitude: u16,
+) PhraseIssue {
+    return if (start_index == end_index)
+        PhraseIssue.eventIssue(severity, family_domain, family_index, start_index, magnitude)
+    else
+        PhraseIssue.transitionIssue(severity, family_domain, family_index, start_index, end_index, magnitude);
+}
+
+fn bitForIndex(index: anytype) u32 {
+    const resolved = @as(u8, @intCast(index));
+    if (resolved >= 32) return 0;
+    return (@as(u32, 1) << @as(u5, @intCast(resolved)));
+}
+
+fn hasMaskBit(mask: u64, event_index: u16) bool {
+    if (event_index >= 64) return false;
+    return (mask & (@as(u64, 1) << @as(u6, @intCast(event_index)))) != 0;
+}
+
+fn keyboardPairWarningMask() u32 {
+    return bitForIndex(@intFromEnum(types.WarningKind.thumb_on_black_under_stretch)) |
+        bitForIndex(@intFromEnum(types.WarningKind.awkward_thumb_crossing)) |
+        bitForIndex(@intFromEnum(types.WarningKind.repeated_weak_adjacent_finger_sequence));
+}
+
+fn midiDelta(a: pitch.MidiNote, b: pitch.MidiNote) u8 {
+    return absDiffU8(a, b);
+}
+
+fn absDiffU8(a: u8, b: u8) u8 {
+    return if (a >= b) a - b else b - a;
 }
 
 fn issueTargetIndex(issue: PhraseIssue) u16 {
@@ -373,6 +838,16 @@ fn deriveStrainBucket(summary: PhraseSummary) StrainBucket {
     if (summary.longest_recovery_deficit_run >= 3 or summary.severity_counts[@intFromEnum(IssueSeverity.warning)] >= 3) return .high;
     if (summary.severity_counts[@intFromEnum(IssueSeverity.warning)] > 0) return .elevated;
     return .neutral;
+}
+
+fn isReliefReason(family_index: u8) bool {
+    return switch (family_index) {
+        @intFromEnum(types.ReasonKind.open_string_relief),
+        @intFromEnum(types.ReasonKind.bottleneck_reduced),
+        @intFromEnum(types.ReasonKind.hand_continuity_reset),
+        => true,
+        else => false,
+    };
 }
 
 test "keyboard phrase event clips notes to fingering capacity" {

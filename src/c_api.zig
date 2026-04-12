@@ -764,6 +764,51 @@ fn decodePhraseIssue(raw: LmtPlayabilityPhraseIssue) ?playability.phrase.PhraseI
     };
 }
 
+fn decodeKeyboardPhraseEvent(raw: LmtKeyboardPhraseEvent) ?playability.phrase.KeyboardPhraseEvent {
+    const hand = decodeKeyboardHand(raw.hand) orelse return null;
+    const count = @min(@as(usize, raw.note_count), playability.keyboard_assessment.MAX_FINGERING_NOTES);
+
+    var out = playability.phrase.KeyboardPhraseEvent{
+        .note_count = @as(u8, @intCast(count)),
+        .hand = hand,
+        .reserved0 = 0,
+        .reserved1 = 0,
+        .notes = [_]pitch.MidiNote{0} ** playability.keyboard_assessment.MAX_FINGERING_NOTES,
+    };
+
+    var index: usize = 0;
+    while (index < count) : (index += 1) {
+        out.notes[index] = @as(pitch.MidiNote, @intCast(@min(raw.notes[index], @as(u8, 127))));
+    }
+    return out;
+}
+
+fn decodeFretPhraseEvent(raw: LmtFretPhraseEvent) playability.phrase.FretPhraseEvent {
+    return .{
+        .fret_count = @as(u8, @intCast(@min(@as(usize, raw.fret_count), guitar.MAX_GENERIC_STRINGS))),
+        .reserved0 = 0,
+        .reserved1 = 0,
+        .reserved2 = 0,
+        .frets = raw.frets,
+    };
+}
+
+fn writePhraseIssue(
+    out: *LmtPlayabilityPhraseIssue,
+    issue: playability.phrase.PhraseIssue,
+) void {
+    out.* = .{
+        .scope = @intFromEnum(issue.scope),
+        .severity = @intFromEnum(issue.severity),
+        .family_domain = @intFromEnum(issue.family_domain),
+        .family_index = issue.family_index,
+        .event_index = issue.event_index,
+        .related_event_index = issue.related_event_index,
+        .magnitude = issue.magnitude,
+        .reserved0 = 0,
+    };
+}
+
 fn writePhraseSummary(
     out: *LmtPlayabilityPhraseSummary,
     summary: playability.phrase.PhraseSummary,
@@ -2108,6 +2153,107 @@ pub export fn lmt_summarize_playability_phrase_issues(
 
     writePhraseSummary(@ptrCast(out), accumulator.finish());
     return 1;
+}
+
+pub export fn lmt_audit_fret_phrase_n(
+    events_ptr: [*c]const LmtFretPhraseEvent,
+    event_count: u32,
+    tuning_ptr: [*c]const u8,
+    tuning_count: u32,
+    profile_raw: u32,
+    hand_profile_ptr: [*c]const LmtHandProfile,
+    issues_out: [*c]LmtPlayabilityPhraseIssue,
+    issues_cap: u32,
+    summary_out: [*c]LmtPlayabilityPhraseSummary,
+) callconv(.c) u32 {
+    if (event_count > playability.phrase.MAX_PHRASE_EVENTS) return 0;
+    if (event_count > 0 and events_ptr == null) return 0;
+
+    var tuning_buf: [MAX_PARAMETRIC_FRET_STRINGS]pitch.MidiNote = undefined;
+    const tuning = decodeTuningGeneric(tuning_ptr, tuning_count, &tuning_buf);
+    if (tuning.len == 0) return 0;
+
+    const technique = decodeFretTechniqueProfile(profile_raw) orelse return 0;
+    const hand_profile: ?playability.types.HandProfile = if (hand_profile_ptr != null)
+        decodeHandProfile(hand_profile_ptr[0])
+    else
+        null;
+
+    const bounded_event_count = @as(usize, @intCast(event_count));
+    var events_buf: [playability.phrase.MAX_PHRASE_EVENTS]playability.phrase.FretPhraseEvent = undefined;
+    for (0..bounded_event_count) |index| {
+        events_buf[index] = decodeFretPhraseEvent(events_ptr[index]);
+        if (events_buf[index].fret_count > tuning.len) return 0;
+    }
+
+    var issues_buf: [playability.phrase.MAX_PHRASE_AUDIT_ISSUES]playability.phrase.PhraseIssue = undefined;
+    const out_cap = if (issues_out != null)
+        @min(@as(usize, @intCast(issues_cap)), issues_buf.len)
+    else
+        0;
+    const result = playability.phrase.auditFretPhrase(
+        events_buf[0..bounded_event_count],
+        tuning,
+        technique,
+        hand_profile,
+        issues_buf[0..out_cap],
+    );
+
+    if (issues_out != null) {
+        const write_len = @min(result.written_issue_count, @as(usize, @intCast(issues_cap)));
+        for (issues_buf[0..write_len], 0..) |issue, index| {
+            writePhraseIssue(@ptrCast(&issues_out[index]), issue);
+        }
+    }
+    if (summary_out != null) {
+        writePhraseSummary(@ptrCast(summary_out), result.summary);
+    }
+    return @as(u32, @intCast(result.logical_issue_count));
+}
+
+pub export fn lmt_audit_keyboard_phrase_n(
+    events_ptr: [*c]const LmtKeyboardPhraseEvent,
+    event_count: u32,
+    profile_ptr: [*c]const LmtHandProfile,
+    issues_out: [*c]LmtPlayabilityPhraseIssue,
+    issues_cap: u32,
+    summary_out: [*c]LmtPlayabilityPhraseSummary,
+) callconv(.c) u32 {
+    if (event_count > playability.phrase.MAX_PHRASE_EVENTS) return 0;
+    if (event_count > 0 and events_ptr == null) return 0;
+
+    const profile = if (profile_ptr != null)
+        decodeHandProfile(profile_ptr[0])
+    else
+        playability.keyboard_topology.defaultHandProfile();
+
+    const bounded_event_count = @as(usize, @intCast(event_count));
+    var events_buf: [playability.phrase.MAX_PHRASE_EVENTS]playability.phrase.KeyboardPhraseEvent = undefined;
+    for (0..bounded_event_count) |index| {
+        events_buf[index] = decodeKeyboardPhraseEvent(events_ptr[index]) orelse return 0;
+    }
+
+    var issues_buf: [playability.phrase.MAX_PHRASE_AUDIT_ISSUES]playability.phrase.PhraseIssue = undefined;
+    const out_cap = if (issues_out != null)
+        @min(@as(usize, @intCast(issues_cap)), issues_buf.len)
+    else
+        0;
+    const result = playability.phrase.auditKeyboardPhrase(
+        events_buf[0..bounded_event_count],
+        profile,
+        issues_buf[0..out_cap],
+    );
+
+    if (issues_out != null) {
+        const write_len = @min(result.written_issue_count, @as(usize, @intCast(issues_cap)));
+        for (issues_buf[0..write_len], 0..) |issue, index| {
+            writePhraseIssue(@ptrCast(&issues_out[index]), issue);
+        }
+    }
+    if (summary_out != null) {
+        writePhraseSummary(@ptrCast(summary_out), result.summary);
+    }
+    return @as(u32, @intCast(result.logical_issue_count));
 }
 
 pub export fn lmt_orbifold_triad_edge_at(index: u32, out: [*c]LmtOrbifoldTriadEdge) callconv(.c) u32 {

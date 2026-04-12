@@ -3,10 +3,11 @@ const testing = std.testing;
 const types = @import("../playability/types.zig");
 
 test "playability reason and warning names stay aligned with enums" {
-    try testing.expectEqual(@as(usize, 8), types.REASON_NAMES.len);
+    try testing.expectEqual(@as(usize, 9), types.REASON_NAMES.len);
     try testing.expectEqual(@as(usize, 12), types.WARNING_NAMES.len);
     try testing.expectEqualStrings("reachable in current window", types.REASON_NAMES[@intFromEnum(types.ReasonKind.reachable_in_current_window)]);
     try testing.expectEqualStrings("reduced bottleneck", types.REASON_NAMES[@intFromEnum(types.ReasonKind.bottleneck_reduced)]);
+    try testing.expectEqualStrings("hand continuity reset", types.REASON_NAMES[@intFromEnum(types.ReasonKind.hand_continuity_reset)]);
     try testing.expectEqualStrings("hard limit exceeded", types.WARNING_NAMES[@intFromEnum(types.WarningKind.hard_limit_exceeded)]);
     try testing.expectEqualStrings("unsupported extension", types.WARNING_NAMES[@intFromEnum(types.WarningKind.unsupported_extension)]);
     try testing.expectEqualStrings("thumb on black under stretch", types.WARNING_NAMES[@intFromEnum(types.WarningKind.thumb_on_black_under_stretch)]);

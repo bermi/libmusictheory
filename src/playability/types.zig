@@ -9,6 +9,7 @@ pub const ReasonKind = enum(u8) {
     reuses_current_anchor = 5,
     bottleneck_reduced = 6,
     technique_profile_applied = 7,
+    hand_continuity_reset = 8,
 };
 
 pub const REASON_NAMES = [_][]const u8{
@@ -20,6 +21,7 @@ pub const REASON_NAMES = [_][]const u8{
     "reuses current anchor",
     "reduced bottleneck",
     "technique profile applied",
+    "hand continuity reset",
 };
 
 pub const WarningKind = enum(u8) {
