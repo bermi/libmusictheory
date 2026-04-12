@@ -2,8 +2,8 @@
 
 ## Status
 
-- Draft: 2026-04-12
-- In progress: 2026-04-12
+- Completed: 2026-04-12
+- Updated: 2026-04-12
 
 ## Goal
 
@@ -63,3 +63,14 @@ An LLM should be able to say:
 - bias-from-committed-history tests
 - C ABI memory layout and push helper tests
 - `/Users/bermi/code/libmusictheory/./verify.sh`
+
+## Implementation History (Point-in-Time)
+
+- `ab61af3` — 2026-04-12
+  - Shipped caller-owned committed phrase memory for keyboard and fret event streams with explicit reset, push, length, current, previous, and audit helpers.
+  - Added committed-memory-aware keyboard ranking, context suggestion, and safer-next-step helpers so accepted choices bias later ranking without introducing hidden global state.
+  - Exposed the committed phrase memory surface through the experimental C ABI with struct `sizeof` helpers, reset/push/len functions, committed phrase audit wrappers, and committed-bias ranking wrappers.
+  - Documented the boundary that committed musical choices belong in library memory while preview-only host interactions stay outside the library.
+  - Completion gates:
+    - `/Users/bermi/code/libmusictheory/./verify.sh`
+    - `/Users/bermi/code/libmusictheory/./zigw build test`
