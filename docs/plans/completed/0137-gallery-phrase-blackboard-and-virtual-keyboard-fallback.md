@@ -4,6 +4,7 @@
 
 - Draft: 2026-04-12
 - In Progress: 2026-04-13
+- Completed: 2026-04-13
 
 ## Goal
 
@@ -63,3 +64,20 @@ A host or LLM should be able to say:
 - commit-versus-pin interaction tests
 - phrase-blackboard bias visibility tests
 - `/Users/bermi/code/libmusictheory/./verify.sh`
+
+## Verification Commands
+
+- `/Users/bermi/code/libmusictheory/./zigw build wasm-gallery`
+- `node /Users/bermi/code/libmusictheory/scripts/validate_wasm_gallery_playwright.mjs`
+- `/Users/bermi/code/libmusictheory/./verify.sh`
+
+## Implementation History (Point-in-Time)
+
+- `045ac76154f1a5174a52e05c5463acf64363c241` — 2026-04-13
+  - Added a virtual-keyboard fallback to `/Users/bermi/code/libmusictheory/examples/wasm-gallery/index.html`, `/Users/bermi/code/libmusictheory/examples/wasm-gallery/gallery.js`, and `/Users/bermi/code/libmusictheory/examples/wasm-gallery/styles.css` so the live MIDI scene remains usable when Web MIDI is unavailable or no hardware inputs are connected.
+  - Added a phrase blackboard to the gallery with explicit `Pin for preview` versus `Commit to phrase` semantics, wired committed choices into caller-owned library memory, and used committed phrase memory to bias later suggestion ranking without moving preview-only browser state into the C layer.
+  - Extended `/Users/bermi/code/libmusictheory/scripts/lib/wasm_gallery_playwright_common.mjs`, `/Users/bermi/code/libmusictheory/scripts/validate_wasm_gallery_playwright.mjs`, `/Users/bermi/code/libmusictheory/docs/api.md`, `/Users/bermi/code/libmusictheory/docs/research/algorithms/keyboard-interaction.md`, and `/Users/bermi/code/libmusictheory/verify.sh` so the no-MIDI fallback, phrase-blackboard interactions, and preview-versus-commit boundary are all documented and programmatically enforced.
+  - Verification gates:
+    - `/Users/bermi/code/libmusictheory/./zigw build wasm-gallery`
+    - `node /Users/bermi/code/libmusictheory/scripts/validate_wasm_gallery_playwright.mjs`
+    - `/Users/bermi/code/libmusictheory/./verify.sh`
