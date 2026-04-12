@@ -2,7 +2,7 @@
 
 ## Status
 
-- In Progress: 2026-04-12
+- Completed: 2026-04-12
 - Updated: 2026-04-12
 
 ## Goal
@@ -64,3 +64,13 @@ An LLM should be able to say:
 - recovery-deficit-run tests
 - summary consistency tests
 - `/Users/bermi/code/libmusictheory/./verify.sh`
+
+## Implementation History (Point-in-Time)
+
+- `4bf6fb9` — 2026-04-12
+  - Shipped fixed-realization keyboard and fret phrase audit passes on top of the `0133` phrase vocabulary.
+  - Added explicit phrase-level issue emission for event-local blockers, transition-local blockers, repeated warning clusters, recovery-deficit runs, and keyboard hand-continuity resets without rewriting the music.
+  - Exposed the new phrase audit surface through the experimental C ABI with export checks and focused Zig/C tests.
+  - Completion gates:
+    - `/Users/bermi/code/libmusictheory/./verify.sh`
+    - `/Users/bermi/code/libmusictheory/./zigw build test`
