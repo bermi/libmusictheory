@@ -160,6 +160,7 @@ async function waitForRenderedOutputs(page) {
       chord: document.getElementById("out-chord")?.textContent || "",
       guitar: document.getElementById("out-guitar")?.textContent || "",
       playability: document.getElementById("out-playability")?.textContent || "",
+      phraseAudit: document.getElementById("out-phrase-audit")?.textContent || "",
       svgMeta: document.getElementById("out-svg-meta")?.textContent || "",
       clock: document.getElementById("svg-clock")?.innerHTML || "",
       opticK: document.getElementById("svg-optic-k")?.innerHTML || "",
@@ -285,6 +286,13 @@ async function waitForRenderedOutputs(page) {
       snapshot.playability.includes("lmt_suggest_easier_keyboard_fingering_n") &&
       snapshot.playability.includes("lmt_suggest_safer_keyboard_next_step_by_playability") &&
       snapshot.playability.includes("LLM framing:") &&
+      snapshot.phraseAudit.includes("lmt_audit_keyboard_phrase_n") &&
+      snapshot.phraseAudit.includes("lmt_audit_committed_keyboard_phrase_n") &&
+      snapshot.phraseAudit.includes("lmt_keyboard_committed_phrase_push") &&
+      snapshot.phraseAudit.includes("lmt_rank_keyboard_phrase_repairs_n") &&
+      snapshot.phraseAudit.includes("preview remains host-only") &&
+      snapshot.phraseAudit.includes("realization-only repair") &&
+      snapshot.phraseAudit.includes("music-changing repair") &&
       snapshot.svgMeta.includes("lmt_svg_clock_optc bytes:") &&
       snapshot.svgMeta.includes("lmt_svg_optic_k_group bytes:") &&
       snapshot.svgMeta.includes("lmt_svg_evenness_chart bytes:") &&
@@ -388,7 +396,7 @@ async function main() {
       await page.waitForSelector("#run-all", { timeout: 30_000 });
       await waitForInteractiveReady(page);
       await page.evaluate(() => {
-        for (const id of ["out-pcs", "out-classification", "out-scale-mode", "out-chord", "out-guitar", "out-playability", "out-svg-meta"]) {
+        for (const id of ["out-pcs", "out-classification", "out-scale-mode", "out-chord", "out-guitar", "out-playability", "out-phrase-audit", "out-svg-meta"]) {
           const node = document.getElementById(id);
           if (node) node.textContent = "";
         }

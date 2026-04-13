@@ -6,6 +6,7 @@ const outScaleMode = document.getElementById("out-scale-mode");
 const outChord = document.getElementById("out-chord");
 const outGuitar = document.getElementById("out-guitar");
 const outPlayability = document.getElementById("out-playability");
+const outPhraseAudit = document.getElementById("out-phrase-audit");
 const outSvgMeta = document.getElementById("out-svg-meta");
 
 const svgClockHost = document.getElementById("svg-clock");
@@ -57,18 +58,43 @@ const REQUIRED_EXPORTS = [
   "lmt_sizeof_voiced_state",
   "lmt_sizeof_ranked_keyboard_fingering",
   "lmt_sizeof_ranked_keyboard_next_step",
+  "lmt_sizeof_ranked_keyboard_context_suggestion",
   "lmt_sizeof_playability_difficulty_summary",
   "lmt_sizeof_next_step_suggestion",
   "lmt_sizeof_keyboard_play_state",
   "lmt_sizeof_keyboard_transition_assessment",
+  "lmt_sizeof_keyboard_phrase_event",
+  "lmt_sizeof_keyboard_committed_phrase_memory",
+  "lmt_sizeof_playability_phrase_issue",
+  "lmt_sizeof_playability_phrase_summary",
+  "lmt_sizeof_playability_repair_policy",
+  "lmt_sizeof_ranked_keyboard_phrase_repair",
+  "lmt_playability_phrase_issue_scope_name",
+  "lmt_playability_phrase_issue_severity_name",
+  "lmt_playability_phrase_family_domain_name",
+  "lmt_playability_phrase_strain_bucket_name",
+  "lmt_playability_repair_class_name",
+  "lmt_keyboard_hand_name",
+  "lmt_playability_reason_name",
+  "lmt_playability_warning_name",
   "lmt_default_keyboard_hand_profile",
   "lmt_playability_profile_from_preset",
+  "lmt_keyboard_committed_phrase_reset",
+  "lmt_keyboard_committed_phrase_push",
+  "lmt_keyboard_committed_phrase_len",
+  "lmt_audit_keyboard_phrase_n",
+  "lmt_audit_committed_keyboard_phrase_n",
+  "lmt_default_playability_repair_policy",
+  "lmt_rank_keyboard_phrase_repairs_n",
   "lmt_summarize_keyboard_realization_difficulty_n",
   "lmt_summarize_keyboard_transition_difficulty_n",
   "lmt_suggest_easier_keyboard_fingering_n",
   "lmt_filter_next_steps_by_playability",
   "lmt_rank_keyboard_next_steps_by_playability",
   "lmt_suggest_safer_keyboard_next_step_by_playability",
+  "lmt_rank_keyboard_context_suggestions_by_committed_phrase",
+  "lmt_rank_keyboard_next_steps_by_committed_phrase",
+  "lmt_suggest_safer_keyboard_next_step_by_committed_phrase",
   "lmt_voiced_history_reset",
   "lmt_voiced_history_push",
   "lmt_svg_clock_optc",
@@ -335,6 +361,267 @@ function formatDifficultySummary(summary) {
 function formatFingerAssignment(fingering) {
   if (!fingering) return "none";
   return `[${fingering.fingers.join(", ")}] bottleneck=${fingering.bottleneckCost} strain=${fingering.cumulativeCost}`;
+}
+
+function readExportedName(fnName, index, fallback) {
+  const fn = wasm?.[fnName];
+  if (typeof fn !== "function") return fallback;
+  const ptr = fn(index >>> 0);
+  if (!ptr) return fallback;
+  return readCString(ptr);
+}
+
+function formatOptionalPhraseIndex(value) {
+  return value === 0xffff ? "none" : String(value);
+}
+
+function parseKeyboardHandToken(token, fallback) {
+  const normalized = String(token || "").trim().toUpperCase();
+  if (normalized === "") return fallback;
+  if (normalized === "0" || normalized === "L" || normalized === "LH" || normalized === "LEFT") return 0;
+  if (normalized === "1" || normalized === "R" || normalized === "RH" || normalized === "RIGHT") return 1;
+  throw new Error(`Unknown keyboard hand token: ${token}`);
+}
+
+function parseKeyboardPhraseEventSpec(raw, defaultHand) {
+  const token = String(raw || "").trim();
+  if (token.length === 0) {
+    throw new Error("Phrase event must not be empty");
+  }
+  const parts = token.split("@");
+  if (parts.length > 2) {
+    throw new Error(`Invalid phrase event syntax: ${raw}`);
+  }
+  const notePart = parts[0].trim();
+  const hand = parseKeyboardHandToken(parts[1], defaultHand);
+  const notes = notePart
+    .split("+")
+    .map((one) => one.trim())
+    .filter((one) => one.length > 0)
+    .map((one) => Number.parseInt(one, 10));
+  if (notes.length === 0 || notes.some((note) => Number.isNaN(note) || note < 0 || note > 127)) {
+    throw new Error(`Invalid phrase event notes: ${raw}`);
+  }
+  return { notes, hand };
+}
+
+function parseKeyboardPhraseEvents(raw, defaultHand) {
+  return String(raw || "")
+    .split(";")
+    .map((one) => one.trim())
+    .filter((one) => one.length > 0)
+    .map((one) => parseKeyboardPhraseEventSpec(one, defaultHand));
+}
+
+function keyboardPhraseEventNoteCapacity() {
+  return wasm.lmt_sizeof_keyboard_phrase_event() - 4;
+}
+
+function writeKeyboardPhraseEventAt(ptr, event) {
+  const eventBytes = wasm.lmt_sizeof_keyboard_phrase_event();
+  const noteCap = keyboardPhraseEventNoteCapacity();
+  if (event.notes.length > noteCap) {
+    throw new Error(`Phrase event exceeds keyboard note capacity ${noteCap}`);
+  }
+  const bytes = u8();
+  bytes.fill(0, ptr, ptr + eventBytes);
+  bytes[ptr + 0] = event.notes.length;
+  bytes[ptr + 1] = event.hand;
+  bytes.set(event.notes, ptr + 4);
+}
+
+function writeKeyboardPhraseEvent(arena, event) {
+  const ptr = arena.alloc(wasm.lmt_sizeof_keyboard_phrase_event(), 4);
+  writeKeyboardPhraseEventAt(ptr, event);
+  return ptr;
+}
+
+function writeKeyboardPhraseEventArray(arena, events) {
+  const eventBytes = wasm.lmt_sizeof_keyboard_phrase_event();
+  const ptr = arena.alloc(Math.max(1, events.length) * eventBytes, 4);
+  for (let index = 0; index < events.length; index += 1) {
+    writeKeyboardPhraseEventAt(ptr + index * eventBytes, events[index]);
+  }
+  return ptr;
+}
+
+function allocKeyboardCommittedPhraseMemory(arena) {
+  const ptr = arena.alloc(wasm.lmt_sizeof_keyboard_committed_phrase_memory(), 4);
+  u8().fill(0, ptr, ptr + wasm.lmt_sizeof_keyboard_committed_phrase_memory());
+  wasm.lmt_keyboard_committed_phrase_reset(ptr);
+  return ptr;
+}
+
+function decodeKeyboardPhraseEvent(ptr) {
+  const noteCount = u8()[ptr + 0];
+  return {
+    noteCount,
+    hand: u8()[ptr + 1],
+    notes: Array.from(u8().subarray(ptr + 4, ptr + 4 + noteCount)),
+  };
+}
+
+function decodePhraseIssue(ptr) {
+  const view = new DataView(memory.buffer, ptr, wasm.lmt_sizeof_playability_phrase_issue());
+  return {
+    scope: view.getUint8(0),
+    severity: view.getUint8(1),
+    familyDomain: view.getUint8(2),
+    familyIndex: view.getUint8(3),
+    eventIndex: view.getUint16(4, true),
+    relatedEventIndex: view.getUint16(6, true),
+    magnitude: view.getUint16(8, true),
+  };
+}
+
+function decodePhraseSummary(ptr) {
+  const summaryBytes = wasm.lmt_sizeof_playability_phrase_summary();
+  const view = new DataView(memory.buffer, ptr, summaryBytes);
+  return {
+    eventCount: view.getUint16(0, true),
+    issueCount: view.getUint16(2, true),
+    firstBlockedEventIndex: view.getUint16(4, true),
+    firstBlockedTransitionFromIndex: view.getUint16(6, true),
+    firstBlockedTransitionToIndex: view.getUint16(8, true),
+    bottleneckIssueIndex: view.getUint16(10, true),
+    bottleneckMagnitude: view.getUint16(12, true),
+    bottleneckSeverity: view.getUint8(14),
+    bottleneckDomain: view.getUint8(15),
+    bottleneckFamilyIndex: view.getUint8(16),
+    strainBucket: view.getUint8(17),
+    dominantReasonFamily: view.getUint8(18),
+    dominantWarningFamily: view.getUint8(19),
+    recoveryDeficitStartIndex: view.getUint16(summaryBytes - 6, true),
+    recoveryDeficitEndIndex: view.getUint16(summaryBytes - 4, true),
+    longestRecoveryDeficitRun: view.getUint16(summaryBytes - 2, true),
+  };
+}
+
+function decodeRankedKeyboardPhraseRepair(ptr) {
+  const summaryBytes = wasm.lmt_sizeof_playability_phrase_summary();
+  const beforePtr = ptr + 28;
+  const afterPtr = beforePtr + summaryBytes;
+  const replacementPtr = afterPtr + summaryBytes;
+  const view = new DataView(memory.buffer, ptr, wasm.lmt_sizeof_ranked_keyboard_phrase_repair());
+  return {
+    repairClass: view.getUint8(0),
+    changedFromIndex: view.getUint8(1),
+    changedToIndex: view.getUint8(2),
+    changedFromValue: view.getUint8(3),
+    changedToValue: view.getUint8(4),
+    crossedBoundary: view.getUint8(5) === 1,
+    hand: view.getUint8(6),
+    targetEventIndex: view.getUint16(8, true),
+    preservedMask: view.getUint32(12, true),
+    changeMask: view.getUint32(16, true),
+    bottleneckLift: view.getInt16(20, true),
+    issueLift: view.getInt16(22, true),
+    blockedIssueLift: view.getInt16(24, true),
+    warningIssueLift: view.getInt16(26, true),
+    beforeSummary: decodePhraseSummary(beforePtr),
+    afterSummary: decodePhraseSummary(afterPtr),
+    replacementEvent: decodeKeyboardPhraseEvent(replacementPtr),
+  };
+}
+
+function decodeRankedKeyboardContextSuggestionRow(ptr) {
+  if (!ptr) return null;
+  const rowBytes = wasm.lmt_sizeof_ranked_keyboard_context_suggestion();
+  const transitionBytes = wasm.lmt_sizeof_keyboard_transition_assessment();
+  const metaBytes = 6;
+  const contextSuggestionBytes = rowBytes - transitionBytes - metaBytes;
+  const view = new DataView(memory.buffer, ptr, rowBytes);
+  const metaBase = contextSuggestionBytes + transitionBytes;
+  return {
+    realizedNote: view.getUint8(metaBase + 0),
+    candidateIndex: view.getUint8(metaBase + 1),
+    hand: view.getUint8(metaBase + 2),
+    policy: view.getUint8(metaBase + 3),
+    accepted: view.getUint8(metaBase + 4) === 1,
+  };
+}
+
+function phraseIssueFamilyLabel(domain, familyIndex) {
+  const domainLabel = readExportedName(
+    "lmt_playability_phrase_family_domain_name",
+    domain,
+    `domain#${domain}`,
+  );
+  if (domainLabel.includes("reason")) {
+    return readExportedName("lmt_playability_reason_name", familyIndex, `${domainLabel}#${familyIndex}`);
+  }
+  if (domainLabel.includes("warning")) {
+    return readExportedName("lmt_playability_warning_name", familyIndex, `${domainLabel}#${familyIndex}`);
+  }
+  return `${domainLabel}#${familyIndex}`;
+}
+
+function keyboardHandLabelFull(hand) {
+  return readExportedName("lmt_keyboard_hand_name", hand, hand === 0 ? "LEFT" : "RIGHT");
+}
+
+function formatKeyboardPhraseEvent(event) {
+  return `${formatMidiList(event.notes)} @ ${keyboardHandLabelFull(event.hand)}`;
+}
+
+function formatPhraseIssue(issue) {
+  const scope = readExportedName("lmt_playability_phrase_issue_scope_name", issue.scope, `scope#${issue.scope}`);
+  const severity = readExportedName("lmt_playability_phrase_issue_severity_name", issue.severity, `severity#${issue.severity}`);
+  const family = phraseIssueFamilyLabel(issue.familyDomain, issue.familyIndex);
+  if (scope === "transition") {
+    return `${scope} ${severity}: ${family} at ${issue.eventIndex}->${issue.relatedEventIndex} magnitude=${issue.magnitude}`;
+  }
+  return `${scope} ${severity}: ${family} at ${issue.eventIndex} magnitude=${issue.magnitude}`;
+}
+
+function formatPhraseSummary(summary) {
+  const strain = readExportedName(
+    "lmt_playability_phrase_strain_bucket_name",
+    summary.strainBucket,
+    `bucket#${summary.strainBucket}`,
+  );
+  const bottleneckSeverity = readExportedName(
+    "lmt_playability_phrase_issue_severity_name",
+    summary.bottleneckSeverity,
+    `severity#${summary.bottleneckSeverity}`,
+  );
+  const bottleneckFamily = phraseIssueFamilyLabel(summary.bottleneckDomain, summary.bottleneckFamilyIndex);
+  const dominantReason = summary.dominantReasonFamily === 0xff
+    ? "none"
+    : readExportedName("lmt_playability_reason_name", summary.dominantReasonFamily, `reason#${summary.dominantReasonFamily}`);
+  const dominantWarning = summary.dominantWarningFamily === 0xff
+    ? "none"
+    : readExportedName("lmt_playability_warning_name", summary.dominantWarningFamily, `warning#${summary.dominantWarningFamily}`);
+  return [
+    `events=${summary.eventCount}`,
+    `issues=${summary.issueCount}`,
+    `first_blocked_event=${formatOptionalPhraseIndex(summary.firstBlockedEventIndex)}`,
+    `first_blocked_transition=${formatOptionalPhraseIndex(summary.firstBlockedTransitionFromIndex)}->${formatOptionalPhraseIndex(summary.firstBlockedTransitionToIndex)}`,
+    `bottleneck=${bottleneckSeverity}:${bottleneckFamily} magnitude=${summary.bottleneckMagnitude}`,
+    `dominant_reason=${dominantReason}`,
+    `dominant_warning=${dominantWarning}`,
+    `recovery_deficit=${formatOptionalPhraseIndex(summary.recoveryDeficitStartIndex)}->${formatOptionalPhraseIndex(summary.recoveryDeficitEndIndex)} run=${summary.longestRecoveryDeficitRun}`,
+    `strain=${strain}`,
+  ].join(", ");
+}
+
+function formatPhraseRepair(repair) {
+  if (!repair) return "none";
+  const repairClass = readExportedName(
+    "lmt_playability_repair_class_name",
+    repair.repairClass,
+    `repair#${repair.repairClass}`,
+  );
+  return [
+    `class=${repairClass}`,
+    `crossed_boundary=${repair.crossedBoundary}`,
+    `target_event=${repair.targetEventIndex}`,
+    `replacement=${formatKeyboardPhraseEvent(repair.replacementEvent)}`,
+    `bottleneck_lift=${repair.bottleneckLift}`,
+    `issue_lift=${repair.issueLift}`,
+    `blocked_issue_lift=${repair.blockedIssueLift}`,
+    `warning_issue_lift=${repair.warningIssueLift}`,
+  ].join(", ");
 }
 
 function packKeyContext(tonic, quality) {
@@ -770,6 +1057,179 @@ function runPlayabilityApis() {
   }
 }
 
+function runPhraseAuditApis() {
+  ensureWasmLoaded();
+  const arena = new ScratchArena();
+  try {
+    const defaultHand = getSelectValue("phrase-hand");
+    const preset = getSelectValue("phrase-preset");
+    const policy = getSelectValue("phrase-policy");
+    const phraseEvents = parseKeyboardPhraseEvents(document.getElementById("phrase-events").value, defaultHand);
+    const previewEvent = parseKeyboardPhraseEventSpec(document.getElementById("phrase-preview-event").value, defaultHand);
+    const commitEvent = parseKeyboardPhraseEventSpec(document.getElementById("phrase-commit-event").value, defaultHand);
+
+    if (phraseEvents.length === 0) {
+      throw new Error("Phrase events must include at least one realized event");
+    }
+
+    const baseProfilePtr = arena.alloc(wasm.lmt_sizeof_hand_profile(), 4);
+    if (!wasm.lmt_default_keyboard_hand_profile(baseProfilePtr)) {
+      throw new Error("lmt_default_keyboard_hand_profile failed");
+    }
+    const tunedProfilePtr = arena.alloc(wasm.lmt_sizeof_hand_profile(), 4);
+    if (!wasm.lmt_playability_profile_from_preset(preset, baseProfilePtr, tunedProfilePtr)) {
+      throw new Error("lmt_playability_profile_from_preset failed");
+    }
+
+    const issueBytes = wasm.lmt_sizeof_playability_phrase_issue();
+    const summaryBytes = wasm.lmt_sizeof_playability_phrase_summary();
+    const issuesCap = 64;
+
+    const phraseEventsPtr = writeKeyboardPhraseEventArray(arena, phraseEvents);
+    const phraseIssuesPtr = arena.alloc(issueBytes * issuesCap, 4);
+    const phraseSummaryPtr = arena.alloc(summaryBytes, 4);
+    u8().fill(0, phraseIssuesPtr, phraseIssuesPtr + issueBytes * issuesCap);
+    u8().fill(0, phraseSummaryPtr, phraseSummaryPtr + summaryBytes);
+
+    const logicalPhraseIssues = wasm.lmt_audit_keyboard_phrase_n(
+      phraseEventsPtr,
+      phraseEvents.length,
+      tunedProfilePtr,
+      phraseIssuesPtr,
+      issuesCap,
+      phraseSummaryPtr,
+    );
+    const phraseSummary = decodePhraseSummary(phraseSummaryPtr);
+    const phraseIssuePreview = Array.from(
+      { length: Math.min(logicalPhraseIssues, issuesCap, 3) },
+      (_unused, index) => formatPhraseIssue(decodePhraseIssue(phraseIssuesPtr + index * issueBytes)),
+    );
+
+    const committedMemoryPtr = allocKeyboardCommittedPhraseMemory(arena);
+    const committedLenBeforePreview = wasm.lmt_keyboard_committed_phrase_len(committedMemoryPtr);
+    const committedLenAfterPreview = wasm.lmt_keyboard_committed_phrase_len(committedMemoryPtr);
+    const commitEventPtr = writeKeyboardPhraseEvent(arena, commitEvent);
+    const committedLenAfterCommit = wasm.lmt_keyboard_committed_phrase_push(committedMemoryPtr, commitEventPtr);
+
+    const committedIssuesPtr = arena.alloc(issueBytes * issuesCap, 4);
+    const committedSummaryPtr = arena.alloc(summaryBytes, 4);
+    u8().fill(0, committedIssuesPtr, committedIssuesPtr + issueBytes * issuesCap);
+    u8().fill(0, committedSummaryPtr, committedSummaryPtr + summaryBytes);
+    const logicalCommittedIssues = wasm.lmt_audit_committed_keyboard_phrase_n(
+      committedMemoryPtr,
+      tunedProfilePtr,
+      committedIssuesPtr,
+      issuesCap,
+      committedSummaryPtr,
+    );
+    const committedSummary = decodePhraseSummary(committedSummaryPtr);
+
+    const cMajorRootPtr = writeU8Array(arena, [0]);
+    const cMajorRootSet = wasm.lmt_pcs_from_list(cMajorRootPtr, 1);
+    const contextCap = 4;
+    const contextBytes = wasm.lmt_sizeof_ranked_keyboard_context_suggestion();
+    const contextPtr = arena.alloc(contextBytes * contextCap, 4);
+    const logicalContext = wasm.lmt_rank_keyboard_context_suggestions_by_committed_phrase(
+      committedMemoryPtr,
+      cMajorRootSet,
+      0,
+      0,
+      tunedProfilePtr,
+      policy,
+      contextPtr,
+      contextCap,
+    );
+    const topCommittedContext = logicalContext > 0 ? decodeRankedKeyboardContextSuggestionRow(contextPtr) : null;
+
+    const repairPolicyBytes = wasm.lmt_sizeof_playability_repair_policy();
+    const repairRowBytes = wasm.lmt_sizeof_ranked_keyboard_phrase_repair();
+    const repairCap = 8;
+
+    const realizationMemoryPtr = allocKeyboardCommittedPhraseMemory(arena);
+    for (const event of [
+      { notes: [72], hand: 1 },
+      { notes: [48], hand: 1 },
+    ]) {
+      wasm.lmt_keyboard_committed_phrase_push(realizationMemoryPtr, writeKeyboardPhraseEvent(arena, event));
+    }
+    const realizationPolicyPtr = arena.alloc(repairPolicyBytes, 4);
+    if (!wasm.lmt_default_playability_repair_policy(0, realizationPolicyPtr)) {
+      throw new Error("lmt_default_playability_repair_policy failed for realization_only");
+    }
+    const realizationRepairsPtr = arena.alloc(repairRowBytes * repairCap, 4);
+    const realizationRepairCount = wasm.lmt_rank_keyboard_phrase_repairs_n(
+      realizationMemoryPtr,
+      tunedProfilePtr,
+      realizationPolicyPtr,
+      realizationRepairsPtr,
+      repairCap,
+    );
+    const realizationRepair = realizationRepairCount > 0
+      ? decodeRankedKeyboardPhraseRepair(realizationRepairsPtr)
+      : null;
+
+    const textureMemoryPtr = allocKeyboardCommittedPhraseMemory(arena);
+    for (const event of [
+      { notes: [72], hand: 1 },
+      { notes: [60, 72], hand: 1 },
+    ]) {
+      wasm.lmt_keyboard_committed_phrase_push(textureMemoryPtr, writeKeyboardPhraseEvent(arena, event));
+    }
+    const texturePolicyPtr = arena.alloc(repairPolicyBytes, 4);
+    if (!wasm.lmt_default_playability_repair_policy(2, texturePolicyPtr)) {
+      throw new Error("lmt_default_playability_repair_policy failed for texture_reduced");
+    }
+    const textureRepairsPtr = arena.alloc(repairRowBytes * repairCap, 4);
+    const textureRepairCount = wasm.lmt_rank_keyboard_phrase_repairs_n(
+      textureMemoryPtr,
+      tunedProfilePtr,
+      texturePolicyPtr,
+      textureRepairsPtr,
+      repairCap,
+    );
+    let musicChangingRepair = null;
+    for (let index = 0; index < Math.min(textureRepairCount, repairCap); index += 1) {
+      const candidate = decodeRankedKeyboardPhraseRepair(textureRepairsPtr + index * repairRowBytes);
+      if (candidate.crossedBoundary) {
+        musicChangingRepair = candidate;
+        break;
+      }
+    }
+    if (!musicChangingRepair && textureRepairCount > 0) {
+      musicChangingRepair = decodeRankedKeyboardPhraseRepair(textureRepairsPtr);
+    }
+
+    outPhraseAudit.textContent = [
+      `lmt_audit_keyboard_phrase_n: ${formatPhraseSummary(phraseSummary)}`,
+      `audit input events: ${phraseEvents.map((event) => formatKeyboardPhraseEvent(event)).join(" ; ")}`,
+      ...phraseIssuePreview.map((line, index) => `issue[${index}]: ${line}`),
+      `preview versus commit: preview=${formatKeyboardPhraseEvent(previewEvent)} commit=${formatKeyboardPhraseEvent(commitEvent)}`,
+      `preview remains host-only: committed_len ${committedLenBeforePreview} -> ${committedLenAfterPreview}`,
+      `lmt_keyboard_committed_phrase_push(commit): committed_len=${committedLenAfterCommit}`,
+      `lmt_audit_committed_keyboard_phrase_n: ${formatPhraseSummary(committedSummary)} (logical_issues=${logicalCommittedIssues})`,
+      topCommittedContext
+        ? `lmt_rank_keyboard_context_suggestions_by_committed_phrase: top realized_note=${topCommittedContext.realizedNote} hand=${keyboardHandLabelFull(topCommittedContext.hand)} accepted=${topCommittedContext.accepted} candidate_index=${topCommittedContext.candidateIndex}`
+        : "lmt_rank_keyboard_context_suggestions_by_committed_phrase: none",
+      "host adoption note: use lmt_rank_keyboard_next_steps_by_committed_phrase or lmt_suggest_safer_keyboard_next_step_by_committed_phrase when accepted phrase memory should bias later theory-valid continuations.",
+      realizationRepair
+        ? `lmt_rank_keyboard_phrase_repairs_n (realization-only repair): ${formatPhraseRepair(realizationRepair)}`
+        : "lmt_rank_keyboard_phrase_repairs_n (realization-only repair): none",
+      realizationRepair
+        ? `realization-only repair summary: before={${formatPhraseSummary(realizationRepair.beforeSummary)}} after={${formatPhraseSummary(realizationRepair.afterSummary)}}`
+        : "realization-only repair summary: none",
+      musicChangingRepair
+        ? `lmt_rank_keyboard_phrase_repairs_n (music-changing repair): ${formatPhraseRepair(musicChangingRepair)}`
+        : "lmt_rank_keyboard_phrase_repairs_n (music-changing repair): none",
+      musicChangingRepair
+        ? `music-changing repair summary: before={${formatPhraseSummary(musicChangingRepair.beforeSummary)}} after={${formatPhraseSummary(musicChangingRepair.afterSummary)}}`
+        : "music-changing repair summary: none",
+      "LLM framing: audit fixed realizations first, treat preview as host-only inspection, commit accepted events explicitly into library memory, and say out loud when a repair stayed realization-only versus crossed into a music-changing compromise.",
+    ].join("\n");
+  } finally {
+    arena.release();
+  }
+}
+
 function runSvgApis() {
   ensureWasmLoaded();
   const arena = new ScratchArena();
@@ -971,6 +1431,7 @@ function runAll() {
     ["Chord APIs", runChordApis, (err) => renderSectionError("Chord APIs", outChord, err)],
     ["Guitar APIs", runGuitarApis, (err) => renderSectionError("Guitar APIs", outGuitar, err)],
     ["Playability APIs", runPlayabilityApis, (err) => renderSectionError("Playability APIs", outPlayability, err)],
+    ["Phrase Audit APIs", runPhraseAuditApis, (err) => renderSectionError("Phrase Audit APIs", outPhraseAudit, err)],
     ["SVG APIs", runSvgApis, (err) => {
       renderSectionError("SVG APIs", outSvgMeta, err);
       clearSvgHosts();
@@ -1026,6 +1487,7 @@ function wireUi() {
   document.getElementById("run-chord").addEventListener("click", () => runSafe("Chord APIs", runChordApis, (err) => renderSectionError("Chord APIs", outChord, err)));
   document.getElementById("run-guitar").addEventListener("click", () => runSafe("Guitar APIs", runGuitarApis, (err) => renderSectionError("Guitar APIs", outGuitar, err)));
   document.getElementById("run-playability").addEventListener("click", () => runSafe("Playability APIs", runPlayabilityApis, (err) => renderSectionError("Playability APIs", outPlayability, err)));
+  document.getElementById("run-phrase-audit").addEventListener("click", () => runSafe("Phrase Audit APIs", runPhraseAuditApis, (err) => renderSectionError("Phrase Audit APIs", outPhraseAudit, err)));
   document.getElementById("run-svg").addEventListener("click", () => runSafe("SVG APIs", runSvgApis, (err) => {
     renderSectionError("SVG APIs", outSvgMeta, err);
     clearSvgHosts();

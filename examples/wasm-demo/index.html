@@ -222,6 +222,50 @@
     </section>
 
     <section>
+      <h2>Phrase Audit And Host Adoption APIs</h2>
+      <p>
+        This section shows the host boundary for phrase tooling: audit realized events directly,
+        keep preview state in the host, commit accepted events into caller-owned library memory,
+        and request repairs with an explicit ceiling so a host can distinguish realization-only
+        fixes from music-changing compromises.
+      </p>
+      <div class="grid">
+        <label>Phrase events (<code>notes@hand;notes@hand</code>)
+          <input id="phrase-events" value="60+67@RH;60+67@RH;60+67@RH" />
+        </label>
+        <label>Preview event
+          <input id="phrase-preview-event" value="72@RH" />
+        </label>
+        <label>Commit event
+          <input id="phrase-commit-event" value="72@RH" />
+        </label>
+        <label>Default hand
+          <select id="phrase-hand">
+            <option value="1">RIGHT</option>
+            <option value="0">LEFT</option>
+          </select>
+        </label>
+        <label>Playability preset
+          <select id="phrase-preset">
+            <option value="0">compact-beginner</option>
+            <option value="1">balanced-standard</option>
+            <option value="2">span-tolerant</option>
+            <option value="3">shift-tolerant</option>
+          </select>
+        </label>
+        <label>Difficulty lens
+          <select id="phrase-policy">
+            <option value="0">balanced</option>
+            <option value="1">minimax-bottleneck</option>
+            <option value="2">cumulative-strain</option>
+          </select>
+        </label>
+      </div>
+      <button id="run-phrase-audit">Run Phrase Audit APIs</button>
+      <pre id="out-phrase-audit"></pre>
+    </section>
+
+    <section>
       <h2>SVG Diagram APIs</h2>
       <div class="grid">
         <label>Fret diagram frets (comma-separated)

@@ -304,6 +304,12 @@ if [ -f "$ROOT_DIR/docs/plans/in_progress/0137-gallery-phrase-blackboard-and-vir
     check_cmd "cd '$ROOT_DIR' && rg -n 'virtualKeyboard|phraseBlackboard|commitFocused|commitCurrent|clearPhrase|noMidiFallback|previewOnlyPin|committedPhrase' scripts/lib/wasm_gallery_playwright_common.mjs scripts/validate_wasm_gallery_playwright.mjs >/dev/null" "0137 gallery validation guardrail (playwright covers no-MIDI fallback and phrase-blackboard interactions)"
 fi
 
+if [ -f "$ROOT_DIR/docs/plans/in_progress/0138-phrase-audit-docs-and-host-adoption.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0138-phrase-audit-docs-and-host-adoption.md" ]; then
+    check_cmd "cd '$ROOT_DIR' && rg -n 'Phrase Audit And Host Adoption APIs|run-phrase-audit|out-phrase-audit|phrase-preview-event|phrase-commit-event' examples/wasm-demo/index.html examples/wasm-demo/app.js >/dev/null" "0138 phrase adoption docs guardrail (wasm docs bundle exposes a dedicated phrase audit and host-adoption section)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'lmt_audit_keyboard_phrase_n|lmt_audit_committed_keyboard_phrase_n|lmt_keyboard_committed_phrase_reset|lmt_keyboard_committed_phrase_push|lmt_rank_keyboard_next_steps_by_committed_phrase|lmt_default_playability_repair_policy|lmt_rank_keyboard_phrase_repairs_n|preview versus commit|realization-only repair|music-changing repair' docs/api.md README.md examples/wasm-demo/app.js >/dev/null" "0138 phrase adoption semantics guardrail (docs and wasm demo show audit-only, committed-memory bias, and repair-policy boundaries)"
+    check_cmd "cd '$ROOT_DIR' && rg -n 'out-phrase-audit|lmt_audit_keyboard_phrase_n|lmt_audit_committed_keyboard_phrase_n|lmt_rank_keyboard_phrase_repairs_n|preview remains host-only|realization-only repair|music-changing repair' scripts/validate_wasm_docs_playwright.mjs >/dev/null" "0138 phrase adoption validation guardrail (docs playwright verifies the new phrase audit output surface)"
+fi
+
 
 
 if [ -f "$ROOT_DIR/docs/plans/in_progress/0088-live-midi-composer-scene.md" ] || [ -f "$ROOT_DIR/docs/plans/completed/0088-live-midi-composer-scene.md" ]; then

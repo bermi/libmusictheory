@@ -507,7 +507,55 @@ if (lmt_suggest_safer_keyboard_next_step_by_playability(
 }
 ```
 
-#### Recipe 5: LLM Explanation Pattern
+#### Recipe 5: Audit First, Then Commit, Then Request Repairs Explicitly
+
+```c
+lmt_keyboard_committed_phrase_memory memory = {0};
+lmt_keyboard_phrase_event events[3] = {0};
+lmt_playability_phrase_issue issues[64] = {0};
+lmt_playability_phrase_summary summary = {0};
+lmt_playability_repair_policy policy = {0};
+lmt_ranked_keyboard_phrase_repair repairs[8] = {0};
+
+/* 1. Audit fixed realized events without changing any future state. */
+uint32_t logical_issues = lmt_audit_keyboard_phrase_n(
+    events,
+    3,
+    &tuned,
+    issues,
+    64,
+    &summary);
+
+/* 2. Only accepted events enter committed phrase memory. */
+lmt_keyboard_committed_phrase_reset(&memory);
+lmt_keyboard_committed_phrase_push(&memory, &events[0]);
+
+/* 3. Ask for realization-only repair first. */
+lmt_default_playability_repair_policy(
+    LMT_PLAYABILITY_REPAIR_REALIZATION_ONLY,
+    &policy);
+
+uint32_t logical_repairs = lmt_rank_keyboard_phrase_repairs_n(
+    &memory,
+    &tuned,
+    &policy,
+    repairs,
+    8);
+```
+
+Use this when your host wants to say:
+
+`"First I audited the realized phrase as played. Then I committed only the accepted event into phrase memory. Then I asked for a realization-only repair so the library would not silently rewrite the music."`
+
+The `wasm-docs` bundle now includes a dedicated `Phrase Audit And Host Adoption APIs` section that demonstrates:
+
+- audit only
+- preview versus commit
+- committed-memory bias
+- realization-only repair
+- music-changing repair
+
+#### Recipe 6: LLM Explanation Pattern
 
 Good downstream phrasing looks like this:
 
@@ -564,6 +612,14 @@ The `wasm-docs` bundle now includes a dedicated `Playability And Practice APIs` 
 - realization and transition summaries
 - easier fingering suggestions
 - safer next-step selection and playability-aware reranking
+
+It also includes a dedicated `Phrase Audit And Host Adoption APIs` section that walks through:
+
+- fixed-realization auditing
+- preview versus commit
+- caller-owned committed phrase memory
+- realization-only repair requests
+- explicitly music-changing repair requests
 
 ## Internal Compatibility And Proof Surface
 

@@ -189,6 +189,14 @@ The docs bundle now includes a `Playability And Practice APIs` section that demo
 - suggesting an easier fingering for the same notes
 - choosing a safer next step from a theory-valid history state
 
+It also includes a `Phrase Audit And Host Adoption APIs` section that demonstrates:
+
+- audit-only phrase analysis for fixed realized events
+- preview versus commit, with preview remaining host-only
+- committed phrase memory bias for later ranking
+- realization-only repair requests
+- music-changing repair requests that are labeled as such
+
 For a single-image QA atlas covering the stable public image methods rendered by the docs bundle:
 
 ```bash
