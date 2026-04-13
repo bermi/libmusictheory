@@ -4,6 +4,7 @@
 
 - Draft: 2026-04-12
 - In Progress: 2026-04-13
+- Completed: 2026-04-13
 
 ## Goal
 
@@ -46,4 +47,18 @@ An LLM should be able to show a user:
 - docs run-all/examples coverage
 - phrase-audit examples visible in unified docs
 - committed-memory examples visible in unified docs
+- `/Users/bermi/code/libmusictheory/./zigw build wasm-docs`
+- `node /Users/bermi/code/libmusictheory/scripts/validate_wasm_docs_playwright.mjs`
 - `/Users/bermi/code/libmusictheory/./verify.sh`
+
+## Implementation History (Point-in-Time)
+
+- `0b97b3e` — 2026-04-13
+  - Added a dedicated `Phrase Audit And Host Adoption APIs` section to the browser docs bundle.
+  - Demonstrated fixed-realization auditing, preview-versus-commit, caller-owned committed phrase memory, realization-only repair, and explicitly music-changing repair requests.
+  - Updated `/Users/bermi/code/libmusictheory/docs/api.md` and `/Users/bermi/code/libmusictheory/README.md` so the written contract matches the runnable WASM example.
+  - Extended `/Users/bermi/code/libmusictheory/scripts/validate_wasm_docs_playwright.mjs` and `/Users/bermi/code/libmusictheory/verify.sh` so the adoption surface is enforced.
+  - Verification:
+    - `/Users/bermi/code/libmusictheory/./zigw build wasm-docs`
+    - `node /Users/bermi/code/libmusictheory/scripts/validate_wasm_docs_playwright.mjs`
+    - `/Users/bermi/code/libmusictheory/./verify.sh`
