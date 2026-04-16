@@ -2,7 +2,7 @@
 
 ## Status
 
-- Draft: 2026-04-16
+- In progress: 2026-04-16
 
 ## Goal
 

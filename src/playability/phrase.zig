@@ -7,6 +7,8 @@ const types = @import("types.zig");
 
 pub const MAX_PHRASE_EVENTS: usize = 64;
 pub const MAX_PHRASE_AUDIT_ISSUES: usize = 4096;
+pub const MAX_PHRASE_BRANCH_STEPS: usize = 8;
+pub const MAX_BRANCH_STEP_CANDIDATES: usize = 8;
 pub const NONE_EVENT_INDEX: u16 = std.math.maxInt(u16);
 pub const NONE_FAMILY_INDEX: u8 = std.math.maxInt(u8);
 
@@ -49,6 +51,218 @@ pub const FretPhraseEvent = struct {
         };
         @memcpy(out.frets[0..out.fret_count], frets[0..out.fret_count]);
         return out;
+    }
+};
+
+pub const KeyboardPhraseBranch = struct {
+    step_count: u8,
+    reserved0: u8,
+    reserved1: u8,
+    reserved2: u8,
+    steps: [MAX_PHRASE_BRANCH_STEPS]KeyboardPhraseEvent,
+
+    pub fn init() KeyboardPhraseBranch {
+        return .{
+            .step_count = 0,
+            .reserved0 = 0,
+            .reserved1 = 0,
+            .reserved2 = 0,
+            .steps = [_]KeyboardPhraseEvent{KeyboardPhraseEvent.init(&[_]pitch.MidiNote{}, .right)} ** MAX_PHRASE_BRANCH_STEPS,
+        };
+    }
+
+    pub fn reset(self: *KeyboardPhraseBranch) void {
+        self.* = init();
+    }
+
+    pub fn len(self: *const KeyboardPhraseBranch) usize {
+        return @min(@as(usize, self.step_count), MAX_PHRASE_BRANCH_STEPS);
+    }
+
+    pub fn slice(self: *const KeyboardPhraseBranch) []const KeyboardPhraseEvent {
+        return self.steps[0..self.len()];
+    }
+
+    pub fn push(self: *KeyboardPhraseBranch, event: KeyboardPhraseEvent) bool {
+        const count = self.len();
+        if (count >= MAX_PHRASE_BRANCH_STEPS) return false;
+        self.steps[count] = event;
+        self.step_count = @as(u8, @intCast(count + 1));
+        return true;
+    }
+};
+
+pub const FretPhraseBranch = struct {
+    step_count: u8,
+    reserved0: u8,
+    reserved1: u8,
+    reserved2: u8,
+    steps: [MAX_PHRASE_BRANCH_STEPS]FretPhraseEvent,
+
+    pub fn init() FretPhraseBranch {
+        return .{
+            .step_count = 0,
+            .reserved0 = 0,
+            .reserved1 = 0,
+            .reserved2 = 0,
+            .steps = [_]FretPhraseEvent{FretPhraseEvent.init(&[_]i8{})} ** MAX_PHRASE_BRANCH_STEPS,
+        };
+    }
+
+    pub fn reset(self: *FretPhraseBranch) void {
+        self.* = init();
+    }
+
+    pub fn len(self: *const FretPhraseBranch) usize {
+        return @min(@as(usize, self.step_count), MAX_PHRASE_BRANCH_STEPS);
+    }
+
+    pub fn slice(self: *const FretPhraseBranch) []const FretPhraseEvent {
+        return self.steps[0..self.len()];
+    }
+
+    pub fn push(self: *FretPhraseBranch, event: FretPhraseEvent) bool {
+        const count = self.len();
+        if (count >= MAX_PHRASE_BRANCH_STEPS) return false;
+        self.steps[count] = event;
+        self.step_count = @as(u8, @intCast(count + 1));
+        return true;
+    }
+};
+
+pub const KeyboardPhraseStepCandidates = struct {
+    candidate_count: u8,
+    reserved0: u8,
+    reserved1: u8,
+    reserved2: u8,
+    candidates: [MAX_BRANCH_STEP_CANDIDATES]KeyboardPhraseEvent,
+
+    pub fn init(candidates: []const KeyboardPhraseEvent) KeyboardPhraseStepCandidates {
+        var out = KeyboardPhraseStepCandidates{
+            .candidate_count = @as(u8, @intCast(@min(candidates.len, MAX_BRANCH_STEP_CANDIDATES))),
+            .reserved0 = 0,
+            .reserved1 = 0,
+            .reserved2 = 0,
+            .candidates = [_]KeyboardPhraseEvent{KeyboardPhraseEvent.init(&[_]pitch.MidiNote{}, .right)} ** MAX_BRANCH_STEP_CANDIDATES,
+        };
+        for (candidates[0..out.candidate_count], 0..) |candidate, index| {
+            out.candidates[index] = candidate;
+        }
+        return out;
+    }
+
+    pub fn len(self: *const KeyboardPhraseStepCandidates) usize {
+        return @min(@as(usize, self.candidate_count), MAX_BRANCH_STEP_CANDIDATES);
+    }
+
+    pub fn slice(self: *const KeyboardPhraseStepCandidates) []const KeyboardPhraseEvent {
+        return self.candidates[0..self.len()];
+    }
+};
+
+pub const FretPhraseStepCandidates = struct {
+    candidate_count: u8,
+    reserved0: u8,
+    reserved1: u8,
+    reserved2: u8,
+    candidates: [MAX_BRANCH_STEP_CANDIDATES]FretPhraseEvent,
+
+    pub fn init(candidates: []const FretPhraseEvent) FretPhraseStepCandidates {
+        var out = FretPhraseStepCandidates{
+            .candidate_count = @as(u8, @intCast(@min(candidates.len, MAX_BRANCH_STEP_CANDIDATES))),
+            .reserved0 = 0,
+            .reserved1 = 0,
+            .reserved2 = 0,
+            .candidates = [_]FretPhraseEvent{FretPhraseEvent.init(&[_]i8{})} ** MAX_BRANCH_STEP_CANDIDATES,
+        };
+        for (candidates[0..out.candidate_count], 0..) |candidate, index| {
+            out.candidates[index] = candidate;
+        }
+        return out;
+    }
+
+    pub fn len(self: *const FretPhraseStepCandidates) usize {
+        return @min(@as(usize, self.candidate_count), MAX_BRANCH_STEP_CANDIDATES);
+    }
+
+    pub fn slice(self: *const FretPhraseStepCandidates) []const FretPhraseEvent {
+        return self.candidates[0..self.len()];
+    }
+};
+
+pub const KeyboardPhraseCandidateWindow = struct {
+    step_count: u8,
+    reserved0: u8,
+    reserved1: u8,
+    reserved2: u8,
+    steps: [MAX_PHRASE_BRANCH_STEPS]KeyboardPhraseStepCandidates,
+
+    pub fn init() KeyboardPhraseCandidateWindow {
+        return .{
+            .step_count = 0,
+            .reserved0 = 0,
+            .reserved1 = 0,
+            .reserved2 = 0,
+            .steps = [_]KeyboardPhraseStepCandidates{KeyboardPhraseStepCandidates.init(&[_]KeyboardPhraseEvent{})} ** MAX_PHRASE_BRANCH_STEPS,
+        };
+    }
+
+    pub fn reset(self: *KeyboardPhraseCandidateWindow) void {
+        self.* = init();
+    }
+
+    pub fn len(self: *const KeyboardPhraseCandidateWindow) usize {
+        return @min(@as(usize, self.step_count), MAX_PHRASE_BRANCH_STEPS);
+    }
+
+    pub fn slice(self: *const KeyboardPhraseCandidateWindow) []const KeyboardPhraseStepCandidates {
+        return self.steps[0..self.len()];
+    }
+
+    pub fn push(self: *KeyboardPhraseCandidateWindow, step: KeyboardPhraseStepCandidates) bool {
+        const count = self.len();
+        if (count >= MAX_PHRASE_BRANCH_STEPS) return false;
+        self.steps[count] = step;
+        self.step_count = @as(u8, @intCast(count + 1));
+        return true;
+    }
+};
+
+pub const FretPhraseCandidateWindow = struct {
+    step_count: u8,
+    reserved0: u8,
+    reserved1: u8,
+    reserved2: u8,
+    steps: [MAX_PHRASE_BRANCH_STEPS]FretPhraseStepCandidates,
+
+    pub fn init() FretPhraseCandidateWindow {
+        return .{
+            .step_count = 0,
+            .reserved0 = 0,
+            .reserved1 = 0,
+            .reserved2 = 0,
+            .steps = [_]FretPhraseStepCandidates{FretPhraseStepCandidates.init(&[_]FretPhraseEvent{})} ** MAX_PHRASE_BRANCH_STEPS,
+        };
+    }
+
+    pub fn reset(self: *FretPhraseCandidateWindow) void {
+        self.* = init();
+    }
+
+    pub fn len(self: *const FretPhraseCandidateWindow) usize {
+        return @min(@as(usize, self.step_count), MAX_PHRASE_BRANCH_STEPS);
+    }
+
+    pub fn slice(self: *const FretPhraseCandidateWindow) []const FretPhraseStepCandidates {
+        return self.steps[0..self.len()];
+    }
+
+    pub fn push(self: *FretPhraseCandidateWindow, step: FretPhraseStepCandidates) bool {
+        const count = self.len();
+        if (count >= MAX_PHRASE_BRANCH_STEPS) return false;
+        self.steps[count] = step;
+        self.step_count = @as(u8, @intCast(count + 1));
+        return true;
     }
 };
 
@@ -345,12 +559,108 @@ pub const PhraseSummary = struct {
     }
 };
 
+pub const PhraseBranchSummary = struct {
+    step_count: u16,
+    first_blocked_step_index: u16,
+    first_blocked_transition_from_index: u16,
+    first_blocked_transition_to_index: u16,
+    peak_strain_step_index: u16,
+    peak_strain_magnitude: u16,
+    improving_window_count: u16,
+    deficit_window_count: u16,
+    neutral_window_count: u16,
+    strain_bucket: StrainBucket,
+    dominant_reason_family: u8,
+    dominant_warning_family: u8,
+    reserved0: u8,
+    reserved1: u8,
+
+    pub fn empty(step_count: usize) PhraseBranchSummary {
+        return .{
+            .step_count = @as(u16, @intCast(@min(step_count, MAX_PHRASE_BRANCH_STEPS))),
+            .first_blocked_step_index = NONE_EVENT_INDEX,
+            .first_blocked_transition_from_index = NONE_EVENT_INDEX,
+            .first_blocked_transition_to_index = NONE_EVENT_INDEX,
+            .peak_strain_step_index = NONE_EVENT_INDEX,
+            .peak_strain_magnitude = 0,
+            .improving_window_count = 0,
+            .deficit_window_count = 0,
+            .neutral_window_count = 0,
+            .strain_bucket = .neutral,
+            .dominant_reason_family = NONE_FAMILY_INDEX,
+            .dominant_warning_family = NONE_FAMILY_INDEX,
+            .reserved0 = 0,
+            .reserved1 = 0,
+        };
+    }
+};
+
 pub const PhraseAuditResult = struct {
     logical_issue_count: usize,
     written_issue_count: usize,
     truncated: bool,
     summary: PhraseSummary,
 };
+
+pub fn summarizeBranchIssues(step_count: usize, issues: []const PhraseIssue) PhraseBranchSummary {
+    const bounded_step_count = boundedBranchStepCount(step_count);
+    var branch_summary = PhraseBranchSummary.empty(bounded_step_count);
+    var accumulator = SummaryAccumulator.init(bounded_step_count);
+
+    var best_issue_target = NONE_EVENT_INDEX;
+    for (issues, 0..) |issue, issue_index| {
+        const target_index = issueTargetIndex(issue);
+        if (target_index == NONE_EVENT_INDEX or target_index >= bounded_step_count) continue;
+        if (issue.scope == .transition and (issue.event_index >= bounded_step_count or issue.related_event_index >= bounded_step_count)) continue;
+
+        if (branch_summary.peak_strain_step_index == NONE_EVENT_INDEX or shouldPromoteBottleneck(issue, issue_index, accumulator.summary)) {
+            best_issue_target = target_index;
+        }
+        accumulator.observeIssue(issue, issue_index);
+    }
+
+    const phrase_summary = accumulator.finish();
+    const bounded_mask = eventMask(phrase_summary.event_count);
+    const deficit_mask = (accumulator.strain_mask & ~accumulator.relief_mask) & bounded_mask;
+    const improving_mask = (accumulator.relief_mask & ~accumulator.strain_mask) & bounded_mask;
+    const deficit_count: u16 = @as(u16, @intCast(@popCount(deficit_mask)));
+    const improving_count: u16 = @as(u16, @intCast(@popCount(improving_mask)));
+    const neutral_count: u16 = phrase_summary.event_count - deficit_count - improving_count;
+
+    branch_summary.step_count = phrase_summary.event_count;
+    branch_summary.first_blocked_step_index = if (phrase_summary.first_blocked_event_index != NONE_EVENT_INDEX)
+        phrase_summary.first_blocked_event_index
+    else
+        phrase_summary.first_blocked_transition_to_index;
+    branch_summary.first_blocked_transition_from_index = phrase_summary.first_blocked_transition_from_index;
+    branch_summary.first_blocked_transition_to_index = phrase_summary.first_blocked_transition_to_index;
+    branch_summary.peak_strain_step_index = best_issue_target;
+    branch_summary.peak_strain_magnitude = phrase_summary.bottleneck_magnitude;
+    branch_summary.improving_window_count = improving_count;
+    branch_summary.deficit_window_count = deficit_count;
+    branch_summary.neutral_window_count = neutral_count;
+    branch_summary.strain_bucket = phrase_summary.strain_bucket;
+    branch_summary.dominant_reason_family = phrase_summary.dominant_reason_family;
+    branch_summary.dominant_warning_family = phrase_summary.dominant_warning_family;
+    return branch_summary;
+}
+
+pub fn summarizeKeyboardBranch(branch: *const KeyboardPhraseBranch, profile: types.HandProfile) PhraseBranchSummary {
+    var issues: [MAX_PHRASE_AUDIT_ISSUES]PhraseIssue = undefined;
+    const result = auditKeyboardPhrase(branch.slice(), profile, issues[0..]);
+    return summarizeBranchIssues(branch.len(), issues[0..result.logical_issue_count]);
+}
+
+pub fn summarizeFretBranch(
+    branch: *const FretPhraseBranch,
+    tuning: []const pitch.MidiNote,
+    technique: fret_assessment.TechniqueProfile,
+    hand_override: ?types.HandProfile,
+) PhraseBranchSummary {
+    var issues: [MAX_PHRASE_AUDIT_ISSUES]PhraseIssue = undefined;
+    const result = auditFretPhrase(branch.slice(), tuning, technique, hand_override, issues[0..]);
+    return summarizeBranchIssues(branch.len(), issues[0..result.logical_issue_count]);
+}
 
 pub const SummaryAccumulator = struct {
     summary: PhraseSummary,
@@ -637,6 +947,10 @@ pub fn auditCommittedFretPhrase(
 
 fn boundedEventCount(raw_len: usize) usize {
     return @min(raw_len, MAX_PHRASE_EVENTS);
+}
+
+fn boundedBranchStepCount(raw_len: usize) usize {
+    return @min(raw_len, MAX_PHRASE_BRANCH_STEPS);
 }
 
 pub fn keyboardPhraseNotes(event: *const KeyboardPhraseEvent) []const pitch.MidiNote {
@@ -1075,4 +1389,60 @@ test "phrase summary marks warning-only phrases as elevated" {
     const summary = summarizeIssues(2, issues[0..]);
     try std.testing.expectEqual(StrainBucket.elevated, summary.strain_bucket);
     try std.testing.expectEqual(@as(u16, 1), summary.longest_recovery_deficit_run);
+}
+
+test "keyboard phrase branch resets and appends explicit steps" {
+    var branch = KeyboardPhraseBranch.init();
+    try std.testing.expectEqual(@as(usize, 0), branch.len());
+    try std.testing.expect(branch.push(KeyboardPhraseEvent.init(&[_]pitch.MidiNote{60}, .right)));
+    try std.testing.expect(branch.push(KeyboardPhraseEvent.init(&[_]pitch.MidiNote{64}, .right)));
+    try std.testing.expectEqual(@as(usize, 2), branch.len());
+    try std.testing.expectEqual(@as(pitch.MidiNote, 64), branch.slice()[1].notes[0]);
+    branch.reset();
+    try std.testing.expectEqual(@as(usize, 0), branch.len());
+}
+
+test "keyboard phrase candidate window clips candidates to fixed capacity" {
+    const event = KeyboardPhraseEvent.init(&[_]pitch.MidiNote{60}, .right);
+    const candidates = [_]KeyboardPhraseEvent{event} ** (MAX_BRANCH_STEP_CANDIDATES + 2);
+    const step = KeyboardPhraseStepCandidates.init(candidates[0..]);
+    try std.testing.expectEqual(@as(usize, MAX_BRANCH_STEP_CANDIDATES), step.len());
+
+    var window = KeyboardPhraseCandidateWindow.init();
+    try std.testing.expect(window.push(step));
+    try std.testing.expectEqual(@as(usize, 1), window.len());
+    try std.testing.expectEqual(@as(usize, MAX_BRANCH_STEP_CANDIDATES), window.slice()[0].len());
+}
+
+test "branch summary tracks blocked step peak strain and window trends" {
+    const issues = [_]PhraseIssue{
+        PhraseIssue.eventIssue(.advisory, .playability_reason, @intFromEnum(types.ReasonKind.open_string_relief), 0, 0),
+        PhraseIssue.eventIssue(.warning, .playability_warning, @intFromEnum(types.WarningKind.shift_required), 1, 3),
+        PhraseIssue.transitionIssue(.blocked, .keyboard_blocker, @intFromEnum(keyboard_assessment.BlockerKind.shift_hard_limit), 1, 2, 8),
+    };
+
+    const summary = summarizeBranchIssues(3, issues[0..]);
+    try std.testing.expectEqual(@as(u16, 3), summary.step_count);
+    try std.testing.expectEqual(@as(u16, 2), summary.first_blocked_step_index);
+    try std.testing.expectEqual(@as(u16, 1), summary.first_blocked_transition_from_index);
+    try std.testing.expectEqual(@as(u16, 2), summary.first_blocked_transition_to_index);
+    try std.testing.expectEqual(@as(u16, 2), summary.peak_strain_step_index);
+    try std.testing.expectEqual(@as(u16, 8), summary.peak_strain_magnitude);
+    try std.testing.expectEqual(@as(u16, 1), summary.improving_window_count);
+    try std.testing.expectEqual(@as(u16, 2), summary.deficit_window_count);
+    try std.testing.expectEqual(@as(u16, 0), summary.neutral_window_count);
+    try std.testing.expectEqual(StrainBucket.blocked, summary.strain_bucket);
+}
+
+test "keyboard branch summary helper evaluates fixed branch windows" {
+    var branch = KeyboardPhraseBranch.init();
+    try std.testing.expect(branch.push(KeyboardPhraseEvent.init(&[_]pitch.MidiNote{ 60, 67 }, .right)));
+    try std.testing.expect(branch.push(KeyboardPhraseEvent.init(&[_]pitch.MidiNote{ 60, 67 }, .right)));
+    try std.testing.expect(branch.push(KeyboardPhraseEvent.init(&[_]pitch.MidiNote{ 60, 67 }, .right)));
+
+    const profile = types.HandProfile.init(5, 4, 12, 12, 12, true);
+    const summary = summarizeKeyboardBranch(&branch, profile);
+    try std.testing.expectEqual(@as(u16, 3), summary.step_count);
+    try std.testing.expect(summary.deficit_window_count >= 2);
+    try std.testing.expectEqual(StrainBucket.high, summary.strain_bucket);
 }

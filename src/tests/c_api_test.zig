@@ -22,10 +22,17 @@ const LmtHandProfile = api.LmtHandProfile;
 const LmtPlayabilityDifficultySummary = api.LmtPlayabilityDifficultySummary;
 const LmtKeyboardPhraseEvent = api.LmtKeyboardPhraseEvent;
 const LmtFretPhraseEvent = api.LmtFretPhraseEvent;
+const LmtKeyboardPhraseBranch = api.LmtKeyboardPhraseBranch;
+const LmtFretPhraseBranch = api.LmtFretPhraseBranch;
+const LmtKeyboardPhraseStepCandidates = api.LmtKeyboardPhraseStepCandidates;
+const LmtFretPhraseStepCandidates = api.LmtFretPhraseStepCandidates;
+const LmtKeyboardPhraseCandidateWindow = api.LmtKeyboardPhraseCandidateWindow;
+const LmtFretPhraseCandidateWindow = api.LmtFretPhraseCandidateWindow;
 const LmtKeyboardCommittedPhraseMemory = api.LmtKeyboardCommittedPhraseMemory;
 const LmtFretCommittedPhraseMemory = api.LmtFretCommittedPhraseMemory;
 const LmtPlayabilityPhraseIssue = api.LmtPlayabilityPhraseIssue;
 const LmtPlayabilityPhraseSummary = api.LmtPlayabilityPhraseSummary;
+const LmtPlayabilityPhraseBranchSummary = api.LmtPlayabilityPhraseBranchSummary;
 const LmtPlayabilityRepairPolicy = api.LmtPlayabilityRepairPolicy;
 const LmtRankedKeyboardPhraseRepair = api.LmtRankedKeyboardPhraseRepair;
 const LmtRankedFretPhraseRepair = api.LmtRankedFretPhraseRepair;
@@ -163,10 +170,17 @@ const lmt_sizeof_ranked_keyboard_next_step = api.lmt_sizeof_ranked_keyboard_next
 const lmt_sizeof_playability_difficulty_summary = api.lmt_sizeof_playability_difficulty_summary;
 const lmt_sizeof_keyboard_phrase_event = api.lmt_sizeof_keyboard_phrase_event;
 const lmt_sizeof_fret_phrase_event = api.lmt_sizeof_fret_phrase_event;
+const lmt_sizeof_keyboard_phrase_branch = api.lmt_sizeof_keyboard_phrase_branch;
+const lmt_sizeof_fret_phrase_branch = api.lmt_sizeof_fret_phrase_branch;
+const lmt_sizeof_keyboard_phrase_step_candidates = api.lmt_sizeof_keyboard_phrase_step_candidates;
+const lmt_sizeof_fret_phrase_step_candidates = api.lmt_sizeof_fret_phrase_step_candidates;
+const lmt_sizeof_keyboard_phrase_candidate_window = api.lmt_sizeof_keyboard_phrase_candidate_window;
+const lmt_sizeof_fret_phrase_candidate_window = api.lmt_sizeof_fret_phrase_candidate_window;
 const lmt_sizeof_keyboard_committed_phrase_memory = api.lmt_sizeof_keyboard_committed_phrase_memory;
 const lmt_sizeof_fret_committed_phrase_memory = api.lmt_sizeof_fret_committed_phrase_memory;
 const lmt_sizeof_playability_phrase_issue = api.lmt_sizeof_playability_phrase_issue;
 const lmt_sizeof_playability_phrase_summary = api.lmt_sizeof_playability_phrase_summary;
+const lmt_sizeof_playability_phrase_branch_summary = api.lmt_sizeof_playability_phrase_branch_summary;
 const lmt_sizeof_playability_repair_policy = api.lmt_sizeof_playability_repair_policy;
 const lmt_sizeof_ranked_keyboard_phrase_repair = api.lmt_sizeof_ranked_keyboard_phrase_repair;
 const lmt_sizeof_ranked_fret_phrase_repair = api.lmt_sizeof_ranked_fret_phrase_repair;
@@ -194,6 +208,7 @@ const lmt_default_fret_hand_profile_for_technique = api.lmt_default_fret_hand_pr
 const lmt_default_keyboard_hand_profile = api.lmt_default_keyboard_hand_profile;
 const lmt_default_playability_repair_policy = api.lmt_default_playability_repair_policy;
 const lmt_summarize_playability_phrase_issues = api.lmt_summarize_playability_phrase_issues;
+const lmt_summarize_playability_phrase_branch_issues = api.lmt_summarize_playability_phrase_branch_issues;
 const lmt_keyboard_committed_phrase_reset = api.lmt_keyboard_committed_phrase_reset;
 const lmt_keyboard_committed_phrase_push = api.lmt_keyboard_committed_phrase_push;
 const lmt_keyboard_committed_phrase_len = api.lmt_keyboard_committed_phrase_len;
@@ -202,6 +217,8 @@ const lmt_fret_committed_phrase_push = api.lmt_fret_committed_phrase_push;
 const lmt_fret_committed_phrase_len = api.lmt_fret_committed_phrase_len;
 const lmt_audit_fret_phrase_n = api.lmt_audit_fret_phrase_n;
 const lmt_audit_keyboard_phrase_n = api.lmt_audit_keyboard_phrase_n;
+const lmt_summarize_fret_phrase_branch_n = api.lmt_summarize_fret_phrase_branch_n;
+const lmt_summarize_keyboard_phrase_branch_n = api.lmt_summarize_keyboard_phrase_branch_n;
 const lmt_audit_committed_fret_phrase_n = api.lmt_audit_committed_fret_phrase_n;
 const lmt_audit_committed_keyboard_phrase_n = api.lmt_audit_committed_keyboard_phrase_n;
 const lmt_describe_fret_play_state = api.lmt_describe_fret_play_state;
@@ -281,10 +298,17 @@ test "c abi header layout and constants" {
     try testing.expectEqual(@sizeOf(c.lmt_playability_difficulty_summary), @sizeOf(LmtPlayabilityDifficultySummary));
     try testing.expectEqual(@sizeOf(c.lmt_keyboard_phrase_event), @sizeOf(LmtKeyboardPhraseEvent));
     try testing.expectEqual(@sizeOf(c.lmt_fret_phrase_event), @sizeOf(LmtFretPhraseEvent));
+    try testing.expectEqual(@sizeOf(c.lmt_keyboard_phrase_branch), @sizeOf(LmtKeyboardPhraseBranch));
+    try testing.expectEqual(@sizeOf(c.lmt_fret_phrase_branch), @sizeOf(LmtFretPhraseBranch));
+    try testing.expectEqual(@sizeOf(c.lmt_keyboard_phrase_step_candidates), @sizeOf(LmtKeyboardPhraseStepCandidates));
+    try testing.expectEqual(@sizeOf(c.lmt_fret_phrase_step_candidates), @sizeOf(LmtFretPhraseStepCandidates));
+    try testing.expectEqual(@sizeOf(c.lmt_keyboard_phrase_candidate_window), @sizeOf(LmtKeyboardPhraseCandidateWindow));
+    try testing.expectEqual(@sizeOf(c.lmt_fret_phrase_candidate_window), @sizeOf(LmtFretPhraseCandidateWindow));
     try testing.expectEqual(@sizeOf(c.lmt_keyboard_committed_phrase_memory), @sizeOf(LmtKeyboardCommittedPhraseMemory));
     try testing.expectEqual(@sizeOf(c.lmt_fret_committed_phrase_memory), @sizeOf(LmtFretCommittedPhraseMemory));
     try testing.expectEqual(@sizeOf(c.lmt_playability_phrase_issue), @sizeOf(LmtPlayabilityPhraseIssue));
     try testing.expectEqual(@sizeOf(c.lmt_playability_phrase_summary), @sizeOf(LmtPlayabilityPhraseSummary));
+    try testing.expectEqual(@sizeOf(c.lmt_playability_phrase_branch_summary), @sizeOf(LmtPlayabilityPhraseBranchSummary));
     try testing.expectEqual(@sizeOf(c.lmt_playability_repair_policy), @sizeOf(LmtPlayabilityRepairPolicy));
     try testing.expectEqual(@sizeOf(c.lmt_ranked_keyboard_phrase_repair), @sizeOf(LmtRankedKeyboardPhraseRepair));
     try testing.expectEqual(@sizeOf(c.lmt_ranked_fret_phrase_repair), @sizeOf(LmtRankedFretPhraseRepair));
@@ -338,6 +362,8 @@ test "c abi header layout and constants" {
     try testing.expectEqual(@as(c_int, 0), c.LMT_SCALE_DIATONIC);
     try testing.expectEqual(@as(c_int, 28), c.LMT_MODE_NEAPOLITAN_MAJOR);
     try testing.expectEqual(@as(c_int, 3), c.LMT_CHORD_AUGMENTED);
+    try testing.expectEqual(@as(c_int, 8), c.LMT_MAX_PHRASE_BRANCH_STEPS);
+    try testing.expectEqual(@as(c_int, 8), c.LMT_MAX_BRANCH_STEP_CANDIDATES);
     try testing.expectEqual(@as(c_int, 3), c.LMT_PLAYABILITY_REASON_EXPANDS_CURRENT_WINDOW);
     try testing.expectEqual(@as(c_int, 2), c.LMT_PLAYABILITY_WARNING_HARD_LIMIT_EXCEEDED);
     try testing.expectEqual(@as(c_int, 4), c.LMT_PLAYABILITY_REASON_OPEN_STRING_RELIEF);
@@ -397,10 +423,17 @@ test "c abi header layout and constants" {
     try testing.expectEqual(@as(u32, @sizeOf(LmtPlayabilityDifficultySummary)), lmt_sizeof_playability_difficulty_summary());
     try testing.expectEqual(@as(u32, @sizeOf(LmtKeyboardPhraseEvent)), lmt_sizeof_keyboard_phrase_event());
     try testing.expectEqual(@as(u32, @sizeOf(LmtFretPhraseEvent)), lmt_sizeof_fret_phrase_event());
+    try testing.expectEqual(@as(u32, @sizeOf(LmtKeyboardPhraseBranch)), lmt_sizeof_keyboard_phrase_branch());
+    try testing.expectEqual(@as(u32, @sizeOf(LmtFretPhraseBranch)), lmt_sizeof_fret_phrase_branch());
+    try testing.expectEqual(@as(u32, @sizeOf(LmtKeyboardPhraseStepCandidates)), lmt_sizeof_keyboard_phrase_step_candidates());
+    try testing.expectEqual(@as(u32, @sizeOf(LmtFretPhraseStepCandidates)), lmt_sizeof_fret_phrase_step_candidates());
+    try testing.expectEqual(@as(u32, @sizeOf(LmtKeyboardPhraseCandidateWindow)), lmt_sizeof_keyboard_phrase_candidate_window());
+    try testing.expectEqual(@as(u32, @sizeOf(LmtFretPhraseCandidateWindow)), lmt_sizeof_fret_phrase_candidate_window());
     try testing.expectEqual(@as(u32, @sizeOf(LmtKeyboardCommittedPhraseMemory)), lmt_sizeof_keyboard_committed_phrase_memory());
     try testing.expectEqual(@as(u32, @sizeOf(LmtFretCommittedPhraseMemory)), lmt_sizeof_fret_committed_phrase_memory());
     try testing.expectEqual(@as(u32, @sizeOf(LmtPlayabilityPhraseIssue)), lmt_sizeof_playability_phrase_issue());
     try testing.expectEqual(@as(u32, @sizeOf(LmtPlayabilityPhraseSummary)), lmt_sizeof_playability_phrase_summary());
+    try testing.expectEqual(@as(u32, @sizeOf(LmtPlayabilityPhraseBranchSummary)), lmt_sizeof_playability_phrase_branch_summary());
     try testing.expectEqual(@as(u32, @sizeOf(LmtPlayabilityRepairPolicy)), lmt_sizeof_playability_repair_policy());
     try testing.expectEqual(@as(u32, @sizeOf(LmtRankedKeyboardPhraseRepair)), lmt_sizeof_ranked_keyboard_phrase_repair());
     try testing.expectEqual(@as(u32, @sizeOf(LmtRankedFretPhraseRepair)), lmt_sizeof_ranked_fret_phrase_repair());
@@ -1075,6 +1108,59 @@ test "c abi phrase issue summaries" {
     try testing.expectEqual(@as(u16, 2), summary.longest_recovery_deficit_run);
 }
 
+test "c abi phrase branch summaries" {
+    const issues = [_]LmtPlayabilityPhraseIssue{
+        .{
+            .scope = c.LMT_PLAYABILITY_PHRASE_ISSUE_EVENT,
+            .severity = c.LMT_PLAYABILITY_PHRASE_SEVERITY_ADVISORY,
+            .family_domain = c.LMT_PLAYABILITY_PHRASE_DOMAIN_REASON,
+            .family_index = c.LMT_PLAYABILITY_REASON_OPEN_STRING_RELIEF,
+            .event_index = 0,
+            .related_event_index = playability.phrase.NONE_EVENT_INDEX,
+            .magnitude = 0,
+            .reserved0 = 0,
+        },
+        .{
+            .scope = c.LMT_PLAYABILITY_PHRASE_ISSUE_EVENT,
+            .severity = c.LMT_PLAYABILITY_PHRASE_SEVERITY_WARNING,
+            .family_domain = c.LMT_PLAYABILITY_PHRASE_DOMAIN_WARNING,
+            .family_index = c.LMT_PLAYABILITY_WARNING_SHIFT_REQUIRED,
+            .event_index = 1,
+            .related_event_index = playability.phrase.NONE_EVENT_INDEX,
+            .magnitude = 3,
+            .reserved0 = 0,
+        },
+        .{
+            .scope = c.LMT_PLAYABILITY_PHRASE_ISSUE_TRANSITION,
+            .severity = c.LMT_PLAYABILITY_PHRASE_SEVERITY_BLOCKED,
+            .family_domain = c.LMT_PLAYABILITY_PHRASE_DOMAIN_KEYBOARD_BLOCKER,
+            .family_index = c.LMT_KEYBOARD_PLAYABILITY_BLOCKER_SHIFT_HARD_LIMIT,
+            .event_index = 1,
+            .related_event_index = 2,
+            .magnitude = 8,
+            .reserved0 = 0,
+        },
+    };
+
+    var summary: LmtPlayabilityPhraseBranchSummary = undefined;
+    try testing.expectEqual(@as(u32, 1), lmt_summarize_playability_phrase_branch_issues(
+        3,
+        @ptrCast(&issues),
+        issues.len,
+        @ptrCast(&summary),
+    ));
+    try testing.expectEqual(@as(u16, 3), summary.step_count);
+    try testing.expectEqual(@as(u16, 2), summary.first_blocked_step_index);
+    try testing.expectEqual(@as(u16, 1), summary.first_blocked_transition_from_index);
+    try testing.expectEqual(@as(u16, 2), summary.first_blocked_transition_to_index);
+    try testing.expectEqual(@as(u16, 2), summary.peak_strain_step_index);
+    try testing.expectEqual(@as(u16, 8), summary.peak_strain_magnitude);
+    try testing.expectEqual(@as(u16, 1), summary.improving_window_count);
+    try testing.expectEqual(@as(u16, 2), summary.deficit_window_count);
+    try testing.expectEqual(@as(u16, 0), summary.neutral_window_count);
+    try testing.expectEqual(@as(u8, c.LMT_PLAYABILITY_PHRASE_STRAIN_BLOCKED), summary.strain_bucket);
+}
+
 test "c abi playability repair reflection and defaults" {
     try testing.expectEqual(@as(u32, 3), lmt_playability_repair_class_count());
     try testing.expectEqualStrings("realization-only", std.mem.span(lmt_playability_repair_class_name(0).?));
@@ -1132,6 +1218,38 @@ test "c abi keyboard phrase audit wrapper" {
         }
     }
     try testing.expect(found_transition_warning);
+}
+
+test "c abi keyboard phrase branch wrapper" {
+    var profile: LmtHandProfile = undefined;
+    try testing.expectEqual(@as(u32, 1), lmt_default_keyboard_hand_profile(@ptrCast(&profile)));
+    profile.comfort_span_steps = 4;
+    profile.limit_span_steps = 12;
+    profile.comfort_shift_steps = 12;
+    profile.limit_shift_steps = 12;
+
+    const event = LmtKeyboardPhraseEvent{
+        .note_count = 2,
+        .hand = c.LMT_KEYBOARD_HAND_RIGHT,
+        .reserved0 = 0,
+        .reserved1 = 0,
+        .notes = .{ 60, 67, 0, 0, 0 },
+    };
+    var branch = std.mem.zeroes(LmtKeyboardPhraseBranch);
+    branch.step_count = 3;
+    branch.steps[0] = event;
+    branch.steps[1] = event;
+    branch.steps[2] = event;
+
+    var summary: LmtPlayabilityPhraseBranchSummary = undefined;
+    try testing.expectEqual(@as(u32, 1), lmt_summarize_keyboard_phrase_branch_n(
+        @ptrCast(&branch),
+        @ptrCast(&profile),
+        @ptrCast(&summary),
+    ));
+    try testing.expectEqual(@as(u16, 3), summary.step_count);
+    try testing.expect(summary.deficit_window_count >= 2);
+    try testing.expectEqual(@as(u8, c.LMT_PLAYABILITY_PHRASE_STRAIN_HIGH), summary.strain_bucket);
 }
 
 test "c abi committed keyboard phrase memory helpers and audit wrapper" {
@@ -1306,6 +1424,57 @@ test "c abi committed fret phrase memory helpers and audit wrapper" {
     try testing.expectEqual(@as(u16, 3), summary.event_count);
     try testing.expectEqual(@as(u16, 0), summary.first_blocked_transition_from_index);
     try testing.expectEqual(@as(u16, 1), summary.first_blocked_transition_to_index);
+}
+
+test "c abi fret phrase branch wrapper" {
+    var profile: LmtHandProfile = undefined;
+    try testing.expectEqual(@as(u32, 1), lmt_default_fret_hand_profile(@ptrCast(&profile)));
+    profile.comfort_shift_steps = 2;
+    profile.limit_shift_steps = 3;
+
+    const event_a = LmtFretPhraseEvent{
+        .fret_count = 4,
+        .reserved0 = 0,
+        .reserved1 = 0,
+        .reserved2 = 0,
+        .frets = .{ 1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 },
+    };
+    const event_b = LmtFretPhraseEvent{
+        .fret_count = 4,
+        .reserved0 = 0,
+        .reserved1 = 0,
+        .reserved2 = 0,
+        .frets = .{ 8, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 },
+    };
+    const event_c = LmtFretPhraseEvent{
+        .fret_count = 4,
+        .reserved0 = 0,
+        .reserved1 = 0,
+        .reserved2 = 0,
+        .frets = .{ 12, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 },
+    };
+
+    var branch = std.mem.zeroes(LmtFretPhraseBranch);
+    branch.step_count = 3;
+    branch.steps[0] = event_a;
+    branch.steps[1] = event_b;
+    branch.steps[2] = event_c;
+
+    const tuning = [_]u8{ 40, 45, 50, 55 };
+    var summary: LmtPlayabilityPhraseBranchSummary = undefined;
+    try testing.expectEqual(@as(u32, 1), lmt_summarize_fret_phrase_branch_n(
+        @ptrCast(&branch),
+        @ptrCast(&tuning),
+        tuning.len,
+        c.LMT_FRET_TECHNIQUE_GENERIC_GUITAR,
+        @ptrCast(&profile),
+        @ptrCast(&summary),
+    ));
+    try testing.expectEqual(@as(u16, 3), summary.step_count);
+    try testing.expectEqual(@as(u16, 1), summary.first_blocked_step_index);
+    try testing.expectEqual(@as(u16, 0), summary.first_blocked_transition_from_index);
+    try testing.expectEqual(@as(u16, 1), summary.first_blocked_transition_to_index);
+    try testing.expectEqual(@as(u8, c.LMT_PLAYABILITY_PHRASE_STRAIN_BLOCKED), summary.strain_bucket);
 }
 
 test "c abi fret phrase repair wrapper" {

@@ -397,3 +397,68 @@ That lets an LLM or practice app say:
 - a recovery-deficit run says strain persists across consecutive events without enough relief to reset the phrase burden
 
 These are rule-based summaries, not hidden scores. They give downstream tools a phrase-level explanation without inventing a black-box difficulty number.
+
+## 0140 - Phrase Branch State And Fixed-Horizon Candidate Windows
+
+`0140` adds the structural generation primitives needed to talk about short continuation branches without smuggling ranking policy into the library.
+
+The boundary stays explicit:
+
+- no branch-ranking policy yet
+- no rewrite exploration yet
+- no hidden search tree or internal blackboard
+
+This slice only standardizes branch-shaped musical state and branch-level summaries so later slices can evaluate short futures consistently.
+
+### What The Branch Layer Adds
+
+The new phrase structures are fixed-size and caller-owned:
+
+- `KeyboardPhraseBranch`
+- `FretPhraseBranch`
+- `KeyboardPhraseStepCandidates`
+- `FretPhraseStepCandidates`
+- `KeyboardPhraseCandidateWindow`
+- `FretPhraseCandidateWindow`
+- `PhraseBranchSummary`
+
+That lets a host or LLM say things like:
+
+- "This branch is four steps long, and the first blocked step is the third one."
+- "The branch stays playable, but the peak strain lands on step two."
+- "This candidate window contains up to eight explicit choices for each future step."
+
+### Why Candidate Windows Stay Structural
+
+The candidate windows do not rank or choose anything in `0140`.
+
+They only make the future horizon explicit:
+
+- each step has a bounded list of candidate realized events
+- the full window has a bounded number of future steps
+- later slices can rank or rewrite those windows without redefining the storage model
+
+This keeps the explanation honest:
+
+- "the library stored the next-step candidates you gave it"
+- not
+- "the library silently searched a hidden future space you cannot inspect"
+
+### Branch Summaries Reuse Phrase Audit Facts
+
+The branch summary does not invent a second strain model. It is derived from the same phrase issue rows the fixed-realization audits already use.
+
+That means the same explainable facts still drive the summary:
+
+- blocked event or transition positions
+- peak strain magnitude
+- dominant reason and warning families
+- improving versus deficit windows
+- named strain bucket
+
+So downstream tools can keep saying:
+
+- "the branch is blocked because the second transition exceeds the hard shift limit"
+- "the branch is still playable, but two windows remain recovery-deficit windows"
+
+without converting the result into an opaque score.

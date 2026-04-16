@@ -133,6 +133,54 @@ pub const LmtFretPhraseEvent = extern struct {
     frets: [guitar.MAX_GENERIC_STRINGS]i8,
 };
 
+pub const LmtKeyboardPhraseBranch = extern struct {
+    step_count: u8,
+    reserved0: u8,
+    reserved1: u8,
+    reserved2: u8,
+    steps: [playability.phrase.MAX_PHRASE_BRANCH_STEPS]LmtKeyboardPhraseEvent,
+};
+
+pub const LmtFretPhraseBranch = extern struct {
+    step_count: u8,
+    reserved0: u8,
+    reserved1: u8,
+    reserved2: u8,
+    steps: [playability.phrase.MAX_PHRASE_BRANCH_STEPS]LmtFretPhraseEvent,
+};
+
+pub const LmtKeyboardPhraseStepCandidates = extern struct {
+    candidate_count: u8,
+    reserved0: u8,
+    reserved1: u8,
+    reserved2: u8,
+    candidates: [playability.phrase.MAX_BRANCH_STEP_CANDIDATES]LmtKeyboardPhraseEvent,
+};
+
+pub const LmtFretPhraseStepCandidates = extern struct {
+    candidate_count: u8,
+    reserved0: u8,
+    reserved1: u8,
+    reserved2: u8,
+    candidates: [playability.phrase.MAX_BRANCH_STEP_CANDIDATES]LmtFretPhraseEvent,
+};
+
+pub const LmtKeyboardPhraseCandidateWindow = extern struct {
+    step_count: u8,
+    reserved0: u8,
+    reserved1: u8,
+    reserved2: u8,
+    steps: [playability.phrase.MAX_PHRASE_BRANCH_STEPS]LmtKeyboardPhraseStepCandidates,
+};
+
+pub const LmtFretPhraseCandidateWindow = extern struct {
+    step_count: u8,
+    reserved0: u8,
+    reserved1: u8,
+    reserved2: u8,
+    steps: [playability.phrase.MAX_PHRASE_BRANCH_STEPS]LmtFretPhraseStepCandidates,
+};
+
 pub const LmtKeyboardCommittedPhraseMemory = extern struct {
     event_count: u8,
     reserved0: u8,
@@ -181,6 +229,23 @@ pub const LmtPlayabilityPhraseSummary = extern struct {
     recovery_deficit_start_index: u16,
     recovery_deficit_end_index: u16,
     longest_recovery_deficit_run: u16,
+};
+
+pub const LmtPlayabilityPhraseBranchSummary = extern struct {
+    step_count: u16,
+    first_blocked_step_index: u16,
+    first_blocked_transition_from_index: u16,
+    first_blocked_transition_to_index: u16,
+    peak_strain_step_index: u16,
+    peak_strain_magnitude: u16,
+    improving_window_count: u16,
+    deficit_window_count: u16,
+    neutral_window_count: u16,
+    strain_bucket: u8,
+    dominant_reason_family: u8,
+    dominant_warning_family: u8,
+    reserved0: u8,
+    reserved1: u8,
 };
 
 pub const LmtPlayabilityRepairPolicy = extern struct {
@@ -892,6 +957,17 @@ fn decodeKeyboardCommittedPhraseMemory(raw: LmtKeyboardCommittedPhraseMemory) ?p
     return out;
 }
 
+fn decodeKeyboardPhraseBranch(raw: LmtKeyboardPhraseBranch) ?playability.phrase.KeyboardPhraseBranch {
+    var out = playability.phrase.KeyboardPhraseBranch.init();
+    const count = @min(@as(usize, raw.step_count), playability.phrase.MAX_PHRASE_BRANCH_STEPS);
+    var index: usize = 0;
+    while (index < count) : (index += 1) {
+        out.steps[index] = decodeKeyboardPhraseEvent(raw.steps[index]) orelse return null;
+    }
+    out.step_count = @as(u8, @intCast(count));
+    return out;
+}
+
 fn decodeFretCommittedPhraseMemory(raw: LmtFretCommittedPhraseMemory) playability.phrase.FretCommittedPhraseMemory {
     var out = playability.phrase.FretCommittedPhraseMemory.init();
     const count = @min(@as(usize, raw.event_count), playability.phrase.MAX_PHRASE_EVENTS);
@@ -900,6 +976,17 @@ fn decodeFretCommittedPhraseMemory(raw: LmtFretCommittedPhraseMemory) playabilit
         out.events[index] = decodeFretPhraseEvent(raw.events[index]);
     }
     out.event_count = @as(u8, @intCast(count));
+    return out;
+}
+
+fn decodeFretPhraseBranch(raw: LmtFretPhraseBranch) playability.phrase.FretPhraseBranch {
+    var out = playability.phrase.FretPhraseBranch.init();
+    const count = @min(@as(usize, raw.step_count), playability.phrase.MAX_PHRASE_BRANCH_STEPS);
+    var index: usize = 0;
+    while (index < count) : (index += 1) {
+        out.steps[index] = decodeFretPhraseEvent(raw.steps[index]);
+    }
+    out.step_count = @as(u8, @intCast(count));
     return out;
 }
 
@@ -1002,6 +1089,28 @@ fn writePhraseSummary(
         .recovery_deficit_start_index = summary.recovery_deficit_start_index,
         .recovery_deficit_end_index = summary.recovery_deficit_end_index,
         .longest_recovery_deficit_run = summary.longest_recovery_deficit_run,
+    };
+}
+
+fn writePhraseBranchSummary(
+    out: *LmtPlayabilityPhraseBranchSummary,
+    summary: playability.phrase.PhraseBranchSummary,
+) void {
+    out.* = .{
+        .step_count = summary.step_count,
+        .first_blocked_step_index = summary.first_blocked_step_index,
+        .first_blocked_transition_from_index = summary.first_blocked_transition_from_index,
+        .first_blocked_transition_to_index = summary.first_blocked_transition_to_index,
+        .peak_strain_step_index = summary.peak_strain_step_index,
+        .peak_strain_magnitude = summary.peak_strain_magnitude,
+        .improving_window_count = summary.improving_window_count,
+        .deficit_window_count = summary.deficit_window_count,
+        .neutral_window_count = summary.neutral_window_count,
+        .strain_bucket = @intFromEnum(summary.strain_bucket),
+        .dominant_reason_family = summary.dominant_reason_family,
+        .dominant_warning_family = summary.dominant_warning_family,
+        .reserved0 = 0,
+        .reserved1 = 0,
     };
 }
 
@@ -2242,6 +2351,30 @@ pub export fn lmt_sizeof_fret_phrase_event() callconv(.c) u32 {
     return @as(u32, @intCast(@sizeOf(LmtFretPhraseEvent)));
 }
 
+pub export fn lmt_sizeof_keyboard_phrase_branch() callconv(.c) u32 {
+    return @as(u32, @intCast(@sizeOf(LmtKeyboardPhraseBranch)));
+}
+
+pub export fn lmt_sizeof_fret_phrase_branch() callconv(.c) u32 {
+    return @as(u32, @intCast(@sizeOf(LmtFretPhraseBranch)));
+}
+
+pub export fn lmt_sizeof_keyboard_phrase_step_candidates() callconv(.c) u32 {
+    return @as(u32, @intCast(@sizeOf(LmtKeyboardPhraseStepCandidates)));
+}
+
+pub export fn lmt_sizeof_fret_phrase_step_candidates() callconv(.c) u32 {
+    return @as(u32, @intCast(@sizeOf(LmtFretPhraseStepCandidates)));
+}
+
+pub export fn lmt_sizeof_keyboard_phrase_candidate_window() callconv(.c) u32 {
+    return @as(u32, @intCast(@sizeOf(LmtKeyboardPhraseCandidateWindow)));
+}
+
+pub export fn lmt_sizeof_fret_phrase_candidate_window() callconv(.c) u32 {
+    return @as(u32, @intCast(@sizeOf(LmtFretPhraseCandidateWindow)));
+}
+
 pub export fn lmt_sizeof_keyboard_committed_phrase_memory() callconv(.c) u32 {
     return @as(u32, @intCast(@sizeOf(LmtKeyboardCommittedPhraseMemory)));
 }
@@ -2256,6 +2389,10 @@ pub export fn lmt_sizeof_playability_phrase_issue() callconv(.c) u32 {
 
 pub export fn lmt_sizeof_playability_phrase_summary() callconv(.c) u32 {
     return @as(u32, @intCast(@sizeOf(LmtPlayabilityPhraseSummary)));
+}
+
+pub export fn lmt_sizeof_playability_phrase_branch_summary() callconv(.c) u32 {
+    return @as(u32, @intCast(@sizeOf(LmtPlayabilityPhraseBranchSummary)));
 }
 
 pub export fn lmt_sizeof_playability_repair_policy() callconv(.c) u32 {
@@ -2436,6 +2573,34 @@ pub export fn lmt_summarize_playability_phrase_issues(
     }
 
     writePhraseSummary(@ptrCast(out), accumulator.finish());
+    return 1;
+}
+
+pub export fn lmt_summarize_playability_phrase_branch_issues(
+    step_count: u32,
+    issues_ptr: [*c]const LmtPlayabilityPhraseIssue,
+    issue_count: u32,
+    out: [*c]LmtPlayabilityPhraseBranchSummary,
+) callconv(.c) u32 {
+    if (out == null) return 0;
+    if (step_count > playability.phrase.MAX_PHRASE_BRANCH_STEPS) return 0;
+
+    var issues_buf: [playability.phrase.MAX_PHRASE_AUDIT_ISSUES]playability.phrase.PhraseIssue = undefined;
+    var decoded_len: usize = 0;
+    if (issues_ptr != null) {
+        const len = @min(@as(usize, @intCast(issue_count)), issues_buf.len);
+        var index: usize = 0;
+        while (index < len) : (index += 1) {
+            const issue = decodePhraseIssue(issues_ptr[index]) orelse continue;
+            issues_buf[decoded_len] = issue;
+            decoded_len += 1;
+        }
+    }
+
+    writePhraseBranchSummary(
+        @ptrCast(out),
+        playability.phrase.summarizeBranchIssues(step_count, issues_buf[0..decoded_len]),
+    );
     return 1;
 }
 
@@ -2636,6 +2801,22 @@ pub export fn lmt_audit_keyboard_phrase_n(
     return @as(u32, @intCast(result.logical_issue_count));
 }
 
+pub export fn lmt_summarize_keyboard_phrase_branch_n(
+    branch_ptr: [*c]const LmtKeyboardPhraseBranch,
+    profile_ptr: [*c]const LmtHandProfile,
+    summary_out: [*c]LmtPlayabilityPhraseBranchSummary,
+) callconv(.c) u32 {
+    if (branch_ptr == null or summary_out == null) return 0;
+
+    const profile = if (profile_ptr != null)
+        decodeHandProfile(profile_ptr[0])
+    else
+        playability.keyboard_topology.defaultHandProfile();
+    const branch = decodeKeyboardPhraseBranch((@as(*const LmtKeyboardPhraseBranch, @ptrCast(branch_ptr))).*) orelse return 0;
+    writePhraseBranchSummary(@ptrCast(summary_out), playability.phrase.summarizeKeyboardBranch(&branch, profile));
+    return 1;
+}
+
 pub export fn lmt_audit_committed_keyboard_phrase_n(
     memory_ptr: [*c]const LmtKeyboardCommittedPhraseMemory,
     profile_ptr: [*c]const LmtHandProfile,
@@ -2668,6 +2849,37 @@ pub export fn lmt_audit_committed_keyboard_phrase_n(
         writePhraseSummary(@ptrCast(summary_out), result.summary);
     }
     return @as(u32, @intCast(result.logical_issue_count));
+}
+
+pub export fn lmt_summarize_fret_phrase_branch_n(
+    branch_ptr: [*c]const LmtFretPhraseBranch,
+    tuning_ptr: [*c]const u8,
+    tuning_count: u32,
+    profile_raw: u32,
+    hand_profile_ptr: [*c]const LmtHandProfile,
+    summary_out: [*c]LmtPlayabilityPhraseBranchSummary,
+) callconv(.c) u32 {
+    if (branch_ptr == null or summary_out == null) return 0;
+
+    var tuning_buf: [MAX_PARAMETRIC_FRET_STRINGS]pitch.MidiNote = undefined;
+    const tuning = decodeTuningGeneric(tuning_ptr, tuning_count, &tuning_buf);
+    if (tuning.len == 0) return 0;
+
+    const technique = decodeFretTechniqueProfile(profile_raw) orelse return 0;
+    const hand_profile: ?playability.types.HandProfile = if (hand_profile_ptr != null)
+        decodeHandProfile(hand_profile_ptr[0])
+    else
+        null;
+    const branch = decodeFretPhraseBranch((@as(*const LmtFretPhraseBranch, @ptrCast(branch_ptr))).*);
+    for (branch.slice()) |event| {
+        if (event.fret_count > tuning.len) return 0;
+    }
+
+    writePhraseBranchSummary(
+        @ptrCast(summary_out),
+        playability.phrase.summarizeFretBranch(&branch, tuning, technique, hand_profile),
+    );
+    return 1;
 }
 
 pub export fn lmt_rank_keyboard_phrase_repairs_n(

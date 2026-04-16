@@ -39,10 +39,17 @@ extern "C" {
  *   lmt_sizeof_playability_difficulty_summary,
  *   lmt_sizeof_keyboard_phrase_event,
  *   lmt_sizeof_fret_phrase_event,
+ *   lmt_sizeof_keyboard_phrase_branch,
+ *   lmt_sizeof_fret_phrase_branch,
+ *   lmt_sizeof_keyboard_phrase_step_candidates,
+ *   lmt_sizeof_fret_phrase_step_candidates,
+ *   lmt_sizeof_keyboard_phrase_candidate_window,
+ *   lmt_sizeof_fret_phrase_candidate_window,
  *   lmt_sizeof_keyboard_committed_phrase_memory,
  *   lmt_sizeof_fret_committed_phrase_memory,
  *   lmt_sizeof_playability_phrase_issue,
  *   lmt_sizeof_playability_phrase_summary,
+ *   lmt_sizeof_playability_phrase_branch_summary,
  *   lmt_sizeof_fret_candidate_location, lmt_sizeof_fret_play_state,
  *   lmt_sizeof_keybed_key_coord, lmt_sizeof_keyboard_play_state,
  *   lmt_sizeof_ranked_keyboard_context_suggestion,
@@ -59,6 +66,9 @@ extern "C" {
  *   lmt_fret_committed_phrase_push,
  *   lmt_fret_committed_phrase_len,
  *   lmt_summarize_playability_phrase_issues,
+ *   lmt_summarize_playability_phrase_branch_issues,
+ *   lmt_summarize_keyboard_phrase_branch_n,
+ *   lmt_summarize_fret_phrase_branch_n,
  *   lmt_suggest_easier_fret_realization_n,
  *   lmt_suggest_easier_keyboard_fingering_n,
  *   lmt_suggest_safer_keyboard_next_step_by_playability,
@@ -355,6 +365,8 @@ enum {
     LMT_MAX_FRET_PLAYABILITY_STRINGS = 16,
     LMT_MAX_KEYBOARD_FINGERING_NOTES = 5,
     LMT_MAX_PHRASE_EVENTS = 64,
+    LMT_MAX_PHRASE_BRANCH_STEPS = 8,
+    LMT_MAX_BRANCH_STEP_CANDIDATES = 8,
 };
 
 typedef struct {
@@ -402,6 +414,54 @@ typedef struct {
     uint8_t reserved2;
     int8_t frets[LMT_MAX_FRET_PLAYABILITY_STRINGS];
 } lmt_fret_phrase_event;
+
+typedef struct {
+    uint8_t step_count;
+    uint8_t reserved0;
+    uint8_t reserved1;
+    uint8_t reserved2;
+    lmt_keyboard_phrase_event steps[LMT_MAX_PHRASE_BRANCH_STEPS];
+} lmt_keyboard_phrase_branch;
+
+typedef struct {
+    uint8_t step_count;
+    uint8_t reserved0;
+    uint8_t reserved1;
+    uint8_t reserved2;
+    lmt_fret_phrase_event steps[LMT_MAX_PHRASE_BRANCH_STEPS];
+} lmt_fret_phrase_branch;
+
+typedef struct {
+    uint8_t candidate_count;
+    uint8_t reserved0;
+    uint8_t reserved1;
+    uint8_t reserved2;
+    lmt_keyboard_phrase_event candidates[LMT_MAX_BRANCH_STEP_CANDIDATES];
+} lmt_keyboard_phrase_step_candidates;
+
+typedef struct {
+    uint8_t candidate_count;
+    uint8_t reserved0;
+    uint8_t reserved1;
+    uint8_t reserved2;
+    lmt_fret_phrase_event candidates[LMT_MAX_BRANCH_STEP_CANDIDATES];
+} lmt_fret_phrase_step_candidates;
+
+typedef struct {
+    uint8_t step_count;
+    uint8_t reserved0;
+    uint8_t reserved1;
+    uint8_t reserved2;
+    lmt_keyboard_phrase_step_candidates steps[LMT_MAX_PHRASE_BRANCH_STEPS];
+} lmt_keyboard_phrase_candidate_window;
+
+typedef struct {
+    uint8_t step_count;
+    uint8_t reserved0;
+    uint8_t reserved1;
+    uint8_t reserved2;
+    lmt_fret_phrase_step_candidates steps[LMT_MAX_PHRASE_BRANCH_STEPS];
+} lmt_fret_phrase_candidate_window;
 
 typedef struct {
     uint8_t event_count;
@@ -452,6 +512,23 @@ typedef struct {
     uint16_t recovery_deficit_end_index;
     uint16_t longest_recovery_deficit_run;
 } lmt_playability_phrase_summary;
+
+typedef struct {
+    uint16_t step_count;
+    uint16_t first_blocked_step_index;
+    uint16_t first_blocked_transition_from_index;
+    uint16_t first_blocked_transition_to_index;
+    uint16_t peak_strain_step_index;
+    uint16_t peak_strain_magnitude;
+    uint16_t improving_window_count;
+    uint16_t deficit_window_count;
+    uint16_t neutral_window_count;
+    uint8_t strain_bucket;
+    uint8_t dominant_reason_family;
+    uint8_t dominant_warning_family;
+    uint8_t reserved0;
+    uint8_t reserved1;
+} lmt_playability_phrase_branch_summary;
 
 typedef struct {
     uint8_t max_class;
@@ -1021,10 +1098,17 @@ uint32_t lmt_sizeof_ranked_keyboard_next_step(void);
 uint32_t lmt_sizeof_playability_difficulty_summary(void);
 uint32_t lmt_sizeof_keyboard_phrase_event(void);
 uint32_t lmt_sizeof_fret_phrase_event(void);
+uint32_t lmt_sizeof_keyboard_phrase_branch(void);
+uint32_t lmt_sizeof_fret_phrase_branch(void);
+uint32_t lmt_sizeof_keyboard_phrase_step_candidates(void);
+uint32_t lmt_sizeof_fret_phrase_step_candidates(void);
+uint32_t lmt_sizeof_keyboard_phrase_candidate_window(void);
+uint32_t lmt_sizeof_fret_phrase_candidate_window(void);
 uint32_t lmt_sizeof_keyboard_committed_phrase_memory(void);
 uint32_t lmt_sizeof_fret_committed_phrase_memory(void);
 uint32_t lmt_sizeof_playability_phrase_issue(void);
 uint32_t lmt_sizeof_playability_phrase_summary(void);
+uint32_t lmt_sizeof_playability_phrase_branch_summary(void);
 uint32_t lmt_sizeof_playability_repair_policy(void);
 uint32_t lmt_sizeof_ranked_keyboard_phrase_repair(void);
 uint32_t lmt_sizeof_ranked_fret_phrase_repair(void);
@@ -1033,6 +1117,7 @@ uint32_t lmt_default_fret_hand_profile_for_technique(uint32_t profile, lmt_hand_
 uint32_t lmt_default_keyboard_hand_profile(lmt_hand_profile *out);
 uint32_t lmt_default_playability_repair_policy(uint32_t max_class, lmt_playability_repair_policy *out);
 uint32_t lmt_summarize_playability_phrase_issues(uint32_t event_count, const lmt_playability_phrase_issue *issues, uint32_t issue_count, lmt_playability_phrase_summary *out);
+uint32_t lmt_summarize_playability_phrase_branch_issues(uint32_t step_count, const lmt_playability_phrase_issue *issues, uint32_t issue_count, lmt_playability_phrase_branch_summary *out);
 void lmt_keyboard_committed_phrase_reset(lmt_keyboard_committed_phrase_memory *memory);
 uint32_t lmt_keyboard_committed_phrase_push(lmt_keyboard_committed_phrase_memory *memory, const lmt_keyboard_phrase_event *event);
 uint32_t lmt_keyboard_committed_phrase_len(const lmt_keyboard_committed_phrase_memory *memory);
@@ -1041,6 +1126,8 @@ uint32_t lmt_fret_committed_phrase_push(lmt_fret_committed_phrase_memory *memory
 uint32_t lmt_fret_committed_phrase_len(const lmt_fret_committed_phrase_memory *memory);
 uint32_t lmt_audit_fret_phrase_n(const lmt_fret_phrase_event *events, uint32_t event_count, const uint8_t *tuning, uint32_t tuning_count, uint32_t profile, const lmt_hand_profile *hand_profile, lmt_playability_phrase_issue *issues_out, uint32_t issues_cap, lmt_playability_phrase_summary *summary_out);
 uint32_t lmt_audit_keyboard_phrase_n(const lmt_keyboard_phrase_event *events, uint32_t event_count, const lmt_hand_profile *profile, lmt_playability_phrase_issue *issues_out, uint32_t issues_cap, lmt_playability_phrase_summary *summary_out);
+uint32_t lmt_summarize_keyboard_phrase_branch_n(const lmt_keyboard_phrase_branch *branch, const lmt_hand_profile *profile, lmt_playability_phrase_branch_summary *summary_out);
+uint32_t lmt_summarize_fret_phrase_branch_n(const lmt_fret_phrase_branch *branch, const uint8_t *tuning, uint32_t tuning_count, uint32_t profile, const lmt_hand_profile *hand_profile, lmt_playability_phrase_branch_summary *summary_out);
 uint32_t lmt_audit_committed_fret_phrase_n(const lmt_fret_committed_phrase_memory *memory, const uint8_t *tuning, uint32_t tuning_count, uint32_t profile, const lmt_hand_profile *hand_profile, lmt_playability_phrase_issue *issues_out, uint32_t issues_cap, lmt_playability_phrase_summary *summary_out);
 uint32_t lmt_audit_committed_keyboard_phrase_n(const lmt_keyboard_committed_phrase_memory *memory, const lmt_hand_profile *profile, lmt_playability_phrase_issue *issues_out, uint32_t issues_cap, lmt_playability_phrase_summary *summary_out);
 uint32_t lmt_describe_fret_play_state(const int8_t *frets, uint32_t fret_count, const lmt_hand_profile *profile, const lmt_temporal_load_state *previous_load, lmt_fret_play_state *out);
