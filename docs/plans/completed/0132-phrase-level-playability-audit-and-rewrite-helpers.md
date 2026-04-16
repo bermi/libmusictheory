@@ -4,6 +4,7 @@
 
 - Draft: 2026-04-11
 - Updated: 2026-04-12
+- Completed: 2026-04-16
 
 ## Goal
 
@@ -300,3 +301,13 @@ This roadmap is complete when a host can:
 - rerank later suggestions from that committed memory explicitly
 - ask for allowed repair classes explicitly
 - get ranked repair candidates whose tradeoffs are explainable in plain music-plus-playability language
+
+## Implementation History (Point-in-Time)
+
+- `b530d10` — 2026-04-13
+  - Closed the phrase-level playability lane through host adoption.
+  - Shipped phrase event and summary structs, fixed-realization phrase auditing, caller-owned committed phrase memory with explicit choice bias, repair-policy and ranked phrase repair helpers, gallery phrase blackboard semantics with virtual keyboard fallback, and unified docs plus runnable host-adoption examples.
+  - Verification:
+    - `/Users/bermi/code/libmusictheory/./verify.sh`
+    - `/Users/bermi/code/libmusictheory/./zigw build wasm-docs`
+    - `node /Users/bermi/code/libmusictheory/scripts/validate_wasm_docs_playwright.mjs`
