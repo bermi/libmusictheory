@@ -248,6 +248,51 @@ pub const LmtPlayabilityPhraseBranchSummary = extern struct {
     reserved1: u8,
 };
 
+pub const LmtPhraseBranchBiasSummary = extern struct {
+    bias_reason_bits: u32,
+    deficit_window_delta: i16,
+    improving_window_delta: i16,
+    peak_strain_delta: i16,
+    standalone_classification: u8,
+    biased_classification: u8,
+    committed_strain_bucket: u8,
+    committed_warning_family: u8,
+    committed_reason_family: u8,
+    reserved0: u8,
+    reserved1: u8,
+    reserved2: u8,
+};
+
+pub const LmtRankedKeyboardPhraseBranch = extern struct {
+    branch: LmtKeyboardPhraseBranch,
+    summary: LmtPlayabilityPhraseBranchSummary,
+    standalone_summary: LmtPlayabilityPhraseBranchSummary,
+    bias: LmtPhraseBranchBiasSummary,
+    candidate_index: u32,
+    policy: u8,
+    visibility: u8,
+    classification: u8,
+    accepted: u8,
+    reserved0: u8,
+    reserved1: u8,
+    reserved2: u8,
+};
+
+pub const LmtRankedFretPhraseBranch = extern struct {
+    branch: LmtFretPhraseBranch,
+    summary: LmtPlayabilityPhraseBranchSummary,
+    standalone_summary: LmtPlayabilityPhraseBranchSummary,
+    bias: LmtPhraseBranchBiasSummary,
+    candidate_index: u32,
+    policy: u8,
+    visibility: u8,
+    classification: u8,
+    accepted: u8,
+    reserved0: u8,
+    reserved1: u8,
+    reserved2: u8,
+};
+
 pub const LmtPlayabilityRepairPolicy = extern struct {
     max_class: u8,
     preserve_bass: u8,
@@ -675,6 +720,7 @@ var wasm_client_scratch: [8 * 1024 * 1024]u8 = undefined;
 const MAX_PARAMETRIC_FRET_STRINGS: usize = 64;
 const MAX_KEYBOARD_RENDER_NOTES: usize = 128;
 const MAX_C_API_GENERIC_VOICINGS: usize = MAX_PARAMETRIC_FRET_STRINGS * MAX_PARAMETRIC_FRET_STRINGS;
+const MAX_C_API_PHRASE_BRANCH_ROWS: usize = playability.phrase.MAX_PHRASE_EVENTS;
 var generic_voicing_meta_buf: [MAX_C_API_GENERIC_VOICINGS]guitar.GenericVoicing = undefined;
 var generic_voicing_fret_buf: [MAX_C_API_GENERIC_VOICINGS * MAX_PARAMETRIC_FRET_STRINGS]i8 = undefined;
 
@@ -831,6 +877,11 @@ fn decodeKeyboardHand(raw: u32) ?playability.keyboard_assessment.HandRole {
 fn decodePlayabilityPolicy(raw: u32) ?playability.ranking.PlayabilityPolicy {
     if (raw > std.math.maxInt(u8)) return null;
     return playability.ranking.fromInt(@as(u8, @intCast(raw)));
+}
+
+fn decodePhraseBranchVisibility(raw: u32) ?playability.ranking.PhraseBranchVisibility {
+    if (raw > std.math.maxInt(u8)) return null;
+    return playability.ranking.phraseBranchVisibilityFromInt(@as(u8, @intCast(raw)));
 }
 
 fn decodePlayabilityProfilePreset(raw: u32) ?playability.profile.ProfilePreset {
@@ -1112,6 +1163,88 @@ fn writePhraseBranchSummary(
         .reserved0 = 0,
         .reserved1 = 0,
     };
+}
+
+fn writePhraseBranchBiasSummary(
+    out: *LmtPhraseBranchBiasSummary,
+    summary: playability.ranking.PhraseBranchBiasSummary,
+) void {
+    out.* = .{
+        .bias_reason_bits = summary.bias_reason_bits,
+        .deficit_window_delta = summary.deficit_window_delta,
+        .improving_window_delta = summary.improving_window_delta,
+        .peak_strain_delta = summary.peak_strain_delta,
+        .standalone_classification = @intFromEnum(summary.standalone_classification),
+        .biased_classification = @intFromEnum(summary.biased_classification),
+        .committed_strain_bucket = @intFromEnum(summary.committed_strain_bucket),
+        .committed_warning_family = summary.committed_warning_family,
+        .committed_reason_family = summary.committed_reason_family,
+        .reserved0 = 0,
+        .reserved1 = 0,
+        .reserved2 = 0,
+    };
+}
+
+fn writeRankedKeyboardPhraseBranch(
+    out: *LmtRankedKeyboardPhraseBranch,
+    row: playability.ranking.RankedKeyboardPhraseBranch,
+) void {
+    out.* = .{
+        .branch = undefined,
+        .summary = undefined,
+        .standalone_summary = undefined,
+        .bias = undefined,
+        .candidate_index = row.candidate_index,
+        .policy = @intFromEnum(row.policy),
+        .visibility = @intFromEnum(row.visibility),
+        .classification = @intFromEnum(row.classification),
+        .accepted = @intFromBool(row.accepted),
+        .reserved0 = 0,
+        .reserved1 = 0,
+        .reserved2 = 0,
+    };
+
+    out.branch.step_count = row.branch.step_count;
+    out.branch.reserved0 = 0;
+    out.branch.reserved1 = 0;
+    out.branch.reserved2 = 0;
+    for (row.branch.steps, 0..) |step, index| {
+        writeKeyboardPhraseEvent(&out.branch.steps[index], step);
+    }
+    writePhraseBranchSummary(&out.summary, row.summary);
+    writePhraseBranchSummary(&out.standalone_summary, row.standalone_summary);
+    writePhraseBranchBiasSummary(&out.bias, row.bias);
+}
+
+fn writeRankedFretPhraseBranch(
+    out: *LmtRankedFretPhraseBranch,
+    row: playability.ranking.RankedFretPhraseBranch,
+) void {
+    out.* = .{
+        .branch = undefined,
+        .summary = undefined,
+        .standalone_summary = undefined,
+        .bias = undefined,
+        .candidate_index = row.candidate_index,
+        .policy = @intFromEnum(row.policy),
+        .visibility = @intFromEnum(row.visibility),
+        .classification = @intFromEnum(row.classification),
+        .accepted = @intFromBool(row.accepted),
+        .reserved0 = 0,
+        .reserved1 = 0,
+        .reserved2 = 0,
+    };
+
+    out.branch.step_count = row.branch.step_count;
+    out.branch.reserved0 = 0;
+    out.branch.reserved1 = 0;
+    out.branch.reserved2 = 0;
+    for (row.branch.steps, 0..) |step, index| {
+        writeFretPhraseEvent(&out.branch.steps[index], step);
+    }
+    writePhraseBranchSummary(&out.summary, row.summary);
+    writePhraseBranchSummary(&out.standalone_summary, row.standalone_summary);
+    writePhraseBranchBiasSummary(&out.bias, row.bias);
 }
 
 fn writeRepairPolicy(
@@ -2044,6 +2177,36 @@ pub export fn lmt_playability_policy_name(index: u32) callconv(.c) [*c]const u8 
     return writeCString(playability.ranking.POLICY_NAMES[idx]);
 }
 
+pub export fn lmt_playability_phrase_branch_class_count() callconv(.c) u32 {
+    return @as(u32, @intCast(playability.ranking.PHRASE_BRANCH_CLASSIFICATION_NAMES.len));
+}
+
+pub export fn lmt_playability_phrase_branch_class_name(index: u32) callconv(.c) [*c]const u8 {
+    const idx = @as(usize, @intCast(index));
+    if (idx >= playability.ranking.PHRASE_BRANCH_CLASSIFICATION_NAMES.len) return null;
+    return writeCString(playability.ranking.PHRASE_BRANCH_CLASSIFICATION_NAMES[idx]);
+}
+
+pub export fn lmt_playability_phrase_branch_visibility_count() callconv(.c) u32 {
+    return @as(u32, @intCast(playability.ranking.PHRASE_BRANCH_VISIBILITY_NAMES.len));
+}
+
+pub export fn lmt_playability_phrase_branch_visibility_name(index: u32) callconv(.c) [*c]const u8 {
+    const idx = @as(usize, @intCast(index));
+    if (idx >= playability.ranking.PHRASE_BRANCH_VISIBILITY_NAMES.len) return null;
+    return writeCString(playability.ranking.PHRASE_BRANCH_VISIBILITY_NAMES[idx]);
+}
+
+pub export fn lmt_playability_phrase_branch_bias_reason_count() callconv(.c) u32 {
+    return @as(u32, @intCast(playability.ranking.PHRASE_BRANCH_BIAS_REASON_NAMES.len));
+}
+
+pub export fn lmt_playability_phrase_branch_bias_reason_name(index: u32) callconv(.c) [*c]const u8 {
+    const idx = @as(usize, @intCast(index));
+    if (idx >= playability.ranking.PHRASE_BRANCH_BIAS_REASON_NAMES.len) return null;
+    return writeCString(playability.ranking.PHRASE_BRANCH_BIAS_REASON_NAMES[idx]);
+}
+
 pub export fn lmt_playability_profile_preset_count() callconv(.c) u32 {
     return @as(u32, @intCast(playability.profile.PRESET_NAMES.len));
 }
@@ -2393,6 +2556,18 @@ pub export fn lmt_sizeof_playability_phrase_summary() callconv(.c) u32 {
 
 pub export fn lmt_sizeof_playability_phrase_branch_summary() callconv(.c) u32 {
     return @as(u32, @intCast(@sizeOf(LmtPlayabilityPhraseBranchSummary)));
+}
+
+pub export fn lmt_sizeof_playability_phrase_branch_bias_summary() callconv(.c) u32 {
+    return @as(u32, @intCast(@sizeOf(LmtPhraseBranchBiasSummary)));
+}
+
+pub export fn lmt_sizeof_ranked_keyboard_phrase_branch() callconv(.c) u32 {
+    return @as(u32, @intCast(@sizeOf(LmtRankedKeyboardPhraseBranch)));
+}
+
+pub export fn lmt_sizeof_ranked_fret_phrase_branch() callconv(.c) u32 {
+    return @as(u32, @intCast(@sizeOf(LmtRankedFretPhraseBranch)));
 }
 
 pub export fn lmt_sizeof_playability_repair_policy() callconv(.c) u32 {
@@ -2880,6 +3055,214 @@ pub export fn lmt_summarize_fret_phrase_branch_n(
         playability.phrase.summarizeFretBranch(&branch, tuning, technique, hand_profile),
     );
     return 1;
+}
+
+pub export fn lmt_rank_keyboard_phrase_branches_by_committed_phrase(
+    memory_ptr: [*c]const LmtKeyboardCommittedPhraseMemory,
+    branches_ptr: [*c]const LmtKeyboardPhraseBranch,
+    branch_count: u32,
+    profile_ptr: [*c]const LmtHandProfile,
+    policy_raw: u32,
+    visibility_raw: u32,
+    out: [*c]LmtRankedKeyboardPhraseBranch,
+    out_cap: u32,
+) callconv(.c) u32 {
+    if (memory_ptr == null or branches_ptr == null or out == null or out_cap == 0) return 0;
+
+    const bounded_count = @min(@as(usize, @intCast(branch_count)), @as(usize, @intCast(out_cap)));
+    if (bounded_count == 0 or bounded_count > MAX_C_API_PHRASE_BRANCH_ROWS) return 0;
+
+    const memory = decodeKeyboardCommittedPhraseMemory((@as(*const LmtKeyboardCommittedPhraseMemory, @ptrCast(memory_ptr))).*) orelse return 0;
+    const profile = if (profile_ptr != null)
+        decodeHandProfile(profile_ptr[0])
+    else
+        playability.keyboard_topology.defaultHandProfile();
+    const policy = decodePlayabilityPolicy(policy_raw) orelse return 0;
+    const visibility = decodePhraseBranchVisibility(visibility_raw) orelse return 0;
+
+    var branch_buf: [MAX_C_API_PHRASE_BRANCH_ROWS]playability.phrase.KeyboardPhraseBranch = undefined;
+    var index: usize = 0;
+    while (index < bounded_count) : (index += 1) {
+        branch_buf[index] = decodeKeyboardPhraseBranch(branches_ptr[index]) orelse return 0;
+    }
+
+    var ranked_buf: [MAX_C_API_PHRASE_BRANCH_ROWS]playability.ranking.RankedKeyboardPhraseBranch = undefined;
+    const ranked = playability.ranking.rankKeyboardPhraseBranchesFromCommittedPhrase(
+        &memory,
+        branch_buf[0..bounded_count],
+        profile,
+        policy,
+        visibility,
+        ranked_buf[0..bounded_count],
+    );
+
+    for (ranked, 0..) |row, row_index| {
+        writeRankedKeyboardPhraseBranch(@ptrCast(&out[row_index]), row);
+    }
+    return @as(u32, @intCast(ranked.len));
+}
+
+pub export fn lmt_rank_fret_phrase_branches_by_committed_phrase(
+    memory_ptr: [*c]const LmtFretCommittedPhraseMemory,
+    branches_ptr: [*c]const LmtFretPhraseBranch,
+    branch_count: u32,
+    tuning_ptr: [*c]const u8,
+    tuning_count: u32,
+    profile_raw: u32,
+    hand_profile_ptr: [*c]const LmtHandProfile,
+    policy_raw: u32,
+    visibility_raw: u32,
+    out: [*c]LmtRankedFretPhraseBranch,
+    out_cap: u32,
+) callconv(.c) u32 {
+    if (memory_ptr == null or branches_ptr == null or out == null or out_cap == 0) return 0;
+
+    const bounded_count = @min(@as(usize, @intCast(branch_count)), @as(usize, @intCast(out_cap)));
+    if (bounded_count == 0 or bounded_count > MAX_C_API_PHRASE_BRANCH_ROWS) return 0;
+
+    var tuning_buf: [MAX_PARAMETRIC_FRET_STRINGS]pitch.MidiNote = undefined;
+    const tuning = decodeTuningGeneric(tuning_ptr, tuning_count, &tuning_buf);
+    if (tuning.len == 0) return 0;
+
+    const memory = decodeFretCommittedPhraseMemory((@as(*const LmtFretCommittedPhraseMemory, @ptrCast(memory_ptr))).*);
+    const technique = decodeFretTechniqueProfile(profile_raw) orelse return 0;
+    const hand_profile: ?playability.types.HandProfile = if (hand_profile_ptr != null)
+        decodeHandProfile(hand_profile_ptr[0])
+    else
+        null;
+    const policy = decodePlayabilityPolicy(policy_raw) orelse return 0;
+    const visibility = decodePhraseBranchVisibility(visibility_raw) orelse return 0;
+
+    var branch_buf: [MAX_C_API_PHRASE_BRANCH_ROWS]playability.phrase.FretPhraseBranch = undefined;
+    var index: usize = 0;
+    while (index < bounded_count) : (index += 1) {
+        const branch = decodeFretPhraseBranch(branches_ptr[index]);
+        for (branch.slice()) |event| {
+            if (event.fret_count > tuning.len) return 0;
+        }
+        branch_buf[index] = branch;
+    }
+
+    var ranked_buf: [MAX_C_API_PHRASE_BRANCH_ROWS]playability.ranking.RankedFretPhraseBranch = undefined;
+    const ranked = playability.ranking.rankFretPhraseBranchesFromCommittedPhrase(
+        &memory,
+        branch_buf[0..bounded_count],
+        tuning,
+        technique,
+        hand_profile,
+        policy,
+        visibility,
+        ranked_buf[0..bounded_count],
+    );
+
+    for (ranked, 0..) |row, row_index| {
+        writeRankedFretPhraseBranch(@ptrCast(&out[row_index]), row);
+    }
+    return @as(u32, @intCast(ranked.len));
+}
+
+pub export fn lmt_hard_filter_keyboard_phrase_branches_by_committed_phrase(
+    memory_ptr: [*c]const LmtKeyboardCommittedPhraseMemory,
+    branches_ptr: [*c]const LmtKeyboardPhraseBranch,
+    branch_count: u32,
+    profile_ptr: [*c]const LmtHandProfile,
+    out: [*c]LmtKeyboardPhraseBranch,
+    out_cap: u32,
+) callconv(.c) u32 {
+    if (memory_ptr == null or branches_ptr == null or out == null or out_cap == 0) return 0;
+
+    const bounded_count = @min(@as(usize, @intCast(branch_count)), @as(usize, @intCast(out_cap)));
+    if (bounded_count == 0 or bounded_count > MAX_C_API_PHRASE_BRANCH_ROWS) return 0;
+
+    const memory = decodeKeyboardCommittedPhraseMemory((@as(*const LmtKeyboardCommittedPhraseMemory, @ptrCast(memory_ptr))).*) orelse return 0;
+    const profile = if (profile_ptr != null)
+        decodeHandProfile(profile_ptr[0])
+    else
+        playability.keyboard_topology.defaultHandProfile();
+
+    var branch_buf: [MAX_C_API_PHRASE_BRANCH_ROWS]playability.phrase.KeyboardPhraseBranch = undefined;
+    var index: usize = 0;
+    while (index < bounded_count) : (index += 1) {
+        branch_buf[index] = decodeKeyboardPhraseBranch(branches_ptr[index]) orelse return 0;
+    }
+
+    var filtered_buf: [MAX_C_API_PHRASE_BRANCH_ROWS]playability.phrase.KeyboardPhraseBranch = undefined;
+    const filtered = playability.ranking.filterBlockedKeyboardPhraseBranchesFromCommittedPhrase(
+        &memory,
+        branch_buf[0..bounded_count],
+        profile,
+        filtered_buf[0..bounded_count],
+    );
+
+    for (filtered, 0..) |branch, row_index| {
+        out[row_index].step_count = branch.step_count;
+        out[row_index].reserved0 = 0;
+        out[row_index].reserved1 = 0;
+        out[row_index].reserved2 = 0;
+        for (branch.steps, 0..) |step, step_index| {
+            writeKeyboardPhraseEvent(&out[row_index].steps[step_index], step);
+        }
+    }
+    return @as(u32, @intCast(filtered.len));
+}
+
+pub export fn lmt_hard_filter_fret_phrase_branches_by_committed_phrase(
+    memory_ptr: [*c]const LmtFretCommittedPhraseMemory,
+    branches_ptr: [*c]const LmtFretPhraseBranch,
+    branch_count: u32,
+    tuning_ptr: [*c]const u8,
+    tuning_count: u32,
+    profile_raw: u32,
+    hand_profile_ptr: [*c]const LmtHandProfile,
+    out: [*c]LmtFretPhraseBranch,
+    out_cap: u32,
+) callconv(.c) u32 {
+    if (memory_ptr == null or branches_ptr == null or out == null or out_cap == 0) return 0;
+
+    const bounded_count = @min(@as(usize, @intCast(branch_count)), @as(usize, @intCast(out_cap)));
+    if (bounded_count == 0 or bounded_count > MAX_C_API_PHRASE_BRANCH_ROWS) return 0;
+
+    var tuning_buf: [MAX_PARAMETRIC_FRET_STRINGS]pitch.MidiNote = undefined;
+    const tuning = decodeTuningGeneric(tuning_ptr, tuning_count, &tuning_buf);
+    if (tuning.len == 0) return 0;
+
+    const memory = decodeFretCommittedPhraseMemory((@as(*const LmtFretCommittedPhraseMemory, @ptrCast(memory_ptr))).*);
+    const technique = decodeFretTechniqueProfile(profile_raw) orelse return 0;
+    const hand_profile: ?playability.types.HandProfile = if (hand_profile_ptr != null)
+        decodeHandProfile(hand_profile_ptr[0])
+    else
+        null;
+
+    var branch_buf: [MAX_C_API_PHRASE_BRANCH_ROWS]playability.phrase.FretPhraseBranch = undefined;
+    var index: usize = 0;
+    while (index < bounded_count) : (index += 1) {
+        const branch = decodeFretPhraseBranch(branches_ptr[index]);
+        for (branch.slice()) |event| {
+            if (event.fret_count > tuning.len) return 0;
+        }
+        branch_buf[index] = branch;
+    }
+
+    var filtered_buf: [MAX_C_API_PHRASE_BRANCH_ROWS]playability.phrase.FretPhraseBranch = undefined;
+    const filtered = playability.ranking.filterBlockedFretPhraseBranchesFromCommittedPhrase(
+        &memory,
+        branch_buf[0..bounded_count],
+        tuning,
+        technique,
+        hand_profile,
+        filtered_buf[0..bounded_count],
+    );
+
+    for (filtered, 0..) |branch, row_index| {
+        out[row_index].step_count = branch.step_count;
+        out[row_index].reserved0 = 0;
+        out[row_index].reserved1 = 0;
+        out[row_index].reserved2 = 0;
+        for (branch.steps, 0..) |step, step_index| {
+            writeFretPhraseEvent(&out[row_index].steps[step_index], step);
+        }
+    }
+    return @as(u32, @intCast(filtered.len));
 }
 
 pub export fn lmt_rank_keyboard_phrase_repairs_n(

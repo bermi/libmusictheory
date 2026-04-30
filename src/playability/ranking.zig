@@ -6,6 +6,7 @@ const counterpoint = @import("../counterpoint.zig");
 const keyboard = @import("../keyboard.zig");
 const types = @import("types.zig");
 const phrase = @import("phrase.zig");
+const fret_assessment = @import("fret_assessment.zig");
 const keyboard_assessment = @import("keyboard_assessment.zig");
 const keyboard_topology = @import("keyboard_topology.zig");
 
@@ -29,6 +30,122 @@ pub fn fromInt(raw: u8) ?PlayabilityPolicy {
         else => null,
     };
 }
+
+pub const PhraseBranchClassification = enum(u8) {
+    blocked = 0,
+    playable_recovery_deficit = 1,
+    playable_recovery_neutral = 2,
+    playable_recovery_improving = 3,
+};
+
+pub const PHRASE_BRANCH_CLASSIFICATION_NAMES = [_][]const u8{
+    "blocked",
+    "playable-recovery-deficit",
+    "playable-recovery-neutral",
+    "playable-recovery-improving",
+};
+
+pub fn phraseBranchClassificationFromInt(raw: u8) ?PhraseBranchClassification {
+    return switch (raw) {
+        0 => .blocked,
+        1 => .playable_recovery_deficit,
+        2 => .playable_recovery_neutral,
+        3 => .playable_recovery_improving,
+        else => null,
+    };
+}
+
+pub const PhraseBranchVisibility = enum(u8) {
+    diagnostics_keep_blocked = 0,
+    hard_filter_blocked = 1,
+};
+
+pub const PHRASE_BRANCH_VISIBILITY_NAMES = [_][]const u8{
+    "diagnostics-keep-blocked",
+    "hard-filter-blocked",
+};
+
+pub fn phraseBranchVisibilityFromInt(raw: u8) ?PhraseBranchVisibility {
+    return switch (raw) {
+        0 => .diagnostics_keep_blocked,
+        1 => .hard_filter_blocked,
+        else => null,
+    };
+}
+
+pub const PhraseBranchBiasReason = enum(u8) {
+    blocked_by_committed_history = 0,
+    deficit_windows_compounded = 1,
+    dominant_warning_compounded = 2,
+    dominant_reason_reinforced = 3,
+    peak_strain_increased = 4,
+    continuity_reset_from_hand_switch = 5,
+};
+
+pub const PHRASE_BRANCH_BIAS_REASON_NAMES = [_][]const u8{
+    "blocked by committed history",
+    "deficit windows compounded",
+    "dominant warning compounded",
+    "dominant reason reinforced",
+    "peak strain increased",
+    "continuity reset from hand switch",
+};
+
+pub const PhraseBranchBiasSummary = struct {
+    bias_reason_bits: u32,
+    deficit_window_delta: i16,
+    improving_window_delta: i16,
+    peak_strain_delta: i16,
+    standalone_classification: PhraseBranchClassification,
+    biased_classification: PhraseBranchClassification,
+    committed_strain_bucket: phrase.StrainBucket,
+    committed_warning_family: u8,
+    committed_reason_family: u8,
+    reserved0: u8,
+    reserved1: u8,
+    reserved2: u8,
+
+    pub fn empty() PhraseBranchBiasSummary {
+        return .{
+            .bias_reason_bits = 0,
+            .deficit_window_delta = 0,
+            .improving_window_delta = 0,
+            .peak_strain_delta = 0,
+            .standalone_classification = .playable_recovery_neutral,
+            .biased_classification = .playable_recovery_neutral,
+            .committed_strain_bucket = .neutral,
+            .committed_warning_family = phrase.NONE_FAMILY_INDEX,
+            .committed_reason_family = phrase.NONE_FAMILY_INDEX,
+            .reserved0 = 0,
+            .reserved1 = 0,
+            .reserved2 = 0,
+        };
+    }
+};
+
+pub const RankedKeyboardPhraseBranch = struct {
+    branch: phrase.KeyboardPhraseBranch,
+    summary: phrase.PhraseBranchSummary,
+    standalone_summary: phrase.PhraseBranchSummary,
+    bias: PhraseBranchBiasSummary,
+    candidate_index: u32,
+    policy: PlayabilityPolicy,
+    visibility: PhraseBranchVisibility,
+    classification: PhraseBranchClassification,
+    accepted: bool,
+};
+
+pub const RankedFretPhraseBranch = struct {
+    branch: phrase.FretPhraseBranch,
+    summary: phrase.PhraseBranchSummary,
+    standalone_summary: phrase.PhraseBranchSummary,
+    bias: PhraseBranchBiasSummary,
+    candidate_index: u32,
+    policy: PlayabilityPolicy,
+    visibility: PhraseBranchVisibility,
+    classification: PhraseBranchClassification,
+    accepted: bool,
+};
 
 pub const RankedKeyboardNextStep = struct {
     candidate: counterpoint.NextStepSuggestion,
@@ -232,6 +349,151 @@ pub fn rankKeyboardContextCandidates(
     return out[0..write_len];
 }
 
+pub fn classifyBranchSummary(summary: phrase.PhraseBranchSummary) PhraseBranchClassification {
+    if (branchSummaryBlocked(summary)) return .blocked;
+    if (summary.improving_window_count > summary.deficit_window_count) return .playable_recovery_improving;
+    if (summary.deficit_window_count > summary.improving_window_count) return .playable_recovery_deficit;
+    return .playable_recovery_neutral;
+}
+
+pub fn summarizeKeyboardBranchBiasFromCommittedPhrase(
+    committed: *const phrase.KeyboardCommittedPhraseMemory,
+    branch: *const phrase.KeyboardPhraseBranch,
+    profile: types.HandProfile,
+) PhraseBranchBiasSummary {
+    const standalone = phrase.summarizeKeyboardBranch(branch, profile);
+    const biased = phrase.summarizeKeyboardBranchAgainstCommittedPhrase(committed, branch, profile);
+    return describeKeyboardBranchBias(committed, branch, profile, standalone, biased);
+}
+
+pub fn summarizeFretBranchBiasFromCommittedPhrase(
+    committed: *const phrase.FretCommittedPhraseMemory,
+    branch: *const phrase.FretPhraseBranch,
+    tuning: []const pitch.MidiNote,
+    technique: fret_assessment.TechniqueProfile,
+    hand_override: ?types.HandProfile,
+) PhraseBranchBiasSummary {
+    const standalone = phrase.summarizeFretBranch(branch, tuning, technique, hand_override);
+    const biased = phrase.summarizeFretBranchAgainstCommittedPhrase(committed, branch, tuning, technique, hand_override);
+    return describeFretBranchBias(committed, tuning, technique, hand_override, standalone, biased);
+}
+
+pub fn rankKeyboardPhraseBranchesFromCommittedPhrase(
+    committed: *const phrase.KeyboardCommittedPhraseMemory,
+    branches: []const phrase.KeyboardPhraseBranch,
+    profile: types.HandProfile,
+    policy: PlayabilityPolicy,
+    visibility: PhraseBranchVisibility,
+    out: []RankedKeyboardPhraseBranch,
+) []RankedKeyboardPhraseBranch {
+    if (branches.len == 0 or out.len == 0) return out[0..0];
+
+    var write_len: usize = 0;
+    for (branches, 0..) |branch, index| {
+        if (write_len >= out.len) break;
+
+        const standalone = phrase.summarizeKeyboardBranch(&branch, profile);
+        const biased = phrase.summarizeKeyboardBranchAgainstCommittedPhrase(committed, &branch, profile);
+        const classification = classifyBranchSummary(biased);
+        if (visibility == .hard_filter_blocked and classification == .blocked) continue;
+
+        out[write_len] = .{
+            .branch = branch,
+            .summary = biased,
+            .standalone_summary = standalone,
+            .bias = describeKeyboardBranchBias(committed, &branch, profile, standalone, biased),
+            .candidate_index = @as(u32, @intCast(index)),
+            .policy = policy,
+            .visibility = visibility,
+            .classification = classification,
+            .accepted = classification != .blocked,
+        };
+        write_len += 1;
+    }
+
+    std.sort.insertion(RankedKeyboardPhraseBranch, out[0..write_len], policy, keyboardPhraseBranchLessThan);
+    return out[0..write_len];
+}
+
+pub fn rankFretPhraseBranchesFromCommittedPhrase(
+    committed: *const phrase.FretCommittedPhraseMemory,
+    branches: []const phrase.FretPhraseBranch,
+    tuning: []const pitch.MidiNote,
+    technique: fret_assessment.TechniqueProfile,
+    hand_override: ?types.HandProfile,
+    policy: PlayabilityPolicy,
+    visibility: PhraseBranchVisibility,
+    out: []RankedFretPhraseBranch,
+) []RankedFretPhraseBranch {
+    if (branches.len == 0 or out.len == 0) return out[0..0];
+
+    var write_len: usize = 0;
+    for (branches, 0..) |branch, index| {
+        if (write_len >= out.len) break;
+
+        const standalone = phrase.summarizeFretBranch(&branch, tuning, technique, hand_override);
+        const biased = phrase.summarizeFretBranchAgainstCommittedPhrase(committed, &branch, tuning, technique, hand_override);
+        const classification = classifyBranchSummary(biased);
+        if (visibility == .hard_filter_blocked and classification == .blocked) continue;
+
+        out[write_len] = .{
+            .branch = branch,
+            .summary = biased,
+            .standalone_summary = standalone,
+            .bias = describeFretBranchBias(committed, tuning, technique, hand_override, standalone, biased),
+            .candidate_index = @as(u32, @intCast(index)),
+            .policy = policy,
+            .visibility = visibility,
+            .classification = classification,
+            .accepted = classification != .blocked,
+        };
+        write_len += 1;
+    }
+
+    std.sort.insertion(RankedFretPhraseBranch, out[0..write_len], policy, fretPhraseBranchLessThan);
+    return out[0..write_len];
+}
+
+pub fn filterBlockedKeyboardPhraseBranchesFromCommittedPhrase(
+    committed: *const phrase.KeyboardCommittedPhraseMemory,
+    branches: []const phrase.KeyboardPhraseBranch,
+    profile: types.HandProfile,
+    out: []phrase.KeyboardPhraseBranch,
+) []phrase.KeyboardPhraseBranch {
+    if (branches.len == 0 or out.len == 0) return out[0..0];
+
+    var write_len: usize = 0;
+    for (branches) |branch| {
+        if (write_len >= out.len) break;
+        const biased = phrase.summarizeKeyboardBranchAgainstCommittedPhrase(committed, &branch, profile);
+        if (classifyBranchSummary(biased) == .blocked) continue;
+        out[write_len] = branch;
+        write_len += 1;
+    }
+    return out[0..write_len];
+}
+
+pub fn filterBlockedFretPhraseBranchesFromCommittedPhrase(
+    committed: *const phrase.FretCommittedPhraseMemory,
+    branches: []const phrase.FretPhraseBranch,
+    tuning: []const pitch.MidiNote,
+    technique: fret_assessment.TechniqueProfile,
+    hand_override: ?types.HandProfile,
+    out: []phrase.FretPhraseBranch,
+) []phrase.FretPhraseBranch {
+    if (branches.len == 0 or out.len == 0) return out[0..0];
+
+    var write_len: usize = 0;
+    for (branches) |branch| {
+        if (write_len >= out.len) break;
+        const biased = phrase.summarizeFretBranchAgainstCommittedPhrase(committed, &branch, tuning, technique, hand_override);
+        if (classifyBranchSummary(biased) == .blocked) continue;
+        out[write_len] = branch;
+        write_len += 1;
+    }
+    return out[0..write_len];
+}
+
 fn currentAnchorMidi(
     current_notes: []const pitch.MidiNote,
     hand_profile: types.HandProfile,
@@ -310,6 +572,194 @@ fn keyboardLoadBeforeCurrent(history: *const counterpoint.VoicedHistoryWindow, h
         maybe_load = state.load;
     }
     return maybe_load;
+}
+
+fn describeKeyboardBranchBias(
+    committed: *const phrase.KeyboardCommittedPhraseMemory,
+    branch: *const phrase.KeyboardPhraseBranch,
+    profile: types.HandProfile,
+    standalone: phrase.PhraseBranchSummary,
+    biased: phrase.PhraseBranchSummary,
+) PhraseBranchBiasSummary {
+    const committed_summary = committedKeyboardSummary(committed, profile);
+    var out = PhraseBranchBiasSummary.empty();
+    out.standalone_classification = classifyBranchSummary(standalone);
+    out.biased_classification = classifyBranchSummary(biased);
+    out.committed_strain_bucket = committed_summary.strain_bucket;
+    out.committed_warning_family = committed_summary.dominant_warning_family;
+    out.committed_reason_family = committed_summary.dominant_reason_family;
+    out.deficit_window_delta = deltaU16(biased.deficit_window_count, standalone.deficit_window_count);
+    out.improving_window_delta = deltaU16(biased.improving_window_count, standalone.improving_window_count);
+    out.peak_strain_delta = deltaU16(biased.peak_strain_magnitude, standalone.peak_strain_magnitude);
+
+    if (out.biased_classification == .blocked and out.standalone_classification != .blocked) {
+        out.bias_reason_bits |= branchBiasBit(.blocked_by_committed_history);
+    }
+    if (biased.deficit_window_count > standalone.deficit_window_count) {
+        out.bias_reason_bits |= branchBiasBit(.deficit_windows_compounded);
+    }
+    if (committed_summary.dominant_warning_family != phrase.NONE_FAMILY_INDEX and
+        biased.dominant_warning_family == committed_summary.dominant_warning_family)
+    {
+        out.bias_reason_bits |= branchBiasBit(.dominant_warning_compounded);
+    }
+    if (committed_summary.dominant_reason_family != phrase.NONE_FAMILY_INDEX and
+        biased.dominant_reason_family == committed_summary.dominant_reason_family)
+    {
+        out.bias_reason_bits |= branchBiasBit(.dominant_reason_reinforced);
+    }
+    if (biased.peak_strain_magnitude > standalone.peak_strain_magnitude) {
+        out.bias_reason_bits |= branchBiasBit(.peak_strain_increased);
+    }
+    if (committed.current()) |prior| {
+        if (branch.len() > 0 and branch.steps[0].hand != prior.hand) {
+            out.bias_reason_bits |= branchBiasBit(.continuity_reset_from_hand_switch);
+        }
+    }
+    return out;
+}
+
+fn describeFretBranchBias(
+    committed: *const phrase.FretCommittedPhraseMemory,
+    tuning: []const pitch.MidiNote,
+    technique: fret_assessment.TechniqueProfile,
+    hand_override: ?types.HandProfile,
+    standalone: phrase.PhraseBranchSummary,
+    biased: phrase.PhraseBranchSummary,
+) PhraseBranchBiasSummary {
+    const committed_summary = committedFretSummary(committed, tuning, technique, hand_override);
+    var out = PhraseBranchBiasSummary.empty();
+    out.standalone_classification = classifyBranchSummary(standalone);
+    out.biased_classification = classifyBranchSummary(biased);
+    out.committed_strain_bucket = committed_summary.strain_bucket;
+    out.committed_warning_family = committed_summary.dominant_warning_family;
+    out.committed_reason_family = committed_summary.dominant_reason_family;
+    out.deficit_window_delta = deltaU16(biased.deficit_window_count, standalone.deficit_window_count);
+    out.improving_window_delta = deltaU16(biased.improving_window_count, standalone.improving_window_count);
+    out.peak_strain_delta = deltaU16(biased.peak_strain_magnitude, standalone.peak_strain_magnitude);
+
+    if (out.biased_classification == .blocked and out.standalone_classification != .blocked) {
+        out.bias_reason_bits |= branchBiasBit(.blocked_by_committed_history);
+    }
+    if (biased.deficit_window_count > standalone.deficit_window_count) {
+        out.bias_reason_bits |= branchBiasBit(.deficit_windows_compounded);
+    }
+    if (committed_summary.dominant_warning_family != phrase.NONE_FAMILY_INDEX and
+        biased.dominant_warning_family == committed_summary.dominant_warning_family)
+    {
+        out.bias_reason_bits |= branchBiasBit(.dominant_warning_compounded);
+    }
+    if (committed_summary.dominant_reason_family != phrase.NONE_FAMILY_INDEX and
+        biased.dominant_reason_family == committed_summary.dominant_reason_family)
+    {
+        out.bias_reason_bits |= branchBiasBit(.dominant_reason_reinforced);
+    }
+    if (biased.peak_strain_magnitude > standalone.peak_strain_magnitude) {
+        out.bias_reason_bits |= branchBiasBit(.peak_strain_increased);
+    }
+    return out;
+}
+
+fn committedKeyboardSummary(
+    committed: *const phrase.KeyboardCommittedPhraseMemory,
+    profile: types.HandProfile,
+) phrase.PhraseSummary {
+    var issues: [phrase.MAX_PHRASE_AUDIT_ISSUES]phrase.PhraseIssue = undefined;
+    return phrase.auditCommittedKeyboardPhrase(committed, profile, issues[0..]).summary;
+}
+
+fn committedFretSummary(
+    committed: *const phrase.FretCommittedPhraseMemory,
+    tuning: []const pitch.MidiNote,
+    technique: fret_assessment.TechniqueProfile,
+    hand_override: ?types.HandProfile,
+) phrase.PhraseSummary {
+    var issues: [phrase.MAX_PHRASE_AUDIT_ISSUES]phrase.PhraseIssue = undefined;
+    return phrase.auditCommittedFretPhrase(committed, tuning, technique, hand_override, issues[0..]).summary;
+}
+
+fn deltaU16(after: u16, before: u16) i16 {
+    const after_i: i32 = @intCast(after);
+    const before_i: i32 = @intCast(before);
+    return @as(i16, @intCast(after_i - before_i));
+}
+
+fn branchBiasBit(kind: PhraseBranchBiasReason) u32 {
+    return @as(u32, 1) << @as(u5, @intCast(@intFromEnum(kind)));
+}
+
+fn branchSummaryBlocked(summary: phrase.PhraseBranchSummary) bool {
+    return summary.first_blocked_step_index != phrase.NONE_EVENT_INDEX or
+        summary.first_blocked_transition_from_index != phrase.NONE_EVENT_INDEX or
+        summary.strain_bucket == .blocked;
+}
+
+fn classRank(classification: PhraseBranchClassification) u8 {
+    return switch (classification) {
+        .playable_recovery_improving => 0,
+        .playable_recovery_neutral => 1,
+        .playable_recovery_deficit => 2,
+        .blocked => 3,
+    };
+}
+
+fn earliestBlockedStep(summary: phrase.PhraseBranchSummary) u16 {
+    if (summary.first_blocked_step_index != phrase.NONE_EVENT_INDEX) return summary.first_blocked_step_index;
+    return summary.first_blocked_transition_to_index;
+}
+
+fn keyboardPhraseBranchLessThan(policy: PlayabilityPolicy, a: RankedKeyboardPhraseBranch, b: RankedKeyboardPhraseBranch) bool {
+    if (a.classification != b.classification) return classRank(a.classification) < classRank(b.classification);
+
+    switch (policy) {
+        .balanced => {
+            if (a.summary.deficit_window_count != b.summary.deficit_window_count) return a.summary.deficit_window_count < b.summary.deficit_window_count;
+            if (a.summary.improving_window_count != b.summary.improving_window_count) return a.summary.improving_window_count > b.summary.improving_window_count;
+            if (a.summary.peak_strain_magnitude != b.summary.peak_strain_magnitude) return a.summary.peak_strain_magnitude < b.summary.peak_strain_magnitude;
+        },
+        .minimax_bottleneck => {
+            if (a.summary.peak_strain_magnitude != b.summary.peak_strain_magnitude) return a.summary.peak_strain_magnitude < b.summary.peak_strain_magnitude;
+            if (a.classification == .blocked and b.classification == .blocked and earliestBlockedStep(a.summary) != earliestBlockedStep(b.summary)) {
+                return earliestBlockedStep(a.summary) > earliestBlockedStep(b.summary);
+            }
+            if (a.summary.deficit_window_count != b.summary.deficit_window_count) return a.summary.deficit_window_count < b.summary.deficit_window_count;
+            if (a.summary.improving_window_count != b.summary.improving_window_count) return a.summary.improving_window_count > b.summary.improving_window_count;
+        },
+        .cumulative_strain => {
+            if (a.summary.deficit_window_count != b.summary.deficit_window_count) return a.summary.deficit_window_count < b.summary.deficit_window_count;
+            if (a.summary.improving_window_count != b.summary.improving_window_count) return a.summary.improving_window_count > b.summary.improving_window_count;
+            if (a.summary.peak_strain_magnitude != b.summary.peak_strain_magnitude) return a.summary.peak_strain_magnitude < b.summary.peak_strain_magnitude;
+        },
+    }
+
+    return a.candidate_index < b.candidate_index;
+}
+
+fn fretPhraseBranchLessThan(policy: PlayabilityPolicy, a: RankedFretPhraseBranch, b: RankedFretPhraseBranch) bool {
+    if (a.classification != b.classification) return classRank(a.classification) < classRank(b.classification);
+
+    switch (policy) {
+        .balanced => {
+            if (a.summary.deficit_window_count != b.summary.deficit_window_count) return a.summary.deficit_window_count < b.summary.deficit_window_count;
+            if (a.summary.improving_window_count != b.summary.improving_window_count) return a.summary.improving_window_count > b.summary.improving_window_count;
+            if (a.summary.peak_strain_magnitude != b.summary.peak_strain_magnitude) return a.summary.peak_strain_magnitude < b.summary.peak_strain_magnitude;
+        },
+        .minimax_bottleneck => {
+            if (a.summary.peak_strain_magnitude != b.summary.peak_strain_magnitude) return a.summary.peak_strain_magnitude < b.summary.peak_strain_magnitude;
+            if (a.classification == .blocked and b.classification == .blocked and earliestBlockedStep(a.summary) != earliestBlockedStep(b.summary)) {
+                return earliestBlockedStep(a.summary) > earliestBlockedStep(b.summary);
+            }
+            if (a.summary.deficit_window_count != b.summary.deficit_window_count) return a.summary.deficit_window_count < b.summary.deficit_window_count;
+            if (a.summary.improving_window_count != b.summary.improving_window_count) return a.summary.improving_window_count > b.summary.improving_window_count;
+        },
+        .cumulative_strain => {
+            if (a.summary.deficit_window_count != b.summary.deficit_window_count) return a.summary.deficit_window_count < b.summary.deficit_window_count;
+            if (a.summary.improving_window_count != b.summary.improving_window_count) return a.summary.improving_window_count > b.summary.improving_window_count;
+            if (a.summary.peak_strain_magnitude != b.summary.peak_strain_magnitude) return a.summary.peak_strain_magnitude < b.summary.peak_strain_magnitude;
+        },
+    }
+
+    return a.candidate_index < b.candidate_index;
 }
 
 fn warningCount(bits: u32) u32 {

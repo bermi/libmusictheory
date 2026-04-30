@@ -379,6 +379,61 @@ The ranked phrase repairs return:
 - exact pitches preserved
 - exact frets preserved
 
+## 0141 - Phrase-Biased Branch Ranking And Hard Filters
+
+`0141` turns short future branches into explainable ranking rows without hiding the difference between a diagnostic view and an acceptance filter.
+
+The key rule is simple:
+
+- hard blockers and soft strain bias separate
+
+That means the library now exposes two distinct host choices:
+
+- keep blocked branches visible for diagnosis
+- remove blocked branches only when the host explicitly asks for a hard filter
+
+### What The Ranking Adds
+
+Each ranked branch now carries:
+
+- standalone branch summary
+- committed-memory-biased branch summary
+- classification
+- visibility mode
+- bias reason bitset
+
+This lets hosts explain things like:
+
+- "This branch is still visible because we are in diagnostics mode, even though it becomes blocked against the committed phrase."
+- "This branch compounds the same shift strain already present in committed memory."
+- "This branch stayed playable, but it reinforced the same dominant warning family already building up in the accepted phrase."
+
+### Why Visibility Is Explicit
+
+The library must not silently erase information just because a host eventually wants an accepted-only list.
+
+So `diagnostics_keep_blocked` and `hard_filter_blocked` are separate API states, not a hidden sort flag.
+
+That keeps the explanation honest:
+
+- "I kept blocked branches visible so I could show you why they fail."
+- "This candidate was blocked only because you asked for hard blockers to be removed."
+
+### Why Committed-Memory Bias Matters
+
+The same short branch can look different in isolation than it does after accepted history is taken into account.
+
+The new bias summary measures that difference directly:
+
+- new deficit windows introduced by committed context
+- new peak strain introduced by committed context
+- reinforcement of the same dominant reason or warning families
+- keyboard continuity resets caused by switching hands against accepted history
+
+This keeps downstream wording precise:
+
+- "In isolation this branch was playable, but the committed phrase already pushed the hand far enough that the same move now becomes blocked."
+
 The ranking order stays explainable:
 
 - repairs that do not cross musical-change boundary come first

@@ -651,6 +651,16 @@ pub fn summarizeKeyboardBranch(branch: *const KeyboardPhraseBranch, profile: typ
     return summarizeBranchIssues(branch.len(), issues[0..result.logical_issue_count]);
 }
 
+pub fn summarizeKeyboardBranchAgainstCommittedPhrase(
+    memory: *const KeyboardCommittedPhraseMemory,
+    branch: *const KeyboardPhraseBranch,
+    profile: types.HandProfile,
+) PhraseBranchSummary {
+    var issues: [MAX_PHRASE_AUDIT_ISSUES]PhraseIssue = undefined;
+    const result = auditKeyboardBranchAgainstCommittedPhrase(memory, branch, profile, issues[0..]);
+    return summarizeBranchIssues(branch.len(), issues[0..result.logical_issue_count]);
+}
+
 pub fn summarizeFretBranch(
     branch: *const FretPhraseBranch,
     tuning: []const pitch.MidiNote,
@@ -659,6 +669,18 @@ pub fn summarizeFretBranch(
 ) PhraseBranchSummary {
     var issues: [MAX_PHRASE_AUDIT_ISSUES]PhraseIssue = undefined;
     const result = auditFretPhrase(branch.slice(), tuning, technique, hand_override, issues[0..]);
+    return summarizeBranchIssues(branch.len(), issues[0..result.logical_issue_count]);
+}
+
+pub fn summarizeFretBranchAgainstCommittedPhrase(
+    memory: *const FretCommittedPhraseMemory,
+    branch: *const FretPhraseBranch,
+    tuning: []const pitch.MidiNote,
+    technique: fret_assessment.TechniqueProfile,
+    hand_override: ?types.HandProfile,
+) PhraseBranchSummary {
+    var issues: [MAX_PHRASE_AUDIT_ISSUES]PhraseIssue = undefined;
+    const result = auditFretBranchAgainstCommittedPhrase(memory, branch, tuning, technique, hand_override, issues[0..]);
     return summarizeBranchIssues(branch.len(), issues[0..result.logical_issue_count]);
 }
 
@@ -824,12 +846,28 @@ pub fn auditKeyboardPhrase(
     profile: types.HandProfile,
     out: []PhraseIssue,
 ) PhraseAuditResult {
+    return auditKeyboardPhraseSeeded(events, profile, null, null, null, out);
+}
+
+fn auditKeyboardPhraseSeeded(
+    events: []const KeyboardPhraseEvent,
+    profile: types.HandProfile,
+    seed_previous_event: ?KeyboardPhraseEvent,
+    seed_previous_input_load: ?types.TemporalLoadState,
+    seed_previous_realization: ?keyboard_assessment.RealizationAssessment,
+    out: []PhraseIssue,
+) PhraseAuditResult {
     const bounded_events = boundedEventCount(events.len);
     var builder = AuditBuilder.init(bounded_events, out);
 
-    var previous_event: ?KeyboardPhraseEvent = null;
-    var previous_input_load: ?types.TemporalLoadState = null;
+    var previous_event: ?KeyboardPhraseEvent = seed_previous_event;
+    var previous_input_load: ?types.TemporalLoadState = seed_previous_input_load;
     var previous_realization: keyboard_assessment.RealizationAssessment = undefined;
+    var has_previous_realization = false;
+    if (seed_previous_realization) |realization| {
+        previous_realization = realization;
+        has_previous_realization = true;
+    }
 
     for (events[0..bounded_events], 0..) |event, raw_index| {
         const event_index = @as(u16, @intCast(raw_index));
@@ -838,7 +876,17 @@ pub fn auditKeyboardPhrase(
         var input_load: ?types.TemporalLoadState = null;
         if (previous_event) |prior| {
             if (prior.hand == event.hand) {
+                if (!has_previous_realization) {
+                    previous_realization = keyboard_assessment.assessRealization(
+                        keyboardPhraseNotes(&prior),
+                        prior.hand,
+                        profile,
+                        previous_input_load,
+                    );
+                    has_previous_realization = true;
+                }
                 input_load = previous_realization.state.load;
+                const previous_event_index: u16 = if (event_index == 0) 0 else event_index - 1;
                 appendKeyboardTransitionIssues(
                     &builder,
                     keyboard_assessment.assessTransition(
@@ -851,7 +899,7 @@ pub fn auditKeyboardPhrase(
                     previous_realization,
                     keyboard_assessment.assessRealization(notes, event.hand, profile, input_load),
                     profile,
-                    event_index - 1,
+                    previous_event_index,
                     event_index,
                 );
             } else {
@@ -866,6 +914,7 @@ pub fn auditKeyboardPhrase(
         previous_event = event;
         previous_input_load = input_load;
         previous_realization = realization;
+        has_previous_realization = true;
     }
 
     appendRepeatedWarningClusterIssue(&builder);
@@ -881,6 +930,23 @@ pub fn auditCommittedKeyboardPhrase(
     return auditKeyboardPhrase(memory.slice(), profile, out);
 }
 
+pub fn auditKeyboardBranchAgainstCommittedPhrase(
+    memory: *const KeyboardCommittedPhraseMemory,
+    branch: *const KeyboardPhraseBranch,
+    profile: types.HandProfile,
+    out: []PhraseIssue,
+) PhraseAuditResult {
+    const prior = memory.current() orelse return auditKeyboardPhrase(branch.slice(), profile, out);
+    const prior_input_load = memory.loadBeforeCurrent(profile);
+    const prior_realization = keyboard_assessment.assessRealization(
+        keyboardPhraseNotes(prior),
+        prior.hand,
+        profile,
+        prior_input_load,
+    );
+    return auditKeyboardPhraseSeeded(branch.slice(), profile, prior.*, prior_input_load, prior_realization, out);
+}
+
 pub fn auditFretPhrase(
     events: []const FretPhraseEvent,
     tuning: []const pitch.MidiNote,
@@ -888,18 +954,46 @@ pub fn auditFretPhrase(
     hand_override: ?types.HandProfile,
     out: []PhraseIssue,
 ) PhraseAuditResult {
+    return auditFretPhraseSeeded(events, tuning, technique, hand_override, null, null, null, out);
+}
+
+fn auditFretPhraseSeeded(
+    events: []const FretPhraseEvent,
+    tuning: []const pitch.MidiNote,
+    technique: fret_assessment.TechniqueProfile,
+    hand_override: ?types.HandProfile,
+    seed_previous_event: ?FretPhraseEvent,
+    seed_previous_input_load: ?types.TemporalLoadState,
+    seed_previous_realization: ?fret_assessment.RealizationAssessment,
+    out: []PhraseIssue,
+) PhraseAuditResult {
     const bounded_events = boundedEventCount(events.len);
     var builder = AuditBuilder.init(bounded_events, out);
 
-    var previous_event: ?FretPhraseEvent = null;
-    var previous_input_load: ?types.TemporalLoadState = null;
+    var previous_event: ?FretPhraseEvent = seed_previous_event;
+    var previous_input_load: ?types.TemporalLoadState = seed_previous_input_load;
     var previous_realization: fret_assessment.RealizationAssessment = undefined;
+    var has_previous_realization = false;
+    if (seed_previous_realization) |realization| {
+        previous_realization = realization;
+        has_previous_realization = true;
+    }
     const hand = hand_override orelse fret_assessment.defaultHandProfile(technique);
 
     for (events[0..bounded_events], 0..) |event, raw_index| {
         const event_index = @as(u16, @intCast(raw_index));
         const frets = fretPhraseFrets(&event);
-        const input_load: ?types.TemporalLoadState = if (previous_event != null)
+        if (previous_event != null and !has_previous_realization) {
+            previous_realization = fret_assessment.assessRealization(
+                fretPhraseFrets(&previous_event.?),
+                tuning,
+                technique,
+                hand_override,
+                previous_input_load,
+            );
+            has_previous_realization = true;
+        }
+        const input_load: ?types.TemporalLoadState = if (previous_event != null and has_previous_realization)
             previous_realization.state.load
         else
             null;
@@ -908,6 +1002,7 @@ pub fn auditFretPhrase(
         appendFretEventIssues(&builder, realization, event_index);
 
         if (previous_event) |prior| {
+            const previous_event_index: u16 = if (event_index == 0) 0 else event_index - 1;
             appendFretTransitionIssues(
                 &builder,
                 fret_assessment.assessTransition(
@@ -920,7 +1015,7 @@ pub fn auditFretPhrase(
                 previous_realization,
                 realization,
                 hand,
-                event_index - 1,
+                previous_event_index,
                 event_index,
             );
         }
@@ -928,6 +1023,7 @@ pub fn auditFretPhrase(
         previous_event = event;
         previous_input_load = input_load;
         previous_realization = realization;
+        has_previous_realization = true;
     }
 
     appendRepeatedWarningClusterIssue(&builder);
@@ -943,6 +1039,26 @@ pub fn auditCommittedFretPhrase(
     out: []PhraseIssue,
 ) PhraseAuditResult {
     return auditFretPhrase(memory.slice(), tuning, technique, hand_override, out);
+}
+
+pub fn auditFretBranchAgainstCommittedPhrase(
+    memory: *const FretCommittedPhraseMemory,
+    branch: *const FretPhraseBranch,
+    tuning: []const pitch.MidiNote,
+    technique: fret_assessment.TechniqueProfile,
+    hand_override: ?types.HandProfile,
+    out: []PhraseIssue,
+) PhraseAuditResult {
+    const prior = memory.current() orelse return auditFretPhrase(branch.slice(), tuning, technique, hand_override, out);
+    const prior_input_load = memory.loadBeforeCurrent(tuning, technique, hand_override);
+    const prior_realization = fret_assessment.assessRealization(
+        fretPhraseFrets(prior),
+        tuning,
+        technique,
+        hand_override,
+        prior_input_load,
+    );
+    return auditFretPhraseSeeded(branch.slice(), tuning, technique, hand_override, prior.*, prior_input_load, prior_realization, out);
 }
 
 fn boundedEventCount(raw_len: usize) usize {
