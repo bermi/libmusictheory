@@ -2,7 +2,7 @@
 
 ## Status
 
-- In progress: 2026-04-30
+- Completed: 2026-04-30
 
 ## Goal
 
@@ -47,3 +47,13 @@ An LLM should be able to say:
 - ranked branch-repair tests with explicit bottleneck relief metadata
 - `/Users/bermi/code/libmusictheory/./zigw build test`
 - `/Users/bermi/code/libmusictheory/./verify.sh`
+
+## Implementation History (Point-in-Time)
+
+- `803fd72` — 2026-04-30
+  - Added preservation-aware keyboard and fret branch-repair ranking so callers can request one repair class at a time without silently widening from realization-only to register-adjusted or texture-reduced rewrites.
+  - Added ranked branch-repair metadata covering touched events, changed notes, first relieved bottleneck step, dominant-family shifts, and full replacement branches, then exposed that surface through the experimental C ABI and wasm export guardrails.
+  - Added focused Zig and C ABI coverage plus research/API documentation showing how branch rewrites stay explainable as physical realization changes versus genuine musical changes.
+  - Verification commands:
+    - `/Users/bermi/code/libmusictheory/./zigw build test`
+    - `/Users/bermi/code/libmusictheory/./verify.sh`
