@@ -379,6 +379,40 @@ The ranked phrase repairs return:
 - exact pitches preserved
 - exact frets preserved
 
+## 0142 - Rewrite Exploration And Preservation-Aware Branch Repairs
+
+`0142` extends the same repair-policy boundary to explicit short branches instead of isolated phrase memories.
+
+The key rule is deliberate:
+
+- do not silently mix preservation classes in one ranked list
+
+That means a host asks for one class at a time:
+
+- `realization_only`
+- `register_adjusted`
+- `texture_reduced`
+
+If a realization-only pass cannot relieve the branch bottleneck, the host makes a second explicit call with a wider boundary. The library does not silently widen the boundary on its own.
+
+The branch-repair rows add the metadata we need for explainable rewrite exploration:
+
+- `events_touched`
+- `notes_changed`
+- `first_relieved_bottleneck_step_index`
+- `new_dominant_domain`
+- `new_dominant_family_index`
+
+This is what lets a host say:
+
+- "This repair keeps the same sounding notes but changes the physical realization across the branch."
+- "This second repair changes the voicing register, and that is why the bottleneck disappears at step three."
+
+The semantics stay honest:
+
+- `notes_changed = 0` means the sounding notes stayed the same and only the realization changed
+- `notes_changed > 0` means the music changed, not just the fingering
+
 ## 0141 - Phrase-Biased Branch Ranking And Hard Filters
 
 `0141` turns short future branches into explainable ranking rows without hiding the difference between a diagnostic view and an acceptance filter.
