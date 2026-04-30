@@ -2,7 +2,7 @@
 
 ## Status
 
-- Draft: 2026-04-16
+- Completed: 2026-04-30
 
 ## Goal
 
@@ -42,3 +42,13 @@ An LLM should be able to say:
 - committed-memory bias tests showing different results with and without prior accepted history
 - `/Users/bermi/code/libmusictheory/./zigw build test`
 - `/Users/bermi/code/libmusictheory/./verify.sh`
+
+## Implementation History (Point-in-Time)
+
+- `1e824cd` — 2026-04-30
+  - Added phrase-branch classification, visibility, and committed-memory bias summaries so short candidate continuations can stay diagnosable while still separating hard blockers from soft strain bias.
+  - Added seeded branch auditing against committed phrase memory plus keyboard/fret branch ranking and explicit hard-filter helpers for both Zig callers and the experimental C ABI.
+  - Added focused ranking and C ABI coverage, plus API/research documentation showing how callers can keep blocked branches visible for diagnostics before removing them on demand.
+  - Verification commands:
+    - `/Users/bermi/code/libmusictheory/./zigw build test`
+    - `/Users/bermi/code/libmusictheory/./verify.sh`
